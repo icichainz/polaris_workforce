@@ -95,7 +95,12 @@ from translatable strings (`pgettext` context "attendance status letter (…)" i
 
 - Typographic apostrophe **’** (as the phone app already does), « » not needed.
 - A no-break space (U+00A0) before `:` `?` `!` `;`, so they never start a line.
-- Dates come from Django's own French month and day names (`|date:"l j F Y"` →
-  "vendredi 31 octobre 2026"); lowercase, as in French.
+- Dates come from Django's own French month and day names, lowercase as in French:
+  "vendredi 30 octobre 2026". The display formats are translatable strings
+  (`|date:_("D j M")` in templates, `_("D j M")` in `apps/payroll/labels.py`): French
+  replaces `M` ("Oct") with `N` ("oct.", "juin", "sept."), so "D j M" → "D j N" gives
+  "ven 30 oct.". Machine formats (`Y-m-d`, `c`) stay literal.
+- Weekday checkboxes and calendar headers use their own "weekday" context (Lun, Mar…),
+  so they never override Django's lowercase "D" abbreviation used in dates.
 - Placeholders (`%(name)s`, `{count}`) and HTML (`<strong>`) are kept as they are.
 - Amounts follow the company number format setting in both languages.

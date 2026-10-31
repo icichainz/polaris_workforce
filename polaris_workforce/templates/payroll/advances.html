@@ -35,7 +35,7 @@
             {% for advance in page %}
             <tr class="border-t border-line-soft">
               <td class="px-4 py-3"><span class="font-semibold">{{ advance.worker.full_name }}</span><br><span class="text-xs text-steel">{{ advance.worker.number }}{% if advance.site_name %} · {{ advance.site_name }}{% endif %}</span></td>
-              <td class="px-4 py-3">{{ advance.given_on|date:"j M" }}{% if advance.reason %}<br><span class="text-xs text-steel">“{{ advance.reason }}”</span>{% endif %}</td>
+              <td class="px-4 py-3">{{ advance.given_on|date:_("j M") }}{% if advance.reason %}<br><span class="text-xs text-steel">“{{ advance.reason }}”</span>{% endif %}</td>
               <td class="px-4 py-3 text-right tabular-nums">{{ advance.amount|amount:company }}</td>
               <td class="px-4 py-3">
                 <span class="flex items-center gap-2"><span class="block h-1.5 w-20 overflow-hidden rounded-full bg-line-soft" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ advance.repaid_percent }}" aria-label="{% translate 'Repaid' %}"><span class="block h-1.5 bg-present-fg" style="width: {{ advance.repaid_percent }}%"></span></span><span class="text-xs tabular-nums text-ink-700">{{ advance.repaid_percent }}%</span></span>

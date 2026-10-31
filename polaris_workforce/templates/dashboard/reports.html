@@ -2,7 +2,7 @@
 {% load i18n polaris %}
 
 {% block title %}{% translate "Reports" %} · Polaris Workforce{% endblock %}
-{% block page_subtitle %}{% blocktranslate with start=report.start|date:"j M Y" end=report.end|date:"j M Y" %}{{ start }} – {{ end }}{% endblocktranslate %}{% endblock %}
+{% block page_subtitle %}{% blocktranslate with start=report.start|date:_("j M Y") end=report.end|date:_("j M Y") %}{{ start }} – {{ end }}{% endblocktranslate %}{% endblock %}
 {% block page_title %}{% translate "Reports" %}{% endblock %}
 {% block page_actions %}
   {% url "dashboard:reports_csv" as csv_url %}
@@ -94,10 +94,10 @@
     <table class="w-full min-w-190 border-collapse text-sm">
       <thead><tr class="bg-subtle text-left">
         <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
-        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel"><abbr title="{% translate 'Present' %}" class="no-underline">P</abbr></th>
-        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel"><abbr title="{% translate 'Half day' %}" class="no-underline">½</abbr></th>
-        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel"><abbr title="{% translate 'Late' %}" class="no-underline">L</abbr></th>
-        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel"><abbr title="{% translate 'Absent' %}" class="no-underline">A</abbr></th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel"><abbr title="{% translate 'Present' %}" class="no-underline">{{ "present"|status_letter }}</abbr></th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel"><abbr title="{% translate 'Half day' %}" class="no-underline">{{ "half_day"|status_letter }}</abbr></th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel"><abbr title="{% translate 'Late' %}" class="no-underline">{{ "late"|status_letter }}</abbr></th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel"><abbr title="{% translate 'Absent' %}" class="no-underline">{{ "absent"|status_letter }}</abbr></th>
         <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Rate" %}</th>
         <th scope="col" class="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Earned" %}</th>
       </tr></thead>

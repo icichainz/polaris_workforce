@@ -97,8 +97,8 @@
               {% for device in devices %}
                 <tr class="border-t border-line-soft">
                   <td class="px-5 py-3"><span class="font-semibold">{{ device.name|default:_("Unnamed phone") }}</span><br><span class="text-xs text-steel">{{ device.device_id }}</span></td>
-                  <td class="px-4 py-3 text-ink-700">{{ device.created_at|date:"j M Y H:i" }}</td>
-                  <td class="px-4 py-3 text-ink-700">{% if device.last_seen_at %}{{ device.last_seen_at|date:"j M Y H:i" }}{% else %}—{% endif %}</td>
+                  <td class="px-4 py-3 text-ink-700">{{ device.created_at|date:_("j M Y H:i") }}</td>
+                  <td class="px-4 py-3 text-ink-700">{% if device.last_seen_at %}{{ device.last_seen_at|date:_("j M Y H:i") }}{% else %}—{% endif %}</td>
                   <td class="px-4 py-3">{% if device.is_active %}{% translate "Signed in" as signed_in_label %}{% include "components/status_badge.html" with status="active" label=signed_in_label only %}{% else %}{% translate "Signed out" as signed_out_label %}{% include "components/status_badge.html" with status="inactive" label=signed_out_label only %}{% endif %}</td>
                   <td class="px-5 py-3 text-right">
                     {% if device.is_active %}

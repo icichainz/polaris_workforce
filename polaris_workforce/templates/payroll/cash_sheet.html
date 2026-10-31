@@ -2,10 +2,10 @@
 {% load i18n payroll_tags %}
 
 {% block title %}{% translate "Cash sheet" %} · {{ sheet.site.name }} · Polaris Workforce{% endblock %}
-{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'payroll:cash_sheets' %}">{% translate "Cash sheets" %}</a> / {{ sheet.site.name }} · {{ sheet.date|date:"D j M" }}</nav>{% endblock %}
+{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'payroll:cash_sheets' %}">{% translate "Cash sheets" %}</a> / {{ sheet.site.name }} · {{ sheet.date|date:_("D j M") }}</nav>{% endblock %}
 {% block page_title %}{% translate "Cash sheet" %}{% endblock %}
 {% block page_status %}<span id="sheet-status">{% include "payroll/_sheet_status.html" with sheet=sheet size="lg" only %}</span>{% endblock %}
-{% block page_meta %}{{ sheet.site.name }} · {{ sheet.date|date:"l j F Y" }}{% if sheet.day.approved_at %} · {% blocktranslate with name=sheet.day.approved_by.get_full_name|default:sheet.day.approved_by time=sheet.day.approved_at|time:"H:i" %}Day approved by {{ name }} {{ time }}{% endblocktranslate %}{% endif %}{% for period in sheet.periods %}{% if period.start_date != period.end_date %} · {{ period.get_frequency_display }} {{ period|period_label }}{% endif %}{% endfor %}{% endblock %}
+{% block page_meta %}{{ sheet.site.name }} · {{ sheet.date|date:_("l j F Y") }}{% if sheet.day.approved_at %} · {% blocktranslate with name=sheet.day.approved_by.get_full_name|default:sheet.day.approved_by time=sheet.day.approved_at|time:"H:i" %}Day approved by {{ name }} {{ time }}{% endblocktranslate %}{% endif %}{% for period in sheet.periods %}{% if period.start_date != period.end_date %} · {{ period.get_frequency_display }} {{ period|period_label }}{% endif %}{% endfor %}{% endblock %}
 {% block page_actions %}
   {% if can_lock %}{% translate "Close & lock sheet" as label %}{% include "components/button.html" with label=label href="#close" variant="dark" only %}{% endif %}
 {% endblock %}

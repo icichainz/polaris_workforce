@@ -1,5 +1,5 @@
 {% extends "worksites/_detail_base.html" %}
-{% load i18n %}
+{% load i18n polaris %}
 
 {% block tab_content %}
 <section aria-labelledby="week-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4">
@@ -7,7 +7,7 @@
   <ol class="m-0 grid list-none grid-cols-2 gap-2.5 p-0 sm:grid-cols-3 lg:grid-cols-6">
     {% for d in week %}
     <li class="flex flex-col gap-1.5 rounded-control border px-3 py-2.5 {% if d.status == 'submitted' %}border-line bg-amber-tint{% elif d.status == 'upcoming' %}border-line bg-subtle{% else %}border-line bg-white{% endif %}{% if d.is_today %} ring-2 ring-ink{% endif %}">
-      <span class="text-[13px] font-semibold">{{ d.date|date:"D j" }}{% if d.is_today %} · {% translate "today" %}{% endif %}</span>
+      <span class="text-[13px] font-semibold">{{ d.date|date:_("D j") }}{% if d.is_today %} · {% translate "today" %}{% endif %}</span>
       <span class="font-display text-xl font-bold tabular-nums">{% if d.present is None %}—{% else %}{{ d.present }} / {{ d.crew }}{% endif %}</span>
       <span>{% if d.status == "upcoming" %}{% translate "Upcoming" as up_label %}{% include "components/status_badge.html" with status="draft" label=up_label only %}{% elif d.status == "not_started" %}{% translate "Not started" as ns_label %}{% include "components/status_badge.html" with status="draft" label=ns_label only %}{% else %}{% include "components/status_badge.html" with status=d.status only %}{% endif %}</span>
     </li>
@@ -22,7 +22,7 @@
         <h2 id="crew-title" class="font-display text-lg font-bold">{% translate "Crew today" %}</h2>
         <span class="text-[13px] text-steel">{% if day and day.submitted_at %}{% blocktranslate with name=day.foreman|default:"—" time=submitted_at %}Submitted by {{ name }} at {{ time }}{% endblocktranslate %}{% elif day.status == "draft" %}{% translate "Roll call in progress" %}{% elif day %}{{ day.get_status_display }}{% else %}{% translate "No roll call yet today" %}{% endif %}</span>
       </div>
-      <span class="text-[13px] font-semibold tabular-nums text-ink-700">P {{ counts.present }} · ½ {{ counts.half_day }} · L {{ counts.late }} · A {{ counts.absent }}</span>
+      <span class="text-[13px] font-semibold tabular-nums text-ink-700">{{ "present"|status_letter }} {{ counts.present }} · {{ "half_day"|status_letter }} {{ counts.half_day }} · {{ "late"|status_letter }} {{ counts.late }} · {{ "absent"|status_letter }} {{ counts.absent }}</span>
     </div>
     {% if crew_rows %}
     <div class="overflow-x-auto">

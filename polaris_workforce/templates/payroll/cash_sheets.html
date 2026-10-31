@@ -33,7 +33,7 @@
       <tbody>
         {% for sheet in sheets %}
         <tr class="border-t border-line-soft">
-          <td class="px-4 py-3"><a href="{% url 'payroll:cash_sheet' sheet.site.pk sheet.date|date:'Y-m-d' %}" class="font-semibold">{{ sheet.date|date:"D j M Y" }}</a><br><span class="text-xs text-steel">{% blocktranslate count n=sheet.reconciliation.line_count %}{{ n }} worker{% plural %}{{ n }} workers{% endblocktranslate %}</span></td>
+          <td class="px-4 py-3"><a href="{% url 'payroll:cash_sheet' sheet.site.pk sheet.date|date:'Y-m-d' %}" class="font-semibold">{{ sheet.date|date:_("D j M Y") }}</a><br><span class="text-xs text-steel">{% blocktranslate count n=sheet.reconciliation.line_count %}{{ n }} worker{% plural %}{{ n }} workers{% endblocktranslate %}</span></td>
           <td class="px-4 py-3">{{ sheet.site.name }}</td>
           <td class="px-4 py-3 text-right tabular-nums">{{ sheet.reconciliation.cash_issued|amount:sheet }}</td>
           <td class="px-4 py-3 text-right tabular-nums">{{ sheet.reconciliation.total_to_pay|amount:sheet }}</td>

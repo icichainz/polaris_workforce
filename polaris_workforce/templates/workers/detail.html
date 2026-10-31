@@ -1,5 +1,5 @@
 {% extends "layouts/app.html" %}
-{% load i18n %}
+{% load i18n polaris %}
 
 {% block title %}{{ worker.full_name }} · Polaris Workforce{% endblock %}
 
@@ -14,7 +14,7 @@
           <h1 class="font-display text-[28px] font-extrabold leading-tight sm:text-[32px]">{{ worker.full_name }}</h1>
           {% if worker.is_active %}{% include "components/status_badge.html" with status="active" size="lg" only %}{% else %}{% include "components/status_badge.html" with status="inactive" size="lg" only %}{% endif %}
         </div>
-        <p class="text-sm text-ink-700">{{ worker.number }}{% if worker.trade %} · {{ worker.trade.name }}{% endif %}{% if site %} · {{ site.name }} · {% if assignment.start_date > today_date %}{% blocktranslate with date=assignment.start_date|date:"j F Y" %}starts {{ date }}{% endblocktranslate %}{% else %}{% blocktranslate with date=assignment.start_date|date:"j F Y" %}since {{ date }}{% endblocktranslate %}{% endif %}{% endif %}</p>
+        <p class="text-sm text-ink-700">{{ worker.number }}{% if worker.trade %} · {{ worker.trade.name }}{% endif %}{% if site %} · {{ site.name }} · {% if assignment.start_date > today_date %}{% blocktranslate with date=assignment.start_date|date:_("j F Y") %}starts {{ date }}{% endblocktranslate %}{% else %}{% blocktranslate with date=assignment.start_date|date:_("j F Y") %}since {{ date }}{% endblocktranslate %}{% endif %}{% endif %}</p>
       </div>
     </div>
     <div class="flex flex-wrap gap-2.5">
@@ -27,14 +27,14 @@
 
 {% block content %}
 <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="{% translate 'Summary' %}">
-  {% if rate %}{% if previous_rate %}{% blocktranslate with date=rate.effective_from|date:"j M Y" was=previous_rate asvar rate_caption %}Since {{ date }} (was {{ was }}){% endblocktranslate %}{% else %}{% blocktranslate with date=rate.effective_from|date:"j M Y" asvar rate_caption %}Since {{ date }}{% endblocktranslate %}{% endif %}{% else %}{% translate "No rate set" as rate_caption %}{% endif %}
+  {% if rate %}{% if previous_rate %}{% blocktranslate with date=rate.effective_from|date:_("j M Y") was=previous_rate asvar rate_caption %}Since {{ date }} (was {{ was }}){% endblocktranslate %}{% else %}{% blocktranslate with date=rate.effective_from|date:_("j M Y") asvar rate_caption %}Since {{ date }}{% endblocktranslate %}{% endif %}{% else %}{% translate "No rate set" as rate_caption %}{% endif %}
   {% include "components/stat_tile.html" with label=pay_type|default:_("Rate") value=rate_text caption=rate_caption only %}
 
-  {% blocktranslate with month=month|date:"F" asvar days_label %}{{ month }} days{% endblocktranslate %}
+  {% blocktranslate with month=month|date:_("F") asvar days_label %}{{ month }} days{% endblocktranslate %}
   {% if attendance_percent is not None %}{% if late_full_day %}{% blocktranslate with pct=attendance_percent asvar days_caption %}{{ pct }}% attendance · Late counts as a full day{% endblocktranslate %}{% else %}{% blocktranslate with pct=attendance_percent asvar days_caption %}{{ pct }}% attendance{% endblocktranslate %}{% endif %}{% else %}{% translate "No working days yet" as days_caption %}{% endif %}
   {% include "components/stat_tile.html" with label=days_label value=units suffix=expected_suffix caption=days_caption only %}
 
-  {% blocktranslate with month=month|date:"F" asvar paid_label %}Paid in {{ month }}{% endblocktranslate %}
+  {% blocktranslate with month=month|date:_("F") asvar paid_label %}Paid in {{ month }}{% endblocktranslate %}
   {% if all_with_receipt %}{% blocktranslate count n=paid_count asvar paid_caption %}{{ n }} payment · all with receipt{% plural %}{{ n }} payments · all with receipt{% endblocktranslate %}{% else %}{% blocktranslate count n=paid_count asvar paid_caption %}{{ n }} payment{% plural %}{{ n }} payments{% endblocktranslate %}{% endif %}
   {% include "components/stat_tile.html" with label=paid_label value=paid_total caption=paid_caption only %}
 
@@ -47,7 +47,7 @@
 <div class="flex flex-wrap items-start gap-6">
   <section aria-labelledby="cal-title" class="flex min-w-0 flex-[2_1_520px] flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
     <div class="flex items-center justify-between gap-3">
-      <h2 id="cal-title" class="font-display text-lg font-bold">{% blocktranslate with month=month|date:"F Y" %}Attendance · {{ month }}{% endblocktranslate %}</h2>
+      <h2 id="cal-title" class="font-display text-lg font-bold">{% blocktranslate with month=month|date:_("F Y") %}Attendance · {{ month }}{% endblocktranslate %}</h2>
       <div class="flex gap-2">
         <a href="?month={{ prev_month|date:'Y-m' }}" aria-label="{% translate 'Previous month' %}" class="inline-flex size-10 items-center justify-center rounded-control border border-line-strong bg-white text-lg font-semibold text-ink no-underline hover:bg-ground hover:text-ink">‹</a>
         {% if next_month %}<a href="?month={{ next_month|date:'Y-m' }}" aria-label="{% translate 'Next month' %}" class="inline-flex size-10 items-center justify-center rounded-control border border-line-strong bg-white text-lg font-semibold text-ink no-underline hover:bg-ground hover:text-ink">›</a>{% else %}<span aria-hidden="true" class="inline-flex size-10 items-center justify-center rounded-control border border-line bg-ground text-lg font-semibold text-disabled">›</span>{% endif %}
@@ -59,9 +59,9 @@
     <ol class="m-0 grid list-none grid-cols-7 gap-1.5 p-0" aria-label="{% translate 'Days of the month' %}">
       {% for week in weeks %}{% for cell in week %}
         {% if cell %}
-        <li title="{{ cell.date|date:'j M' }}{% if cell.title %} · {{ cell.title }}{% endif %}" class="flex aspect-square min-h-10 flex-col justify-between rounded-md border-2 p-1.5 {% if cell.is_today %}border-ink{% elif cell.kind == 'present' %}border-present-bg{% elif cell.kind == 'absent' %}border-absent-bg{% elif cell.kind == 'half_day' %}border-half-bg{% elif cell.kind == 'late' %}border-late-bg{% else %}border-line-soft{% endif %} {% if cell.kind == 'present' %}bg-present-bg text-present-fg{% elif cell.kind == 'absent' %}bg-absent-bg text-absent-fg{% elif cell.kind == 'half_day' %}bg-half-bg text-half-fg{% elif cell.kind == 'late' %}bg-late-bg text-late-fg{% elif cell.kind == 'off' %}bg-subtle text-disabled{% else %}bg-white text-steel{% endif %}">
+        <li title="{{ cell.date|date:_("j M") }}{% if cell.title %} · {{ cell.title }}{% endif %}" class="flex aspect-square min-h-10 flex-col justify-between rounded-md border-2 p-1.5 {% if cell.is_today %}border-ink{% elif cell.kind == 'present' %}border-present-bg{% elif cell.kind == 'absent' %}border-absent-bg{% elif cell.kind == 'half_day' %}border-half-bg{% elif cell.kind == 'late' %}border-late-bg{% else %}border-line-soft{% endif %} {% if cell.kind == 'present' %}bg-present-bg text-present-fg{% elif cell.kind == 'absent' %}bg-absent-bg text-absent-fg{% elif cell.kind == 'half_day' %}bg-half-bg text-half-fg{% elif cell.kind == 'late' %}bg-late-bg text-late-fg{% elif cell.kind == 'off' %}bg-subtle text-disabled{% else %}bg-white text-steel{% endif %}">
           <span class="text-left text-xs font-semibold tabular-nums">{{ cell.date.day }}</span>
-          <span class="font-display text-base font-extrabold">{% if cell.kind == 'present' %}P{% elif cell.kind == 'absent' %}A{% elif cell.kind == 'half_day' %}½{% elif cell.kind == 'late' %}L{% endif %}</span>
+          <span class="font-display text-base font-extrabold">{% if cell.kind == 'present' or cell.kind == 'absent' or cell.kind == 'half_day' or cell.kind == 'late' %}{{ cell.kind|status_letter }}{% endif %}</span>
           <span class="sr-only">{{ cell.title }}</span>
         </li>
         {% else %}
@@ -70,10 +70,10 @@
       {% endfor %}{% endfor %}
     </ol>
     <div class="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-ink-700">
-      <span><strong class="font-display font-extrabold text-present-fg">P</strong> {% translate "Present" %} {{ count_present }}</span>
-      <span><strong class="font-display font-extrabold text-half-fg">½</strong> {% translate "Half" %} {{ count_half }}</span>
-      <span><strong class="font-display font-extrabold text-late-fg">L</strong> {% translate "Late" %} {{ count_late }}</span>
-      <span><strong class="font-display font-extrabold text-absent-fg">A</strong> {% translate "Absent" %} {{ count_absent }}</span>
+      <span><strong class="font-display font-extrabold text-present-fg">{{ "present"|status_letter }}</strong> {% translate "Present" %} {{ count_present }}</span>
+      <span><strong class="font-display font-extrabold text-half-fg">{{ "half_day"|status_letter }}</strong> {% translate "Half" %} {{ count_half }}</span>
+      <span><strong class="font-display font-extrabold text-late-fg">{{ "late"|status_letter }}</strong> {% translate "Late" %} {{ count_late }}</span>
+      <span><strong class="font-display font-extrabold text-absent-fg">{{ "absent"|status_letter }}</strong> {% translate "Absent" %} {{ count_absent }}</span>
       {% if days_off %}<span class="text-steel">{% blocktranslate with days=days_off|join:", " %}{{ days }} off{% endblocktranslate %}</span>{% endif %}
     </div>
   </section>
@@ -90,7 +90,7 @@
     <section aria-labelledby="rates-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
       <h2 id="rates-title" class="font-display text-base font-bold">{% translate "Rate history" %}</h2>
       {% for h in history %}
-      <div class="flex justify-between gap-3 text-sm"><span>{% if h.until %}{{ h.from|date:"j M Y" }} – {{ h.until|date:"j M Y" }}{% else %}{% blocktranslate with date=h.from|date:"j M Y" %}From {{ date }}{% endblocktranslate %}{% endif %}</span><span class="font-semibold tabular-nums">{{ h.amount }} / {{ h.unit }}</span></div>
+      <div class="flex justify-between gap-3 text-sm"><span>{% if h.until %}{{ h.from|date:_("j M Y") }} – {{ h.until|date:_("j M Y") }}{% else %}{% blocktranslate with date=h.from|date:_("j M Y") %}From {{ date }}{% endblocktranslate %}{% endif %}</span><span class="font-semibold tabular-nums">{{ h.amount }} / {{ h.unit }}</span></div>
       {% empty %}
       <p class="text-sm text-steel">{% translate "No rate yet." %}</p>
       {% endfor %}
@@ -117,7 +117,7 @@
       <tbody>
         {% for p in payments %}
         <tr class="border-t border-line-soft">
-          <td class="px-4 py-3 font-semibold">{% if p.payslip_url %}<a href="{{ p.payslip_url }}">{{ p.date|date:"D j M" }}<span class="sr-only"> · {% translate "payslip (PDF)" %}</span></a>{% else %}{{ p.date|date:"D j M" }}{% endif %}</td>
+          <td class="px-4 py-3 font-semibold">{% if p.payslip_url %}<a href="{{ p.payslip_url }}">{{ p.date|date:_("D j M") }}<span class="sr-only"> · {% translate "payslip (PDF)" %}</span></a>{% else %}{{ p.date|date:_("D j M") }}{% endif %}</td>
           <td class="px-4 py-3 text-right tabular-nums">{{ p.units }}</td>
           <td class="px-4 py-3 text-right tabular-nums">{{ p.gross }}</td>
           <td class="px-4 py-3 text-right tabular-nums">{% if p.advance %}− {{ p.advance }}{% else %}—{% endif %}</td>

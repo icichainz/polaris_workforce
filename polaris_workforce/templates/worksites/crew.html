@@ -5,7 +5,7 @@
 <section aria-labelledby="crew-title" class="rounded-card border border-line bg-white">
   <div class="flex flex-wrap items-end justify-between gap-3 border-b border-line px-5 py-4">
     <div class="flex flex-col gap-0.5">
-      <h2 id="crew-title" class="font-display text-lg font-bold">{% blocktranslate with date=date|date:"l j F Y" %}Crew on {{ date }}{% endblocktranslate %}</h2>
+      <h2 id="crew-title" class="font-display text-lg font-bold">{% blocktranslate with date=date|date:_("l j F Y") %}Crew on {{ date }}{% endblocktranslate %}</h2>
       <span class="text-[13px] text-steel">{% blocktranslate count n=rows|length %}{{ n }} worker expected{% plural %}{{ n }} workers expected{% endblocktranslate %}</span>
     </div>
     <form method="get" class="flex items-end gap-2">
@@ -30,7 +30,7 @@
         <tr class="border-t border-line-soft">
           <td class="px-4 py-3"><span class="flex items-center gap-2.5"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-line text-xs font-bold">{{ row.initials }}</span>
             <span><a href="{% url 'workers:detail' row.worker.pk %}" class="font-semibold">{{ row.worker.full_name }}</a><br><span class="text-xs text-steel">{{ row.worker.number }}{% if row.worker.trade %} · {{ row.worker.trade.name }}{% endif %}</span></span></span></td>
-          <td class="px-4 py-3 tabular-nums">{{ row.assignment.start_date|date:"j M Y" }}{% if row.assignment.end_date %} → {{ row.assignment.end_date|date:"j M Y" }}{% endif %}</td>
+          <td class="px-4 py-3 tabular-nums">{{ row.assignment.start_date|date:_("j M Y") }}{% if row.assignment.end_date %} → {{ row.assignment.end_date|date:_("j M Y") }}{% endif %}</td>
           <td class="px-4 py-3">{% include "components/status_badge.html" with status=row.status only %}</td>
           <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ row.rate }}{% if row.unit %} <span class="text-xs font-normal text-steel">/ {{ row.unit }}</span>{% endif %}</td>
           {% if can_manage %}

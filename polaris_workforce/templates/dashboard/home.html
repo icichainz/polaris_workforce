@@ -2,7 +2,7 @@
 {% load i18n polaris %}
 
 {% block title %}{% translate "Today" %} · Polaris Workforce{% endblock %}
-{% block page_subtitle %}{{ overview.now|date:"l j F Y · H:i" }}{% endblock %}
+{% block page_subtitle %}{{ overview.now|date:_("l j F Y · H:i") }}{% endblock %}
 {% block page_title %}{% translate "Today across sites" %}{% endblock %}
 {% block page_actions %}
   {% if can_export %}
@@ -39,7 +39,7 @@
   {% blocktranslate count counter=overview.awaiting|length asvar awaiting_value %}{{ counter }} day{% plural %}{{ counter }} days{% endblocktranslate %}
   {% if overview.oldest_awaiting %}
     {% url "attendance:approvals" as approvals_url %}
-    {% blocktranslate with date=overview.oldest_awaiting.date|date:"D j M" site=overview.oldest_awaiting.site.name asvar awaiting_link %}Oldest: {{ date }}, {{ site }}{% endblocktranslate %}
+    {% blocktranslate with date=overview.oldest_awaiting.date|date:_("D j M") site=overview.oldest_awaiting.site.name asvar awaiting_link %}Oldest: {{ date }}, {{ site }}{% endblocktranslate %}
     {% include "components/stat_tile.html" with label=awaiting_label value=awaiting_value href=approvals_url link_label=awaiting_link only %}
   {% else %}
     {% translate "Nothing waiting" as awaiting_caption %}
@@ -126,7 +126,7 @@
           <a href="{% url 'worksites:detail' alert.site_id %}" class="text-[13px] font-semibold">{% translate "Open site" %}</a>
         {% elif alert.kind == "corrections" %}
           <span class="font-semibold">{% blocktranslate count counter=alert.count %}{{ counter }} correction after submission{% plural %}{{ counter }} corrections after submission{% endblocktranslate %}</span>
-          <span class="text-ink-700">{% blocktranslate with site=alert.site_name date=alert.date|date:"D j M" %}{{ site }}, {{ date }} — check the reasons before approving.{% endblocktranslate %}</span>
+          <span class="text-ink-700">{% blocktranslate with site=alert.site_name date=alert.date|date:_("D j M") %}{{ site }}, {{ date }} — check the reasons before approving.{% endblocktranslate %}</span>
           <a href="{% url 'attendance:approvals' %}?day={{ alert.day_id }}" class="text-[13px] font-semibold">{% translate "Review" %}</a>
         {% elif alert.kind == "absent_streak" %}
           <span class="font-semibold">{% blocktranslate with name=alert.person days=alert.count %}{{ name }} absent {{ days }} days in a row{% endblocktranslate %}</span>
@@ -134,7 +134,7 @@
           <a href="{% url 'workers:detail' alert.worker_id %}" class="text-[13px] font-semibold">{% translate "Open profile" %}</a>
         {% elif alert.kind == "unclosed_period" %}
           <span class="font-semibold">{% translate "Cash sheet not closed" %}</span>
-          <span class="text-ink-700">{% blocktranslate with site=alert.site_name date=alert.date|date:"D j M" count counter=alert.count %}{{ site }}, {{ date }} — {{ counter }} worker unpaid.{% plural %}{{ site }}, {{ date }} — {{ counter }} workers unpaid.{% endblocktranslate %}</span>
+          <span class="text-ink-700">{% blocktranslate with site=alert.site_name date=alert.date|date:_("D j M") count counter=alert.count %}{{ site }}, {{ date }} — {{ counter }} worker unpaid.{% plural %}{{ site }}, {{ date }} — {{ counter }} workers unpaid.{% endblocktranslate %}</span>
           <a href="{% url 'payroll:cash_sheet' alert.site_id alert.date %}" class="text-[13px] font-semibold">{% translate "Open cash sheet" %}</a>
         {% endif %}
       </span>
@@ -150,17 +150,17 @@
     <h2 id="chart-title" class="font-display text-lg font-bold">{% translate "Worker-days, last 7 working days" %}</h2>
     {% number overview.half_day_units as units %}<span class="text-[13px] text-steel">{% blocktranslate %}Your sites · present and late count as 1, half days as {{ units }}{% endblocktranslate %}</span>
   </div>
-  <div role="img" aria-label="{% translate 'Worker-days per day' %}: {% for day in overview.chart %}{{ day.date|date:'D j M' }} {% number day.value %}{% if day.is_today %} ({% translate 'today, so far' %}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}"
+  <div role="img" aria-label="{% translate 'Worker-days per day' %}: {% for day in overview.chart %}{{ day.date|date:_("D j M") }} {% number day.value %}{% if day.is_today %} ({% translate 'today, so far' %}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}"
     class="grid h-50 grid-cols-7 items-end gap-2 border-b border-line-strong px-1 sm:gap-4">
     {% for day in overview.chart %}
-    <div class="flex h-full flex-col items-center justify-end gap-1.5" title="{{ day.date|date:'D j M' }}: {% number day.value %}">
+    <div class="flex h-full flex-col items-center justify-end gap-1.5" title="{{ day.date|date:_("D j M") }}: {% number day.value %}">
       <span class="text-xs font-semibold text-ink-700 tabular-nums">{% number day.value max_decimals=1 %}</span>
       <span class="block w-full max-w-11 rounded-t {% if day.is_today %}bg-blue-700/50{% else %}bg-blue-700{% endif %}" style="height: {% widthratio day.height_percent 100 150 %}px"></span>
     </div>
     {% endfor %}
   </div>
   <div class="-mt-2 grid grid-cols-7 gap-2 px-1 sm:gap-4" aria-hidden="true">
-    {% for day in overview.chart %}<span class="text-center text-xs text-steel">{% if day.is_today %}{% translate "Today" %}{% else %}{{ day.date|date:"D j" }}{% endif %}</span>{% endfor %}
+    {% for day in overview.chart %}<span class="text-center text-xs text-steel">{% if day.is_today %}{% translate "Today" %}{% else %}{{ day.date|date:_("D j") }}{% endif %}</span>{% endfor %}
   </div>
 </section>
 {% endwith %}

@@ -20,7 +20,7 @@
       <tbody>
         {% for day in days %}
         <tr class="border-t border-line-soft">
-          <td class="px-4 py-3 font-semibold">{{ day.date|date:"D j M Y" }}</td>
+          <td class="px-4 py-3 font-semibold">{{ day.date|date:_("D j M Y") }}</td>
           <td class="px-4 py-3">{% include "components/status_badge.html" with status=day.status only %}</td>
           <td class="px-4 py-3 text-right tabular-nums">{{ day.present }} / {{ day.total }}</td>
           <td class="px-4 py-3 text-right tabular-nums">{{ day.absent }}</td>

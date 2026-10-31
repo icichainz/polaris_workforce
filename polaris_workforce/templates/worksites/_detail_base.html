@@ -10,7 +10,7 @@ can_manage, is_admin. Pages fill {% block tab_content %}.
 {% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'worksites:list' %}">{% translate "Sites" %}</a> / {{ site.name }}</nav>{% endblock %}
 {% block page_title %}{{ site.name }}{% endblock %}
 {% block page_status %}{% include "components/status_badge.html" with status=site.status size="lg" only %}{% endblock %}
-{% block page_meta %}{{ site.address|default:"" }}{% if site.address and site.started_on %} · {% endif %}{% if site.started_on %}{% blocktranslate with date=site.started_on|date:"j F Y" %}Started {{ date }}{% endblocktranslate %}{% endif %}{% endblock %}
+{% block page_meta %}{{ site.address|default:"" }}{% if site.address and site.started_on %} · {% endif %}{% if site.started_on %}{% blocktranslate with date=site.started_on|date:_("j F Y") %}Started {{ date }}{% endblocktranslate %}{% endif %}{% endblock %}
 {% block page_actions %}
   {% if is_admin %}{% translate "Edit site" as edit_label %}{% url "worksites:edit" site.pk as edit_url %}{% include "components/button.html" with label=edit_label href=edit_url variant="ghost" only %}{% endif %}
   {% if can_manage %}{% translate "Assign workers" as assign_label %}{% url "worksites:assign" site.pk as assign_url %}{% include "components/button.html" with label=assign_label href=assign_url only %}{% endif %}

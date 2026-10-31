@@ -1,0 +1,4506 @@
+# French translations for Polaris Workforce.
+# Terms: docs/glossary-fr.md.
+msgid ""
+msgstr ""
+"Project-Id-Version: Polaris Workforce\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-31 17:34+0000\n"
+"PO-Revision-Date: 2026-10-31 18:00+0000\n"
+"Last-Translator: Polaris Workforce\n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % "
+"1000000 == 0 ? 1 : 2;\n"
+
+#: apps/accounts/admin.py:7
+msgid "Polaris Workforce"
+msgstr "Polaris Workforce"
+
+#: apps/accounts/admin.py:9
+msgid "Phone PIN"
+msgstr "Code PIN du téléphone"
+
+#: apps/accounts/api/views.py:195
+msgid "Too many wrong PINs. Try again later."
+msgstr "Trop de codes PIN incorrects. Réessayez plus tard."
+
+#: apps/accounts/api/views.py:202
+msgid "Wrong PIN."
+msgstr "Code PIN incorrect."
+
+#: apps/accounts/api/views.py:204
+msgid "Wrong phone number or PIN."
+msgstr "Numéro de téléphone ou code PIN incorrect."
+
+#: apps/accounts/apps.py:7
+msgid "Accounts"
+msgstr "Comptes"
+
+#: apps/accounts/forms.py:25
+msgid "Sites they manage"
+msgstr "Chantiers dont il est conducteur de travaux"
+
+#: apps/accounts/forms.py:28
+msgid ""
+"For site managers. A site has one manager; choosing it here replaces it."
+msgstr ""
+"Pour les conducteurs de travaux. Un chantier a un seul conducteur de "
+"travaux ; le choisir ici remplace l’actuel."
+
+#: apps/accounts/forms.py:31
+msgid "Sites they are foreman on"
+msgstr "Chantiers dont il est chef d’équipe"
+
+#: apps/accounts/forms.py:34
+msgid "For foremen."
+msgstr "Pour les chefs d’équipe."
+
+#: apps/accounts/forms.py:37
+msgid "Temporary password"
+msgstr "Mot de passe temporaire"
+
+#: apps/accounts/forms.py:42
+msgid ""
+"Office roles sign in with a password. Leave empty and they can use “Forgot?” "
+"on the sign-in page."
+msgstr ""
+"Les rôles du bureau se connectent avec un mot de passe. Laissez vide : la "
+"personne pourra utiliser « Oublié ? » sur la page de connexion."
+
+#: apps/accounts/forms.py:59
+msgid "Active (may sign in)"
+msgstr "Actif (peut se connecter)"
+
+#: apps/accounts/forms.py:70
+msgid "Foremen sign in on the phone with this number."
+msgstr "Les chefs d’équipe se connectent sur le téléphone avec ce numéro."
+
+#: apps/accounts/forms.py:71
+msgid "Company language"
+msgstr "Langue de l’entreprise"
+
+#: apps/accounts/forms.py:73
+msgid "Used to sign in to the office. Letters, digits and @ . + - _ only."
+msgstr ""
+"Sert à se connecter au bureau. Lettres, chiffres et @ . + - _ uniquement."
+
+#: apps/accounts/forms.py:80
+msgid "A disabled user cannot sign in, in the office or on the phone."
+msgstr ""
+"Un utilisateur désactivé ne peut plus se connecter, ni au bureau ni sur le "
+"téléphone."
+
+#: apps/accounts/forms.py:96
+msgid "Another user already has this phone number."
+msgstr "Un autre utilisateur a déjà ce numéro de téléphone."
+
+#: apps/accounts/forms.py:103
+msgid "Foremen need a phone number to sign in."
+msgstr ""
+"Les chefs d’équipe ont besoin d’un numéro de téléphone pour se connecter."
+
+#: apps/accounts/forms.py:106
+msgid "You cannot change your own role."
+msgstr "Vous ne pouvez pas modifier votre propre rôle."
+
+#: apps/accounts/forms.py:108
+msgid "You cannot disable your own account."
+msgstr "Vous ne pouvez pas désactiver votre propre compte."
+
+#: apps/accounts/forms.py:127
+msgid "New PIN"
+msgstr "Nouveau code PIN"
+
+#: apps/accounts/forms.py:131
+msgid "Enter exactly 4 digits."
+msgstr "Saisissez exactement 4 chiffres."
+
+#: apps/accounts/forms.py:142
+msgid "Repeat the PIN"
+msgstr "Répétez le code PIN"
+
+#: apps/accounts/forms.py:157
+msgid "Too easy to guess: avoid 1111 or 1234."
+msgstr "Trop facile à deviner : évitez 1111 ou 1234."
+
+#: apps/accounts/forms.py:163
+msgid "The two PINs are different."
+msgstr "Les deux codes PIN sont différents."
+
+#: apps/accounts/forms.py:197
+#, python-format
+msgid "Too many failed sign-in attempts. Try again in %(minutes)d minute."
+msgid_plural ""
+"Too many failed sign-in attempts. Try again in %(minutes)d minutes."
+msgstr[0] ""
+"Trop de tentatives de connexion échouées. Réessayez dans %(minutes)d minute."
+msgstr[1] ""
+"Trop de tentatives de connexion échouées. Réessayez dans %(minutes)d minutes."
+msgstr[2] ""
+"Trop de tentatives de connexion échouées. Réessayez dans %(minutes)d minutes."
+
+#: apps/accounts/models.py:21 apps/api/enums.py:31
+msgid "Admin"
+msgstr "Administrateur"
+
+#: apps/accounts/models.py:22 apps/api/enums.py:32
+#: templates/worksites/detail.html:64 templates/worksites/list.html:38
+msgid "Site manager"
+msgstr "Conducteur de travaux"
+
+#: apps/accounts/models.py:23 apps/api/enums.py:33
+#: templates/worksites/attendance.html:18 templates/worksites/detail.html:66
+#: templates/worksites/detail.html:68 templates/worksites/list.html:39
+msgid "Foreman"
+msgstr "Chef d’équipe"
+
+#: apps/accounts/models.py:24 apps/api/enums.py:34
+msgid "Accountant"
+msgstr "Comptable"
+
+#: apps/accounts/models.py:26
+msgid "role"
+msgstr "rôle"
+
+#: apps/accounts/models.py:27 apps/workers/models.py:40
+msgid "phone"
+msgstr "téléphone"
+
+#: apps/accounts/models.py:29 apps/core/models.py:114
+msgid "language"
+msgstr "langue"
+
+#: apps/accounts/models.py:34
+msgid "PIN hash"
+msgstr "empreinte du code PIN"
+
+#: apps/accounts/models.py:35
+msgid "failed PIN attempts"
+msgstr "tentatives de code PIN échouées"
+
+#: apps/accounts/models.py:36
+msgid "PIN locked until"
+msgstr "code PIN bloqué jusqu’à"
+
+#: apps/accounts/models.py:73
+msgid "user"
+msgstr "utilisateur"
+
+#: apps/accounts/models.py:75
+msgid "device ID"
+msgstr "identifiant de l’appareil"
+
+#: apps/accounts/models.py:76
+msgid "device name"
+msgstr "nom de l’appareil"
+
+#: apps/accounts/models.py:77
+msgid "token hash"
+msgstr "empreinte du jeton"
+
+#: apps/accounts/models.py:78
+msgid "last seen at"
+msgstr "vu pour la dernière fois le"
+
+#: apps/accounts/models.py:79
+msgid "revoked at"
+msgstr "révoqué le"
+
+#: apps/accounts/models.py:80 apps/attendance/models.py:157
+#: apps/core/models.py:30 apps/core/models.py:61 apps/payroll/models.py:212
+#: apps/payroll/models.py:416
+msgid "created at"
+msgstr "créé le"
+
+#: apps/accounts/models.py:83
+msgid "foreman device"
+msgstr "appareil du chef d’équipe"
+
+#: apps/accounts/models.py:84
+msgid "foreman devices"
+msgstr "appareils des chefs d’équipe"
+
+#: apps/accounts/permissions.py:99
+msgid "Take roll call"
+msgstr "Faire l’appel"
+
+#: apps/accounts/permissions.py:103
+msgid "Correct a submitted day (with reason)"
+msgstr "Corriger une journée envoyée (avec motif)"
+
+#: apps/accounts/permissions.py:106
+msgid "Approve days"
+msgstr "Valider les journées"
+
+#: apps/accounts/permissions.py:108
+msgid "Pay out cash & record proof"
+msgstr "Payer en espèces et enregistrer la preuve"
+
+#: apps/accounts/permissions.py:111
+msgid "Give advances"
+msgstr "Accorder des avances"
+
+#: apps/accounts/permissions.py:112
+msgid "Edit workers & pay rates"
+msgstr "Modifier les ouvriers et les tarifs"
+
+#: apps/accounts/permissions.py:114
+msgid "Close & lock pay periods"
+msgstr "Clôturer les périodes de paie"
+
+#: apps/accounts/permissions.py:118
+msgid "Reports & exports"
+msgstr "Rapports et exports"
+
+#: apps/accounts/permissions.py:121
+msgid "Company settings & users"
+msgstr "Paramètres de l’entreprise et utilisateurs"
+
+#: apps/accounts/views.py:66
+#, python-format
+msgid "%(name)s was added."
+msgstr "%(name)s a été ajouté."
+
+#: apps/accounts/views.py:81
+msgid "Changes saved."
+msgstr "Modifications enregistrées."
+
+#: apps/accounts/views.py:110
+msgid "Only foremen and admins sign in with a PIN."
+msgstr ""
+"Seuls les chefs d’équipe et les administrateurs se connectent avec un code "
+"PIN."
+
+#: apps/accounts/views.py:118
+#, python-format
+msgid "PIN changed. Tell %(name)s the new PIN."
+msgstr "Code PIN modifié. Communiquez le nouveau code PIN à %(name)s."
+
+#: apps/accounts/views.py:120
+#, python-format
+msgid "PIN set. Tell %(name)s the PIN."
+msgstr "Code PIN défini. Communiquez le code PIN à %(name)s."
+
+#: apps/accounts/views.py:129
+msgid "The phone was signed out."
+msgstr "Le téléphone a été déconnecté."
+
+#: apps/api/apps.py:7
+msgid "API"
+msgstr "API"
+
+#: apps/api/authentication.py:69
+msgid "Invalid Authorization header. Use: Device <token>."
+msgstr "En-tête Authorization invalide. Utilisez : Device <token>."
+
+#: apps/api/authentication.py:74
+msgid "Invalid device token."
+msgstr "Jeton d’appareil invalide."
+
+#: apps/api/authentication.py:84
+msgid "Invalid or revoked device token."
+msgstr "Jeton d’appareil invalide ou révoqué."
+
+#: apps/api/authentication.py:86
+msgid "This user account is disabled."
+msgstr "Ce compte utilisateur est désactivé."
+
+#: apps/api/authentication.py:89
+msgid "This device token has expired. Sign in again with your PIN."
+msgstr "Ce jeton d’appareil a expiré. Reconnectez-vous avec votre code PIN."
+
+#: apps/api/enums.py:15
+msgid "Missing, invalid or revoked credentials."
+msgstr "Identifiants manquants, invalides ou révoqués."
+
+#: apps/api/enums.py:16
+msgid "Authenticated, but not allowed (for example another site)."
+msgstr "Authentifié, mais non autorisé (par exemple un autre chantier)."
+
+#: apps/api/enums.py:17
+msgid "The resource does not exist."
+msgstr "La ressource n’existe pas."
+
+#: apps/api/enums.py:18
+msgid "The request body or query string is invalid."
+msgstr "Le corps de la requête ou les paramètres d’URL sont invalides."
+
+#: apps/api/enums.py:19
+msgid "Too many requests; retry later."
+msgstr "Trop de requêtes ; réessayez plus tard."
+
+#: apps/api/enums.py:20
+msgid "The request conflicts with the current state."
+msgstr "La requête est en conflit avec l’état actuel."
+
+#: apps/api/enums.py:21
+msgid ""
+"The resource is locked (a locked day or pay period, or a locked device)."
+msgstr ""
+"La ressource est clôturée (une journée ou une période de paie clôturée, ou "
+"un appareil bloqué)."
+
+#: apps/api/enums.py:22
+msgid "The endpoint is part of the contract but not built yet."
+msgstr ""
+"Ce point d’accès fait partie du contrat mais n’est pas encore développé."
+
+#: apps/api/enums.py:23
+msgid "The HTTP method is not allowed on this path."
+msgstr "La méthode HTTP n’est pas autorisée sur ce chemin."
+
+#: apps/api/enums.py:24
+msgid "The request content type is not supported."
+msgstr "Le type de contenu de la requête n’est pas pris en charge."
+
+#: apps/api/enums.py:25
+msgid "The Accept header cannot be satisfied."
+msgstr "L’en-tête Accept ne peut pas être satisfait."
+
+#: apps/api/enums.py:26
+msgid "Unexpected server error."
+msgstr "Erreur inattendue du serveur."
+
+#: apps/api/enums.py:38 apps/core/choices.py:9 config/settings.py:148
+msgid "English"
+msgstr "Anglais"
+
+#: apps/api/enums.py:39 apps/core/choices.py:10 config/settings.py:149
+msgid "French"
+msgstr "Français"
+
+#: apps/api/enums.py:43 apps/core/choices.py:20
+msgid "Daily"
+msgstr "Journalier"
+
+#: apps/api/enums.py:44
+msgid "Hourly"
+msgstr "Horaire"
+
+#: apps/api/enums.py:49 apps/attendance/models.py:93
+#: apps/dashboard/reports.py:294 apps/payroll/payslip.py:31
+#: templates/attendance/approvals.html:27
+#: templates/components/status_badge.html:17 templates/dashboard/home.html:23
+#: templates/dashboard/home.html:68 templates/dashboard/reports.html:97
+#: templates/workers/detail.html:73 templates/worksites/attendance.html:16
+msgid "Present"
+msgstr "Présent"
+
+#: apps/api/enums.py:50 apps/attendance/models.py:94
+#: apps/dashboard/reports.py:297 apps/payroll/payslip.py:32
+#: templates/attendance/approvals.html:30
+#: templates/components/status_badge.html:17
+#: templates/dashboard/reports.html:100 templates/workers/detail.html:76
+#: templates/worksites/attendance.html:17
+msgid "Absent"
+msgstr "Absent"
+
+#: apps/api/enums.py:51 apps/attendance/models.py:95 apps/payroll/payslip.py:33
+#: templates/attendance/approvals.html:28
+#: templates/components/status_badge.html:17
+#: templates/dashboard/reports.html:98
+msgid "Half day"
+msgstr "Demi-journée"
+
+#: apps/api/enums.py:52 apps/attendance/models.py:96
+#: apps/dashboard/reports.py:296 apps/payroll/payslip.py:34
+#: templates/attendance/approvals.html:29
+#: templates/components/status_badge.html:17
+#: templates/dashboard/reports.html:99 templates/workers/detail.html:75
+msgid "Late"
+msgstr "Retard"
+
+#: apps/api/enums.py:57 templates/dashboard/home.html:80
+#: templates/worksites/detail.html:12
+msgid "Not started"
+msgstr "Pas commencé"
+
+#: apps/api/enums.py:58 apps/attendance/models.py:17
+#: templates/components/status_badge.html:18
+#: templates/components/stepper.html:18
+msgid "Draft"
+msgstr "Brouillon"
+
+#: apps/api/enums.py:59 apps/attendance/models.py:18
+#: templates/components/status_badge.html:18
+#: templates/components/stepper.html:24
+msgid "Submitted"
+msgstr "Envoyé"
+
+#: apps/api/enums.py:60 apps/attendance/models.py:19
+#: templates/components/status_badge.html:18
+msgid "Approved"
+msgstr "Validé"
+
+#: apps/api/enums.py:61 apps/attendance/models.py:20
+#: templates/components/status_badge.html:18
+msgid "Rejected"
+msgstr "Renvoyé"
+
+#: apps/api/enums.py:62 apps/attendance/models.py:21 apps/payroll/models.py:35
+#: apps/payroll/views.py:78 templates/accounts/users.html:40
+#: templates/components/status_badge.html:18
+#: templates/components/stepper.html:36 templates/payroll/periods.html:25
+msgid "Locked"
+msgstr "Clôturé"
+
+#: apps/api/enums.py:67 apps/payroll/payslip.py:117 apps/workers/admin.py:30
+#: apps/workers/forms.py:153 templates/accounts/user_form.html:92
+#: templates/attendance/_approval_detail.html:60
+#: templates/components/data_table.html:29
+#: templates/payroll/cash_sheets.html:30 templates/payroll/periods.html:51
+#: templates/worksites/attendance.html:15 templates/worksites/crew.html:24
+#: templates/worksites/detail.html:32 templates/worksites/pay.html:16
+msgid "Status"
+msgstr "Statut"
+
+#: apps/api/enums.py:68
+msgid "Arrival"
+msgstr "Arrivée"
+
+#: apps/api/enums.py:69
+msgid "Departure"
+msgstr "Départ"
+
+#: apps/api/enums.py:70 apps/dashboard/views.py:97 apps/payroll/forms.py:75
+#: templates/attendance/_approval_detail.html:62
+msgid "Note"
+msgstr "Note"
+
+#: apps/api/enums.py:75
+msgid "Not open (waiting for approval)"
+msgstr "Pas ouverte (en attente de validation)"
+
+#: apps/api/enums.py:76 apps/payroll/models.py:31 apps/payroll/models.py:139
+msgid "Open"
+msgstr "Ouvert"
+
+#: apps/api/enums.py:77
+msgid "Everyone paid"
+msgstr "Tous payés"
+
+#: apps/api/enums.py:78
+msgid "Closed by the office"
+msgstr "Clôturée par le bureau"
+
+#: apps/api/enums.py:82 apps/core/choices.py:44 apps/workers/forms.py:33
+msgid "Photo"
+msgstr "Photo"
+
+#: apps/api/enums.py:83 apps/core/choices.py:45
+msgid "Signature"
+msgstr "Signature"
+
+#: apps/api/enums.py:84 apps/core/choices.py:46
+msgid "Thumb mark"
+msgstr "Empreinte digitale"
+
+#: apps/api/enums.py:85 apps/core/choices.py:47
+msgid "No proof"
+msgstr "Sans preuve"
+
+#: apps/api/exceptions.py:51
+msgid "The request conflicts with the current state of the resource."
+msgstr "La requête est en conflit avec l’état actuel de la ressource."
+
+#: apps/api/exceptions.py:57
+msgid "This resource is locked and cannot be changed."
+msgstr "Cette ressource est clôturée et ne peut pas être modifiée."
+
+#: apps/api/exceptions.py:63
+msgid "This endpoint is part of the API contract but is not implemented yet."
+msgstr ""
+"Ce point d’accès fait partie du contrat de l’API mais n’est pas encore "
+"développé."
+
+#: apps/api/exceptions.py:128
+msgid "Invalid input."
+msgstr "Données invalides."
+
+#: apps/api/exceptions.py:145
+msgid "Something went wrong on the server."
+msgstr "Une erreur s’est produite sur le serveur."
+
+#: apps/api/idempotency.py:57
+msgid ""
+"Made on the phone when the user acts (UUID v4). Sending the same client_uuid "
+"again returns the original result instead of applying the write twice."
+msgstr ""
+"Créé sur le téléphone au moment de l’action (UUID v4). Renvoyer le même "
+"client_uuid renvoie le résultat d’origine au lieu d’appliquer l’écriture "
+"deux fois."
+
+#: apps/api/idempotency.py:102 apps/attendance/services.py:260
+msgid "This client_uuid was already used for a different request."
+msgstr "Ce client_uuid a déjà été utilisé pour une autre requête."
+
+#: apps/attendance/api/views.py:52
+msgid "Must be on or before 'to'."
+msgstr "Doit être le même jour que « to » ou avant."
+
+#: apps/attendance/api/views.py:55
+#, python-format
+msgid "At most %(n)s days at a time."
+msgstr "Au plus %(n)s jours à la fois."
+
+#: apps/attendance/apps.py:7 apps/core/admin.py:27
+#: templates/core/settings.html:59 templates/core/settings.html:91
+msgid "Attendance"
+msgstr "Présences"
+
+#: apps/attendance/forms.py:12 templates/attendance/_approval_detail.html:96
+msgid "Approve day"
+msgstr "Valider la journée"
+
+#: apps/attendance/forms.py:12 templates/attendance/_approval_detail.html:95
+msgid "Send back"
+msgstr "Renvoyer"
+
+#: apps/attendance/forms.py:14
+msgid "Note to foreman"
+msgstr "Note au chef d’équipe"
+
+#: apps/attendance/forms.py:15
+msgid "Required to send the day back."
+msgstr "Obligatoire pour renvoyer la journée."
+
+#: apps/attendance/forms.py:19
+msgid "e.g. Kodjo was seen on site — please check"
+msgstr "p. ex. Kodjo a été vu sur le chantier — merci de vérifier"
+
+#: apps/attendance/models.py:25 apps/payroll/models.py:39
+#: apps/payroll/models.py:233 apps/payroll/models.py:330
+#: apps/workers/views.py:184 apps/worksites/models.py:70
+#: apps/worksites/models.py:100
+msgid "site"
+msgstr "chantier"
+
+#: apps/attendance/models.py:29 apps/payroll/models.py:237
+msgid "date"
+msgstr "date"
+
+#: apps/attendance/models.py:32
+msgid "foreman"
+msgstr "chef d’équipe"
+
+#: apps/attendance/models.py:39 apps/attendance/models.py:111
+#: apps/payroll/models.py:49 apps/payroll/models.py:162
+#: apps/worksites/models.py:23
+msgid "status"
+msgstr "statut"
+
+#: apps/attendance/models.py:41
+msgid "submitted at"
+msgstr "envoyé le"
+
+#: apps/attendance/models.py:44
+msgid "submitted by"
+msgstr "envoyé par"
+
+#: apps/attendance/models.py:51
+msgid "submitted on the phone at"
+msgstr "envoyé sur le téléphone le"
+
+#: apps/attendance/models.py:54
+msgid ""
+"When the foreman tapped Submit, if the phone said so (it may sync later)."
+msgstr ""
+"Quand le chef d’équipe a appuyé sur Envoyer, si le téléphone l’a indiqué (il "
+"peut se synchroniser plus tard)."
+
+#: apps/attendance/models.py:56
+msgid "approved at"
+msgstr "validé le"
+
+#: apps/attendance/models.py:59
+msgid "approved by"
+msgstr "validé par"
+
+#: apps/attendance/models.py:65
+msgid "rejection note"
+msgstr "note de renvoi"
+
+#: apps/attendance/models.py:66
+msgid "foreman note"
+msgstr "note du chef d’équipe"
+
+#: apps/attendance/models.py:67 apps/attendance/models.py:116
+#: apps/attendance/models.py:156 apps/payroll/models.py:296
+msgid "client UUID"
+msgstr "UUID client"
+
+#: apps/attendance/models.py:70 apps/attendance/models.py:100
+msgid "attendance day"
+msgstr "journée de présence"
+
+#: apps/attendance/models.py:71
+msgid "attendance days"
+msgstr "journées de présence"
+
+#: apps/attendance/models.py:106 apps/payroll/models.py:93
+#: apps/payroll/models.py:144 apps/payroll/models.py:324
+#: apps/workers/models.py:70 apps/workers/models.py:90
+#: apps/workers/views.py:182 apps/worksites/models.py:95
+msgid "worker"
+msgstr "ouvrier"
+
+#: apps/attendance/models.py:113
+msgid "arrival"
+msgstr "arrivée"
+
+#: apps/attendance/models.py:114
+msgid "departure"
+msgstr "départ"
+
+#: apps/attendance/models.py:115 apps/payroll/models.py:255
+msgid "note"
+msgstr "note"
+
+#: apps/attendance/models.py:118
+msgid "corrected"
+msgstr "corrigé"
+
+#: apps/attendance/models.py:118
+msgid "Changed by a correction after submission."
+msgstr "Modifié par une correction après l’envoi."
+
+#: apps/attendance/models.py:120
+msgid "recorded at"
+msgstr "enregistré le"
+
+#: apps/attendance/models.py:123
+msgid "attendance record"
+msgstr "fiche de présence"
+
+#: apps/attendance/models.py:124
+msgid "attendance records"
+msgstr "fiches de présence"
+
+#: apps/attendance/models.py:142
+msgid "record"
+msgstr "fiche"
+
+#: apps/attendance/models.py:146
+msgid "field"
+msgstr "champ"
+
+#: apps/attendance/models.py:147
+msgid "old value"
+msgstr "ancienne valeur"
+
+#: apps/attendance/models.py:148
+msgid "new value"
+msgstr "nouvelle valeur"
+
+#: apps/attendance/models.py:149 apps/core/models.py:60
+#: apps/payroll/models.py:151 apps/payroll/models.py:337
+msgid "reason"
+msgstr "motif"
+
+#: apps/attendance/models.py:152
+msgid "corrected by"
+msgstr "corrigé par"
+
+#: apps/attendance/models.py:160
+msgid "attendance correction"
+msgstr "correction de présence"
+
+#: apps/attendance/models.py:161
+msgid "attendance corrections"
+msgstr "corrections de présence"
+
+#: apps/attendance/selectors.py:157
+#, python-format
+msgid "%(n)s changed after submission"
+msgid_plural "%(n)s changed after submission"
+msgstr[0] "%(n)s modification après l’envoi"
+msgstr[1] "%(n)s modifications après l’envoi"
+msgstr[2] "%(n)s modifications après l’envoi"
+
+#: apps/attendance/selectors.py:169
+#, python-format
+msgid "Synced %(n)s h after submission"
+msgid_plural "Synced %(n)s h after submission"
+msgstr[0] "Synchronisé %(n)s h après l’envoi"
+msgstr[1] "Synchronisé %(n)s h après l’envoi"
+msgstr[2] "Synchronisé %(n)s h après l’envoi"
+
+#: apps/attendance/services.py:72 apps/attendance/services.py:264
+#: apps/attendance/services.py:425
+msgid "This day is locked and cannot be changed."
+msgstr "Cette journée est clôturée et ne peut pas être modifiée."
+
+#: apps/attendance/services.py:74
+#, python-format
+msgid "This day cannot go from %(current)s to %(target)s."
+msgstr "Cette journée ne peut pas passer de %(current)s à %(target)s."
+
+#: apps/attendance/services.py:115
+msgid "You cannot take the roll call for a future day."
+msgstr "Vous ne pouvez pas faire l’appel d’un jour futur."
+
+#: apps/attendance/services.py:166
+msgid "This client_uuid was already used for another record."
+msgstr "Ce client_uuid a déjà été utilisé pour une autre fiche."
+
+#: apps/attendance/services.py:175
+msgid "This worker is not on the crew of this site that day."
+msgstr "Cet ouvrier ne fait pas partie de l’équipe de ce chantier ce jour-là."
+
+#: apps/attendance/services.py:214
+msgid "This day was already submitted: change records with a correction."
+msgstr ""
+"Cette journée a déjà été envoyée : modifiez les fiches par une correction."
+
+#: apps/attendance/services.py:266
+msgid "This day was already submitted."
+msgstr "Cette journée a déjà été envoyée."
+
+#: apps/attendance/services.py:270
+msgid "Mark every worker on the crew before submitting."
+msgstr "Marquez chaque ouvrier de l’équipe avant d’envoyer."
+
+#: apps/attendance/services.py:320
+msgid "Tell the foreman what to check."
+msgstr "Indiquez au chef d’équipe ce qu’il doit vérifier."
+
+#: apps/attendance/services.py:366
+msgid "Not a valid attendance status."
+msgstr "Statut de présence invalide."
+
+#: apps/attendance/services.py:376
+msgid "Use the 24-hour format HH:MM."
+msgstr "Utilisez le format 24 heures HH:MM."
+
+#: apps/attendance/services.py:420
+msgid "Give a reason for the correction."
+msgstr "Indiquez le motif de la correction."
+
+#: apps/attendance/services.py:422
+msgid "This field cannot be corrected."
+msgstr "Ce champ ne peut pas être corrigé."
+
+#: apps/attendance/services.py:428
+msgid "This day is not submitted yet: change the record directly."
+msgstr ""
+"Cette journée n’est pas encore envoyée : modifiez directement la fiche."
+
+#: apps/attendance/services.py:434
+msgid "The record already has this value."
+msgstr "La fiche a déjà cette valeur."
+
+#: apps/attendance/views.py:84
+#, python-format
+msgid "%(site)s · %(date)s approved."
+msgstr "%(site)s · %(date)s validé."
+
+#: apps/attendance/views.py:88
+#, python-format
+msgid "%(site)s · %(date)s sent back to the foreman."
+msgstr "%(site)s · %(date)s renvoyé au chef d’équipe."
+
+#: apps/core/admin.py:13 apps/payroll/payslip.py:76
+msgid "Company"
+msgstr "Entreprise"
+
+#: apps/core/admin.py:25 templates/registration/login.html:8
+msgid "Language"
+msgstr "Langue"
+
+#: apps/core/admin.py:46 templates/components/sidebar.html:40
+#: templates/workers/form.html:54 templates/worksites/list.html:41
+#: templates/worksites/settings.html:16
+msgid "Pay"
+msgstr "Paie"
+
+#: apps/core/admin.py:59 templates/components/sidebar.html:42
+#: templates/payroll/advances.html:12
+msgid "Advances"
+msgstr "Avances"
+
+#: apps/core/apps.py:7
+msgid "Core"
+msgstr "Noyau"
+
+#: apps/core/choices.py:14
+msgid "Foreman roll call"
+msgstr "Appel par le chef d’équipe"
+
+#: apps/core/choices.py:15
+msgid "Self check-in"
+msgstr "Pointage par l’ouvrier"
+
+#: apps/core/choices.py:16
+msgid "Both"
+msgstr "Les deux"
+
+#: apps/core/choices.py:21
+msgid "Weekly"
+msgstr "Hebdomadaire"
+
+#: apps/core/choices.py:22
+msgid "Every 2 weeks"
+msgstr "Toutes les 2 semaines"
+
+#: apps/core/choices.py:23
+msgid "Monthly"
+msgstr "Mensuel"
+
+#: apps/core/choices.py:24
+msgid "Every N days"
+msgstr "Tous les N jours"
+
+#: apps/core/choices.py:28 apps/dashboard/views.py:91
+msgid "Daily rate"
+msgstr "Tarif journalier"
+
+#: apps/core/choices.py:29
+msgid "Hourly rate"
+msgstr "Tarif horaire"
+
+#: apps/core/choices.py:33
+msgid "Cash"
+msgstr "Espèces"
+
+#: apps/core/choices.py:34
+msgid "Bank transfer"
+msgstr "Virement bancaire"
+
+#: apps/core/choices.py:35
+msgid "Mobile money"
+msgstr "Mobile Money"
+
+#: apps/core/choices.py:39
+msgid "Full day, flagged as late"
+msgstr "Journée complète, signalée en retard"
+
+#: apps/core/choices.py:40
+msgid "Deduct late minutes"
+msgstr "Déduire les minutes de retard"
+
+#: apps/core/choices.py:53
+msgid "12 500 XOF · 1 234.50 EUR"
+msgstr "12 500 XOF · 1 234.50 EUR"
+
+#: apps/core/choices.py:54
+msgid "12,500 XOF · 1,234.50 EUR"
+msgstr "12,500 XOF · 1,234.50 EUR"
+
+#: apps/core/choices.py:55
+msgid "XOF 12.500 · EUR 1.234,50"
+msgstr "XOF 12.500 · EUR 1.234,50"
+
+#: apps/core/choices.py:62
+msgctxt "weekday"
+msgid "Mon"
+msgstr "Lun"
+
+#: apps/core/choices.py:63
+msgctxt "weekday"
+msgid "Tue"
+msgstr "Mar"
+
+#: apps/core/choices.py:64
+msgctxt "weekday"
+msgid "Wed"
+msgstr "Mer"
+
+#: apps/core/choices.py:65
+msgctxt "weekday"
+msgid "Thu"
+msgstr "Jeu"
+
+#: apps/core/choices.py:66
+msgctxt "weekday"
+msgid "Fri"
+msgstr "Ven"
+
+#: apps/core/choices.py:67
+msgctxt "weekday"
+msgid "Sat"
+msgstr "Sam"
+
+#: apps/core/choices.py:68
+msgctxt "weekday"
+msgid "Sun"
+msgstr "Dim"
+
+#: apps/core/choices.py:77
+msgctxt "attendance status letter (Present)"
+msgid "P"
+msgstr "P"
+
+#: apps/core/choices.py:78
+msgctxt "attendance status letter (Absent)"
+msgid "A"
+msgstr "A"
+
+#: apps/core/choices.py:79
+msgctxt "attendance status letter (Half day)"
+msgid "½"
+msgstr "½"
+
+#: apps/core/choices.py:80
+msgctxt "attendance status letter (Late)"
+msgid "L"
+msgstr "R"
+
+#: apps/core/forms.py:21
+msgid "CFA franc (BCEAO) — no decimals"
+msgstr "Franc CFA (BCEAO) — sans décimales"
+
+#: apps/core/forms.py:22
+msgid "CFA franc (BEAC) — no decimals"
+msgstr "Franc CFA (BEAC) — sans décimales"
+
+#: apps/core/forms.py:23
+msgid "Ghanaian cedi — 2 decimals"
+msgstr "Cedi ghanéen — 2 décimales"
+
+#: apps/core/forms.py:24
+msgid "Nigerian naira — 2 decimals"
+msgstr "Naira nigérian — 2 décimales"
+
+#: apps/core/forms.py:25
+msgid "Euro — 2 decimals"
+msgstr "Euro — 2 décimales"
+
+#: apps/core/forms.py:26
+msgid "US dollar — 2 decimals"
+msgstr "Dollar américain — 2 décimales"
+
+#: apps/core/forms.py:30
+msgid "0 — e.g. 12 500 XOF"
+msgstr "0 — p. ex. 12 500 XOF"
+
+#: apps/core/forms.py:32
+msgid "2 — e.g. 1 234.50 EUR"
+msgstr "2 — p. ex. 1 234.50 EUR"
+
+#: apps/core/forms.py:38
+msgid "Photo of worker with cash"
+msgstr "Photo de l’ouvrier avec l’argent"
+
+#: apps/core/forms.py:39
+msgid "Signature on phone"
+msgstr "Signature sur le téléphone"
+
+#: apps/core/forms.py:40
+msgid "Thumb mark on paper sheet (photo)"
+msgstr "Empreinte digitale sur la feuille papier (photo)"
+
+#: apps/core/forms.py:41
+msgid "No proof needed"
+msgstr "Aucune preuve exigée"
+
+#: apps/core/forms.py:63 apps/dashboard/reports.py:301
+msgid "Currency"
+msgstr "Devise"
+
+#: apps/core/forms.py:65
+msgid "Use a three-letter ISO 4217 code."
+msgstr "Utilisez un code ISO 4217 à trois lettres."
+
+#: apps/core/forms.py:69
+msgid "ISO 4217 code, e.g. XOF, EUR."
+msgstr "Code ISO 4217, p. ex. XOF, EUR."
+
+#: apps/core/forms.py:72
+msgid "Decimal places"
+msgstr "Décimales"
+
+#: apps/core/forms.py:74
+msgid "Time zone"
+msgstr "Fuseau horaire"
+
+#: apps/core/forms.py:75
+msgid "Work starts"
+msgstr "Début du travail"
+
+#: apps/core/forms.py:76
+msgid "Work ends"
+msgstr "Fin du travail"
+
+#: apps/core/forms.py:77
+msgid "Late after"
+msgstr "Retard après"
+
+#: apps/core/forms.py:78
+msgid "Roll call due by"
+msgstr "Appel à faire avant"
+
+#: apps/core/forms.py:80
+msgid "Half day counts as (days)"
+msgstr "Une demi-journée compte pour (jours)"
+
+#: apps/core/forms.py:86
+msgid "Break (minutes)"
+msgstr "Pause (minutes)"
+
+#: apps/core/forms.py:88
+msgid "Overtime after (hours)"
+msgstr "Heures supplémentaires après (heures)"
+
+#: apps/core/forms.py:95
+msgid "Overtime multiplier"
+msgstr "Majoration des heures supplémentaires"
+
+#: apps/core/forms.py:98
+msgid "The overtime multiplier must be at least 1."
+msgstr "La majoration des heures supplémentaires doit être d’au moins 1."
+
+#: apps/core/forms.py:104
+msgid "Advance limit (% of period pay)"
+msgstr "Plafond d’avance (% de la paie de la période)"
+
+#: apps/core/forms.py:106 apps/core/forms.py:107
+#, python-format
+msgid "The advance limit must be between 0 and 100%%."
+msgstr "Le plafond d’avance doit être compris entre 0 et 100 %%."
+
+#: apps/core/forms.py:112
+msgid "Default deduction per pay"
+msgstr "Retenue par défaut par paie"
+
+#: apps/core/forms.py:115
+msgid "Working days"
+msgstr "Jours ouvrés"
+
+#: apps/core/forms.py:119
+msgid "Pick at least one working day."
+msgstr "Choisissez au moins un jour ouvré."
+
+#: apps/core/forms.py:122
+msgid "Accepted proof of cash receipt"
+msgstr "Preuves de remise d’espèces acceptées"
+
+#: apps/core/forms.py:127
+msgid ""
+"“No proof needed” lets a payment be recorded without any proof of receipt. "
+"Untick it to require one of the other ticked proofs."
+msgstr ""
+"« Aucune preuve exigée » permet d’enregistrer un paiement sans preuve de "
+"remise. Décochez-la pour exiger l’une des autres preuves cochées."
+
+#: apps/core/forms.py:132
+msgid "Public holidays"
+msgstr "Jours fériés"
+
+#: apps/core/forms.py:135
+msgid "One per line: the date (YYYY-MM-DD), then an optional name."
+msgstr "Un par ligne : la date (AAAA-MM-JJ), puis un nom facultatif."
+
+#: apps/core/forms.py:176
+msgid "App language"
+msgstr "Langue de l’application"
+
+#: apps/core/forms.py:177
+msgid "Late counts as"
+msgstr "Un retard compte comme"
+
+#: apps/core/forms.py:178
+msgid "Default pay frequency"
+msgstr "Fréquence de paie par défaut"
+
+#: apps/core/forms.py:179
+msgid "Default payment method"
+msgstr "Mode de paiement par défaut"
+
+#: apps/core/forms.py:180
+msgid "Who records attendance"
+msgstr "Qui enregistre les présences"
+
+#: apps/core/forms.py:181
+msgid "Record arrival and departure times"
+msgstr "Enregistrer les heures d’arrivée et de départ"
+
+#: apps/core/forms.py:182
+msgid "Corrections after submission need a reason"
+msgstr "Les corrections après l’envoi exigent un motif"
+
+#: apps/core/forms.py:223 apps/worksites/forms.py:113
+msgid "Work must end after it starts."
+msgstr "La fin du travail doit être après le début."
+
+#: apps/core/forms.py:226
+msgid "Late after must not be before work starts."
+msgstr "« Retard après » ne peut pas être avant le début du travail."
+
+#: apps/core/forms.py:235
+#, python-format
+msgid "Use at most %(decimals)d decimal places."
+msgstr "Utilisez au plus %(decimals)d décimales."
+
+#: apps/core/forms.py:260
+#, python-format
+msgid "Line %(number)d: start with a date written YYYY-MM-DD."
+msgstr "Ligne %(number)d : commencez par une date au format AAAA-MM-JJ."
+
+#: apps/core/forms.py:271
+msgid "Who"
+msgstr "Qui"
+
+#: apps/core/forms.py:274
+msgid "Target type"
+msgstr "Type d’objet"
+
+#: apps/core/forms.py:277 apps/dashboard/forms.py:28
+msgid "From"
+msgstr "Du"
+
+#: apps/core/forms.py:280 apps/dashboard/forms.py:31
+msgid "To"
+msgstr "Au"
+
+#: apps/core/forms.py:289
+msgid "Anyone"
+msgstr "Tout le monde"
+
+#: apps/core/forms.py:293
+msgid "Any type"
+msgstr "Tous les types"
+
+#: apps/core/forms.py:300 apps/dashboard/forms.py:52
+msgid "The end date is before the start date."
+msgstr "La date de fin est avant la date de début."
+
+#: apps/core/models.py:31
+msgid "updated at"
+msgstr "modifié le"
+
+#: apps/core/models.py:42
+msgid "actor"
+msgstr "auteur"
+
+#: apps/core/models.py:48
+msgid "action"
+msgstr "action"
+
+#: apps/core/models.py:51
+msgid "target type"
+msgstr "type d’objet"
+
+#: apps/core/models.py:56
+msgid "target ID"
+msgstr "identifiant de l’objet"
+
+#: apps/core/models.py:58
+msgid "before"
+msgstr "avant"
+
+#: apps/core/models.py:59
+msgid "after"
+msgstr "après"
+
+#: apps/core/models.py:64
+msgid "audit log entry"
+msgstr "entrée du journal d’audit"
+
+#: apps/core/models.py:65
+msgid "audit log"
+msgstr "journal d’audit"
+
+#: apps/core/models.py:102
+msgid "company name"
+msgstr "nom de l’entreprise"
+
+#: apps/core/models.py:103
+msgid "country"
+msgstr "pays"
+
+#: apps/core/models.py:105 apps/payroll/models.py:51 apps/payroll/models.py:335
+msgid "currency"
+msgstr "devise"
+
+#: apps/core/models.py:105
+msgid "ISO 4217 code, e.g. XOF."
+msgstr "Code ISO 4217, p. ex. XOF."
+
+#: apps/core/models.py:108 apps/payroll/models.py:52 apps/payroll/models.py:336
+msgid "currency decimal places"
+msgstr "décimales de la devise"
+
+#: apps/core/models.py:111
+msgid "time zone"
+msgstr "fuseau horaire"
+
+#: apps/core/models.py:117
+msgid "number format"
+msgstr "format des nombres"
+
+#: apps/core/models.py:121
+msgid "Thousands and decimal separators, and where the currency code goes."
+msgstr ""
+"Séparateurs des milliers et des décimales, et position du code de la devise."
+
+#: apps/core/models.py:126
+msgid "attendance mode"
+msgstr "mode de présence"
+
+#: apps/core/models.py:131 apps/worksites/models.py:58
+msgid "work starts"
+msgstr "début du travail"
+
+#: apps/core/models.py:132 apps/worksites/models.py:59
+msgid "work ends"
+msgstr "fin du travail"
+
+#: apps/core/models.py:133
+msgid "break (minutes)"
+msgstr "pause (minutes)"
+
+#: apps/core/models.py:134 apps/worksites/models.py:60
+msgid "late after"
+msgstr "retard après"
+
+#: apps/core/models.py:135 apps/worksites/models.py:61
+msgid "roll call due by"
+msgstr "appel à faire avant"
+
+#: apps/core/models.py:137
+msgid "half day counts as"
+msgstr "une demi-journée compte pour"
+
+#: apps/core/models.py:144
+msgid "late rule"
+msgstr "règle de retard"
+
+#: apps/core/models.py:150
+msgid "working days"
+msgstr "jours ouvrés"
+
+#: apps/core/models.py:152
+msgid "ISO weekday numbers: 1 is Monday, 7 is Sunday."
+msgstr "Numéros de jour ISO : 1 est lundi, 7 est dimanche."
+
+#: apps/core/models.py:155
+msgid "require a reason for corrections"
+msgstr "exiger un motif pour les corrections"
+
+#: apps/core/models.py:157
+msgid "record arrival and departure times"
+msgstr "enregistrer les heures d’arrivée et de départ"
+
+#: apps/core/models.py:159
+msgid "public holidays"
+msgstr "jours fériés"
+
+#: apps/core/models.py:162
+msgid "A list of {\"date\": \"YYYY-MM-DD\", \"name\": \"…\"} entries."
+msgstr "Une liste d’entrées {\"date\": \"YYYY-MM-DD\", \"name\": \"…\"}."
+
+#: apps/core/models.py:167 apps/workers/models.py:66
+#: apps/worksites/models.py:50
+msgid "pay frequency"
+msgstr "fréquence de paie"
+
+#: apps/core/models.py:173 apps/worksites/models.py:53
+msgid "pay every N days"
+msgstr "payer tous les N jours"
+
+#: apps/core/models.py:176
+msgid "default pay type"
+msgstr "type de rémunération par défaut"
+
+#: apps/core/models.py:179 apps/workers/models.py:63
+#: apps/worksites/models.py:56
+msgid "payment method"
+msgstr "mode de paiement"
+
+#: apps/core/models.py:185 apps/worksites/models.py:63
+msgid "overtime after (hours)"
+msgstr "heures supplémentaires après (heures)"
+
+#: apps/core/models.py:188 apps/worksites/models.py:66
+msgid "overtime multiplier"
+msgstr "majoration des heures supplémentaires"
+
+#: apps/core/models.py:191
+msgid "accepted proofs of payment"
+msgstr "preuves de paiement acceptées"
+
+#: apps/core/models.py:196
+msgid "advance limit (% of period pay)"
+msgstr "plafond d’avance (% de la paie de la période)"
+
+#: apps/core/models.py:199
+msgid "default advance deduction per pay"
+msgstr "retenue d’avance par défaut par paie"
+
+#: apps/core/models.py:202 apps/worksites/models.py:45
+msgid "In the currency's smallest unit."
+msgstr "Dans la plus petite unité de la devise."
+
+#: apps/core/models.py:206 apps/core/models.py:207
+msgid "company settings"
+msgstr "paramètres de l’entreprise"
+
+#: apps/core/models.py:213
+msgid "Company settings"
+msgstr "Paramètres de l’entreprise"
+
+#: apps/core/models.py:231 apps/worksites/forms.py:109
+msgid "Set the number of days between pay days."
+msgstr "Indiquez le nombre de jours entre deux jours de paie."
+
+#: apps/core/models.py:235
+msgid "Use ISO weekday numbers from 1 (Monday) to 7 (Sunday)."
+msgstr "Utilisez des numéros de jour ISO de 1 (lundi) à 7 (dimanche)."
+
+#: apps/core/models.py:240 apps/payroll/services.py:1078
+msgid "Unknown proof type."
+msgstr "Type de preuve inconnu."
+
+#: apps/core/models.py:243
+msgid "Use a list of {\"date\": \"YYYY-MM-DD\", \"name\": \"…\"} entries."
+msgstr ""
+"Utilisez une liste d’entrées {\"date\": \"YYYY-MM-DD\", \"name\": \"…\"}."
+
+#: apps/core/validators.py:62
+#, python-format
+msgid "The file's content does not match its type (.%(extension)s)."
+msgstr "Le contenu du fichier ne correspond pas à son type (.%(extension)s)."
+
+#: apps/core/validators.py:89
+#, python-format
+msgid "The file is too large (%(size)s bytes). The maximum is 5 MB."
+msgstr ""
+"Le fichier est trop volumineux (%(size)s octets). Le maximum est de 5 Mo."
+
+#: apps/core/validators.py:105
+#, python-format
+msgid "“%(value)s” is not a known time zone."
+msgstr "« %(value)s » n’est pas un fuseau horaire connu."
+
+#: apps/core/views.py:32
+msgid "Nothing changed."
+msgstr "Aucune modification."
+
+#: apps/core/views.py:34
+msgid "Settings saved."
+msgstr "Paramètres enregistrés."
+
+#: apps/core/views.py:39
+#, python-format
+msgid ""
+"Amounts now show in %(currency)s with %(decimals)d decimal place(s). "
+"Existing and locked pay periods keep the currency they were created with."
+msgstr ""
+"Les montants s’affichent maintenant en %(currency)s avec %(decimals)d "
+"décimale(s). Les périodes de paie existantes et clôturées gardent la devise "
+"avec laquelle elles ont été créées."
+
+#: apps/core/views.py:46
+msgid "Some settings need fixing — see the highlighted fields."
+msgstr "Certains paramètres sont à corriger — voir les champs en surbrillance."
+
+#: apps/dashboard/apps.py:7
+msgid "Dashboard"
+msgstr "Tableau de bord"
+
+#: apps/dashboard/forms.py:18 templates/payroll/periods.html:13
+#: templates/worksites/detail.html:6
+msgid "This week"
+msgstr "Cette semaine"
+
+#: apps/dashboard/forms.py:19
+msgid "This month"
+msgstr "Ce mois-ci"
+
+#: apps/dashboard/forms.py:20
+msgid "Last month"
+msgstr "Le mois dernier"
+
+#: apps/dashboard/forms.py:21
+msgid "Custom…"
+msgstr "Personnalisée…"
+
+#: apps/dashboard/forms.py:25 templates/dashboard/reports.html:18
+#: templates/payroll/periods.html:44 templates/worksites/pay.html:15
+msgid "Period"
+msgstr "Période"
+
+#: apps/dashboard/forms.py:34 apps/dashboard/reports.py:293
+#: apps/payroll/payslip.py:101 apps/workers/forms.py:148
+#: templates/dashboard/home.html:66 templates/payroll/cash_sheets.html:10
+#: templates/payroll/cash_sheets.html:25 templates/payroll/periods.html:30
+#: templates/payroll/periods.html:45 templates/workers/form.html:45
+#: templates/workers/list.html:27 templates/worksites/form.html:13
+msgid "Site"
+msgstr "Chantier"
+
+#: apps/dashboard/forms.py:34 apps/workers/forms.py:148
+#: templates/components/sidebar.html:25 templates/dashboard/home.html:60
+#: templates/payroll/cash_sheets.html:12 templates/payroll/periods.html:32
+msgid "All sites"
+msgstr "Tous les chantiers"
+
+#: apps/dashboard/forms.py:37 apps/dashboard/reports.py:292
+#: apps/dashboard/views.py:88 apps/payroll/payslip.py:100
+#: apps/workers/forms.py:151 templates/workers/list.html:26
+msgid "Trade"
+msgstr "Métier"
+
+#: apps/dashboard/forms.py:37 apps/workers/forms.py:151
+msgid "All trades"
+msgstr "Tous les métiers"
+
+#: apps/dashboard/forms.py:50
+msgid "Pick both dates for a custom period."
+msgstr "Choisissez les deux dates pour une période personnalisée."
+
+#: apps/dashboard/forms.py:54
+msgid "Pick a period of one year or less."
+msgstr "Choisissez une période d’un an au plus."
+
+#: apps/dashboard/reports.py:290
+msgid "Worker number"
+msgstr "Matricule de l’ouvrier"
+
+#: apps/dashboard/reports.py:291 apps/payroll/forms.py:93
+#: apps/payroll/payslip.py:98 templates/attendance/_approval_detail.html:59
+#: templates/components/data_table.html:28 templates/dashboard/reports.html:96
+#: templates/payroll/advances.html:26 templates/payroll/cash_sheet.html:47
+#: templates/workers/list.html:25 templates/worksites/crew.html:22
+#: templates/worksites/detail.html:31
+msgid "Worker"
+msgstr "Ouvrier"
+
+#: apps/dashboard/reports.py:295
+msgid "Half days"
+msgstr "Demi-journées"
+
+#: apps/dashboard/reports.py:298 templates/dashboard/reports.html:42
+msgid "Worker-days"
+msgstr "Jours-ouvrier"
+
+#: apps/dashboard/reports.py:299
+msgid "Attendance rate (%)"
+msgstr "Taux de présence (%)"
+
+#: apps/dashboard/reports.py:300 templates/dashboard/reports.html:102
+msgid "Earned"
+msgstr "Gagné"
+
+#: apps/dashboard/reports.py:326 templates/dashboard/reports.html:119
+msgid "Total"
+msgstr "Total"
+
+#: apps/dashboard/views.py:86
+msgid "Full name"
+msgstr "Nom complet"
+
+#: apps/dashboard/views.py:89
+msgid "Mason"
+msgstr "Maçon"
+
+#: apps/dashboard/views.py:89
+msgid "Carpenter"
+msgstr "Charpentier"
+
+#: apps/dashboard/views.py:89
+msgid "Labourer"
+msgstr "Manœuvre"
+
+#: apps/dashboard/views.py:93
+msgid "Correction reason"
+msgstr "Motif de la correction"
+
+#: apps/dashboard/views.py:94
+msgid "e.g. Bus breakdown, arrived 07:20"
+msgstr "p. ex. Bus en panne, arrivé à 07:20"
+
+#: apps/dashboard/views.py:99
+msgid "Shown to the foreman on the phone."
+msgstr "Affiché au chef d’équipe sur le téléphone."
+
+#: apps/dashboard/views.py:103
+msgid "Keep me signed in on this computer"
+msgstr "Rester connecté sur cet ordinateur"
+
+#: apps/payroll/apps.py:7
+msgid "Payroll"
+msgstr "Paie"
+
+#: apps/payroll/forms.py:37
+msgid "Enter an amount such as 10 000."
+msgstr "Saisissez un montant, par exemple 10 000."
+
+#: apps/payroll/forms.py:40 apps/workers/fields.py:24
+msgid "The amount cannot be negative."
+msgstr "Le montant ne peut pas être négatif."
+
+#: apps/payroll/forms.py:53 templates/payroll/_cash_sheet_row.html:42
+msgid "Proof of receipt"
+msgstr "Preuve de remise"
+
+#: apps/payroll/forms.py:55 templates/payroll/_cash_sheet_row.html:46
+msgid "Proof file"
+msgstr "Fichier de preuve"
+
+#: apps/payroll/forms.py:57
+msgid ""
+"Photo of the worker, signature or thumb mark (JPEG, PNG or PDF, ≤ 5 MB)."
+msgstr ""
+"Photo de l’ouvrier, signature ou empreinte digitale (JPEG, PNG ou PDF, ≤ 5 "
+"Mo)."
+
+#: apps/payroll/forms.py:70 apps/payroll/forms.py:84 apps/payroll/forms.py:96
+#: templates/core/audit_log.html:33
+msgid "Reason"
+msgstr "Motif"
+
+#: apps/payroll/forms.py:74 templates/payroll/_reconciliation.html:7
+#: templates/payroll/cash_sheets.html:26
+msgid "Cash issued"
+msgstr "Fonds remis"
+
+#: apps/payroll/forms.py:88
+msgid "Required when some workers are not paid."
+msgstr "Obligatoire si certains ouvriers ne sont pas payés."
+
+#: apps/payroll/forms.py:94 templates/payroll/advances.html:28
+#: templates/worksites/pay.html:48
+msgid "Amount"
+msgstr "Montant"
+
+#: apps/payroll/forms.py:95
+msgid "Deduct per pay"
+msgstr "Retenue par paie"
+
+#: apps/payroll/labels.py:26
+msgid "½ day"
+msgstr "½ journée"
+
+#: apps/payroll/labels.py:28
+#, python-format
+msgid "%(n)s day"
+msgid_plural "%(n)s days"
+msgstr[0] "%(n)s jour"
+msgstr[1] "%(n)s jours"
+msgstr[2] "%(n)s jours"
+
+#: apps/payroll/labels.py:30
+#, python-format
+msgid "%(worked)s · late"
+msgstr "%(worked)s · retard"
+
+#: apps/payroll/labels.py:40
+#, python-format
+msgid "%(hours)s h × %(rate)s"
+msgstr "%(hours)s h × %(rate)s"
+
+#: apps/payroll/labels.py:46 apps/payroll/payslip.py:132
+#: apps/payroll/payslip.py:147
+#, python-format
+msgid "%(hours)s h"
+msgstr "%(hours)s h"
+
+#. Translators: date formats use Django's |date syntax. French writes "N" (the
+#. abbreviated month with its dot, "oct.") where English writes "M" ("Oct").
+#: apps/payroll/labels.py:58 templates/attendance/_approval_detail.html:13
+#: templates/attendance/approvals.html:24 templates/dashboard/home.html:42
+#: templates/dashboard/home.html:129 templates/dashboard/home.html:137
+#: templates/dashboard/home.html:153 templates/dashboard/home.html:156
+#: templates/payroll/cash_sheet.html:5 templates/workers/detail.html:120
+msgid "D j M"
+msgstr "D j N"
+
+#: apps/payroll/labels.py:65 apps/payroll/labels.py:81
+#: templates/payroll/advances.html:38 templates/workers/detail.html:62
+#: templates/worksites/pay.html:23
+msgid "j M"
+msgstr "j N"
+
+#: apps/payroll/labels.py:66 templates/dashboard/reports.html:5
+#: templates/workers/detail.html:30 templates/workers/detail.html:93
+#: templates/worksites/crew.html:33 templates/worksites/pay.html:23
+msgid "j M Y"
+msgstr "j N Y"
+
+#: apps/payroll/labels.py:82
+#, python-format
+msgid "Correction of %(days)s"
+msgstr "Correction : %(days)s"
+
+#: apps/payroll/labels.py:90
+#, python-format
+msgid ""
+"Already paid for this day: the difference of %(amount)s will be recovered on "
+"the next pay."
+msgstr ""
+"Déjà payé pour ce jour : la différence de %(amount)s sera retenue sur la "
+"prochaine paie."
+
+#: apps/payroll/labels.py:94
+#, python-format
+msgid ""
+"Already paid for this day: the difference of %(amount)s will be added to the "
+"next pay."
+msgstr ""
+"Déjà payé pour ce jour : la différence de %(amount)s sera ajoutée à la "
+"prochaine paie."
+
+#: apps/payroll/labels.py:103
+#, python-format
+msgid ""
+"Corrected after payment: the difference of %(amount)s is settled on the pay "
+"of %(date)s."
+msgstr ""
+"Corrigé après paiement : la différence de %(amount)s est régularisée sur la "
+"paie du %(date)s."
+
+#: apps/payroll/models.py:32 apps/payroll/views.py:73
+#: templates/payroll/_sheet_status.html:3
+msgid "Ready to pay"
+msgstr "Prêt à payer"
+
+#: apps/payroll/models.py:33 apps/payroll/views.py:75
+msgid "Paying"
+msgstr "Paiement en cours"
+
+#: apps/payroll/models.py:34 apps/payroll/payslip.py:103
+#: apps/payroll/views.py:77 templates/components/status_badge.html:18
+#: templates/payroll/periods.html:50 templates/payroll/periods.html:71
+msgid "Paid"
+msgstr "Payé"
+
+#: apps/payroll/models.py:43 apps/worksites/models.py:102
+msgid "start date"
+msgstr "date de début"
+
+#: apps/payroll/models.py:44 apps/worksites/models.py:103
+msgid "end date"
+msgstr "date de fin"
+
+#: apps/payroll/models.py:46
+msgid "frequency"
+msgstr "fréquence"
+
+#: apps/payroll/models.py:53
+msgid "locked at"
+msgstr "clôturé le"
+
+#: apps/payroll/models.py:56 apps/payroll/models.py:89
+msgid "pay period"
+msgstr "période de paie"
+
+#: apps/payroll/models.py:57
+msgid "pay periods"
+msgstr "périodes de paie"
+
+#: apps/payroll/models.py:98
+msgid "days worked"
+msgstr "jours travaillés"
+
+#: apps/payroll/models.py:100
+msgid "hours"
+msgstr "heures"
+
+#: apps/payroll/models.py:102
+msgid "overtime hours"
+msgstr "heures supplémentaires"
+
+#: apps/payroll/models.py:104
+msgid "gross"
+msgstr "brut"
+
+#: apps/payroll/models.py:105
+msgid "advance deduction"
+msgstr "retenue d’avance"
+
+#: apps/payroll/models.py:106
+msgid "other deductions"
+msgstr "autres retenues"
+
+#: apps/payroll/models.py:108
+msgid "adjustment"
+msgstr "régularisation"
+
+#: apps/payroll/models.py:111
+msgid ""
+"Corrections of days already paid, settled on this pay: positive is added, "
+"negative is recovered."
+msgstr ""
+"Corrections de journées déjà payées, régularisées sur cette paie : un "
+"montant positif est ajouté, un montant négatif est retenu."
+
+#: apps/payroll/models.py:115
+msgid "net"
+msgstr "net"
+
+#: apps/payroll/models.py:117
+msgid "days"
+msgstr "jours"
+
+#: apps/payroll/models.py:120
+msgid "What the pay engine computed for each day (kept for the payslip)."
+msgstr ""
+"Ce que le moteur de paie a calculé pour chaque jour (conservé pour le "
+"bulletin de paie)."
+
+#: apps/payroll/models.py:124 apps/payroll/models.py:205
+#: apps/payroll/models.py:271 apps/payroll/models.py:411
+msgid "pay line"
+msgstr "ligne de paie"
+
+#: apps/payroll/models.py:125
+msgid "pay lines"
+msgstr "lignes de paie"
+
+#: apps/payroll/models.py:140 templates/payroll/advances.html:29
+#: templates/payroll/advances.html:41
+msgid "Repaid"
+msgstr "Remboursée"
+
+#: apps/payroll/models.py:148 apps/payroll/models.py:211
+#: apps/payroll/models.py:238 apps/payroll/models.py:276
+#: apps/payroll/models.py:334 apps/payroll/models.py:415
+#: apps/workers/models.py:96
+msgid "amount"
+msgstr "montant"
+
+#: apps/payroll/models.py:149
+msgid "deduction per pay"
+msgstr "retenue par paie"
+
+#: apps/payroll/models.py:150
+msgid "balance"
+msgstr "solde"
+
+#: apps/payroll/models.py:152
+msgid "given on"
+msgstr "accordée le"
+
+#: apps/payroll/models.py:155
+msgid "given by"
+msgstr "accordée par"
+
+#: apps/payroll/models.py:165 apps/payroll/models.py:287
+msgid "proof type"
+msgstr "type de preuve"
+
+#: apps/payroll/models.py:168 apps/payroll/models.py:290
+msgid "proof file"
+msgstr "fichier de preuve"
+
+#: apps/payroll/models.py:176 apps/payroll/models.py:201
+msgid "advance"
+msgstr "avance"
+
+#: apps/payroll/models.py:177
+msgid "advances"
+msgstr "avances"
+
+#: apps/payroll/models.py:215
+msgid "advance repayment"
+msgstr "remboursement d’avance"
+
+#: apps/payroll/models.py:216
+msgid "advance repayments"
+msgstr "remboursements d’avance"
+
+#: apps/payroll/models.py:241
+msgid "issued by"
+msgstr "remis par"
+
+#: apps/payroll/models.py:249
+msgid "received by"
+msgstr "reçu par"
+
+#: apps/payroll/models.py:258
+msgid "cash issue"
+msgstr "remise de fonds"
+
+#: apps/payroll/models.py:259
+msgid "cash issues"
+msgstr "remises de fonds"
+
+#: apps/payroll/models.py:274
+msgid "method"
+msgstr "mode"
+
+#: apps/payroll/models.py:279
+msgid "paid by"
+msgstr "payé par"
+
+#: apps/payroll/models.py:285
+msgid "paid at"
+msgstr "payé le"
+
+#: apps/payroll/models.py:299
+msgid "payment"
+msgstr "paiement"
+
+#: apps/payroll/models.py:300
+msgid "payments"
+msgstr "paiements"
+
+#: apps/payroll/models.py:339
+msgid "corrected days"
+msgstr "jours corrigés"
+
+#: apps/payroll/models.py:339
+msgid "ISO dates."
+msgstr "Dates ISO."
+
+#: apps/payroll/models.py:343
+msgid "corrected day"
+msgstr "jour corrigé"
+
+#: apps/payroll/models.py:351
+msgid "corrected record"
+msgstr "fiche corrigée"
+
+#: apps/payroll/models.py:359
+msgid "paid pay line"
+msgstr "ligne de paie payée"
+
+#: apps/payroll/models.py:365
+msgid "created by"
+msgstr "créé par"
+
+#: apps/payroll/models.py:373
+msgid "applied to"
+msgstr "appliqué à"
+
+#: apps/payroll/models.py:379
+msgid "applied amount"
+msgstr "montant appliqué"
+
+#: apps/payroll/models.py:382 apps/payroll/models.py:405
+msgid "pay adjustment"
+msgstr "régularisation de paie"
+
+#: apps/payroll/models.py:383
+msgid "pay adjustments"
+msgstr "régularisations de paie"
+
+#: apps/payroll/models.py:419
+msgid "pay adjustment application"
+msgstr "application d’une régularisation de paie"
+
+#: apps/payroll/models.py:420
+msgid "pay adjustment applications"
+msgstr "applications de régularisations de paie"
+
+#: apps/payroll/payslip.py:71 apps/payroll/payslip.py:77
+msgid "Pay statement"
+msgstr "Bulletin de paie"
+
+#: apps/payroll/payslip.py:82
+#, python-format
+msgid "No. %(number)s"
+msgstr "N° %(number)s"
+
+#: apps/payroll/payslip.py:89 apps/workers/display.py:28
+msgid "hour"
+msgstr "heure"
+
+#: apps/payroll/payslip.py:89 apps/workers/display.py:28
+msgid "day"
+msgstr "jour"
+
+#: apps/payroll/payslip.py:99
+msgid "Worker ID"
+msgstr "Matricule"
+
+#: apps/payroll/payslip.py:102 apps/workers/forms.py:60
+#: templates/dashboard/reports.html:101 templates/workers/detail.html:31
+#: templates/workers/list.html:29 templates/worksites/crew.html:25
+#: templates/worksites/detail.html:35
+msgid "Rate"
+msgstr "Tarif"
+
+#: apps/payroll/payslip.py:103
+#, python-format
+msgid "%(frequency)s, %(method)s"
+msgstr "%(frequency)s, %(method)s"
+
+#: apps/payroll/payslip.py:116 templates/worksites/attendance.html:14
+#: templates/worksites/crew.html:12
+msgid "Day"
+msgstr "Jour"
+
+#: apps/payroll/payslip.py:118 templates/payroll/cash_sheet.html:48
+msgid "Worked"
+msgstr "Travaillé"
+
+#: apps/payroll/payslip.py:119 apps/worksites/views.py:218
+#: templates/worksites/settings.html:33
+msgid "Overtime"
+msgstr "Heures sup."
+
+#: apps/payroll/payslip.py:120 apps/payroll/payslip.py:166
+#: templates/payroll/cash_sheet.html:49 templates/payroll/periods.html:47
+#: templates/workers/detail.html:112
+msgid "Gross"
+msgstr "Brut"
+
+#: apps/payroll/payslip.py:141
+#, python-format
+msgid "%(minutes)s min"
+msgstr "%(minutes)s min"
+
+#: apps/payroll/payslip.py:155
+msgid "No attendance in this period."
+msgstr "Aucune présence sur cette période."
+
+#: apps/payroll/payslip.py:161
+msgid "Days worked"
+msgstr "Jours travaillés"
+
+#: apps/payroll/payslip.py:163
+msgid "Hours"
+msgstr "Heures"
+
+#: apps/payroll/payslip.py:165
+msgid "Overtime hours"
+msgstr "Heures supplémentaires"
+
+#: apps/payroll/payslip.py:168
+msgid "Other deductions"
+msgstr "Autres retenues"
+
+#: apps/payroll/payslip.py:171
+msgid "Advance repaid"
+msgstr "Avance remboursée"
+
+#: apps/payroll/payslip.py:187
+msgid "Total paid"
+msgstr "Total payé"
+
+#: apps/payroll/payslip.py:187 templates/components/data_table.html:31
+#: templates/payroll/cash_sheet.html:52 templates/worksites/pay.html:18
+msgid "Net to pay"
+msgstr "Net à payer"
+
+#: apps/payroll/payslip.py:188
+msgid "Advance still owed"
+msgstr "Avance restant due"
+
+#: apps/payroll/payslip.py:204
+#, python-format
+msgid "Paid %(when)s · receipt: %(proof)s"
+msgstr "Payé le %(when)s · preuve : %(proof)s"
+
+#: apps/payroll/payslip.py:205 apps/payroll/payslip.py:251
+#: templates/accounts/user_form.html:100 templates/accounts/user_form.html:101
+#: templates/accounts/users.html:42
+msgid "j M Y H:i"
+msgstr "j N Y H:i"
+
+#: apps/payroll/payslip.py:209
+msgid "Not paid yet."
+msgstr "Pas encore payé."
+
+#: apps/payroll/payslip.py:210
+msgid "Receipt"
+msgstr "Reçu"
+
+#: apps/payroll/payslip.py:225
+msgid "Worker signature or thumb mark"
+msgstr "Signature ou empreinte digitale de l’ouvrier"
+
+#: apps/payroll/payslip.py:226
+#, python-format
+msgid "Paymaster · %(name)s"
+msgstr "Payeur · %(name)s"
+
+#: apps/payroll/payslip.py:226
+msgid "Paymaster"
+msgstr "Payeur"
+
+#: apps/payroll/payslip.py:250
+#, python-format
+msgid "Printed %(when)s · Polaris Workforce"
+msgstr "Imprimé le %(when)s · Polaris Workforce"
+
+#: apps/payroll/services.py:1042 apps/payroll/services.py:1330
+msgid "This cash sheet is closed and locked."
+msgstr "Cette feuille de caisse est clôturée."
+
+#: apps/payroll/services.py:1050 apps/payroll/services.py:1398
+msgid "Enter an amount greater than zero."
+msgstr "Saisissez un montant supérieur à zéro."
+
+#: apps/payroll/services.py:1081
+msgid "A proof of receipt is required."
+msgstr "Une preuve de remise est obligatoire."
+
+#: apps/payroll/services.py:1083
+msgid "This proof type is not accepted (see Settings)."
+msgstr "Ce type de preuve n’est pas accepté (voir Paramètres)."
+
+#: apps/payroll/services.py:1085
+msgid "Attach the photo of the worker receiving the cash."
+msgstr "Joignez la photo de l’ouvrier recevant l’argent."
+
+#: apps/payroll/services.py:1151 apps/payroll/services.py:1203
+msgid "This pay period is locked."
+msgstr "Cette période de paie est clôturée."
+
+#: apps/payroll/services.py:1156
+msgid "The cash sheet is not open: the roll call is not approved yet."
+msgstr ""
+"La feuille de caisse n’est pas ouverte : l’appel n’est pas encore validé."
+
+#: apps/payroll/services.py:1162
+msgid "This worker has already been paid."
+msgstr "Cet ouvrier a déjà été payé."
+
+#: apps/payroll/services.py:1167
+#, python-format
+msgid "The amount must be the net left to pay: %(remaining)s."
+msgstr "Le montant doit être le net restant à payer : %(remaining)s."
+
+#: apps/payroll/services.py:1208
+msgid ""
+"This pay was corrected after it was paid and the difference is already "
+"settled on a later pay: the payment cannot be undone."
+msgstr ""
+"Cette paie a été corrigée après son paiement et la différence est déjà "
+"régularisée sur une paie suivante : le paiement ne peut pas être annulé."
+
+#: apps/payroll/services.py:1244
+msgid "This pay period is already locked."
+msgstr "Cette période de paie est déjà clôturée."
+
+#: apps/payroll/services.py:1247
+msgid "Approve every day of the period before locking it."
+msgstr "Validez chaque journée de la période avant de la clôturer."
+
+#: apps/payroll/services.py:1253
+msgid "Some workers are not paid yet: give a reason to close anyway."
+msgstr ""
+"Certains ouvriers ne sont pas encore payés : indiquez un motif pour clôturer "
+"quand même."
+
+#: apps/payroll/services.py:1326
+msgid "There is nothing to pay on this sheet."
+msgstr "Il n’y a rien à payer sur cette feuille."
+
+#: apps/payroll/services.py:1404
+msgid "Enter a deduction greater than zero."
+msgstr "Saisissez une retenue supérieure à zéro."
+
+#: apps/payroll/services.py:1406
+msgid "The deduction cannot be more than the advance."
+msgstr "La retenue ne peut pas dépasser l’avance."
+
+#: apps/payroll/services.py:1415
+#, python-format
+msgid ""
+"Over the limit: %(worker)s may owe at most %(limit)s (%(percent)s%% of a "
+"week's pay); this would make %(total)s."
+msgstr ""
+"Plafond dépassé : %(worker)s peut devoir au plus %(limit)s (%(percent)s %% "
+"d’une semaine de paie) ; cela ferait %(total)s."
+
+#: apps/payroll/views.py:70
+msgid "Open · in progress"
+msgstr "Ouverte · en cours"
+
+#: apps/payroll/views.py:71
+msgid "Waiting approval"
+msgstr "En attente de validation"
+
+#: apps/payroll/views.py:178
+#, python-format
+msgid "%(frequency)s by default"
+msgstr "%(frequency)s par défaut"
+
+#: apps/payroll/views.py:180
+#, python-format
+msgid "%(site)s pays %(frequency)s"
+msgstr "%(site)s : %(frequency)s"
+
+#: apps/payroll/views.py:292
+msgid "Payment recorded."
+msgstr "Paiement enregistré."
+
+#: apps/payroll/views.py:342
+msgid "Cash issue recorded."
+msgstr "Remise de fonds enregistrée."
+
+#: apps/payroll/views.py:361
+msgid "The cash sheet is closed and locked."
+msgstr "La feuille de caisse est clôturée."
+
+#: apps/payroll/views.py:414
+msgid "You cannot give an advance to this worker."
+msgstr "Vous ne pouvez pas accorder d’avance à cet ouvrier."
+
+#: apps/payroll/views.py:419
+msgid "Advance recorded."
+msgstr "Avance enregistrée."
+
+#: apps/workers/admin.py:29
+msgid "Identity document"
+msgstr "Pièce d’identité"
+
+#: apps/workers/admin.py:32
+msgid "Setting overrides (empty = site or company setting)"
+msgstr ""
+"Paramètres personnalisés (vide = valeur du chantier ou de l’entreprise)"
+
+#: apps/workers/apps.py:7 apps/worksites/forms.py:122
+#: templates/components/sidebar.html:46 templates/payroll/cash_sheet.html:40
+#: templates/payroll/periods.html:46 templates/workers/detail.html:8
+#: templates/workers/form.html:5 templates/workers/list.html:4
+#: templates/workers/list.html:6 templates/workers/list.html:20
+#: templates/worksites/pay.html:17
+msgid "Workers"
+msgstr "Ouvriers"
+
+#: apps/workers/display.py:33
+#, python-format
+msgid "Every %(n)s days"
+msgstr "Tous les %(n)s jours"
+
+#: apps/workers/fields.py:22
+msgid "Enter an amount, for example 6000."
+msgstr "Saisissez un montant, par exemple 6000."
+
+#: apps/workers/fields.py:23
+#, python-format
+msgid "Use at most %(decimals)s decimal place(s)."
+msgstr "Utilisez au plus %(decimals)s décimale(s)."
+
+#: apps/workers/forms.py:37
+msgid ""
+"Used by the foreman to recognise the worker at roll call. JPG, PNG or WebP, "
+"5 MB at most."
+msgstr ""
+"Permet au chef d’équipe de reconnaître l’ouvrier pendant l’appel. JPG, PNG "
+"ou WebP, 5 Mo au plus."
+
+#: apps/workers/forms.py:43
+msgid "Or add a trade"
+msgstr "Ou ajoutez un métier"
+
+#: apps/workers/forms.py:46
+msgid "e.g. Tiler"
+msgstr "p. ex. Carreleur"
+
+#: apps/workers/forms.py:49
+msgid "Assign to site"
+msgstr "Affecter au chantier"
+
+#: apps/workers/forms.py:52 apps/worksites/forms.py:127
+msgid "Starting"
+msgstr "À partir du"
+
+#: apps/workers/forms.py:55
+msgid "The worker appears on that site’s roll call from the start date."
+msgstr ""
+"L’ouvrier apparaît dans l’appel de ce chantier à partir de la date de début."
+
+#: apps/workers/forms.py:58 templates/workers/detail.html:86
+msgid "Pay type"
+msgstr "Type de rémunération"
+
+#: apps/workers/forms.py:61
+msgid "Effective from"
+msgstr "En vigueur à partir du"
+
+#: apps/workers/forms.py:63 apps/worksites/forms.py:54
+#: apps/worksites/views.py:208 templates/workers/form.html:82
+msgid "Payment method"
+msgstr "Mode de paiement"
+
+#: apps/workers/forms.py:64 apps/workers/forms.py:70
+msgid "Use the inherited value"
+msgstr "Utiliser la valeur héritée"
+
+#: apps/workers/forms.py:69 apps/worksites/forms.py:51
+#: apps/worksites/views.py:203 templates/workers/detail.html:88
+#: templates/workers/form.html:86
+msgid "Pay frequency"
+msgstr "Fréquence de paie"
+
+#: apps/workers/forms.py:96
+msgid "No trade"
+msgstr "Sans métier"
+
+#: apps/workers/forms.py:97
+msgid "ID number"
+msgstr "Numéro de pièce"
+
+#: apps/workers/forms.py:98
+msgid "Optional"
+msgstr "Facultatif"
+
+#: apps/workers/forms.py:108
+msgid "No change"
+msgstr "Pas de changement"
+
+#: apps/workers/forms.py:109
+msgid "Pick a site to move the worker on the start date."
+msgstr "Choisissez un chantier pour y déplacer l’ouvrier à la date de début."
+
+#: apps/workers/forms.py:112
+msgid ""
+"A new rate applies from this date; earlier rates are kept in the history."
+msgstr ""
+"Un nouveau tarif s’applique à partir de cette date ; les tarifs précédents "
+"restent dans l’historique."
+
+#: apps/workers/forms.py:125
+msgid "Set the date the worker starts on this site."
+msgstr "Indiquez la date à laquelle l’ouvrier commence sur ce chantier."
+
+#: apps/workers/forms.py:138 apps/worksites/models.py:16
+#: templates/components/status_badge.html:18
+msgid "Active"
+msgstr "Actif"
+
+#: apps/workers/forms.py:138 templates/components/status_badge.html:18
+#: templates/workers/list.html:37
+msgid "Inactive"
+msgstr "Inactif"
+
+#: apps/workers/forms.py:138 templates/accounts/users.html:37
+#: templates/payroll/advances.html:15 templates/payroll/periods.html:27
+msgid "All"
+msgstr "Tous"
+
+#: apps/workers/forms.py:141
+msgid "Search"
+msgstr "Rechercher"
+
+#: apps/workers/forms.py:144
+msgid "Name, phone or worker ID"
+msgstr "Nom, téléphone ou matricule"
+
+#: apps/workers/models.py:15 apps/worksites/models.py:20
+msgid "name"
+msgstr "nom"
+
+#: apps/workers/models.py:18 apps/workers/models.py:53
+msgid "trade"
+msgstr "métier"
+
+#: apps/workers/models.py:19
+msgid "trades"
+msgstr "métiers"
+
+#: apps/workers/models.py:30
+msgid "National ID card"
+msgstr "Carte nationale d’identité"
+
+#: apps/workers/models.py:31
+msgid "Passport"
+msgstr "Passeport"
+
+#: apps/workers/models.py:32
+msgid "Voter card"
+msgstr "Carte d’électeur"
+
+#: apps/workers/models.py:33
+msgid "None"
+msgstr "Aucune"
+
+#: apps/workers/models.py:36
+msgid "worker number"
+msgstr "matricule"
+
+#: apps/workers/models.py:36
+msgid "For example W-0142."
+msgstr "Par exemple W-0142."
+
+#: apps/workers/models.py:38
+msgid "first name"
+msgstr "prénom"
+
+#: apps/workers/models.py:39
+msgid "last name"
+msgstr "nom"
+
+#: apps/workers/models.py:42
+msgid "photo"
+msgstr "photo"
+
+#: apps/workers/models.py:45
+msgid "ID document type"
+msgstr "type de pièce d’identité"
+
+#: apps/workers/models.py:50
+msgid "ID document number"
+msgstr "numéro de pièce d’identité"
+
+#: apps/workers/models.py:59
+msgid "active"
+msgstr "actif"
+
+#: apps/workers/models.py:71
+msgid "workers"
+msgstr "ouvriers"
+
+#: apps/workers/models.py:93
+msgid "pay type"
+msgstr "type de rémunération"
+
+#: apps/workers/models.py:98
+msgid "Per day or per hour, in the currency's smallest unit."
+msgstr "Par jour ou par heure, dans la plus petite unité de la devise."
+
+#: apps/workers/models.py:100
+msgid "effective from"
+msgstr "en vigueur à partir du"
+
+#: apps/workers/models.py:103
+msgid "pay rate"
+msgstr "tarif"
+
+#: apps/workers/models.py:104
+msgid "pay rates"
+msgstr "tarifs"
+
+#: apps/workers/services.py:174
+msgid "The rate cannot be negative."
+msgstr "Le tarif ne peut pas être négatif."
+
+#: apps/workers/services.py:176
+msgid "Unknown pay type."
+msgstr "Type de rémunération inconnu."
+
+#: apps/workers/services.py:178
+msgid "Set the date the rate starts."
+msgstr "Indiquez la date de début du tarif."
+
+#: apps/workers/services.py:187
+msgid "A locked pay period covers this date. Choose a date after it."
+msgstr ""
+"Une période de paie clôturée couvre cette date. Choisissez une date "
+"postérieure."
+
+#: apps/workers/views.py:170
+msgid "Day off"
+msgstr "Jour de repos"
+
+#: apps/workers/views.py:174 templates/components/status_badge.html:17
+msgid "Not recorded"
+msgstr "Non saisi"
+
+#: apps/workers/views.py:185
+msgid "default"
+msgstr "par défaut"
+
+#: apps/workers/views.py:288
+msgid "Mondays"
+msgstr "lundis"
+
+#: apps/workers/views.py:289
+msgid "Tuesdays"
+msgstr "mardis"
+
+#: apps/workers/views.py:290
+msgid "Wednesdays"
+msgstr "mercredis"
+
+#: apps/workers/views.py:291
+msgid "Thursdays"
+msgstr "jeudis"
+
+#: apps/workers/views.py:292
+msgid "Fridays"
+msgstr "vendredis"
+
+#: apps/workers/views.py:293
+msgid "Saturdays"
+msgstr "samedis"
+
+#: apps/workers/views.py:294
+msgid "Sundays"
+msgstr "dimanches"
+
+#: apps/workers/views.py:349 apps/workers/views.py:353
+#, python-format
+msgid "From site · %(site)s"
+msgstr "Du chantier · %(site)s"
+
+#: apps/workers/views.py:351 apps/workers/views.py:355
+#: apps/workers/views.py:361 apps/workers/views.py:365
+#: apps/worksites/views.py:192
+msgid "Company default"
+msgstr "Valeur par défaut de l’entreprise"
+
+#: apps/workers/views.py:423
+#, python-format
+msgid "Worker %(number)s added."
+msgstr "Ouvrier %(number)s ajouté."
+
+#: apps/workers/views.py:433
+msgid "Worker saved."
+msgstr "Ouvrier enregistré."
+
+#: apps/worksites/admin.py:25 templates/worksites/detail.html:63
+#: templates/worksites/form.html:23
+msgid "People"
+msgstr "Personnes"
+
+#: apps/worksites/admin.py:27
+msgid "Setting overrides (empty = company setting)"
+msgstr "Paramètres personnalisés (vide = valeur de l’entreprise)"
+
+#: apps/worksites/apps.py:7 templates/accounts/users.html:20
+#: templates/components/sidebar.html:47
+#: templates/worksites/_detail_base.html:10 templates/worksites/form.html:5
+#: templates/worksites/list.html:4 templates/worksites/list.html:6
+#: templates/worksites/list.html:27
+msgid "Sites"
+msgstr "Chantiers"
+
+#: apps/worksites/forms.py:26
+msgid "Labour budget"
+msgstr "Budget main-d’œuvre"
+
+#: apps/worksites/forms.py:41
+msgid "No site manager"
+msgstr "Pas de conducteur de travaux"
+
+#: apps/worksites/forms.py:81 apps/worksites/forms.py:87
+#, python-format
+msgid "Company default (%(value)s)"
+msgstr "Valeur de l’entreprise (%(value)s)"
+
+#: apps/worksites/forms.py:94
+msgid "Company default: not set. Leave blank to inherit."
+msgstr "Valeur de l’entreprise : non définie. Laissez vide pour en hériter."
+
+#: apps/worksites/forms.py:97 apps/worksites/forms.py:101
+#, python-format
+msgid "Company default: %(value)s. Leave blank to inherit."
+msgstr "Valeur de l’entreprise : %(value)s. Laissez vide pour en hériter."
+
+#: apps/worksites/forms.py:125
+msgid "Workers already on another site move here from the start date."
+msgstr ""
+"Les ouvriers déjà sur un autre chantier sont déplacés ici à partir de la "
+"date de début."
+
+#: apps/worksites/models.py:17 templates/components/status_badge.html:18
+msgid "Paused"
+msgstr "En pause"
+
+#: apps/worksites/models.py:18 templates/components/status_badge.html:18
+msgid "Completed"
+msgstr "Terminé"
+
+#: apps/worksites/models.py:21
+msgid "address"
+msgstr "adresse"
+
+#: apps/worksites/models.py:25
+msgid "started on"
+msgstr "démarré le"
+
+#: apps/worksites/models.py:28
+msgid "site manager"
+msgstr "conducteur de travaux"
+
+#: apps/worksites/models.py:36
+msgid "foremen"
+msgstr "chefs d’équipe"
+
+#: apps/worksites/models.py:41
+msgid "labour budget"
+msgstr "budget main-d’œuvre"
+
+#: apps/worksites/models.py:71
+msgid "sites"
+msgstr "chantiers"
+
+#: apps/worksites/models.py:108
+msgid "site assignment"
+msgstr "affectation au chantier"
+
+#: apps/worksites/models.py:109
+msgid "site assignments"
+msgstr "affectations aux chantiers"
+
+#: apps/worksites/services.py:138 apps/worksites/services.py:198
+msgid "The end date must be on or after the start date."
+msgstr "La date de fin doit être le même jour que la date de début ou après."
+
+#: apps/worksites/services.py:180
+msgid "This worker is already assigned to a site for part of that period."
+msgstr ""
+"Cet ouvrier est déjà affecté à un chantier sur une partie de cette période."
+
+#: apps/worksites/views.py:112
+msgid "Site saved."
+msgstr "Chantier enregistré."
+
+#: apps/worksites/views.py:192
+msgid "Site override"
+msgstr "Valeur du chantier"
+
+#: apps/worksites/views.py:213
+msgid "Work hours"
+msgstr "Horaires de travail"
+
+#: apps/worksites/views.py:219
+#, python-format
+msgid "After %(hours)s h × %(multiplier)s"
+msgstr "Après %(hours)s h × %(multiplier)s"
+
+#: apps/worksites/views.py:373
+msgid "Site settings saved."
+msgstr "Paramètres du chantier enregistrés."
+
+#: apps/worksites/views.py:413
+msgid "Crew updated."
+msgstr "Équipe mise à jour."
+
+#: apps/worksites/views.py:437
+#, python-format
+msgid "%(name)s leaves the crew after %(date)s."
+msgstr "%(name)s quitte l’équipe après le %(date)s."
+
+#: templates/accounts/user_form.html:4 templates/accounts/user_form.html:7
+#: templates/accounts/user_form.html:10 templates/accounts/user_form.html:41
+#: templates/accounts/users.html:8
+msgid "Invite user"
+msgstr "Inviter un utilisateur"
+
+#: templates/accounts/user_form.html:6 templates/payroll/cash_sheet.html:5
+#: templates/workers/detail.html:8 templates/workers/form.html:5
+#: templates/worksites/_detail_base.html:10 templates/worksites/form.html:5
+msgid "Breadcrumb"
+msgstr "Fil d’Ariane"
+
+#: templates/accounts/user_form.html:7 templates/accounts/users.html:4
+#: templates/accounts/users.html:6 templates/components/sidebar.html:53
+msgid "Users & roles"
+msgstr "Utilisateurs et rôles"
+
+#: templates/accounts/user_form.html:11 templates/accounts/users.html:30
+msgid "Disabled"
+msgstr "Désactivé"
+
+#: templates/accounts/user_form.html:17
+msgid "Details and role"
+msgstr "Coordonnées et rôle"
+
+#: templates/accounts/user_form.html:38
+msgid "Admins and accountants see every site; accountants read only."
+msgstr ""
+"Les administrateurs et les comptables voient tous les chantiers ; les "
+"comptables en lecture seule."
+
+#: templates/accounts/user_form.html:41
+msgid "Save changes"
+msgstr "Enregistrer les modifications"
+
+#: templates/accounts/user_form.html:43 templates/workers/form.html:97
+#: templates/worksites/assign.html:26 templates/worksites/form.html:41
+msgid "Cancel"
+msgstr "Annuler"
+
+#: templates/accounts/user_form.html:53
+msgid "Reset phone PIN"
+msgstr "Réinitialiser le code PIN du téléphone"
+
+#: templates/accounts/user_form.html:53
+msgid "Set phone PIN"
+msgstr "Définir le code PIN du téléphone"
+
+#: templates/accounts/user_form.html:54
+msgid ""
+"The foreman signs in on the phone with their phone number and this 4-digit "
+"PIN. Tell them the PIN in person; it is not shown again."
+msgstr ""
+"Le chef d’équipe se connecte sur le téléphone avec son numéro de téléphone "
+"et ce code PIN à 4 chiffres. Communiquez-lui le code PIN en personne ; il ne "
+"sera plus affiché."
+
+#: templates/accounts/user_form.html:58
+#, python-format
+msgid ""
+"Too many wrong PINs: locked until %(until)s. Setting a new PIN unlocks it."
+msgstr ""
+"Trop de codes PIN incorrects : bloqué jusqu’à %(until)s. Définir un nouveau "
+"code PIN le débloque."
+
+#: templates/accounts/user_form.html:61
+msgid "No PIN yet: this user cannot sign in on the phone."
+msgstr ""
+"Pas encore de code PIN : cet utilisateur ne peut pas se connecter sur le "
+"téléphone."
+
+#: templates/accounts/user_form.html:71
+msgid "Reset PIN"
+msgstr "Réinitialiser le code PIN"
+
+#: templates/accounts/user_form.html:71
+msgid "Set PIN"
+msgstr "Définir le code PIN"
+
+#: templates/accounts/user_form.html:81
+msgid "Phones"
+msgstr "Téléphones"
+
+#: templates/accounts/user_form.html:82
+msgid ""
+"Phones this user has signed in on. Signing a phone out makes it ask for the "
+"PIN again; unsent work stays on the phone."
+msgstr ""
+"Téléphones sur lesquels cet utilisateur s’est connecté. Déconnecter un "
+"téléphone lui fait redemander le code PIN ; le travail non envoyé reste sur "
+"le téléphone."
+
+#: templates/accounts/user_form.html:89 templates/workers/detail.html:84
+#: templates/workers/list.html:28
+msgid "Phone"
+msgstr "Téléphone"
+
+#: templates/accounts/user_form.html:90
+msgid "First sign-in"
+msgstr "Première connexion"
+
+#: templates/accounts/user_form.html:91
+msgid "Last seen"
+msgstr "Vu pour la dernière fois"
+
+#: templates/accounts/user_form.html:93 templates/accounts/users.html:23
+#: templates/worksites/crew.html:26
+msgid "Actions"
+msgstr "Actions"
+
+#: templates/accounts/user_form.html:99
+msgid "Unnamed phone"
+msgstr "Téléphone sans nom"
+
+#: templates/accounts/user_form.html:102
+msgid "Signed in"
+msgstr "Connecté"
+
+#: templates/accounts/user_form.html:102
+msgid "Signed out"
+msgstr "Déconnecté"
+
+#: templates/accounts/user_form.html:107 templates/components/sidebar.html:67
+msgid "Sign out"
+msgstr "Déconnecter"
+
+#: templates/accounts/user_form.html:107
+#, python-format
+msgid "Sign out %(name)s"
+msgstr "Déconnecter %(name)s"
+
+#: templates/accounts/user_form.html:118
+msgid "No phone has signed in yet."
+msgstr "Aucun téléphone ne s’est encore connecté."
+
+#: templates/accounts/users.html:5
+msgid "People who use the app — workers are managed in Workers"
+msgstr ""
+"Les personnes qui utilisent l’application — les ouvriers se gèrent dans "
+"Ouvriers"
+
+#: templates/accounts/users.html:14
+msgid "Users"
+msgstr "Utilisateurs"
+
+#: templates/accounts/users.html:18
+msgid "User"
+msgstr "Utilisateur"
+
+#: templates/accounts/users.html:19
+msgid "Role"
+msgstr "Rôle"
+
+#: templates/accounts/users.html:21
+msgid "Sign-in"
+msgstr "Connexion"
+
+#: templates/accounts/users.html:22
+msgid "Last active"
+msgstr "Dernière activité"
+
+#: templates/accounts/users.html:37
+msgid "All (read)"
+msgstr "Tous (lecture)"
+
+#: templates/accounts/users.html:37
+msgid "None yet"
+msgstr "Aucun pour l’instant"
+
+#: templates/accounts/users.html:40
+msgid "4-digit PIN"
+msgstr "Code PIN à 4 chiffres"
+
+#: templates/accounts/users.html:40
+msgid "PIN not set"
+msgstr "Code PIN non défini"
+
+#: templates/accounts/users.html:40
+msgid "Password"
+msgstr "Mot de passe"
+
+#: templates/accounts/users.html:45 templates/workers/detail.html:21
+#: templates/workers/form.html:5 templates/worksites/form.html:5
+msgid "Edit"
+msgstr "Modifier"
+
+#: templates/accounts/users.html:55
+msgid "What each role can do"
+msgstr "Ce que chaque rôle peut faire"
+
+#: templates/accounts/users.html:56
+msgid "Site managers and foremen only see the sites they are assigned to."
+msgstr ""
+"Les conducteurs de travaux et les chefs d’équipe ne voient que les chantiers "
+"auxquels ils sont affectés."
+
+#: templates/accounts/users.html:62
+msgid "Permission"
+msgstr "Autorisation"
+
+#: templates/accounts/users.html:73
+msgid "Yes"
+msgstr "Oui"
+
+#: templates/accounts/users.html:73
+msgid "Own sites"
+msgstr "Ses chantiers"
+
+#: templates/accounts/users.html:73
+msgid "No"
+msgstr "Non"
+
+#: templates/attendance/_approval_detail.html:15
+#, python-format
+msgid "Submitted by %(foreman)s at %(sent)s · synced %(synced)s"
+msgstr "Envoyé par %(foreman)s à %(sent)s · synchronisé à %(synced)s"
+
+#: templates/attendance/_approval_detail.html:15
+#, python-format
+msgid "Submitted by %(foreman)s at %(sent)s"
+msgstr "Envoyé par %(foreman)s à %(sent)s"
+
+#: templates/attendance/_approval_detail.html:21
+#, python-format
+msgid "%(sent)s · synced %(synced)s"
+msgstr "%(sent)s · synchronisé à %(synced)s"
+
+#: templates/attendance/_approval_detail.html:25
+msgid "Highlighted rows below show the original value and the reason."
+msgstr ""
+"Les lignes en surbrillance ci-dessous montrent la valeur d’origine et le "
+"motif."
+
+#: templates/attendance/_approval_detail.html:32
+msgid "Already paid."
+msgstr "Déjà payé."
+
+#: templates/attendance/_approval_detail.html:33
+#, python-format
+msgid ""
+"%(n)s worker was paid for this day before the correction: approving moves "
+"the difference to their next pay (see the row below)."
+msgid_plural ""
+"%(n)s workers were paid for this day before the correction: approving moves "
+"the differences to their next pay (see the rows below)."
+msgstr[0] ""
+"%(n)s ouvrier a été payé pour ce jour avant la correction : valider reporte "
+"la différence sur sa prochaine paie (voir la ligne ci-dessous)."
+msgstr[1] ""
+"%(n)s ouvriers ont été payés pour ce jour avant la correction : valider "
+"reporte les différences sur leur prochaine paie (voir les lignes ci-dessous)."
+msgstr[2] ""
+"%(n)s ouvriers ont été payés pour ce jour avant la correction : valider "
+"reporte les différences sur leur prochaine paie (voir les lignes ci-dessous)."
+
+#: templates/attendance/_approval_detail.html:38
+msgid "Foreman’s note:"
+msgstr "Note du chef d’équipe :"
+
+#: templates/attendance/_approval_detail.html:41
+msgid "Sent back:"
+msgstr "Renvoyé :"
+
+#: templates/attendance/_approval_detail.html:46
+#, python-format
+msgid "%(n)s on the crew"
+msgstr "%(n)s dans l’équipe"
+
+#: templates/attendance/_approval_detail.html:51
+#, python-format
+msgid "%(n)s not marked"
+msgstr "%(n)s non marqué(s)"
+
+#: templates/attendance/_approval_detail.html:61
+#: templates/components/data_table.html:30
+msgid "In · Out"
+msgstr "Arr. · Dép."
+
+#: templates/attendance/_approval_detail.html:76
+msgid "Changed after submission:"
+msgstr "Modifié après l’envoi :"
+
+#: templates/attendance/_approval_detail.html:76
+#, python-format
+msgid "%(field)s was %(old)s → %(new)s."
+msgstr "%(field)s était %(old)s → %(new)s."
+
+#: templates/attendance/_approval_detail.html:83
+msgid "No workers were marked on this day."
+msgstr "Aucun ouvrier n’a été marqué ce jour-là."
+
+#: templates/attendance/approvals.html:4 templates/attendance/approvals.html:6
+#: templates/components/sidebar.html:36
+msgid "Approvals"
+msgstr "Validations"
+
+#: templates/attendance/approvals.html:5
+msgid "Roll calls submitted by foremen"
+msgstr "Appels envoyés par les chefs d’équipe"
+
+#: templates/attendance/approvals.html:12
+msgid "Nothing to approve"
+msgstr "Rien à valider"
+
+#: templates/attendance/approvals.html:13
+msgid "Submitted roll calls from your sites appear here."
+msgstr "Les appels envoyés depuis vos chantiers apparaissent ici."
+
+#: templates/attendance/approvals.html:18
+#, python-format
+msgid "Waiting · %(counter)s"
+msgid_plural "Waiting · %(counter)s"
+msgstr[0] "En attente · %(counter)s"
+msgstr[1] "En attente · %(counter)s"
+msgstr[2] "En attente · %(counter)s"
+
+#: templates/attendance/approvals.html:25
+#, python-format
+msgid "%(foreman)s · sent %(sent)s"
+msgstr "%(foreman)s · envoyé à %(sent)s"
+
+#: templates/attendance/approvals.html:35
+msgid "No other day is waiting."
+msgstr "Aucune autre journée en attente."
+
+#: templates/components/data_table.html:32
+msgid "Payment"
+msgstr "Paiement"
+
+#: templates/components/data_table.html:41
+msgid "Paid · photo"
+msgstr "Payé · photo"
+
+#: templates/components/data_table.html:45
+msgid "Corrected"
+msgstr "Corrigé"
+
+#: templates/components/inherited_setting.html:20
+msgid "Use default"
+msgstr "Utiliser la valeur par défaut"
+
+#: templates/components/inherited_setting.html:20
+msgid "Override"
+msgstr "Personnaliser"
+
+#: templates/components/sidebar.html:17
+msgid "Menu"
+msgstr "Menu"
+
+#: templates/components/sidebar.html:25
+msgid "Viewing"
+msgstr "Affichage"
+
+#: templates/components/sidebar.html:29
+msgid "Main"
+msgstr "Principal"
+
+#: templates/components/sidebar.html:31
+#: templates/worksites/_detail_base.html:22
+msgid "Overview"
+msgstr "Vue d’ensemble"
+
+#: templates/components/sidebar.html:32 templates/dashboard/home.html:4
+#: templates/dashboard/home.html:163 templates/workers/list.html:30
+msgid "Today"
+msgstr "Aujourd’hui"
+
+#: templates/components/sidebar.html:35
+msgid "Daily work"
+msgstr "Travail quotidien"
+
+#: templates/components/sidebar.html:37 templates/payroll/cash_sheet.html:5
+#: templates/payroll/cash_sheets.html:4 templates/payroll/cash_sheets.html:6
+#: templates/payroll/periods.html:8
+msgid "Cash sheets"
+msgstr "Feuilles de caisse"
+
+#: templates/components/sidebar.html:41 templates/payroll/periods.html:4
+#: templates/payroll/periods.html:6 templates/worksites/pay.html:8
+msgid "Pay periods"
+msgstr "Périodes de paie"
+
+#: templates/components/sidebar.html:45
+msgid "People & sites"
+msgstr "Personnel et chantiers"
+
+#: templates/components/sidebar.html:50
+msgid "Insight & admin"
+msgstr "Analyse et administration"
+
+#: templates/components/sidebar.html:51 templates/dashboard/reports.html:4
+#: templates/dashboard/reports.html:6 templates/worksites/detail.html:81
+msgid "Reports"
+msgstr "Rapports"
+
+#: templates/components/sidebar.html:54 templates/core/audit_log.html:5
+#: templates/core/settings.html:4 templates/core/settings.html:6
+msgid "Settings"
+msgstr "Paramètres"
+
+#: templates/components/status_badge.html:18
+#: templates/payroll/_cash_sheet_row.html:52
+msgid "To pay"
+msgstr "À payer"
+
+#: templates/components/stepper.html:14
+msgid "Day workflow"
+msgstr "Étapes de la journée"
+
+#: templates/components/stepper.html:18 templates/components/stepper.html:24
+#: templates/components/stepper.html:30 templates/components/stepper.html:36
+msgid "done"
+msgstr "fait"
+
+#: templates/components/stepper.html:19 templates/dashboard/home.html:84
+msgid "Sent back"
+msgstr "Renvoyé"
+
+#: templates/components/stepper.html:30
+msgid "Approve"
+msgstr "Valider"
+
+#: templates/components/stepper.html:31
+msgid "Waiting for you"
+msgstr "En attente de votre validation"
+
+#: templates/components/stepper.html:37
+msgid "After payout"
+msgstr "Après la paie"
+
+#: templates/core/audit_log.html:4 templates/core/audit_log.html:5
+#: templates/core/audit_log.html:7 templates/core/settings.html:9
+msgid "Audit log"
+msgstr "Journal d’audit"
+
+#: templates/core/audit_log.html:6
+msgid "Who changed what, when, and why"
+msgstr "Qui a modifié quoi, quand et pourquoi"
+
+#: templates/core/audit_log.html:16 templates/payroll/cash_sheets.html:16
+#: templates/payroll/periods.html:36 templates/workers/list.html:17
+msgid "Filter"
+msgstr "Filtrer"
+
+#: templates/core/audit_log.html:18
+msgid "Clear"
+msgstr "Effacer"
+
+#: templates/core/audit_log.html:29
+msgid "System"
+msgstr "Système"
+
+#: templates/core/audit_log.html:31
+msgid "j M Y · H:i"
+msgstr "j N Y · H:i"
+
+#: templates/core/audit_log.html:38
+msgid "Field"
+msgstr "Champ"
+
+#: templates/core/audit_log.html:39
+msgid "Before"
+msgstr "Avant"
+
+#: templates/core/audit_log.html:40
+msgid "After"
+msgstr "Après"
+
+#: templates/core/audit_log.html:59 templates/payroll/_pagination.html:4
+#: templates/workers/list.html:51
+msgid "Pages"
+msgstr "Pages"
+
+#: templates/core/audit_log.html:60
+msgid "Newer"
+msgstr "Plus récentes"
+
+#: templates/core/audit_log.html:61
+#, python-format
+msgid "Page %(number)s of %(total)s"
+msgstr "Page %(number)s sur %(total)s"
+
+#: templates/core/audit_log.html:62
+msgid "Older"
+msgstr "Plus anciennes"
+
+#: templates/core/audit_log.html:66
+msgid "No audit entries"
+msgstr "Aucune entrée d’audit"
+
+#: templates/core/audit_log.html:67
+msgid "Changes to attendance, pay and settings appear here."
+msgstr ""
+"Les modifications des présences, de la paie et des paramètres apparaissent "
+"ici."
+
+#: templates/core/settings.html:5
+msgid "Company defaults — each site can override pay and attendance rules"
+msgstr ""
+"Valeurs par défaut de l’entreprise — chaque chantier peut personnaliser les "
+"règles de paie et de présence"
+
+#: templates/core/settings.html:57
+msgid "Settings sections"
+msgstr "Sections des paramètres"
+
+#: templates/core/settings.html:58 templates/core/settings.html:71
+msgid "Company & region"
+msgstr "Entreprise et région"
+
+#: templates/core/settings.html:60 templates/core/settings.html:121
+msgid "Pay rules"
+msgstr "Règles de paie"
+
+#: templates/core/settings.html:61 templates/core/settings.html:142
+msgid "Payments & advances"
+msgstr "Paiements et avances"
+
+#: templates/core/settings.html:62 templates/core/settings.html:174
+msgid "Working days & holidays"
+msgstr "Jours ouvrés et jours fériés"
+
+#: templates/core/settings.html:80
+#, python-format
+msgid ""
+"Changing the currency or its decimal places only applies to new pay periods. "
+"Existing and locked periods keep their original currency (%(currency)s, "
+"%(decimals)s decimals)."
+msgstr ""
+"Changer la devise ou ses décimales ne s’applique qu’aux nouvelles périodes "
+"de paie. Les périodes existantes et clôturées gardent leur devise d’origine "
+"(%(currency)s, %(decimals)s décimales)."
+
+#: templates/core/settings.html:82
+msgid "You are changing the currency."
+msgstr "Vous changez de devise."
+
+#: templates/core/settings.html:83
+msgid ""
+"Every amount will show in the new currency after you save; locked pay "
+"periods keep their snapshot."
+msgstr ""
+"Tous les montants s’afficheront dans la nouvelle devise après "
+"l’enregistrement ; les périodes de paie clôturées gardent leur devise "
+"d’origine."
+
+#: templates/core/settings.html:99
+msgid "Foreman marks the whole crew"
+msgstr "Le chef d’équipe marque toute l’équipe"
+
+#: templates/core/settings.html:99
+msgid "Workers check in on a phone"
+msgstr "Les ouvriers pointent sur un téléphone"
+
+#: templates/core/settings.html:99
+msgid "Self check-in, foreman confirms"
+msgstr "Pointage par l’ouvrier, confirmé par le chef d’équipe"
+
+#: templates/core/settings.html:114
+msgid "Photo at check-in"
+msgstr "Photo au pointage"
+
+#: templates/core/settings.html:114 templates/core/settings.html:115
+msgid "coming later"
+msgstr "bientôt disponible"
+
+#: templates/core/settings.html:115
+msgid "Require GPS inside site boundary"
+msgstr "Exiger le GPS dans le périmètre du chantier"
+
+#: templates/core/settings.html:128
+msgid "Normal working hours"
+msgstr "Horaires de travail normaux"
+
+#: templates/core/settings.html:137
+msgid "Statutory deductions (tax, social security)"
+msgstr "Retenues légales (impôts, sécurité sociale)"
+
+#: templates/core/settings.html:137
+msgid "coming later, depends on country"
+msgstr "bientôt disponible, selon le pays"
+
+#: templates/core/settings.html:192
+msgid "No unsaved changes"
+msgstr "Aucune modification non enregistrée"
+
+#: templates/core/settings.html:193
+msgid "1 unsaved change"
+msgstr "1 modification non enregistrée"
+
+#: templates/core/settings.html:194
+msgid "unsaved changes"
+msgstr "modifications non enregistrées"
+
+#: templates/core/settings.html:197
+msgid "Discard"
+msgstr "Abandonner"
+
+#: templates/core/settings.html:198
+msgid "Save settings"
+msgstr "Enregistrer les paramètres"
+
+#: templates/dashboard/home.html:5
+msgid "l j F Y · H:i"
+msgstr "l j F Y · H:i"
+
+#: templates/dashboard/home.html:6
+msgid "Today across sites"
+msgstr "Aujourd’hui sur les chantiers"
+
+#: templates/dashboard/home.html:10
+msgid "Export day"
+msgstr "Exporter la journée"
+
+#: templates/dashboard/home.html:15
+#, python-format
+msgid "Review %(counter)s day"
+msgid_plural "Review %(counter)s days"
+msgstr[0] "Vérifier %(counter)s journée"
+msgstr[1] "Vérifier %(counter)s journées"
+msgstr[2] "Vérifier %(counter)s journées"
+
+#: templates/dashboard/home.html:22 templates/dashboard/reports.html:38
+msgid "Key figures"
+msgstr "Chiffres clés"
+
+#: templates/dashboard/home.html:24
+#, python-format
+msgid "/ %(expected)s expected"
+msgstr "/ %(expected)s attendus"
+
+#: templates/dashboard/home.html:27
+msgid "Absent · half · late"
+msgstr "Absents · demi · retard"
+
+#: templates/dashboard/home.html:28
+#, python-format
+msgid "%(absent)s · %(half)s · %(late)s"
+msgstr "%(absent)s · %(half)s · %(late)s"
+
+#: templates/dashboard/home.html:30
+#, python-format
+msgid "Roll call missing at %(counter)s site"
+msgid_plural "Roll call missing at %(counter)s sites"
+msgstr[0] "Appel manquant sur %(counter)s chantier"
+msgstr[1] "Appel manquant sur %(counter)s chantiers"
+msgstr[2] "Appel manquant sur %(counter)s chantiers"
+
+#: templates/dashboard/home.html:32
+msgid "No roll call overdue"
+msgstr "Aucun appel en retard"
+
+#: templates/dashboard/home.html:34
+msgid "Not a working day"
+msgstr "Jour non ouvré"
+
+#: templates/dashboard/home.html:38
+msgid "Awaiting approval"
+msgstr "En attente de validation"
+
+#: templates/dashboard/home.html:39
+#, python-format
+msgid "%(counter)s day"
+msgid_plural "%(counter)s days"
+msgstr[0] "%(counter)s journée"
+msgstr[1] "%(counter)s journées"
+msgstr[2] "%(counter)s journées"
+
+#: templates/dashboard/home.html:42
+#, python-format
+msgid "Oldest: %(date)s, %(site)s"
+msgstr "Plus ancienne : %(date)s, %(site)s"
+
+#: templates/dashboard/home.html:45
+msgid "Nothing waiting"
+msgstr "Rien en attente"
+
+#: templates/dashboard/home.html:49
+msgid "Cash to pay tonight"
+msgstr "Espèces à payer ce soir"
+
+#: templates/dashboard/home.html:52
+msgid "Open cash sheets"
+msgstr "Feuilles de caisse ouvertes"
+
+#: templates/dashboard/home.html:59
+msgid "Sites today"
+msgstr "Chantiers du jour"
+
+#: templates/dashboard/home.html:67
+msgid "Roll call"
+msgstr "Appel"
+
+#: templates/dashboard/home.html:69
+msgid "Cash tonight"
+msgstr "Espèces ce soir"
+
+#: templates/dashboard/home.html:76
+#, python-format
+msgid "Foreman: %(name)s"
+msgstr "Chef d’équipe : %(name)s"
+
+#: templates/dashboard/home.html:76
+msgid "No foreman assigned"
+msgstr "Aucun chef d’équipe affecté"
+
+#: templates/dashboard/home.html:82
+msgid "In progress"
+msgstr "En cours"
+
+#: templates/dashboard/home.html:90
+#, python-format
+msgid "Was due by %(time)s"
+msgstr "Était à faire avant %(time)s"
+
+#: templates/dashboard/home.html:90
+#, python-format
+msgid "Expected by %(time)s"
+msgstr "Attendu avant %(time)s"
+
+#: templates/dashboard/home.html:92
+#, python-format
+msgid "%(time)s · waiting for approval"
+msgstr "%(time)s · en attente de validation"
+
+#: templates/dashboard/home.html:94
+#, python-format
+msgid "%(time)s by %(name)s"
+msgstr "%(time)s par %(name)s"
+
+#: templates/dashboard/home.html:96
+msgid "Back with the foreman"
+msgstr "Renvoyé au chef d’équipe"
+
+#: templates/dashboard/home.html:98
+msgid "Paid out and locked"
+msgstr "Payé et clôturé"
+
+#: templates/dashboard/home.html:104
+#, python-format
+msgid "Present at %(site)s"
+msgstr "Présents sur %(site)s"
+
+#: templates/dashboard/home.html:113
+msgid "No active sites to show."
+msgstr "Aucun chantier actif à afficher."
+
+#: templates/dashboard/home.html:118
+msgid "Needs attention"
+msgstr "À traiter"
+
+#: templates/dashboard/home.html:124
+#, python-format
+msgid "%(site)s — no roll call yet"
+msgstr "%(site)s — pas encore d’appel"
+
+#: templates/dashboard/home.html:125
+#, python-format
+msgid "%(name)s has not submitted. Due by %(time)s."
+msgstr "%(name)s n’a pas envoyé l’appel. À faire avant %(time)s."
+
+#: templates/dashboard/home.html:125
+#, python-format
+msgid "No foreman has submitted. Due by %(time)s."
+msgstr "Aucun chef d’équipe n’a envoyé l’appel. À faire avant %(time)s."
+
+#: templates/dashboard/home.html:126
+msgid "Open site"
+msgstr "Ouvrir le chantier"
+
+#: templates/dashboard/home.html:128
+#, python-format
+msgid "%(counter)s correction after submission"
+msgid_plural "%(counter)s corrections after submission"
+msgstr[0] "%(counter)s correction après l’envoi"
+msgstr[1] "%(counter)s corrections après l’envoi"
+msgstr[2] "%(counter)s corrections après l’envoi"
+
+#: templates/dashboard/home.html:129
+#, python-format
+msgid "%(site)s, %(date)s — check the reasons before approving."
+msgstr "%(site)s, %(date)s — vérifiez les motifs avant de valider."
+
+#: templates/dashboard/home.html:130
+msgid "Review"
+msgstr "Vérifier"
+
+#: templates/dashboard/home.html:132
+#, python-format
+msgid "%(name)s absent %(days)s days in a row"
+msgstr "%(name)s absent %(days)s jours de suite"
+
+#: templates/dashboard/home.html:134
+msgid "Open profile"
+msgstr "Ouvrir la fiche"
+
+#: templates/dashboard/home.html:136
+msgid "Cash sheet not closed"
+msgstr "Feuille de caisse non clôturée"
+
+#: templates/dashboard/home.html:137
+#, python-format
+msgid "%(site)s, %(date)s — %(counter)s worker unpaid."
+msgid_plural "%(site)s, %(date)s — %(counter)s workers unpaid."
+msgstr[0] "%(site)s, %(date)s — %(counter)s ouvrier non payé."
+msgstr[1] "%(site)s, %(date)s — %(counter)s ouvriers non payés."
+msgstr[2] "%(site)s, %(date)s — %(counter)s ouvriers non payés."
+
+#: templates/dashboard/home.html:138
+msgid "Open cash sheet"
+msgstr "Ouvrir la feuille de caisse"
+
+#: templates/dashboard/home.html:143
+msgid "Nothing needs attention right now."
+msgstr "Rien à traiter pour le moment."
+
+#: templates/dashboard/home.html:150
+msgid "Worker-days, last 7 working days"
+msgstr "Jours-ouvrier, 7 derniers jours ouvrés"
+
+#: templates/dashboard/home.html:151
+#, python-format
+msgid "Your sites · present and late count as 1, half days as %(units)s"
+msgstr ""
+"Vos chantiers · présent et retard comptent pour 1, demi-journée pour "
+"%(units)s"
+
+#: templates/dashboard/home.html:153
+msgid "Worker-days per day"
+msgstr "Jours-ouvrier par jour"
+
+#: templates/dashboard/home.html:153
+msgid "today, so far"
+msgstr "aujourd’hui, jusqu’ici"
+
+#: templates/dashboard/home.html:163 templates/worksites/detail.html:10
+msgid "D j"
+msgstr "D j"
+
+#: templates/dashboard/reports.html:5
+#, python-format
+msgid "%(start)s – %(end)s"
+msgstr "%(start)s – %(end)s"
+
+#: templates/dashboard/reports.html:9
+msgid "Download CSV"
+msgstr "Télécharger le CSV"
+
+#: templates/dashboard/reports.html:11
+msgid "Download Excel"
+msgstr "Télécharger Excel"
+
+#: templates/dashboard/reports.html:12
+msgid "Excel files are coming later — the CSV opens in Excel."
+msgstr "Les fichiers Excel arrivent bientôt — le CSV s’ouvre dans Excel."
+
+#: templates/dashboard/reports.html:33 templates/worksites/crew.html:15
+msgid "Show"
+msgstr "Afficher"
+
+#: templates/dashboard/reports.html:39
+msgid "Labour cost"
+msgstr "Coût de main-d’œuvre"
+
+#: templates/dashboard/reports.html:45
+msgid "Attendance rate"
+msgstr "Taux de présence"
+
+#: templates/dashboard/reports.html:47
+msgid "Avg cost per worker-day"
+msgstr "Coût moyen par jour-ouvrier"
+
+#: templates/dashboard/reports.html:54
+msgid "Labour cost by site"
+msgstr "Coût de main-d’œuvre par chantier"
+
+#: templates/dashboard/reports.html:62
+#, python-format
+msgid "Labour budget: %(budget)s"
+msgstr "Budget main-d’œuvre : %(budget)s"
+
+#: templates/dashboard/reports.html:67
+msgid "No pay periods end in this period yet."
+msgstr "Aucune période de paie ne se termine encore dans cette période."
+
+#: templates/dashboard/reports.html:69
+msgid "Gross pay of the pay periods that end in this period."
+msgstr "Paie brute des périodes de paie qui se terminent dans cette période."
+
+#: templates/dashboard/reports.html:73 templates/dashboard/reports.html:74
+msgid "Attendance rate by week"
+msgstr "Taux de présence par semaine"
+
+#: templates/dashboard/reports.html:74
+#, python-format
+msgid "week %(week)s"
+msgstr "semaine %(week)s"
+
+#: templates/dashboard/reports.html:74
+msgid "no data"
+msgstr "pas de données"
+
+#: templates/dashboard/reports.html:77
+#, python-format
+msgid "Week %(week)s"
+msgstr "Semaine %(week)s"
+
+#: templates/dashboard/reports.html:84
+#, python-format
+msgid "Wk %(week)s"
+msgstr "Sem. %(week)s"
+
+#: templates/dashboard/reports.html:86
+#, python-format
+msgid "Axis starts at 50%% · present and late, plus half days, ÷ recorded days"
+msgstr ""
+"L’axe commence à 50 %% · présents et retards, plus les demi-journées, ÷ "
+"jours saisis"
+
+#: templates/dashboard/reports.html:91
+msgid "Attendance by worker"
+msgstr "Présences par ouvrier"
+
+#: templates/dashboard/reports.html:131
+msgid "No submitted attendance in this period."
+msgstr "Aucune présence envoyée sur cette période."
+
+#: templates/layouts/app.html:22
+msgid "Skip to content"
+msgstr "Aller au contenu"
+
+#: templates/layouts/auth.html:20
+msgid "Who was on site. What they’re owed. Paid and proven."
+msgstr "Qui était sur le chantier. Ce qui lui est dû. Payé, avec preuve."
+
+#: templates/layouts/auth.html:21
+msgid ""
+"Foremen take the roll call on their phone. Managers approve. Cash goes out "
+"with a receipt for every worker."
+msgstr ""
+"Les chefs d’équipe font l’appel sur leur téléphone. Les conducteurs de "
+"travaux valident. L’argent est remis avec une preuve pour chaque ouvrier."
+
+#: templates/layouts/auth.html:23
+msgid "Office access"
+msgstr "Accès bureau"
+
+#: templates/payroll/_advance_preview.html:7
+#, python-format
+msgid "%(name)s already owes <strong>%(owed)s</strong>."
+msgstr "%(name)s doit déjà <strong>%(owed)s</strong>."
+
+#: templates/payroll/_advance_preview.html:8
+#, python-format
+msgid ""
+"New total <strong>%(total)s</strong> = %(percent)s%% of the expected weekly "
+"pay (limit %(limit)s%%, set in Settings)."
+msgstr ""
+"Nouveau total <strong>%(total)s</strong> = %(percent)s %% de la paie "
+"hebdomadaire prévue (plafond %(limit)s %%, défini dans Paramètres)."
+
+#: templates/payroll/_advance_preview.html:9
+#, python-format
+msgid "Fully repaid in about <strong>%(pays)s pay</strong>."
+msgid_plural "Fully repaid in about <strong>%(pays)s pays</strong>."
+msgstr[0] "Entièrement remboursé en environ <strong>%(pays)s paie</strong>."
+msgstr[1] "Entièrement remboursé en environ <strong>%(pays)s paies</strong>."
+msgstr[2] "Entièrement remboursé en environ <strong>%(pays)s paies</strong>."
+
+#: templates/payroll/_advance_preview.html:10
+#, python-format
+msgid "Over the limit: at most %(most)s may be owed."
+msgstr "Plafond dépassé : au plus %(most)s peut être dû."
+
+#: templates/payroll/_advance_preview.html:12
+msgid "This worker has no pay rate yet, so no advance can be given."
+msgstr ""
+"Cet ouvrier n’a pas encore de tarif : aucune avance ne peut être accordée."
+
+#: templates/payroll/_advance_preview.html:16
+#, python-format
+msgid ""
+"Choose a worker and an amount. A worker may owe at most %(limit)s%% of a "
+"normal week's pay (set in Settings)."
+msgstr ""
+"Choisissez un ouvrier et un montant. Un ouvrier peut devoir au plus "
+"%(limit)s %% d’une semaine de paie normale (défini dans Paramètres)."
+
+#: templates/payroll/_cash_sheet_row.html:26
+#, python-format
+msgid "Paid %(time)s"
+msgstr "Payé à %(time)s"
+
+#: templates/payroll/_cash_sheet_row.html:30
+msgid "Undo this payment?"
+msgstr "Annuler ce paiement ?"
+
+#: templates/payroll/_cash_sheet_row.html:32
+msgid "Undo"
+msgstr "Annuler"
+
+#: templates/payroll/_cash_sheet_row.html:36
+msgid "Nothing to hand over"
+msgstr "Rien à remettre"
+
+#: templates/payroll/_cash_sheet_row.html:48
+#, python-format
+msgid "Mark paid · %(amount)s"
+msgstr "Marquer payé · %(amount)s"
+
+#: templates/payroll/_cash_sheet_row.html:54
+msgid "Payslip"
+msgstr "Bulletin de paie"
+
+#: templates/payroll/_pagination.html:5
+#, python-format
+msgid "Page %(number)s of %(count)s"
+msgstr "Page %(number)s sur %(count)s"
+
+#: templates/payroll/_pagination.html:7 templates/workers/list.html:52
+msgid "Previous"
+msgstr "Précédent"
+
+#: templates/payroll/_pagination.html:10 templates/workers/list.html:52
+msgid "Next"
+msgstr "Suivant"
+
+#: templates/payroll/_reconciliation.html:5
+msgid "Cash reconciliation"
+msgstr "Rapprochement de caisse"
+
+#: templates/payroll/_reconciliation.html:9
+#, python-format
+msgid "%(n)s hand-over"
+msgid_plural "%(n)s hand-overs"
+msgstr[0] "%(n)s remise"
+msgstr[1] "%(n)s remises"
+msgstr[2] "%(n)s remises"
+
+#: templates/payroll/_reconciliation.html:9
+msgid "None recorded yet"
+msgstr "Aucune enregistrée pour l’instant"
+
+#: templates/payroll/_reconciliation.html:12
+#: templates/payroll/cash_sheets.html:27
+msgid "Total to pay"
+msgstr "Total à payer"
+
+#: templates/payroll/_reconciliation.html:14
+#, python-format
+msgid "%(n)s worker · net of advances"
+msgid_plural "%(n)s workers · net of advances"
+msgstr[0] "%(n)s ouvrier · net des avances"
+msgstr[1] "%(n)s ouvriers · net des avances"
+msgstr[2] "%(n)s ouvriers · net des avances"
+
+#: templates/payroll/_reconciliation.html:17
+#: templates/payroll/cash_sheets.html:28
+msgid "Paid so far"
+msgstr "Payé jusqu’ici"
+
+#: templates/payroll/_reconciliation.html:19
+#, python-format
+msgid "%(paid)s of %(total)s workers"
+msgstr "%(paid)s sur %(total)s ouvriers"
+
+#: templates/payroll/_reconciliation.html:22
+#: templates/payroll/cash_sheets.html:29
+msgid "Left to pay"
+msgstr "Reste à payer"
+
+#: templates/payroll/_reconciliation.html:24
+#: templates/payroll/cash_sheets.html:36
+#, python-format
+msgid "%(n)s worker"
+msgid_plural "%(n)s workers"
+msgstr[0] "%(n)s ouvrier"
+msgstr[1] "%(n)s ouvriers"
+msgstr[2] "%(n)s ouvriers"
+
+#: templates/payroll/_reconciliation.html:27
+msgid "Cash should be in hand"
+msgstr "Espèces qui doivent être en caisse"
+
+#: templates/payroll/_reconciliation.html:30
+#, python-format
+msgid "Short by %(amount)s: issue more cash"
+msgstr "Il manque %(amount)s : remettez plus de fonds"
+
+#: templates/payroll/_reconciliation.html:32
+#, python-format
+msgid "Return %(amount)s when done"
+msgstr "Rendez %(amount)s à la fin"
+
+#: templates/payroll/_sheet_status.html:3
+msgid "Closed · locked"
+msgstr "Clôturée · verrouillée"
+
+#: templates/payroll/_sheet_status.html:3
+msgid "All paid · ready to lock"
+msgstr "Tous payés · prête à clôturer"
+
+#: templates/payroll/_sheet_status.html:3
+msgid "Paying out"
+msgstr "Paiement en cours"
+
+#: templates/payroll/_sheet_status.html:3
+msgid "Waiting approval · preview"
+msgstr "En attente de validation · aperçu"
+
+#: templates/payroll/advances.html:4 templates/payroll/advances.html:6
+msgid "Salary advances"
+msgstr "Avances sur salaire"
+
+#: templates/payroll/advances.html:5
+#, python-format
+msgid "%(n)s worker owes %(total)s in total"
+msgid_plural "%(n)s workers owe %(total)s in total"
+msgstr[0] "%(n)s ouvrier doit %(total)s au total"
+msgstr[1] "%(n)s ouvriers doivent %(total)s au total"
+msgstr[2] "%(n)s ouvriers doivent %(total)s au total"
+
+#: templates/payroll/advances.html:13
+msgid "Advances shown"
+msgstr "Avances affichées"
+
+#: templates/payroll/advances.html:14
+msgid "Still owed"
+msgstr "Restant dû"
+
+#: templates/payroll/advances.html:18
+#, python-format
+msgid "Showing %(name)s only."
+msgstr "Affichage de %(name)s uniquement."
+
+#: templates/payroll/advances.html:18
+msgid "All workers"
+msgstr "Tous les ouvriers"
+
+#: templates/payroll/advances.html:27
+msgid "Given"
+msgstr "Accordée"
+
+#: templates/payroll/advances.html:30
+msgid "Owed"
+msgstr "Dû"
+
+#: templates/payroll/advances.html:31
+msgid "Per pay"
+msgstr "Par paie"
+
+#: templates/payroll/advances.html:52
+msgid "No advances owed"
+msgstr "Aucune avance due"
+
+#: templates/payroll/advances.html:53
+msgid "Advances given to workers and their repayments show here."
+msgstr ""
+"Les avances accordées aux ouvriers et leurs remboursements s’affichent ici."
+
+#: templates/payroll/advances.html:59
+msgid "Give an advance"
+msgstr "Accorder une avance"
+
+#: templates/payroll/advances.html:75
+msgid "Record advance · paid in cash"
+msgstr "Enregistrer l’avance · payée en espèces"
+
+#: templates/payroll/advances.html:76
+msgid "Needs the worker’s receipt proof, like a pay-out."
+msgstr "Nécessite la preuve de remise de l’ouvrier, comme pour une paie."
+
+#: templates/payroll/cash_sheet.html:4 templates/payroll/cash_sheet.html:6
+msgid "Cash sheet"
+msgstr "Feuille de caisse"
+
+#: templates/payroll/cash_sheet.html:8 templates/worksites/crew.html:8
+msgid "l j F Y"
+msgstr "l j F Y"
+
+#: templates/payroll/cash_sheet.html:8
+#, python-format
+msgid "Day approved by %(name)s %(time)s"
+msgstr "Journée validée par %(name)s à %(time)s"
+
+#: templates/payroll/cash_sheet.html:10 templates/payroll/cash_sheet.html:71
+#: templates/payroll/cash_sheet.html:76
+msgid "Close & lock sheet"
+msgstr "Clôturer la feuille"
+
+#: templates/payroll/cash_sheet.html:15
+msgid "Preview."
+msgstr "Aperçu."
+
+#: templates/payroll/cash_sheet.html:15
+msgid ""
+"The roll call is not approved yet: these figures may change, and payments "
+"open once every day of the period is approved."
+msgstr ""
+"L’appel n’est pas encore validé : ces chiffres peuvent changer, et les "
+"paiements s’ouvrent une fois chaque journée de la période validée."
+
+#: templates/payroll/cash_sheet.html:23
+msgid "Cash handed over"
+msgstr "Fonds remis"
+
+#: templates/payroll/cash_sheet.html:26
+#, python-format
+msgid "to %(name)s"
+msgstr "à %(name)s"
+
+#: templates/payroll/cash_sheet.html:33
+msgid "Add cash issue"
+msgstr "Ajouter une remise de fonds"
+
+#: templates/payroll/cash_sheet.html:50 templates/workers/detail.html:113
+msgid "Advance"
+msgstr "Avance"
+
+#: templates/payroll/cash_sheet.html:51
+msgid "Adjustment"
+msgstr "Régularisation"
+
+#: templates/payroll/cash_sheet.html:53
+msgid "Payment & proof"
+msgstr "Paiement et preuve"
+
+#: templates/payroll/cash_sheet.html:62
+msgid "Nobody to pay on this sheet yet: it fills in from the roll call."
+msgstr ""
+"Personne à payer sur cette feuille pour l’instant : elle se remplit à partir "
+"de l’appel."
+
+#: templates/payroll/cash_sheet.html:65
+#, python-format
+msgid "%(names)s (absent) is not on this sheet."
+msgid_plural "%(names)s (absent) are not on this sheet."
+msgstr[0] "%(names)s (absent) n’est pas sur cette feuille."
+msgstr[1] "%(names)s (absents) ne sont pas sur cette feuille."
+msgstr[2] "%(names)s (absents) ne sont pas sur cette feuille."
+
+#: templates/payroll/cash_sheet.html:65
+msgid "Every payment records who paid, when, and the receipt proof."
+msgstr "Chaque paiement enregistre qui a payé, quand, et la preuve de remise."
+
+#: templates/payroll/cash_sheet.html:72
+msgid ""
+"Locking makes this pay and its attendance read-only. Count the cash returned "
+"first. Workers left unpaid need a reason; their advance deductions are given "
+"back."
+msgstr ""
+"La clôture rend cette paie et ses présences non modifiables. Comptez d’abord "
+"l’argent rendu. Les ouvriers non payés exigent un motif ; leurs retenues "
+"d’avance sont annulées."
+
+#: templates/payroll/cash_sheets.html:5
+msgid "Cash issued, paid and left to pay, per site and pay day"
+msgstr "Fonds remis, payés et restant à payer, par chantier et jour de paie"
+
+#: templates/payroll/cash_sheets.html:24
+msgid "Pay day"
+msgstr "Jour de paie"
+
+#: templates/payroll/cash_sheets.html:36 templates/worksites/attendance.html:23
+#: templates/worksites/pay.html:53
+msgid "D j M Y"
+msgstr "D j N Y"
+
+#: templates/payroll/cash_sheets.html:50
+msgid "No cash sheets yet"
+msgstr "Pas encore de feuille de caisse"
+
+#: templates/payroll/cash_sheets.html:51
+msgid "A site's cash sheet appears once its roll call is saved for a pay day."
+msgstr ""
+"La feuille de caisse d’un chantier apparaît dès que son appel est enregistré "
+"pour un jour de paie."
+
+#: templates/payroll/periods.html:14
+msgid "Gross this week"
+msgstr "Brut cette semaine"
+
+#: templates/payroll/periods.html:15
+msgid "Advances deducted"
+msgstr "Avances retenues"
+
+#: templates/payroll/periods.html:16
+msgid "Paid out"
+msgstr "Payé"
+
+#: templates/payroll/periods.html:17
+msgid "Still to pay"
+msgstr "Reste à payer"
+
+#: templates/payroll/periods.html:21
+msgid "Period status"
+msgstr "Statut de la période"
+
+#: templates/payroll/periods.html:23
+#, python-format
+msgid "Open · %(count)s"
+msgstr "Ouvertes · %(count)s"
+
+#: templates/payroll/periods.html:48
+msgid "Deductions"
+msgstr "Retenues"
+
+#: templates/payroll/periods.html:49
+msgid "Net"
+msgstr "Net"
+
+#: templates/payroll/periods.html:82 templates/worksites/pay.html:33
+msgid "No pay periods yet"
+msgstr "Pas encore de période de paie"
+
+#: templates/payroll/periods.html:83
+msgid "Periods appear as soon as a roll call is saved for a site."
+msgstr ""
+"Les périodes apparaissent dès qu’un appel est enregistré pour un chantier."
+
+#: templates/payroll/periods.html:86
+msgid ""
+"A period is ready to pay once every day in it is approved. It locks when the "
+"cash sheet is closed; workers left unpaid need a reason."
+msgstr ""
+"Une période est prête à payer dès que chacune de ses journées est validée. "
+"Elle est clôturée à la clôture de la feuille de caisse ; les ouvriers non "
+"payés exigent un motif."
+
+#: templates/registration/login.html:4 templates/registration/login.html:18
+#: templates/registration/login.html:32
+msgid "Sign in"
+msgstr "Se connecter"
+
+#: templates/registration/login.html:19
+msgid "For admins, site managers and accountants."
+msgstr ""
+"Pour les administrateurs, les conducteurs de travaux et les comptables."
+
+#: templates/registration/login.html:29
+msgid "Forgot?"
+msgstr "Oublié ?"
+
+#: templates/registration/login.html:37
+msgid "Foreman?"
+msgstr "Chef d’équipe ?"
+
+#: templates/registration/login.html:37
+msgid "Use the phone app and sign in with your 4-digit PIN."
+msgstr ""
+"Utilisez l’application sur le téléphone et connectez-vous avec votre code "
+"PIN à 4 chiffres."
+
+#: templates/workers/detail.html:17 templates/worksites/_detail_base.html:13
+msgid "j F Y"
+msgstr "j F Y"
+
+#: templates/workers/detail.html:17
+#, python-format
+msgid "starts %(date)s"
+msgstr "à partir du %(date)s"
+
+#: templates/workers/detail.html:17
+#, python-format
+msgid "since %(date)s"
+msgstr "depuis le %(date)s"
+
+#: templates/workers/detail.html:22
+msgid "Give advance"
+msgstr "Accorder une avance"
+
+#: templates/workers/detail.html:29
+msgid "Summary"
+msgstr "Résumé"
+
+#: templates/workers/detail.html:30
+#, python-format
+msgid "Since %(date)s (was %(was)s)"
+msgstr "Depuis le %(date)s (était %(was)s)"
+
+#: templates/workers/detail.html:30
+#, python-format
+msgid "Since %(date)s"
+msgstr "Depuis le %(date)s"
+
+#: templates/workers/detail.html:30
+msgid "No rate set"
+msgstr "Aucun tarif défini"
+
+#: templates/workers/detail.html:33 templates/workers/detail.html:37
+msgid "F"
+msgstr "F"
+
+#: templates/workers/detail.html:33
+#, python-format
+msgid "%(month)s days"
+msgstr "Jours · %(month)s"
+
+#: templates/workers/detail.html:34
+#, python-format
+msgid "%(pct)s%% attendance · Late counts as a full day"
+msgstr "%(pct)s %% de présence · un retard compte comme une journée complète"
+
+#: templates/workers/detail.html:34
+#, python-format
+msgid "%(pct)s%% attendance"
+msgstr "%(pct)s %% de présence"
+
+#: templates/workers/detail.html:34
+msgid "No working days yet"
+msgstr "Pas encore de jour ouvré"
+
+#: templates/workers/detail.html:37
+#, python-format
+msgid "Paid in %(month)s"
+msgstr "Payé en %(month)s"
+
+#: templates/workers/detail.html:38
+#, python-format
+msgid "%(n)s payment · all with receipt"
+msgid_plural "%(n)s payments · all with receipt"
+msgstr[0] "%(n)s paiement · tous avec preuve"
+msgstr[1] "%(n)s paiements · tous avec preuve"
+msgstr[2] "%(n)s paiements · tous avec preuve"
+
+#: templates/workers/detail.html:38
+#, python-format
+msgid "%(n)s payment"
+msgid_plural "%(n)s payments"
+msgstr[0] "%(n)s paiement"
+msgstr[1] "%(n)s paiements"
+msgstr[2] "%(n)s paiements"
+
+#: templates/workers/detail.html:41
+msgid "Advance owed"
+msgstr "Avance due"
+
+#: templates/workers/detail.html:42
+#, python-format
+msgid "%(amount)s deducted per pay"
+msgstr "%(amount)s retenus par paie"
+
+#: templates/workers/detail.html:42
+msgid "Nothing owed"
+msgstr "Rien à rembourser"
+
+#: templates/workers/detail.html:43
+msgid "See advances"
+msgstr "Voir les avances"
+
+#: templates/workers/detail.html:50
+msgid "F Y"
+msgstr "F Y"
+
+#: templates/workers/detail.html:50
+#, python-format
+msgid "Attendance · %(month)s"
+msgstr "Présences · %(month)s"
+
+#: templates/workers/detail.html:52
+msgid "Previous month"
+msgstr "Mois précédent"
+
+#: templates/workers/detail.html:53
+msgid "Next month"
+msgstr "Mois suivant"
+
+#: templates/workers/detail.html:59
+msgid "Days of the month"
+msgstr "Jours du mois"
+
+#: templates/workers/detail.html:74
+msgid "Half"
+msgstr "Demi"
+
+#: templates/workers/detail.html:77
+#, python-format
+msgid "%(days)s off"
+msgstr "Repos : %(days)s"
+
+#: templates/workers/detail.html:83
+msgid "Details"
+msgstr "Détails"
+
+#: templates/workers/detail.html:85
+msgid "ID document"
+msgstr "Pièce d’identité"
+
+#: templates/workers/detail.html:87
+msgid "Paid by"
+msgstr "Payé par"
+
+#: templates/workers/detail.html:91
+msgid "Rate history"
+msgstr "Historique des tarifs"
+
+#: templates/workers/detail.html:93
+#, python-format
+msgid "From %(date)s"
+msgstr "À partir du %(date)s"
+
+#: templates/workers/detail.html:95
+msgid "No rate yet."
+msgstr "Pas encore de tarif."
+
+#: templates/workers/detail.html:103
+msgid "Recent payments"
+msgstr "Paiements récents"
+
+#: templates/workers/detail.html:104
+msgid "All payments"
+msgstr "Tous les paiements"
+
+#: templates/workers/detail.html:110 templates/worksites/pay.html:46
+msgid "Date"
+msgstr "Date"
+
+#: templates/workers/detail.html:111
+msgid "Days"
+msgstr "Jours"
+
+#: templates/workers/detail.html:114
+msgid "Net paid"
+msgstr "Net payé"
+
+#: templates/workers/detail.html:115
+msgid "Proof"
+msgstr "Preuve"
+
+#: templates/workers/detail.html:120
+msgid "payslip (PDF)"
+msgstr "bulletin de paie (PDF)"
+
+#: templates/workers/detail.html:132
+msgid "No payments yet."
+msgstr "Pas encore de paiement."
+
+#: templates/workers/form.html:4
+msgid "Edit worker"
+msgstr "Modifier l’ouvrier"
+
+#: templates/workers/form.html:4 templates/workers/form.html:6
+msgid "Add a worker"
+msgstr "Ajouter un ouvrier"
+
+#: templates/workers/form.html:5
+msgid "New worker"
+msgstr "Nouvel ouvrier"
+
+#: templates/workers/form.html:6
+#, python-format
+msgid "Edit %(name)s"
+msgstr "Modifier %(name)s"
+
+#: templates/workers/form.html:10
+msgid "Per day"
+msgstr "Par jour"
+
+#: templates/workers/form.html:10
+msgid "Per hour"
+msgstr "Par heure"
+
+#: templates/workers/form.html:24
+msgid "Change photo"
+msgstr "Changer la photo"
+
+#: templates/workers/form.html:24
+msgid "Add photo"
+msgstr "Ajouter une photo"
+
+#: templates/workers/form.html:26
+msgid "Remove photo"
+msgstr "Supprimer la photo"
+
+#: templates/workers/form.html:31
+msgid "Identity"
+msgstr "Identité"
+
+#: templates/workers/form.html:46
+#, python-format
+msgid "Now on %(site)s."
+msgstr "Actuellement sur %(site)s."
+
+#: templates/workers/form.html:61
+msgid "Needs arrival & departure"
+msgstr "Exige l’arrivée et le départ"
+
+#: templates/workers/form.html:61
+msgid "Paid per day present"
+msgstr "Payé par jour de présence"
+
+#: templates/workers/form.html:66
+msgid "Piece work"
+msgstr "À la tâche"
+
+#: templates/workers/form.html:66
+msgid "Coming later"
+msgstr "Bientôt disponible"
+
+#: templates/workers/form.html:80
+msgid "Inherited settings"
+msgstr "Paramètres hérités"
+
+#: templates/workers/form.html:90
+msgid "Override payment method"
+msgstr "Personnaliser le mode de paiement"
+
+#: templates/workers/form.html:91
+msgid "Override pay frequency"
+msgstr "Personnaliser la fréquence de paie"
+
+#: templates/workers/form.html:98
+msgid "Save worker"
+msgstr "Enregistrer l’ouvrier"
+
+#: templates/workers/list.html:5
+#, python-format
+msgid "%(active)s active · %(inactive)s inactive"
+msgstr "%(active)s actifs · %(inactive)s inactifs"
+
+#: templates/workers/list.html:8 templates/workers/list.html:59
+msgid "Add worker"
+msgstr "Ajouter un ouvrier"
+
+#: templates/workers/list.html:31
+msgid "Owes (advance)"
+msgstr "Doit (avance)"
+
+#: templates/workers/list.html:50
+#, python-format
+msgid "Showing %(start)s–%(end)s of %(total)s"
+msgstr "%(start)s–%(end)s sur %(total)s"
+
+#: templates/workers/list.html:58
+msgid "No workers found"
+msgstr "Aucun ouvrier trouvé"
+
+#: templates/workers/list.html:58
+msgid "Change the filters, or add a worker."
+msgstr "Modifiez les filtres ou ajoutez un ouvrier."
+
+#: templates/worksites/_detail_base.html:13
+#, python-format
+msgid "Started %(date)s"
+msgstr "Démarré le %(date)s"
+
+#: templates/worksites/_detail_base.html:15 templates/worksites/form.html:4
+#: templates/worksites/form.html:6
+msgid "Edit site"
+msgstr "Modifier le chantier"
+
+#: templates/worksites/_detail_base.html:16 templates/worksites/assign.html:8
+#: templates/worksites/crew.html:56 templates/worksites/detail.html:55
+msgid "Assign workers"
+msgstr "Affecter des ouvriers"
+
+#: templates/worksites/_detail_base.html:17
+msgid "Review today’s roll call"
+msgstr "Vérifier l’appel du jour"
+
+#: templates/worksites/_detail_base.html:21
+msgid "Site sections"
+msgstr "Sections du chantier"
+
+#: templates/worksites/_detail_base.html:23
+msgid "Crew"
+msgstr "Équipe"
+
+#: templates/worksites/_detail_base.html:24
+#: templates/worksites/attendance.html:7
+msgid "Attendance history"
+msgstr "Historique des présences"
+
+#: templates/worksites/_detail_base.html:25
+msgid "Pay & cash"
+msgstr "Paie et caisse"
+
+#: templates/worksites/_detail_base.html:26 templates/worksites/settings.html:9
+msgid "Site settings"
+msgstr "Paramètres du chantier"
+
+#: templates/worksites/assign.html:9
+msgid "The workers appear on this site’s roll call from the start date."
+msgstr ""
+"Les ouvriers apparaissent dans l’appel de ce chantier à partir de la date de "
+"début."
+
+#: templates/worksites/assign.html:21
+msgid "Every active worker is already on this site."
+msgstr "Tous les ouvriers actifs sont déjà sur ce chantier."
+
+#: templates/worksites/assign.html:27
+msgid "Assign to this site"
+msgstr "Affecter à ce chantier"
+
+#: templates/worksites/attendance.html:8
+msgid "Open approvals"
+msgstr "Ouvrir les validations"
+
+#: templates/worksites/attendance.html:34
+msgid "No roll calls yet"
+msgstr "Pas encore d’appel"
+
+#: templates/worksites/attendance.html:34
+msgid "Days appear here once the foreman starts a roll call."
+msgstr ""
+"Les journées apparaissent ici dès que le chef d’équipe commence un appel."
+
+#: templates/worksites/crew.html:8
+#, python-format
+msgid "Crew on %(date)s"
+msgstr "Équipe du %(date)s"
+
+#: templates/worksites/crew.html:9
+#, python-format
+msgid "%(n)s worker expected"
+msgid_plural "%(n)s workers expected"
+msgstr[0] "%(n)s ouvrier attendu"
+msgstr[1] "%(n)s ouvriers attendus"
+msgstr[2] "%(n)s ouvriers attendus"
+
+#: templates/worksites/crew.html:23
+msgid "On site since"
+msgstr "Sur le chantier depuis"
+
+#: templates/worksites/crew.html:42
+msgid "Remove from crew"
+msgstr "Retirer de l’équipe"
+
+#: templates/worksites/crew.html:42
+msgid "Remove this worker from the crew after this day?"
+msgstr "Retirer cet ouvrier de l’équipe après ce jour ?"
+
+#: templates/worksites/crew.html:55
+msgid "No workers expected that day"
+msgstr "Aucun ouvrier attendu ce jour-là"
+
+#: templates/worksites/crew.html:55
+msgid "Workers appear here from their assignment start date."
+msgstr ""
+"Les ouvriers apparaissent ici à partir de la date de début de leur "
+"affectation."
+
+#: templates/worksites/detail.html:10
+msgid "today"
+msgstr "aujourd’hui"
+
+#: templates/worksites/detail.html:12
+msgid "Upcoming"
+msgstr "À venir"
+
+#: templates/worksites/detail.html:22
+msgid "Crew today"
+msgstr "Équipe du jour"
+
+#: templates/worksites/detail.html:23
+#, python-format
+msgid "Submitted by %(name)s at %(time)s"
+msgstr "Envoyé par %(name)s à %(time)s"
+
+#: templates/worksites/detail.html:23
+msgid "Roll call in progress"
+msgstr "Appel en cours"
+
+#: templates/worksites/detail.html:23
+msgid "No roll call yet today"
+msgstr "Pas encore d’appel aujourd’hui"
+
+#: templates/worksites/detail.html:33
+msgid "Arrived"
+msgstr "Arrivé"
+
+#: templates/worksites/detail.html:34
+msgid "Left"
+msgstr "Parti"
+
+#: templates/worksites/detail.html:51
+#, python-format
+msgid "Show all %(n)s worker"
+msgid_plural "Show all %(n)s workers"
+msgstr[0] "Afficher %(n)s ouvrier"
+msgstr[1] "Afficher les %(n)s ouvriers"
+msgstr[2] "Afficher les %(n)s ouvriers"
+
+#: templates/worksites/detail.html:54
+msgid "No workers on this site today"
+msgstr "Aucun ouvrier sur ce chantier aujourd’hui"
+
+#: templates/worksites/detail.html:54
+msgid "Assign workers to see them on the roll call."
+msgstr "Affectez des ouvriers pour les voir dans l’appel."
+
+#: templates/worksites/detail.html:66
+msgid "Backup foreman"
+msgstr "Chef d’équipe suppléant"
+
+#: templates/worksites/detail.html:72
+msgid "Pay settings for this site"
+msgstr "Paramètres de paie de ce chantier"
+
+#: templates/worksites/detail.html:76
+msgid "Override for this site"
+msgstr "Personnalisé pour ce chantier"
+
+#: templates/worksites/detail.html:76
+msgid "See site settings"
+msgstr "Voir les paramètres du chantier"
+
+#: templates/worksites/detail.html:79
+msgid "Labour cost this month"
+msgstr "Coût de main-d’œuvre ce mois-ci"
+
+#: templates/worksites/detail.html:81
+#, python-format
+msgid "Budget %(budget)s"
+msgstr "Budget %(budget)s"
+
+#: templates/worksites/detail.html:81
+msgid "Budget not set"
+msgstr "Budget non défini"
+
+#: templates/worksites/form.html:4 templates/worksites/form.html:5
+#: templates/worksites/list.html:8
+msgid "New site"
+msgstr "Nouveau chantier"
+
+#: templates/worksites/form.html:6 templates/worksites/list.html:58
+msgid "Add a site"
+msgstr "Ajouter un chantier"
+
+#: templates/worksites/form.html:32
+msgid "No foreman accounts yet. Add them on the Users screen."
+msgstr ""
+"Pas encore de compte chef d’équipe. Ajoutez-les dans l’écran Utilisateurs."
+
+#: templates/worksites/form.html:39
+msgid ""
+"Pay frequency, payment method and hours come from the company settings. "
+"Override them on the site’s Settings tab."
+msgstr ""
+"La fréquence de paie, le mode de paiement et les horaires viennent des "
+"paramètres de l’entreprise. Personnalisez-les dans l’onglet Paramètres du "
+"chantier."
+
+#: templates/worksites/form.html:42
+msgid "Save site"
+msgstr "Enregistrer le chantier"
+
+#: templates/worksites/list.html:5
+#, python-format
+msgid "%(active)s active · %(paused)s paused · %(completed)s completed"
+msgstr "%(active)s actifs · %(paused)s en pause · %(completed)s terminés"
+
+#: templates/worksites/list.html:14
+msgid "Site status"
+msgstr "Statut du chantier"
+
+#: templates/worksites/list.html:22
+msgid "Search sites"
+msgstr "Rechercher des chantiers"
+
+#: templates/worksites/list.html:23
+msgid "Search by name or address"
+msgstr "Rechercher par nom ou adresse"
+
+#: templates/worksites/list.html:40
+msgid "Workers assigned"
+msgstr "Ouvriers affectés"
+
+#: templates/worksites/list.html:41
+msgid "site override"
+msgstr "valeur du chantier"
+
+#: templates/worksites/list.html:41
+msgid "company default"
+msgstr "valeur de l’entreprise"
+
+#: templates/worksites/list.html:44 templates/worksites/list.html:45
+msgid "Present today"
+msgstr "Présents aujourd’hui"
+
+#: templates/worksites/list.html:50
+msgid "No site matches your search"
+msgstr "Aucun chantier ne correspond à votre recherche"
+
+#: templates/worksites/list.html:50
+msgid "No sites here yet"
+msgstr "Pas encore de chantier ici"
+
+#: templates/worksites/list.html:51
+msgid "Sites you manage or run appear here."
+msgstr "Les chantiers que vous gérez ou dirigez apparaissent ici."
+
+#: templates/worksites/list.html:59
+msgid "One site or many — same app"
+msgstr "Un chantier ou plusieurs — la même application"
+
+#: templates/worksites/pay.html:9
+msgid "All pay periods"
+msgstr "Toutes les périodes de paie"
+
+#: templates/worksites/pay.html:39
+msgid "Cash handed to the site"
+msgstr "Fonds remis au chantier"
+
+#: templates/worksites/pay.html:40
+msgid "This site’s cash sheets"
+msgstr "Feuilles de caisse de ce chantier"
+
+#: templates/worksites/pay.html:47
+msgid "Received by"
+msgstr "Reçu par"
+
+#: templates/worksites/pay.html:62
+msgid "No cash handed out yet"
+msgstr "Pas encore de fonds remis"
+
+#: templates/worksites/settings.html:10
+msgid ""
+"Leave a field blank to use the company value. Workers can still override "
+"payment method and pay frequency."
+msgstr ""
+"Laissez un champ vide pour utiliser la valeur de l’entreprise. Les ouvriers "
+"peuvent toujours personnaliser le mode de paiement et la fréquence de paie."
+
+#: templates/worksites/settings.html:13
+msgid "Only an admin or this site’s manager can change these settings."
+msgstr ""
+"Seuls un administrateur ou le conducteur de travaux de ce chantier peuvent "
+"modifier ces paramètres."
+
+#: templates/worksites/settings.html:24
+msgid "Hours and roll call"
+msgstr "Horaires et appel"
+
+#: templates/worksites/settings.html:41
+msgid "Save site settings"
+msgstr "Enregistrer les paramètres du chantier"
+
+#: templates/worksites/settings.html:47
+msgid "In effect now"
+msgstr "En vigueur actuellement"

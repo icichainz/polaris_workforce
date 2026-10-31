@@ -19,7 +19,10 @@ Load with ``{% load polaris %}``.
 
 ``{% money amount plain=True %}``
     The number without the currency code, for layouts that show the code separately
-    (``stat_tile.html`` with ``suffix=``). Use ``{% company_currency %}`` for the code.
+    (``stat_tile.html`` with ``suffix=``). Use ``{{ status|status_letter }}``
+    The translated attendance status letter (P, A, ½, L; R for "retard" in French).
+
+``{% company_currency %}`` for the code.
 
 ``{% money amount as total %}``
     Every tag accepts ``as name`` to store the text instead of printing it, e.g. to pass
@@ -29,6 +32,9 @@ Load with ``{% load polaris %}``.
     A count or a number of days with the company thousands/decimal separators, at most
     two decimals and no trailing zeros: ``Decimal("2412.50")`` → ``2 412.5``.
     ``{% number value max_decimals=1 %}`` to round further.
+
+``{{ status|status_letter }}``
+    The translated attendance status letter (P, A, ½, L; R for "retard" in French).
 
 ``{% company_currency %}``
     The company currency code ("XOF"), e.g. for ``money_field.html``'s ``currency``.
@@ -40,6 +46,7 @@ Python code uses the same formatting through ``apps.core.display``.
 
 from django import template
 
+from apps.core.choices import status_letter as _status_letter
 from apps.core.display import format_amount, format_quantity
 from apps.core.models import CompanySettings
 
@@ -90,3 +97,8 @@ def number(context, value, *, max_decimals=2):
 @register.simple_tag(takes_context=True)
 def company_currency(context):
     return company_from_context(context).currency
+
+
+@register.filter
+def status_letter(status):
+    return _status_letter(str(status))
