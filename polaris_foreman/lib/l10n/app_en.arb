@@ -564,5 +564,117 @@
   "mockOfflineOn": "Mock: offline",
   "@mockOfflineOn": {},
   "mockOfflineOff": "Mock: online",
-  "@mockOfflineOff": {}
+  "@mockOfflineOff": {},
+  "kindCheckIn": "Check-in · {date}",
+  "@kindCheckIn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "scanBadges": "Scan badges",
+  "@scanBadges": {},
+  "scanBadgesCount": "Scan badges · {count} today",
+  "@scanBadgesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scanTitle": "Scan badges",
+  "@scanTitle": {},
+  "scanCount": "{count, plural, =0{No scan} =1{1 scan} other{{count} scans}}",
+  "@scanCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "directionIn": "In",
+  "@directionIn": {},
+  "directionOut": "Out",
+  "@directionOut": {},
+  "photoWithScan": "Take a photo with each scan",
+  "@photoWithScan": {},
+  "todayScans": "Today’s scans",
+  "@todayScans": {},
+  "backToRollCall": "Back to the roll call",
+  "@backToRollCall": {},
+  "simulateScan": "Simulate a scan (mock)",
+  "@simulateScan": {},
+  "scanQueued": "Saved on the phone · not sent yet",
+  "@scanQueued": {},
+  "scanSent": "Sent",
+  "@scanSent": {},
+  "badgeNotRecognisedTitle": "Badge not recognised",
+  "@badgeNotRecognisedTitle": {},
+  "badgeNotRecognised": "Badge not recognised — see the foreman",
+  "@badgeNotRecognised": {},
+  "badgeRevoked": "This badge is no longer valid",
+  "@badgeRevoked": {},
+  "notOnCrew": "Not on today’s crew — tell the foreman",
+  "@notOnCrew": {},
+  "outsideSite": "Outside the site",
+  "@outsideSite": {},
+  "alreadyCheckedIn": "Already checked in",
+  "@alreadyCheckedIn": {},
+  "alreadyCheckedOut": "Already checked out",
+  "@alreadyCheckedOut": {},
+  "workerNumber": "Worker #{id}",
+  "@workerNumber": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "gpsReady": "GPS on · ±{metres} m",
+  "@gpsReady": {
+    "placeholders": {
+      "metres": {
+        "type": "int"
+      }
+    }
+  },
+  "gpsReadyNoAccuracy": "GPS on",
+  "@gpsReadyNoAccuracy": {},
+  "gpsLooking": "Looking for GPS…",
+  "@gpsLooking": {},
+  "gpsDenied": "No GPS permission: scans are sent without position",
+  "@gpsDenied": {},
+  "gpsOff": "Location is off on this phone: scans are sent without position",
+  "@gpsOff": {},
+  "cameraDenied": "Allow the camera in the phone’s settings to scan badges.",
+  "@cameraDenied": {},
+  "cameraError": "The camera cannot start.",
+  "@cameraError": {},
+  "selfCheckInNote": "Workers check in themselves: the roll call shows what their scans wrote. Check it and submit.",
+  "@selfCheckInNote": {},
+  "prefilledNote": "{count, plural, =1{1 mark comes from badge scans. Check it.} other{{count} marks come from badge scans. Check them.}}",
+  "@prefilledNote": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fromCheckIn": "From badge scan",
+  "@fromCheckIn": {},
+  "kioskTitle": "Check-in kiosk",
+  "@kioskTitle": {},
+  "kioskHint": "Show your badge",
+  "@kioskHint": {},
+  "switchCamera": "Switch camera",
+  "@switchCamera": {},
+  "kioskExit": "Leave the kiosk",
+  "@kioskExit": {},
+  "kioskExitText": "This phone stays a kiosk until the office ends kiosk mode. Sign out?",
+  "@kioskExitText": {},
+  "kioskPinTitle": "Foreman PIN",
+  "@kioskPinTitle": {},
+  "kioskPinWrong": "Wrong PIN",
+  "@kioskPinWrong": {}
 }

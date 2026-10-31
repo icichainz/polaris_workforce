@@ -11,6 +11,11 @@ abstract interface class TokenStore {
 
   Future<String?> readDeviceId();
   Future<void> writeDeviceId(String id);
+
+  /// A salted hash of the signed-in foreman's PIN, so a kiosk phone can be
+  /// unlocked offline ([clear] leaves it; a new sign-in replaces it).
+  Future<String?> readPinCheck();
+  Future<void> writePinCheck(String? value);
 }
 
 class SecureTokenStore implements TokenStore {
@@ -19,6 +24,7 @@ class SecureTokenStore implements TokenStore {
 
   static const _key = 'device_token';
   static const _deviceIdKey = 'device_id';
+  static const _pinCheckKey = 'pin_check';
   final FlutterSecureStorage _storage;
   String? _cached;
   bool _loaded = false;
@@ -52,12 +58,27 @@ class SecureTokenStore implements TokenStore {
   @override
   Future<void> writeDeviceId(String id) =>
       _storage.write(key: _deviceIdKey, value: id);
+
+  @override
+  Future<String?> readPinCheck() => _storage.read(key: _pinCheckKey);
+
+  @override
+  Future<void> writePinCheck(String? value) => value == null
+      ? _storage.delete(key: _pinCheckKey)
+      : _storage.write(key: _pinCheckKey, value: value);
 }
 
 class MemoryTokenStore implements TokenStore {
   MemoryTokenStore([this._token]);
   String? _token;
   String? _deviceId;
+  String? _pinCheck;
+
+  @override
+  Future<String?> readPinCheck() async => _pinCheck;
+
+  @override
+  Future<void> writePinCheck(String? value) async => _pinCheck = value;
 
   @override
   Future<String?> readDeviceId() async => _deviceId;

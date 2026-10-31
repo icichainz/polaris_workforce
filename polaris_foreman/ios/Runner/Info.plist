@@ -20,7 +20,9 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Take a photo of the worker receiving their pay, as proof of payment.</string>
+	<string>Scan workers' QR badges, and take a photo of the worker at check-in or when receiving their pay.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Record where a badge was scanned, to check it was on the site.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Choose a photo as proof of payment.</string>
 	<key>CFBundleName</key>

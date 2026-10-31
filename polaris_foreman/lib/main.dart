@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'config.dart';
 import 'core/site_clock.dart';
+import 'data/models/models.dart';
 import 'data/local/local_store.dart';
 import 'data/local/sqflite_local_store.dart';
 import 'data/local/token_store.dart';
@@ -49,6 +52,11 @@ Future<void> main() async {
               container.read(sessionProvider.notifier).expired(),
         );
   final session = await loadSession(store, await tokens.read());
+  // A kiosk phone opens on its kiosk screen, even offline.
+  final rawDevice = await store.getValue(StoreKeys.checkinDevice);
+  final device = rawDevice == null
+      ? null
+      : CheckInDevice.fromJson(jsonDecode(rawDevice) as Map<String, dynamic>);
 
   container = ProviderContainer(
     overrides: [
@@ -59,6 +67,7 @@ Future<void> main() async {
       initialSessionProvider.overrideWithValue(session),
       initialLocaleProvider.overrideWithValue(language),
       initialSiteIdProvider.overrideWithValue(siteId),
+      initialCheckInDeviceProvider.overrideWithValue(device),
     ],
   );
   if (session is SignedIn) container.read(syncServiceProvider).start();

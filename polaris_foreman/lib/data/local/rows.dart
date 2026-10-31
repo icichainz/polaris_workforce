@@ -128,3 +128,123 @@ class LocalPayment {
     serverId: id,
   );
 }
+
+/// A check-in made on this phone (badge scan or manual), kept for the day.
+/// [server] is set once the server has stored it; until then the phone shows
+/// what it could work out offline ([workerId] from the badge hashes of
+/// `checkin-setup`).
+class LocalCheckIn {
+  const LocalCheckIn({
+    required this.clientUuid,
+    required this.siteId,
+    required this.date,
+    required this.direction,
+    required this.at,
+    this.badge,
+    this.workerId,
+    this.latitude,
+    this.longitude,
+    this.accuracyM,
+    this.photoPath,
+    this.kiosk = false,
+    this.server,
+  });
+
+  factory LocalCheckIn.fromJson(Map<String, dynamic> json) => LocalCheckIn(
+    clientUuid: json['client_uuid'] as String,
+    siteId: json['site_id'] as int,
+    date: json['date'] as String,
+    direction: CheckInDirection.fromWire(json['direction'] as String),
+    at: json['at'] as String,
+    badge: json['badge'] as String?,
+    workerId: json['worker_id'] as int?,
+    latitude: (json['latitude'] as num?)?.toDouble(),
+    longitude: (json['longitude'] as num?)?.toDouble(),
+    accuracyM: json['accuracy_m'] as int?,
+    photoPath: json['photo_path'] as String?,
+    kiosk: (json['kiosk'] as bool?) ?? false,
+    server: json['server'] == null
+        ? null
+        : CheckIn.fromJson(json['server'] as Map<String, dynamic>),
+  );
+
+  final String clientUuid;
+  final int siteId;
+
+  /// Work day on the site (company time zone).
+  final String date;
+  final CheckInDirection direction;
+
+  /// ISO timestamp of the scan (phone clock).
+  final String at;
+
+  /// The scanned QR text; null for a manual check-in.
+  final String? badge;
+
+  /// Recognised offline (badge hash) or picked by hand; the server's answer
+  /// wins once there is one ([knownWorkerId]).
+  final int? workerId;
+  final double? latitude;
+  final double? longitude;
+  final int? accuracyM;
+
+  /// The compressed photo, kept until the server has the check-in.
+  final String? photoPath;
+
+  /// Scanned on a kiosk phone.
+  final bool kiosk;
+
+  /// The server's answer (flags, `counted`, its worker id).
+  final CheckIn? server;
+
+  bool get sent => server != null;
+
+  /// The worker as best known: the server's answer, else the offline match.
+  int? get knownWorkerId => server != null ? server!.workerId : workerId;
+
+  DateTime get instant => DateTime.parse(at);
+
+  CheckInCreateRequest toRequest() => CheckInCreateRequest(
+    clientUuid: clientUuid,
+    siteId: siteId,
+    direction: direction,
+    at: at,
+    badge: badge,
+    workerId: badge == null ? workerId : null,
+    latitude: latitude,
+    longitude: longitude,
+    accuracyM: accuracyM,
+  );
+
+  /// The server's answer; the photo file is dropped once it is stored.
+  LocalCheckIn withServer(CheckIn checkIn) => LocalCheckIn(
+    clientUuid: clientUuid,
+    siteId: siteId,
+    date: date,
+    direction: direction,
+    at: at,
+    badge: badge,
+    workerId: workerId,
+    latitude: latitude,
+    longitude: longitude,
+    accuracyM: accuracyM,
+    kiosk: kiosk,
+    server: checkIn,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'client_uuid': clientUuid,
+    'site_id': siteId,
+    'date': date,
+    'direction': direction.wire,
+    'at': at,
+    'badge': badge,
+    'worker_id': workerId,
+    'latitude': latitude,
+    'longitude': longitude,
+    'accuracy_m': accuracyM,
+    'photo_path': photoPath,
+    'kiosk': kiosk,
+    'server': server?.toJson(),
+  };
+}

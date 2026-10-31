@@ -505,6 +505,7 @@ Future<void> showFailedSheet(BuildContext context, WidgetRef ref) {
         String label(OutboxEntry e) {
           final d = shortDate(context, e.date);
           return switch (e.kind) {
+            OutboxKind.checkin => l.kindCheckIn(d),
             OutboxKind.records => l.kindRecords(d),
             OutboxKind.submit => l.kindSubmit(d),
             OutboxKind.correction => l.kindCorrection(d),

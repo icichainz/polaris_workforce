@@ -43,6 +43,12 @@ abstract interface class LocalStore {
   Future<void> upsertPayment(LocalPayment payment);
   Future<List<LocalPayment>> loadPayments(int siteId, String date);
 
+  // Check-ins made on this phone (badge scans, kiosk scans).
+  Future<void> upsertCheckIn(LocalCheckIn checkIn);
+
+  /// Oldest first.
+  Future<List<LocalCheckIn>> loadCheckIns(int siteId, String date);
+
   // Outbox.
   Future<int> insertOutbox(OutboxEntry entry);
   Future<void> updateOutbox(OutboxEntry entry);
@@ -72,4 +78,19 @@ abstract final class StoreKeys {
   /// signed in on the phone must not send them (README "Logout and the
   /// outbox"): they wait until their owner signs in again.
   static const outboxOwner = 'outbox_owner';
+
+  /// `GET /checkin/device/` (JSON): attendance mode and kiosk role.
+  static const checkinDevice = 'checkin_device';
+
+  /// `GET /sites/{id}/checkin-setup/` of a site (JSON `{date, setup}`): the
+  /// badge hashes for offline scans, refreshed with the crew.
+  static String checkinSetup(int siteId) => 'checkin_setup|$siteId';
+
+  /// `GET /sites/{id}/days/{date}/suggestions/` (JSON).
+  static String suggestions(int siteId, String date) =>
+      'suggestions|$siteId|$date';
+
+  /// What the phone pre-filled from suggestions, per worker (JSON): a mark
+  /// that still holds these values was not changed by hand.
+  static String prefilled(int siteId, String date) => 'prefilled|$siteId|$date';
 }

@@ -6,7 +6,7 @@ import 'api_client.dart';
 
 export 'api_client.dart' show ApiClient, ApiResponse;
 
-/// The real API (`docs/api/openapi.yaml`, contract 1.1) over HTTP.
+/// The real API (`docs/api/openapi.yaml`, contract 1.2) over HTTP.
 ///
 /// [baseUrl] ends with `/api/v1/`: `http://10.0.2.2:8000/api/v1/` from the
 /// Android emulator, `http://127.0.0.1:8000/api/v1/` from the iOS simulator,
@@ -36,6 +36,8 @@ Repositories httpRepositories({
     attendance: api,
     payout: api,
     sync: api,
+    checkin: api,
+    files: api,
   );
 }
 
@@ -46,7 +48,9 @@ class HttpApi
         CrewRepository,
         AttendanceRepository,
         PayoutRepository,
-        SyncRepository {
+        SyncRepository,
+        CheckInRepository,
+        FilesRepository {
   HttpApi(this.client);
 
   final ApiClient client;
@@ -186,4 +190,65 @@ class HttpApi
   @override
   Future<SyncResponse> sync({String? since}) async =>
       SyncResponse.fromJson(await _get('sync/', {'since': since}));
+
+  // --------------------------------------------------------------- checkin
+
+  @override
+  Future<CheckInDevice> device() async =>
+      CheckInDevice.fromJson(await _get('checkin/device/'));
+
+  @override
+  Future<CheckInSetup> setup(int siteId) async =>
+      CheckInSetup.fromJson(await _get('sites/$siteId/checkin-setup/'));
+
+  /// Multipart with the photo when it is still on the phone, JSON otherwise
+  /// (the photo is optional: a check-in whose photo is gone is still sent).
+  @override
+  Future<CheckIn> checkIn(
+    CheckInCreateRequest request, {
+    String? photoPath,
+  }) async {
+    ApiResponse? r;
+    if (photoPath != null && proofFileExists(photoPath)) {
+      try {
+        r = await client.multipart(
+          'checkins/',
+          fields: {
+            for (final e in request.toJson().entries) e.key: '${e.value}',
+          },
+          fileField: 'photo',
+          filePath: photoPath,
+        );
+      } on ProofFileMissingException {
+        r = null;
+      }
+    }
+    r ??= await client.send('POST', 'checkins/', body: request.toJson());
+    return CheckIn.fromJson(r.json(), replayed: r.replayed);
+  }
+
+  @override
+  Future<CheckInList> checkins(int siteId, String date) async =>
+      CheckInList.fromJson(await _get('sites/$siteId/checkins/$date/'));
+
+  @override
+  Future<RollCallSuggestions> suggestions(int siteId, String date) async =>
+      RollCallSuggestions.fromJson(
+        await _get('sites/$siteId/days/$date/suggestions/'),
+      );
+
+  // ----------------------------------------------------------------- files
+
+  @override
+  Future<FileDownload> download(String url, {String? etag}) async {
+    final r = await client.download(url, etag: etag);
+    if (r.status == 304) {
+      return FileDownload.notModified(etag: r.headers['etag'] ?? etag);
+    }
+    return FileDownload.ok(
+      r.bytes,
+      etag: r.headers['etag'],
+      contentType: r.headers['content-type'],
+    );
+  }
 }

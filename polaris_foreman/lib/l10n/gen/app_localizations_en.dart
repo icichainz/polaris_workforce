@@ -566,4 +566,147 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mockOfflineOff => 'Mock: online';
+
+  @override
+  String kindCheckIn(String date) {
+    return 'Check-in · $date';
+  }
+
+  @override
+  String get scanBadges => 'Scan badges';
+
+  @override
+  String scanBadgesCount(int count) {
+    return 'Scan badges · $count today';
+  }
+
+  @override
+  String get scanTitle => 'Scan badges';
+
+  @override
+  String scanCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count scans',
+      one: '1 scan',
+      zero: 'No scan',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get directionIn => 'In';
+
+  @override
+  String get directionOut => 'Out';
+
+  @override
+  String get photoWithScan => 'Take a photo with each scan';
+
+  @override
+  String get todayScans => 'Today’s scans';
+
+  @override
+  String get backToRollCall => 'Back to the roll call';
+
+  @override
+  String get simulateScan => 'Simulate a scan (mock)';
+
+  @override
+  String get scanQueued => 'Saved on the phone · not sent yet';
+
+  @override
+  String get scanSent => 'Sent';
+
+  @override
+  String get badgeNotRecognisedTitle => 'Badge not recognised';
+
+  @override
+  String get badgeNotRecognised => 'Badge not recognised — see the foreman';
+
+  @override
+  String get badgeRevoked => 'This badge is no longer valid';
+
+  @override
+  String get notOnCrew => 'Not on today’s crew — tell the foreman';
+
+  @override
+  String get outsideSite => 'Outside the site';
+
+  @override
+  String get alreadyCheckedIn => 'Already checked in';
+
+  @override
+  String get alreadyCheckedOut => 'Already checked out';
+
+  @override
+  String workerNumber(int id) {
+    return 'Worker #$id';
+  }
+
+  @override
+  String gpsReady(int metres) {
+    return 'GPS on · ±$metres m';
+  }
+
+  @override
+  String get gpsReadyNoAccuracy => 'GPS on';
+
+  @override
+  String get gpsLooking => 'Looking for GPS…';
+
+  @override
+  String get gpsDenied => 'No GPS permission: scans are sent without position';
+
+  @override
+  String get gpsOff =>
+      'Location is off on this phone: scans are sent without position';
+
+  @override
+  String get cameraDenied =>
+      'Allow the camera in the phone’s settings to scan badges.';
+
+  @override
+  String get cameraError => 'The camera cannot start.';
+
+  @override
+  String get selfCheckInNote =>
+      'Workers check in themselves: the roll call shows what their scans wrote. Check it and submit.';
+
+  @override
+  String prefilledNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count marks come from badge scans. Check them.',
+      one: '1 mark comes from badge scans. Check it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get fromCheckIn => 'From badge scan';
+
+  @override
+  String get kioskTitle => 'Check-in kiosk';
+
+  @override
+  String get kioskHint => 'Show your badge';
+
+  @override
+  String get switchCamera => 'Switch camera';
+
+  @override
+  String get kioskExit => 'Leave the kiosk';
+
+  @override
+  String get kioskExitText =>
+      'This phone stays a kiosk until the office ends kiosk mode. Sign out?';
+
+  @override
+  String get kioskPinTitle => 'Foreman PIN';
+
+  @override
+  String get kioskPinWrong => 'Wrong PIN';
 }

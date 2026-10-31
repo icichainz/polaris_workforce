@@ -450,6 +450,8 @@ void main() {
           crew: h.repos.crew,
           attendance: h.repos.attendance,
           payout: h.repos.payout,
+          checkin: h.repos.checkin,
+          files: h.repos.files,
           sync: _FixedSync(
             SyncResponse(
               serverTime: resp.serverTime,

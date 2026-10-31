@@ -25,6 +25,10 @@ dependencies:
   timezone: 0.10.1
   http: 1.6.0
   http_parser: 4.1.2
+  crypto: ^3.0.6
+  mobile_scanner: 7.0.1
+  geolocator: 13.0.4
+  device_info_plus: 10.1.2
 
 dev_dependencies:
   flutter_test:
@@ -35,3 +39,23 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  # Inter (body) and Archivo (headings), bundled: no network fonts. Static
+  # Latin instances of the variable WOFF2 files the office dashboard
+  # self-hosts (licence: assets/fonts/OFL.txt).
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-400.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-600.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-700.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-800.ttf
+          weight: 800
+    - family: Archivo
+      fonts:
+        - asset: assets/fonts/Archivo-700.ttf
+          weight: 700
+        - asset: assets/fonts/Archivo-800.ttf
+          weight: 800

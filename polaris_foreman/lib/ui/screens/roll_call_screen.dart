@@ -7,6 +7,7 @@ import '../../data/models/models.dart';
 import '../../state/providers.dart';
 import '../../theme/tokens.dart';
 import '../widgets.dart';
+import '../worker_avatar.dart';
 
 /// Asks why a submitted record changes. Returns the reason, or null.
 Future<String?> askReason(BuildContext context) {
@@ -54,6 +55,20 @@ class _RollCallScreenState extends ConsumerState<RollCallScreen> {
   /// Workers listed under "To mark": unmarked when the tab was opened, so a
   /// row does not jump away the moment it is marked.
   Set<int>? _toMark;
+
+  @override
+  void initState() {
+    super.initState();
+    // Check-ins made since the last visit (kiosk, other phones) pre-fill
+    // the marks the foreman has not set by hand.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final site = ref.read(currentSiteProvider);
+      if (site == null || !mounted) return;
+      await ref
+          .read(checkInServiceProvider)
+          .applySuggestions(site.id, ref.read(todayProvider));
+    });
+  }
 
   void _openToMark(RollCallView v) {
     setState(() {
@@ -187,6 +202,23 @@ class _RollCallScreenState extends ConsumerState<RollCallScreen> {
             bottom: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (v.editable) ...[
+                  OutlinedButton.icon(
+                    key: const Key('scanBadges'),
+                    onPressed: () => context.push('/scan'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(44),
+                      side: const BorderSide(color: PColors.border),
+                    ),
+                    icon: const Icon(Icons.qr_code_scanner),
+                    label: Text(
+                      v.checkIns.isEmpty
+                          ? l.scanBadges
+                          : l.scanBadgesCount(v.checkIns.length),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 ClipRRect(
                   borderRadius: BorderRadius.circular(999),
                   child: LinearProgressIndicator(
@@ -239,6 +271,12 @@ class _RollCallScreenState extends ConsumerState<RollCallScreen> {
               ],
             ),
           ),
+          if (v.editable && v.mode == AttendanceMode.selfCheckIn)
+            _Note(l.selfCheckInNote)
+          else if (v.editable && v.crew.any((w) => v.fromCheckIn(w.id)))
+            _Note(
+              l.prefilledNote(v.crew.where((w) => v.fromCheckIn(w.id)).length),
+            ),
           if (!v.editable)
             Container(
               color: v.status == DayStatus.locked
@@ -278,6 +316,7 @@ class _RollCallScreenState extends ConsumerState<RollCallScreen> {
                         key: ValueKey('worker-${w.id}'),
                         worker: w,
                         record: r,
+                        fromCheckIn: v.fromCheckIn(w.id),
                         enabled: v.editable || v.correctable,
                         onPick: (s) => _pick(v, w, s),
                         onTimeTap: r == null || !(v.editable || v.correctable)
@@ -308,6 +347,33 @@ class _RollCallScreenState extends ConsumerState<RollCallScreen> {
       ),
     );
   }
+}
+
+class _Note extends StatelessWidget {
+  const _Note(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('rollCallNote'),
+    color: PColors.amberTint,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    child: Row(
+      children: [
+        const Icon(Icons.qr_code_2, size: 18, color: PColors.amberText),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: PColors.amberText,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Tabs extends StatelessWidget {
@@ -384,11 +450,15 @@ class WorkerCard extends StatelessWidget {
     required this.enabled,
     required this.onPick,
     this.onTimeTap,
+    this.fromCheckIn = false,
   });
 
   final CrewWorker worker;
   final LocalRecord? record;
   final bool enabled;
+
+  /// The mark was pre-filled from check-ins (not changed by hand).
+  final bool fromCheckIn;
   final ValueChanged<AttendanceStatus> onPick;
 
   /// Called with `true` for the arrival, `false` for the departure.
@@ -415,7 +485,7 @@ class WorkerCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              InitialsAvatar(worker.name),
+              WorkerAvatar(name: worker.name, photoUrl: worker.photoUrl),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -435,6 +505,30 @@ class WorkerCard extends StatelessWidget {
                           fontSize: 13,
                           color: PColors.steel,
                         ),
+                      ),
+                    if (fromCheckIn)
+                      Row(
+                        key: Key('fromCheckIn-${worker.id}'),
+                        children: [
+                          const Icon(
+                            Icons.qr_code_2,
+                            size: 14,
+                            color: PColors.amberText,
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              l.fromCheckIn,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: PColors.amberText,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                   ],
                 ),

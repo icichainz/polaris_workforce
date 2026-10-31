@@ -237,6 +237,96 @@ MockClient mockHttpClient(
     }),
     _Route(
       'GET',
+      '/checkin/device/',
+      'checkin/device/',
+      (a, r, t) async => _Reply(200, (await backend.checkInDevice(t)).toJson()),
+    ),
+    _Route(
+      'GET',
+      '/sites/{site_id}/checkin-setup/',
+      r'sites/(\d+)/checkin-setup/',
+      (a, r, t) async => _Reply(
+        200,
+        (await backend.checkInSetup(t, int.parse(a[0]))).toJson(),
+      ),
+    ),
+    _Route('POST', '/checkins/', 'checkins/', (a, r, t) async {
+      final CheckInCreateRequest req;
+      List<int>? photo;
+      String photoType = 'image/jpeg';
+      if ((r.headers['content-type'] ?? '').startsWith('multipart/')) {
+        final parts = parseMultipart(r);
+        String? field(String n) =>
+            parts.where((p) => p.name == n).firstOrNull?.text;
+        final upload = parts.where((p) => p.name == 'photo').firstOrNull;
+        if (upload != null) {
+          photo = upload.bytes;
+          photoType = upload.contentType ?? photoType;
+        }
+        final lat = field('latitude'), lon = field('longitude');
+        final acc = field('accuracy_m'), worker = field('worker_id');
+        req = CheckInCreateRequest(
+          clientUuid: field('client_uuid')!,
+          siteId: int.parse(field('site_id')!),
+          direction: CheckInDirection.fromWire(field('direction')!),
+          at: field('at')!,
+          badge: field('badge'),
+          workerId: worker == null ? null : int.parse(worker),
+          latitude: lat == null ? null : double.parse(lat),
+          longitude: lon == null ? null : double.parse(lon),
+          accuracyM: acc == null ? null : int.parse(acc),
+        );
+      } else {
+        req = CheckInCreateRequest.fromJson(_json(r));
+      }
+      final c = await backend.checkIn(
+        t,
+        req,
+        photo: photo,
+        photoType: photoType,
+      );
+      return c.replayed
+          ? _Reply(200, c.toJson(), const {'idempotent-replayed': 'true'})
+          : _Reply(201, c.toJson());
+    }),
+    _Route(
+      'GET',
+      '/sites/{site_id}/checkins/{date}/',
+      'sites/(\\d+)/checkins/$_date/',
+      (a, r, t) async => _Reply(
+        200,
+        (await backend.siteCheckIns(t, int.parse(a[0]), a[1])).toJson(),
+      ),
+    ),
+    _Route(
+      'GET',
+      '/sites/{site_id}/days/{date}/suggestions/',
+      'sites/(\\d+)/days/$_date/suggestions/',
+      (a, r, t) async => _Reply(
+        200,
+        (await backend.suggestions(t, int.parse(a[0]), a[1])).toJson(),
+      ),
+    ),
+    for (final (template, pattern) in [
+      ('/files/workers/{worker_id}/photo/', r'files/workers/(\d+)/photo/'),
+      ('/files/checkins/{checkin_id}/photo/', r'files/checkins/(\d+)/photo/'),
+    ])
+      _Route('GET', template, pattern, (a, r, t) async {
+        final f = await backend.download(
+          t,
+          r.url.toString(),
+          r.headers['if-none-match'],
+        );
+        if (f.notModified) {
+          return _Reply(304, null, {'etag': f.etag!});
+        }
+        return _Reply(200, Uint8List.fromList(f.bytes!), {
+          'etag': f.etag!,
+          'content-type': f.contentType ?? 'application/octet-stream',
+        });
+      }),
+    _Route(
+      'GET',
       '/sync/',
       'sync/',
       (a, r, t) async => _Reply(
@@ -307,8 +397,22 @@ MockClient mockHttpClient(
     }
     final body = reply.body;
     onExchange?.call(
-      Exchange(request.method, template, request, reply.status, body),
+      Exchange(
+        request.method,
+        template,
+        request,
+        reply.status,
+        body is Uint8List ? null : body,
+      ),
     );
+    if (body is Uint8List) {
+      return http.Response.bytes(
+        body,
+        reply.status,
+        headers: reply.headers,
+        request: request,
+      );
+    }
     final text = body == null
         ? ''
         : body is String

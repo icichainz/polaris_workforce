@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-// TODO(design): bundle Archivo (headings, 800) and Inter (body) as assets and
-// set them here; the platform font is used until then (no network fonts).
+/// Body text: Inter; headings: Archivo 800. Both are bundled assets
+/// (`assets/fonts/`), never fetched from the network.
+const bodyFont = 'Inter';
+const headingFont = 'Archivo';
 const headingWeight = FontWeight.w800;
 
 ThemeData buildTheme() {
@@ -19,6 +21,7 @@ ThemeData buildTheme() {
   );
   final base = ThemeData(
     useMaterial3: true,
+    fontFamily: bodyFont,
     colorScheme: scheme,
     scaffoldBackgroundColor: PColors.ground,
     dividerColor: PColors.line,
@@ -33,10 +36,12 @@ ThemeData buildTheme() {
   return base.copyWith(
     textTheme: text.copyWith(
       headlineSmall: text.headlineSmall?.copyWith(
+        fontFamily: headingFont,
         fontWeight: headingWeight,
         fontSize: 26,
       ),
       titleLarge: text.titleLarge?.copyWith(
+        fontFamily: headingFont,
         fontWeight: headingWeight,
         fontSize: 20,
       ),

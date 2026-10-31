@@ -568,4 +568,149 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get mockOfflineOff => 'Mock : en ligne';
+
+  @override
+  String kindCheckIn(String date) {
+    return 'Pointage · $date';
+  }
+
+  @override
+  String get scanBadges => 'Scanner les badges';
+
+  @override
+  String scanBadgesCount(int count) {
+    return 'Scanner les badges · $count aujourd’hui';
+  }
+
+  @override
+  String get scanTitle => 'Scanner les badges';
+
+  @override
+  String scanCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count scans',
+      one: '1 scan',
+      zero: 'Aucun scan',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get directionIn => 'Entrée';
+
+  @override
+  String get directionOut => 'Sortie';
+
+  @override
+  String get photoWithScan => 'Prendre une photo à chaque scan';
+
+  @override
+  String get todayScans => 'Scans du jour';
+
+  @override
+  String get backToRollCall => 'Retour à l’appel';
+
+  @override
+  String get simulateScan => 'Simuler un scan (mock)';
+
+  @override
+  String get scanQueued => 'Enregistré sur le téléphone · pas encore envoyé';
+
+  @override
+  String get scanSent => 'Envoyé';
+
+  @override
+  String get badgeNotRecognisedTitle => 'Badge non reconnu';
+
+  @override
+  String get badgeNotRecognised => 'Badge non reconnu — voyez le chef d’équipe';
+
+  @override
+  String get badgeRevoked => 'Ce badge n’est plus valable';
+
+  @override
+  String get notOnCrew =>
+      'Pas dans l’équipe du jour — prévenez le chef d’équipe';
+
+  @override
+  String get outsideSite => 'Hors du chantier';
+
+  @override
+  String get alreadyCheckedIn => 'Entrée déjà pointée';
+
+  @override
+  String get alreadyCheckedOut => 'Sortie déjà pointée';
+
+  @override
+  String workerNumber(int id) {
+    return 'Ouvrier n° $id';
+  }
+
+  @override
+  String gpsReady(int metres) {
+    return 'GPS actif · ±$metres m';
+  }
+
+  @override
+  String get gpsReadyNoAccuracy => 'GPS actif';
+
+  @override
+  String get gpsLooking => 'Recherche du GPS…';
+
+  @override
+  String get gpsDenied =>
+      'Pas d’accès au GPS : les scans partent sans position';
+
+  @override
+  String get gpsOff =>
+      'La localisation est coupée : les scans partent sans position';
+
+  @override
+  String get cameraDenied =>
+      'Autorisez l’appareil photo dans les réglages du téléphone pour scanner les badges.';
+
+  @override
+  String get cameraError => 'L’appareil photo ne démarre pas.';
+
+  @override
+  String get selfCheckInNote =>
+      'Les ouvriers pointent eux-mêmes : l’appel montre ce que leurs scans ont écrit. Vérifiez et envoyez.';
+
+  @override
+  String prefilledNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count marques viennent des scans de badge. Vérifiez-les.',
+      one: '1 marque vient des scans de badge. Vérifiez-la.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get fromCheckIn => 'D’après le badge';
+
+  @override
+  String get kioskTitle => 'Borne de pointage';
+
+  @override
+  String get kioskHint => 'Présentez votre badge';
+
+  @override
+  String get switchCamera => 'Changer de caméra';
+
+  @override
+  String get kioskExit => 'Quitter la borne';
+
+  @override
+  String get kioskExitText =>
+      'Ce téléphone reste une borne tant que le bureau n’arrête pas le mode borne. Se déconnecter ?';
+
+  @override
+  String get kioskPinTitle => 'Code PIN du chef d’équipe';
+
+  @override
+  String get kioskPinWrong => 'Code PIN incorrect';
 }

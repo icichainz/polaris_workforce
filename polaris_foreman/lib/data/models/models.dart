@@ -1,6 +1,7 @@
 export 'api_error.dart';
 export 'attendance.dart';
 export 'auth.dart';
+export 'checkin.dart';
 export 'crew.dart';
 export 'enums.dart';
 export 'money.dart';

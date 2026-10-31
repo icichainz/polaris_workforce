@@ -79,7 +79,8 @@ class ApiClient {
   /// For each request: until the headers arrive, then until the body is read.
   final Duration timeout;
 
-  /// For `POST /payments/` with a proof file (the network may be ~15 KB/s).
+  /// For uploads (`POST /payments/` with a proof file, `POST /checkins/`
+  /// with a photo) and file downloads (the network may be ~15 KB/s).
   final Duration uploadTimeout;
 
   void Function()? onUnauthorized;
@@ -157,10 +158,35 @@ class ApiClient {
     return _run(request, uploadTimeout, notifyUnauthorized: true);
   }
 
+  /// `GET` of a protected file (`photo_url`, `proof_url`): [url] comes from
+  /// a response (absolute; a relative one is resolved against [baseUri]).
+  ///
+  /// The `Authorization: Device <token>` header goes only to the API's own
+  /// origin, never to another host. With [etag], sends `If-None-Match`; a
+  /// `304 Not Modified` is returned as a response (no body), not an error.
+  Future<ApiResponse> download(String url, {String? etag}) async {
+    final target = baseUri.resolve(url);
+    final sameOrigin =
+        target.scheme == baseUri.scheme &&
+        target.host == baseUri.host &&
+        target.port == baseUri.port;
+    final headers = await _headers(auth: sameOrigin);
+    headers['Accept'] = 'image/*, application/pdf, application/json';
+    final request = http.Request('GET', target)..headers.addAll(headers);
+    if (etag != null) request.headers['If-None-Match'] = etag;
+    return _run(
+      request,
+      uploadTimeout,
+      notifyUnauthorized: sameOrigin,
+      notModifiedOk: true,
+    );
+  }
+
   Future<ApiResponse> _run(
     http.BaseRequest request,
     Duration limit, {
     required bool notifyUnauthorized,
+    bool notModifiedOk = false,
   }) async {
     final ApiResponse response;
     try {
@@ -180,6 +206,7 @@ class ApiClient {
       throw NetworkException('ClientException: ${e.message}');
     }
     if (response.status >= 200 && response.status < 300) return response;
+    if (notModifiedOk && response.status == 304) return response;
     final error = errorFrom(response);
     if (error.statusCode == 401 && notifyUnauthorized) {
       onUnauthorized?.call();
@@ -213,8 +240,8 @@ class ApiClient {
     );
   }
 
-  /// Content type of a proof file from its extension (jpg, jpeg, png, webp,
-  /// pdf are what the server accepts).
+  /// Content type of an uploaded file from its extension (jpg, jpeg, png,
+  /// webp, pdf are what the server accepts).
   static MediaType mediaTypeFor(String path) {
     final dot = path.lastIndexOf('.');
     final ext = dot < 0 ? '' : path.substring(dot + 1).toLowerCase();
