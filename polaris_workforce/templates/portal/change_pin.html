@@ -1,0 +1,23 @@
+{% extends "portal/layout.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Change my PIN" %}{% endblock %}
+{% block heading %}{% translate "Change my PIN" %}{% endblock %}
+
+{% block content %}
+{% if done %}
+  {% translate "Your new PIN is saved. Use it next time you sign in." as done_message %}
+  {% include "components/alert.html" with variant="success" message=done_message only %}
+  {% url 'portal:home' as home_url %}{% translate "Back to home" as home_label %}
+  {% include "components/button.html" with label=home_label href=home_url size="phone" full=True only %}
+{% else %}
+  <p class="text-[17px] text-ink-700">{% translate "Choose 4 digits only you know. Not 1111, not 1234." %}</p>
+  <form method="post" action="{% url 'portal:change_pin' %}" class="flex flex-col gap-5 rounded-card border border-line bg-white p-4" novalidate>
+    {% csrf_token %}
+    {% include "components/field.html" with field=form.current_pin size="phone" only %}
+    {% include "components/field.html" with field=form.pin size="phone" only %}
+    {% include "components/field.html" with field=form.pin_confirm size="phone" only %}
+    {% translate "Save my new PIN" as submit_label %}{% include "components/button.html" with label=submit_label variant="primary" size="phone" type="submit" full=True only %}
+  </form>
+{% endif %}
+{% endblock %}

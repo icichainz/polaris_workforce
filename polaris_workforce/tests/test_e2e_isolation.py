@@ -22,6 +22,7 @@ from apps.accounts.models import ForemanDevice
 from apps.attendance.models import AttendanceCorrection, AttendanceDay, AttendanceRecord
 from apps.payroll import services as payroll_services
 from apps.payroll.models import Advance, CashIssue, PayLine, Payment
+from apps.portal.models import WorkerAccess
 from apps.worksites.models import SiteAssignment
 from tests.e2e import Office, Phone, admin_office, hire, lines_by_worker, make_site, new_uuid
 from tests.e2e import record as mark
@@ -40,6 +41,8 @@ SECRET = "Bravo"  # appears in site B's name, its worker's and its manager's nam
 #   "public":   not site data (sign-in, language, password screens)
 #   "debug":    only served with DEBUG on
 #   "platform": platform admins only (companies); checked in test_multi_company.py
+#   "portal":   worker portal pages (phone + PIN session, no office user): only the
+#               signed-in worker's own data; checked in tests/test_portal_isolation.py
 OFFICE = {
     "dashboard:home": "list",
     "dashboard:reports": "list",
@@ -92,6 +95,19 @@ OFFICE = {
     "password_reset_confirm": "public",
     "password_reset_complete": "public",
     "set_language": "public",
+    # Worker portal (Wave 4, WP)
+    "portal:sign_in": "public",
+    "portal:sign_out": "public",
+    "portal:home": "portal",
+    "portal:days": "portal",
+    "portal:pay": "portal",
+    "portal:payslip": "portal",
+    "portal:advances": "portal",
+    "portal:change_pin": "portal",
+    "portal:office_access": "list",
+    "portal:office_worker": "b_get",
+    "portal:office_set_pin": "b_post",
+    "portal:office_revoke": "b_post",
 }
 API = {
     "api:health": "public",
@@ -211,6 +227,7 @@ def _b_state(b):
         ),
         "site": (b.site.name, b.site.pay_frequency, b.site.status),
         "devices": sorted(ForemanDevice.objects.values_list("pk", "revoked_at")),
+        "portal": sorted(WorkerAccess.objects.values_list("worker_id", "is_enabled", "pin_hash")),
     }
 
 
@@ -231,6 +248,7 @@ def _office_b_get_urls(ids):
         "attendance:approvals?day": reverse("attendance:approvals") + f"?day={ids['pending_day']}",
         "core:worker_photo": reverse("core:worker_photo", args=[ids["worker"]]),
         "core:payment_proof": reverse("core:payment_proof", args=[ids["payment"]]),
+        "portal:office_worker": reverse("portal:office_worker", args=[ids["worker"]]),
     }
 
 
@@ -270,6 +288,11 @@ def _office_b_posts(ids):
             reverse("worksites:settings", args=[site]),
             {"pay_frequency": "monthly"},
         ),
+        "portal:office_set_pin": (
+            reverse("portal:office_set_pin", args=[ids["worker"]]),
+            {"pin": "4827", "pin_confirm": "4827"},
+        ),
+        "portal:office_revoke": (reverse("portal:office_revoke", args=[ids["worker"]]), {}),
     }
 
 
@@ -294,6 +317,7 @@ def _list_pages(ids):
         "workers:list": (reverse("workers:list"), {"site": ids["site"]}),
         "workers:create": (reverse("workers:create"), {}),
         "worksites:list": (reverse("worksites:list"), {}),
+        "portal:office_access": (reverse("portal:office_access"), {}),
     }
 
 
@@ -321,7 +345,11 @@ def test_checks_cover_every_office_url(world):
         | set(_list_pages(ids))
         | set(_admin_urls(ids))
     )
-    wanted = {name for name, kind in OFFICE.items() if kind not in ("public", "debug", "platform")}
+    wanted = {
+        name
+        for name, kind in OFFICE.items()
+        if kind not in ("public", "debug", "platform", "portal")
+    }
     assert wanted - covered == set()
 
 

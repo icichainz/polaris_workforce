@@ -1,0 +1,47 @@
+{% extends "portal/layout.html" %}
+{% load i18n polaris %}
+
+{% block title %}{% translate "My days" %}{% endblock %}
+{% block heading %}{% translate "My days" %}{% endblock %}
+
+{% block content %}
+<section aria-labelledby="month-title" class="flex flex-col gap-3 rounded-card border border-line bg-white p-4">
+  <div class="flex items-center justify-between gap-3">
+    <a href="?month={{ prev_month|date:'Y-m' }}" aria-label="{% translate 'Previous month' %}" class="inline-flex size-12 items-center justify-center rounded-control border border-line-strong bg-white text-xl font-semibold text-ink no-underline hover:bg-ground hover:text-ink">‹</a>
+    <h2 id="month-title" class="font-display text-lg font-bold capitalize">{{ month|date:_("F Y") }}</h2>
+    {% if next_month %}<a href="?month={{ next_month|date:'Y-m' }}" aria-label="{% translate 'Next month' %}" class="inline-flex size-12 items-center justify-center rounded-control border border-line-strong bg-white text-xl font-semibold text-ink no-underline hover:bg-ground hover:text-ink">›</a>{% else %}<span aria-hidden="true" class="inline-flex size-12 items-center justify-center rounded-control border border-line bg-ground text-xl font-semibold text-disabled">›</span>{% endif %}
+  </div>
+  <div class="grid grid-cols-7 gap-1.5 text-center text-xs font-semibold text-steel" aria-hidden="true">
+    {% for name in weekday_names %}<span>{{ name }}</span>{% endfor %}
+  </div>
+  {% include "portal/_week.html" with cells=cells only %}
+  <p class="text-[15px] text-ink-700">{% translate "Days worked" %}: <strong class="tabular-nums">{% number units %}</strong></p>
+  {% include "portal/_legend.html" with counts=counts waiting=True only %}
+</section>
+
+<section aria-labelledby="list-title" class="flex flex-col gap-3">
+  <h2 id="list-title" class="font-display text-lg font-bold">{% translate "Day by day" %}</h2>
+  {% if rows %}
+  <ul class="m-0 flex list-none flex-col gap-2 p-0">
+    {% for row in rows %}
+    <li class="flex flex-col gap-2 rounded-card border border-line bg-white p-4">
+      <div class="flex items-center justify-between gap-3">
+        <span class="font-semibold">{{ row.date|date:_("l j F") }}</span>
+        {% include "components/status_badge.html" with status=row.record.status only %}
+      </div>
+      <div class="flex flex-wrap justify-between gap-x-4 gap-y-1 text-[15px] text-ink-700">
+        <span>{{ row.site }}{% if row.record.arrival %} · {{ row.record.arrival|time:"H:i" }}{% if row.record.departure %}–{{ row.record.departure|time:"H:i" }}{% endif %}{% endif %}</span>
+        {% if row.gross is not None %}<span class="font-semibold tabular-nums text-ink">{% money row.gross row.period %}</span>{% endif %}
+      </div>
+      {% if row.waiting or row.record.corrected %}
+      <p class="text-[13px] font-semibold text-amber-text">{% if row.waiting %}{% translate "Waiting for approval" %}{% endif %}{% if row.waiting and row.record.corrected %} · {% endif %}{% if row.record.corrected %}{% translate "Corrected" %}{% endif %}</p>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    {% translate "No days this month" as empty_title %}{% translate "Days appear here once your foreman has sent the roll call." as empty_message %}
+    {% include "components/empty_state.html" with icon="approvals" title=empty_title message=empty_message only %}
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Worker portal access" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% blocktranslate count count=with_access %}{{ count }} worker can sign in{% plural %}{{ count }} workers can sign in{% endblocktranslate %}{% endblock %}
+{% block page_title %}{% translate "Worker portal access" %}{% endblock %}
+{% block page_meta %}{% translate "Workers sign in at /portal/ with their phone number and a PIN to see their own days, pay and advances." %}{% endblock %}
+
+{% block content %}
+<form method="get" class="flex flex-wrap items-end gap-3" role="search">
+  <label class="flex min-w-[240px] grow flex-col gap-1.5 text-[13px] font-semibold">{% translate "Search" %}
+    <input type="search" name="q" value="{{ query }}" placeholder="{% translate 'Name, number or phone' %}" class="h-10 w-full rounded-control border border-line-strong bg-white px-3 text-sm font-normal text-ink placeholder:text-steel">
+  </label>
+  <label class="flex flex-col gap-1.5 text-[13px] font-semibold">{% translate "Show" %}
+    <select name="show" class="h-10 rounded-control border border-line-strong bg-white px-2.5 text-sm font-normal text-ink">
+      <option value="all"{% if show == 'all' %} selected{% endif %}>{% translate "All workers" %}</option>
+      <option value="with"{% if show == 'with' %} selected{% endif %}>{% translate "With access" %}</option>
+      <option value="without"{% if show == 'without' %} selected{% endif %}>{% translate "Without access" %}</option>
+    </select>
+  </label>
+  {% translate "Filter" as filter_label %}{% include "components/button.html" with label=filter_label type="submit" only %}
+</form>
+
+{% if rows %}
+<div class="overflow-x-auto rounded-control border border-line bg-white">
+  <table class="w-full min-w-[680px] border-collapse text-sm">
+    <thead>
+      <tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Phone" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Portal" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Last sign-in" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel"><span class="sr-only">{% translate "Actions" %}</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr class="border-t border-line-soft">
+        <td class="px-4 py-3"><span class="font-semibold">{{ row.worker.full_name }}</span><br><span class="text-xs text-steel">{{ row.worker.number }}{% if row.worker.trade %} · {{ row.worker.trade.name }}{% endif %}</span></td>
+        <td class="px-4 py-3 tabular-nums">{{ row.worker.phone|default:"—" }}</td>
+        <td class="px-4 py-3">{% include "components/status_badge.html" with status=row.status label=row.label only %}</td>
+        <td class="px-4 py-3 tabular-nums">{% if row.access.last_sign_in_at %}{{ row.access.last_sign_in_at|date:_("j M Y") }}{% else %}—{% endif %}</td>
+        <td class="px-4 py-3 text-right">{% url 'portal:office_worker' row.worker.pk as manage_url %}{% translate "Manage" as manage_label %}{% include "components/button.html" with label=manage_label href=manage_url only %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if page.has_other_pages %}
+<nav aria-label="{% translate 'Pages' %}" class="flex items-center justify-between gap-3 text-sm">
+  {% if page.has_previous %}<a href="?q={{ query|urlencode }}&amp;show={{ show|urlencode }}&amp;page={{ page.previous_page_number }}">‹ {% translate "Previous" %}</a>{% else %}<span></span>{% endif %}
+  <span class="text-steel">{% blocktranslate with number=page.number total=page.paginator.num_pages %}Page {{ number }} of {{ total }}{% endblocktranslate %}</span>
+  {% if page.has_next %}<a href="?q={{ query|urlencode }}&amp;show={{ show|urlencode }}&amp;page={{ page.next_page_number }}">{% translate "Next" %} ›</a>{% else %}<span></span>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+  {% translate "No workers" as empty_title %}{% translate "No active worker matches. Site managers see the workers on their own sites." as empty_message %}
+  {% include "components/empty_state.html" with icon="workers" title=empty_title message=empty_message only %}
+{% endif %}
+{% endblock %}

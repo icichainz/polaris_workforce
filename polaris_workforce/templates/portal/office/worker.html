@@ -1,0 +1,49 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Worker portal access" %} · {{ worker.full_name }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'portal:office_access' %}">{% translate "Worker portal access" %}</a> / {{ worker.full_name }}</p>{% endblock %}
+{% block page_subtitle %}{{ worker.number }}{% if worker.trade %} · {{ worker.trade.name }}{% endif %}{% endblock %}
+{% block page_title %}{{ worker.full_name }}{% endblock %}
+{% block page_status %}{% include "components/status_badge.html" with status=status label=status_label size="lg" only %}{% endblock %}
+
+{% block content %}
+{% if error %}{% include "components/alert.html" with variant="danger" message=error only %}{% endif %}
+{% if phone_changed %}{% translate "The phone number on the profile changed. Set a new PIN so the worker signs in with the new number." as changed_message %}{% include "components/alert.html" with variant="warning" message=changed_message only %}{% endif %}
+{% if not phone %}{% translate "This worker has no phone number. Add it on their profile before giving portal access." as no_phone %}{% include "components/alert.html" with variant="warning" message=no_phone only %}
+{% elif phone_taken %}{% translate "Another worker already signs in to the worker portal with this phone number. Each worker needs their own number." as taken %}{% include "components/alert.html" with variant="warning" message=taken only %}{% endif %}
+
+<div class="flex flex-wrap items-start gap-6">
+  <section aria-labelledby="pin-title" class="flex min-w-0 flex-[2_1_420px] flex-col gap-4 rounded-card border border-line bg-white px-5 py-4.5">
+    <h2 id="pin-title" class="font-display text-lg font-bold">{% if access and access.is_enabled %}{% translate "Reset the PIN" %}{% else %}{% translate "Give portal access" %}{% endif %}</h2>
+    <p class="text-sm text-ink-700">{% translate "The worker signs in with the phone number on their profile and this PIN. You see the PIN once: tell it to the worker; they can choose their own afterwards." %}</p>
+    <form method="post" action="{% url 'portal:office_set_pin' worker.pk %}" class="flex flex-col gap-4">
+      {% csrf_token %}
+      {% include "components/field.html" with field=form.pin only %}
+      {% include "components/field.html" with field=form.pin_confirm only %}
+      <div>{% if access and access.is_enabled %}{% translate "Reset the PIN" as submit_label %}{% else %}{% translate "Give access" as submit_label %}{% endif %}{% include "components/button.html" with label=submit_label variant="primary" type="submit" only %}</div>
+    </form>
+  </section>
+
+  <aside class="flex min-w-0 flex-[1_1_280px] flex-col gap-4">
+    <section aria-labelledby="details-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+      <h2 id="details-title" class="font-display text-base font-bold">{% translate "Details" %}</h2>
+      <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Phone on the profile" %}</span><span class="text-right font-semibold tabular-nums">{{ worker.phone|default:"—" }}</span></div>
+      <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Signs in with" %}</span><span class="text-right font-semibold tabular-nums">{% if access and access.is_enabled %}{{ access.phone }}{% else %}—{% endif %}</span></div>
+      <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Last sign-in" %}</span><span class="text-right font-semibold tabular-nums">{% if access.last_sign_in_at %}{{ access.last_sign_in_at|date:_("j M Y") }} {{ access.last_sign_in_at|time:"H:i" }}{% else %}—{% endif %}</span></div>
+      <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Own PIN chosen" %}</span><span class="text-right font-semibold">{% if access.pin_chosen_by_worker %}{% translate "Yes" %}{% else %}{% translate "No" %}{% endif %}</span></div>
+      {% if access.is_locked %}<p class="text-sm font-medium text-absent-fg">{% blocktranslate with time=access.locked_until|time:"H:i" %}Locked after 5 wrong PINs until {{ time }}. Setting a new PIN unlocks it.{% endblocktranslate %}</p>{% endif %}
+    </section>
+    {% if access and access.is_enabled %}
+    <section aria-labelledby="revoke-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+      <h2 id="revoke-title" class="font-display text-base font-bold">{% translate "Turn off access" %}</h2>
+      <p class="text-sm text-ink-700">{% translate "The worker is signed out at once and can no longer sign in." %}</p>
+      <form method="post" action="{% url 'portal:office_revoke' worker.pk %}">
+        {% csrf_token %}
+        {% translate "Turn off access" as revoke_label %}{% include "components/button.html" with label=revoke_label variant="danger" type="submit" only %}
+      </form>
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "portal/layout.html" %}
+{% load i18n polaris %}
+
+{% block title %}{% translate "Home" %}{% endblock %}
+{% block heading %}{% blocktranslate with name=worker.first_name %}Hello, {{ name }}{% endblocktranslate %}{% endblock %}
+
+{% block content %}
+{% if not access.pin_chosen_by_worker %}
+  <div class="flex flex-col gap-3 rounded-card border border-warning-line bg-warning-bg p-4 text-warning-fg">
+    <p class="text-[15px]"><strong class="font-semibold">{% translate "You still use the PIN the office gave you." %}</strong> {% translate "Choose your own PIN so only you can see your pay." %}</p>
+    {% url 'portal:change_pin' as pin_url %}{% translate "Choose my PIN" as pin_label %}{% include "components/button.html" with label=pin_label href=pin_url size="phone" full=True only %}
+  </div>
+{% endif %}
+
+<section aria-labelledby="week-title" class="flex flex-col gap-3 rounded-card border border-line bg-white p-4">
+  <div class="flex items-baseline justify-between gap-3">
+    <h2 id="week-title" class="font-display text-lg font-bold">{% translate "This week" %}</h2>
+    <span class="text-[15px] text-ink-700">{% translate "Days worked" %}: <strong class="tabular-nums">{% number week_units %}</strong></span>
+  </div>
+  {% include "portal/_week.html" with cells=week show_weekday=True only %}
+  {% include "portal/_legend.html" with waiting=True only %}
+  {% url 'portal:days' as days_url %}<a href="{{ days_url }}" class="flex h-12 items-center text-[15px] font-semibold">{% translate "See all my days" %}</a>
+</section>
+
+<section aria-label="{% translate 'Pay' %}" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+  {% translate "Last payment" as paid_label %}
+  {% if last_payment %}
+    {% money last_payment.amount last_payment.pay_line.period as paid_value %}
+    {% blocktranslate with date=last_payment_at|date:_("j M Y") site=last_payment.pay_line.period.site.name asvar paid_caption %}{{ date }} · {{ site }}{% endblocktranslate %}
+    {% url 'portal:pay' as pay_url %}{% translate "See my pay" as pay_link %}
+    {% include "components/stat_tile.html" with label=paid_label value=paid_value caption=paid_caption href=pay_url link_label=pay_link dark=True only %}
+  {% else %}
+    {% translate "No payment yet" as no_paid %}
+    {% include "components/stat_tile.html" with label=paid_label value="—" caption=no_paid dark=True only %}
+  {% endif %}
+
+  {% translate "Waiting to be paid" as to_pay_label %}{% money to_pay as to_pay_value %}
+  {% include "components/stat_tile.html" with label=to_pay_label value=to_pay_value only %}
+
+  {% translate "Advance owed" as owed_label %}{% money advance.owed as owed_value %}
+  {% if advance.owed %}{% money advance.deduction as deduction_value %}{% blocktranslate with amount=deduction_value asvar owed_caption %}{{ amount }} deducted per pay{% endblocktranslate %}{% else %}{% translate "Nothing owed" as owed_caption %}{% endif %}
+  {% url 'portal:advances' as advances_url %}{% translate "See advances" as advances_link %}
+  {% include "components/stat_tile.html" with label=owed_label value=owed_value caption=owed_caption href=advances_url link_label=advances_link only %}
+</section>
+{% endblock %}
