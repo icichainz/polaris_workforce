@@ -16,7 +16,7 @@ from apps.core.dates import company_now, company_tz
 from apps.core.models import CompanySettings
 
 from .forms import ReportFilterForm
-from .reports import build_report, write_csv
+from .reports import XLSX_CONTENT_TYPE, build_report, write_csv, write_xlsx
 from .services import today_overview
 
 REPORT_ROLES = (Role.ADMIN, Role.ACCOUNTANT, Role.SITE_MANAGER)
@@ -76,6 +76,16 @@ def reports_csv(request):
     write_csv(report, buffer)
     response = HttpResponse(buffer.getvalue(), content_type="text/csv; charset=utf-8")
     filename = f"polaris-attendance-{report.start:%Y-%m-%d}-{report.end:%Y-%m-%d}.csv"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@role_required(*REPORT_ROLES)
+def reports_xlsx(request):
+    """The same report as an Excel workbook (one sheet per section)."""
+    _company, _form, report = _report_context(request)
+    response = HttpResponse(write_xlsx(report), content_type=XLSX_CONTENT_TYPE)
+    filename = f"polaris-report-{report.start:%Y-%m-%d}-{report.end:%Y-%m-%d}.xlsx"
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 

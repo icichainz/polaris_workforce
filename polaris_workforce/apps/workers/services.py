@@ -24,7 +24,7 @@ from apps.payroll.models import Advance, PayLine, Payment, PayPeriod
 from apps.worksites import services as site_services
 from apps.worksites.models import Site, SiteAssignment
 
-from .models import PayRate, Worker
+from .models import EXPIRY_WARNING_DAYS, PayRate, Worker, WorkerDocument
 
 NUMBER_PREFIX = "W-"
 NUMBER_WIDTH = 4
@@ -43,6 +43,9 @@ WORKER_FIELDS = (
     "is_active",
     "payment_method",
     "pay_frequency",
+    "emergency_contact_name",
+    "emergency_contact_relationship",
+    "emergency_contact_phone",
 )
 
 
@@ -82,10 +85,12 @@ def create_worker(
     pay_type: str = PayType.DAILY,
     amount: int | None = None,
     effective_from: datetime.date | None = None,
+    reason: str = "",
     **fields,
 ) -> Worker:
     """Create a worker of the current company (or ``fields["company"]``) with the next
-    number, then assign and give a first rate if given."""
+    number, then assign and give a first rate if given. ``reason`` goes on the audit entry
+    (the Excel import names the file)."""
     company = fields.pop("company", None) or current_company()
     for attempt in range(3):
         try:
@@ -98,6 +103,7 @@ def create_worker(
                     action="workers.create",
                     target=worker,
                     after=_worker_snapshot(worker),
+                    reason=reason,
                 )
                 start_date = start_date or dates.company_today()
                 if site is not None:
@@ -407,3 +413,80 @@ def advance_summary(worker: Worker) -> dict:
         owed=Sum("balance"), deduction=Sum("deduction_per_pay")
     )
     return {"owed": totals["owed"] or 0, "deduction": totals["deduction"] or 0}
+
+
+# --- documents --------------------------------------------------------------------------
+
+
+def can_view_documents(user) -> bool:
+    """Contracts and ID scans are for the office: admins, accountants and site managers
+    (on the workers they may see). Foremen don't see them."""
+    return has_role(user, Role.ADMIN, Role.ACCOUNTANT, Role.SITE_MANAGER)
+
+
+def _document_snapshot(document: WorkerDocument) -> dict:
+    return {
+        "type": document.type,
+        "title": document.title,
+        "file": document.file.name,
+        "issued_on": document.issued_on.isoformat() if document.issued_on else None,
+        "expires_on": document.expires_on.isoformat() if document.expires_on else None,
+    }
+
+
+def add_document(worker: Worker, *, actor, file, **fields) -> WorkerDocument:
+    """Store a document for ``worker`` (fields: type, title, issued_on, expires_on)."""
+    document = WorkerDocument(worker=worker, uploaded_by=actor, file=file, **fields)
+    document.full_clean()
+    with transaction.atomic():
+        document.save()
+        AuditLog.record(
+            actor=actor,
+            action="workers.document_add",
+            target=worker,
+            after=_document_snapshot(document),
+        )
+    return document
+
+
+def delete_document(document: WorkerDocument, *, actor) -> None:
+    """Remove the document and, once the transaction commits, its file."""
+    name = document.file.name
+    storage = document.file.storage
+    with transaction.atomic():
+        AuditLog.record(
+            actor=actor,
+            action="workers.document_delete",
+            target=document.worker,
+            before=_document_snapshot(document),
+        )
+        document.delete()
+        if name:
+            transaction.on_commit(lambda: storage.delete(name))
+
+
+def needs_document_attention(today: datetime.date) -> Q:
+    """Workers with a document expired, or expiring within ``EXPIRY_WARNING_DAYS``."""
+    limit = today + datetime.timedelta(days=EXPIRY_WARNING_DAYS)
+    return Q(Exists(WorkerDocument.objects.filter(worker=OuterRef("pk"), expires_on__lte=limit)))
+
+
+def has_expired_document(today: datetime.date) -> Q:
+    return Q(Exists(WorkerDocument.objects.filter(worker=OuterRef("pk"), expires_on__lt=today)))
+
+
+def document_expiry_by_worker(workers, today: datetime.date) -> dict[int, str]:
+    """``{worker_id: "expired" | "expiring"}`` for workers with such a document, in one
+    query; expired wins over expiring."""
+    ids = [getattr(w, "pk", w) for w in workers]
+    limit = today + datetime.timedelta(days=EXPIRY_WARNING_DAYS)
+    found: dict[int, str] = {}
+    rows = WorkerDocument.objects.filter(worker_id__in=ids, expires_on__lte=limit).values_list(
+        "worker_id", "expires_on"
+    )
+    for worker_id, expires_on in rows:
+        if expires_on < today:
+            found[worker_id] = WorkerDocument.Expiry.EXPIRED
+        else:
+            found.setdefault(worker_id, WorkerDocument.Expiry.EXPIRING)
+    return found

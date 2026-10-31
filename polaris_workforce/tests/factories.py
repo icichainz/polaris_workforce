@@ -29,7 +29,7 @@ from apps.payroll.models import (
     Payment,
     PayPeriod,
 )
-from apps.workers.models import PayRate, Trade, Worker
+from apps.workers.models import PayRate, Trade, Worker, WorkerDocument
 from apps.worksites.models import Site, SiteAssignment
 
 User = get_user_model()
@@ -171,6 +171,20 @@ class PayRateFactory(factory.django.DjangoModelFactory):
     pay_type = PayType.DAILY
     amount = fuzzy.FuzzyChoice(DAILY_RATES)
     effective_from = datetime.date(2026, 1, 1)
+
+
+class WorkerDocumentFactory(factory.django.DjangoModelFactory):
+    """A document row; ``file`` is only a stored name (no file is written)."""
+
+    class Meta:
+        model = WorkerDocument
+
+    worker = factory.SubFactory(WorkerFactory)
+    type = WorkerDocument.Type.CONTRACT
+    title = "Employment contract"
+    file = factory.Sequence(lambda n: f"worker-documents/document-{n}.pdf")
+    issued_on = datetime.date(2026, 3, 1)
+    expires_on = None
 
 
 # --- worksites --------------------------------------------------------------------------

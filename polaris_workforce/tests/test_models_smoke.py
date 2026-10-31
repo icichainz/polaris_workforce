@@ -24,6 +24,7 @@ FACTORIES = [
     f.TradeFactory,
     f.WorkerFactory,
     f.PayRateFactory,
+    f.WorkerDocumentFactory,
     f.SiteFactory,
     f.SiteAssignmentFactory,
     f.AttendanceDayFactory,

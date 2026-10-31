@@ -64,6 +64,8 @@ from tests.test_e2e_isolation import (
     _list_pages,
     _office_b_get_urls,
     _office_b_posts,
+    add_document,
+    page_text,
 )
 
 pytestmark = pytest.mark.django_db
@@ -107,6 +109,7 @@ def build_company(label: str, phone: str) -> World:
         trade = TradeFactory(name=f"{label}trade")
         worker = hire(crew, "Zebulon", 6000, last_name=f"{label}worker", trade=trade)
         worker.photo.save("zeb.jpg", ContentFile(JPEG))
+        document = add_document(worker, f"{label} contract")
         admin = AdminUserFactory(last_name=f"{label}admin")
         accountant = UserFactory(role=User.Role.ACCOUNTANT, last_name=f"{label}accountant")
 
@@ -141,6 +144,7 @@ def build_company(label: str, phone: str) -> World:
         "line": PayLine.objects.get(worker=worker, period__end_date=yesterday).pk,
         "payment": Payment.objects.get(pay_line__worker=worker).pk,
         "worker": worker.pk,
+        "document": document.pk,
         "assignment": SiteAssignment.objects.get(worker=worker).pk,
         "manager_b": crew.manager.pk,
         "foreman_b": crew.foreman.pk,
@@ -159,7 +163,7 @@ def worlds(db):
 
 
 def _text(response) -> str:
-    return response.content.decode("utf-8-sig")
+    return page_text(response)
 
 
 # --- office --------------------------------------------------------------------------------
@@ -174,7 +178,12 @@ def test_company_b_admin_sees_company_b(worlds):
     for name, (url, query) in _list_pages(b.ids).items():
         response = office.get(url, query)
         assert response.status_code == 200, name
-        if name not in ("workers:create", "dashboard:home", "payroll:advance_preview"):
+        if name not in (
+            "workers:create",
+            "workers:import",
+            "dashboard:home",
+            "payroll:advance_preview",
+        ):
             assert "Bravo" in _text(response), name
     for name, url in _admin_urls(b.ids).items():
         if name not in ("accounts:user_set_pin", "accounts:device_revoke"):  # POST only

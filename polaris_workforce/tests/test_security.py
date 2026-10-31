@@ -28,7 +28,7 @@ from apps.core.models import AuditLog
 from apps.core.validators import validate_file_size, validate_upload_extension
 from apps.payroll import services as payroll_services
 from apps.payroll.models import Advance, CashIssue, PayLine, Payment, PayPeriod
-from apps.workers.models import Worker
+from apps.workers.models import Worker, WorkerDocument
 from apps.worksites.models import SiteAssignment
 from tests.e2e import Office, Phone, admin_office, hire, make_site, new_uuid
 from tests.factories import CompanySettingsFactory, UserFactory
@@ -75,6 +75,7 @@ GET_ONLY = {
     "dashboard:home",
     "dashboard:reports",
     "dashboard:reports_csv",
+    "dashboard:reports_xlsx",
     "dashboard:components",
     "core:audit_log",
     "core:worker_photo",
@@ -92,6 +93,8 @@ GET_ONLY = {
     "payouts:accounts",
     "workers:list",
     "workers:detail",
+    "workers:import_template",
+    "workers:document_file",
     "worksites:list",
     "worksites:detail",
     "worksites:crew",
@@ -125,9 +128,20 @@ def _state_changing_urls(crew):
     device = ForemanDevice.objects.create(
         user=crew.foreman, device_id="csrf-phone", token_hash="x" * 64
     )
+    document = WorkerDocument.objects.create(
+        worker_id=worker,
+        type=WorkerDocument.Type.OTHER,
+        title="Card",
+        file="worker-documents/x.pdf",
+    )
     return {
         **_payout_state_changing_urls(crew),
         "attendance:decide": reverse("attendance:decide", args=[crew.day.pk]),
+        "attendance:bulk_approve": reverse("attendance:bulk_approve"),
+        "workers:import": reverse("workers:import"),
+        "workers:import_confirm": reverse("workers:import_confirm"),
+        "workers:document_upload": reverse("workers:document_upload", args=[worker]),
+        "workers:document_delete": reverse("workers:document_delete", args=[worker, document.pk]),
         "payroll:cash_issue": reverse("payroll:cash_issue", args=[site, date]),
         "payroll:cash_sheet_lock": reverse("payroll:cash_sheet_lock", args=[site, date]),
         "payroll:cash_sheet_pay": reverse("payroll:cash_sheet_pay", args=[crew.open_line.pk]),
@@ -451,6 +465,7 @@ def test_every_upload_field_has_the_upload_validators():
         Worker._meta.get_field("photo"),
         Payment._meta.get_field("proof_file"),
         Advance._meta.get_field("proof_file"),
+        WorkerDocument._meta.get_field("file"),
     ]
     for field in fields:
         assert validate_upload_extension in field.validators

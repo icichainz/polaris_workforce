@@ -1,0 +1,126 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Import workers" %} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'workers:list' %}">{% translate "Workers" %}</a> / {% translate "Import" %}</nav>{% endblock %}
+{% block page_title %}{% translate "Import workers" %}{% endblock %}
+{% block page_subtitle %}{% translate "From an Excel workbook or a CSV file" %}{% endblock %}
+
+{% block content %}
+{% if summary %}
+<section aria-labelledby="summary-title" class="flex flex-col rounded-card border border-line bg-white">
+  <div class="flex flex-col gap-1 border-b border-line px-5 py-4">
+    <h2 id="summary-title" class="font-display text-lg font-bold">{% blocktranslate count n=summary.workers|length %}{{ n }} worker imported{% plural %}{{ n }} workers imported{% endblocktranslate %}</h2>
+    <p class="text-sm text-ink-700">{% blocktranslate with file=summary.file %}From {{ file }}.{% endblocktranslate %}{% if summary.new_trades %} {% blocktranslate with trades=summary.new_trades|join:", " %}New trades: {{ trades }}.{% endblocktranslate %}{% endif %}</p>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-[480px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Number" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for item in summary.workers %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3 tabular-nums">{{ item.worker.number }}</td>
+          <td class="px-4 py-3 font-semibold"><a href="{% url 'workers:detail' item.worker.pk %}">{{ item.worker.full_name }}</a></td>
+          <td class="px-4 py-3">{{ item.site }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="flex justify-end gap-2.5 border-t border-line px-5 py-4">
+    {% translate "Import another file" as again_label %}{% url "workers:import" as again_url %}{% include "components/button.html" with label=again_label href=again_url variant="ghost" only %}
+    {% translate "See workers" as list_label %}{% url "workers:list" as list_url %}{% include "components/button.html" with label=list_label href=list_url variant="primary" only %}
+  </div>
+</section>
+{% else %}
+<div class="flex flex-wrap items-start gap-5">
+  <section aria-labelledby="template-title" class="flex min-w-0 flex-[1_1_300px] flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+    <h2 id="template-title" class="font-display text-base font-bold">{% translate "1. Fill in the template" %}</h2>
+    <p class="text-sm text-ink-700">{% translate "One row per worker. Your sites and the company's trades are in drop-down lists; a new trade you type is created on import." %}</p>
+    <ul class="m-0 flex list-none flex-col gap-1 p-0 text-[13px] text-ink-700">
+      {% for column in columns %}<li><strong class="font-semibold">{{ column.label }}</strong>{% if column.required %} · {% translate "required" %}{% endif %}</li>{% endfor %}
+    </ul>
+    <div>{% translate "Download the template (.xlsx)" as template_label %}{% url "workers:import_template" as template_url %}{% include "components/button.html" with label=template_label href=template_url only %}</div>
+  </section>
+
+  <section aria-labelledby="upload-title" class="flex min-w-0 flex-[1_1_300px] flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+    <h2 id="upload-title" class="font-display text-base font-bold">{% translate "2. Upload it" %}</h2>
+    <p class="text-sm text-ink-700">{% blocktranslate %}At most {{ max_rows }} workers and {{ max_size_mb }} MB per file. You see every row before anything is saved.{% endblocktranslate %}</p>
+    <form method="post" enctype="multipart/form-data" action="{% url 'workers:import' %}" novalidate class="flex flex-col gap-3">
+      {% csrf_token %}
+      <div class="flex flex-col gap-1.5">
+        <label for="{{ form.file.auto_id }}" class="text-[13px] font-semibold">{{ form.file.label }}</label>
+        <input type="file" name="{{ form.file.html_name }}" id="{{ form.file.auto_id }}" accept=".xlsx,.csv" required{% if form.file.errors %} aria-invalid="true" aria-describedby="{{ form.file.auto_id }}_error"{% else %} aria-describedby="{{ form.file.auto_id }}_helptext"{% endif %} class="w-full text-sm file:mr-2 file:h-10 file:rounded-control file:border file:border-line-strong file:bg-white file:px-3 file:text-[13px] file:font-semibold">
+        {% if form.file.errors %}<p id="{{ form.file.auto_id }}_error" class="text-[13px] font-medium text-absent-fg">{{ form.file.errors|join:" " }}</p>{% else %}<p id="{{ form.file.auto_id }}_helptext" class="text-xs text-steel">{{ form.file.help_text }}</p>{% endif %}
+      </div>
+      <div>{% translate "Check the file" as check_label %}{% include "components/button.html" with label=check_label type="submit" only %}</div>
+    </form>
+  </section>
+</div>
+
+{% if preview %}
+<section aria-labelledby="preview-title" class="flex flex-col rounded-card border border-line bg-white">
+  <div class="flex flex-col gap-2 border-b border-line px-5 py-4">
+    <h2 id="preview-title" class="font-display text-lg font-bold">{% blocktranslate with file=preview.file %}Preview · {{ file }}{% endblocktranslate %}</h2>
+    {% if preview.ok %}
+      {% blocktranslate count n=preview.total asvar ok_title %}{{ n }} worker is ready to import.{% plural %}All {{ n }} workers are ready to import.{% endblocktranslate %}
+      {% translate "Nothing is saved until you confirm." as ok_message %}
+      {% include "components/alert.html" with variant="success" title=ok_title message=ok_message only %}
+    {% else %}
+      {% blocktranslate count n=preview.error_count asvar error_title %}{{ n }} row has errors.{% plural %}{{ n }} rows have errors.{% endblocktranslate %}
+      {% translate "Nothing was saved. Fix the rows marked below in your file and upload it again." as error_message %}
+      {% include "components/alert.html" with variant="danger" title=error_title message=error_message only %}
+    {% endif %}
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-[880px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Row" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Phone" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Trade" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Starting" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Rate" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Check" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for row in preview.rows %}
+        <tr class="border-t border-line-soft align-top{% if row.errors %} bg-absent-bg{% endif %}">
+          <td class="px-4 py-3 tabular-nums text-steel">{{ row.line }}</td>
+          <td class="px-4 py-3 font-semibold">{{ row.name|default:"—" }}</td>
+          <td class="px-4 py-3 whitespace-nowrap tabular-nums">{{ row.phone|default:"—" }}</td>
+          <td class="px-4 py-3">{{ row.trade|default:"—" }}</td>
+          <td class="px-4 py-3">{{ row.site|default:"—" }}</td>
+          <td class="px-4 py-3 whitespace-nowrap">{{ row.start_date|date:_("j M Y")|default:"—" }}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{{ row.rate|default:"—" }}{% if row.pay_type %} <span class="text-xs text-steel">{{ row.pay_type }}</span>{% endif %}</td>
+          <td class="px-4 py-3">
+            {% if row.errors %}
+            <ul class="m-0 flex list-none flex-col gap-1 p-0 text-[13px] font-medium text-danger-text">{% for error in row.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+            {% else %}
+            <span class="text-[13px] font-semibold text-present-fg">{% translate "OK" %}</span>
+            {% endif %}
+            {% if row.notes %}<ul class="m-0 mt-1 flex list-none flex-col gap-1 p-0 text-xs text-steel">{% for note in row.notes %}<li>{{ note }}</li>{% endfor %}</ul>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if preview.ok %}
+  <form method="post" action="{% url 'workers:import_confirm' %}" class="flex flex-wrap items-center justify-end gap-2.5 border-t border-line px-5 py-4">
+    {% csrf_token %}
+    <input type="hidden" name="token" value="{{ preview.token }}">
+    {% translate "Cancel" as cancel_label %}{% url "workers:list" as cancel_url %}{% include "components/button.html" with label=cancel_label href=cancel_url variant="ghost" only %}
+    {% blocktranslate count n=preview.total asvar confirm_label %}Import {{ n }} worker{% plural %}Import {{ n }} workers{% endblocktranslate %}
+    {% include "components/button.html" with label=confirm_label type="submit" variant="primary" only %}
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -10,6 +10,8 @@ object it belongs to, and only by someone who may see that object's site:
   Allowed when the payment's site is visible (``scoped_sites`` / ``can_view_site``).
 - Check-in photo: ``/checkin/photos/<check-in id>/`` and
   ``/api/v1/files/checkins/<check-in id>/photo/`` (rules in ``apps.checkin.files``).
+- Worker document (contract, ID scan, certificate): ``/workers/documents/<id>/file/``
+  (office only). Admins, accountants and site managers who see the worker; never foremen.
 - Any file by stored name: ``/files/media/<name>``, which is what ``FieldFile.url`` gives
   (Django admin links). Admins only (403 for everyone else); a company admin only gets
   files of their own company's workers, payments and advances (404 otherwise).
@@ -35,7 +37,7 @@ from apps.accounts.permissions import Role, company_workers, has_role, is_admin,
 from apps.checkin.models import CheckIn
 from apps.core.tenancy import company_id_of, is_platform_admin
 from apps.payroll.models import Advance, Payment
-from apps.workers.models import Worker
+from apps.workers.models import Worker, WorkerDocument
 from apps.worksites.models import SiteAssignment
 
 CONTENT_TYPES = {
@@ -82,6 +84,21 @@ def payment_proof_or_404(user, payment_id) -> str:
     return payment.proof_file.name
 
 
+def worker_document_or_404(user, document_id) -> str:
+    """The stored name of a worker document, for admins, accountants and site managers who
+    may see the worker (foremen never get one)."""
+    if not has_role(user, Role.ADMIN, Role.ACCOUNTANT, Role.SITE_MANAGER):
+        raise Http404
+    document = (
+        WorkerDocument.objects.filter(pk=document_id, worker__in=visible_workers(user))
+        .only("file")
+        .first()
+    )
+    if document is None or not document.file:
+        raise Http404
+    return document.file.name
+
+
 def media_name_or_404(user, name: str) -> str:
     """Any stored file by name, for admins only (``FieldFile.url`` in Django admin).
 
@@ -109,6 +126,7 @@ def _company_owns_file(company_id, name: str) -> bool:
         ).exists()
         or Advance.objects.filter(worker__company_id=company_id, proof_file=name).exists()
         or CheckIn.objects.filter(site__company_id=company_id, photo=name).exists()
+        or WorkerDocument.objects.filter(worker__company_id=company_id, file=name).exists()
     )
 
 
@@ -130,6 +148,11 @@ def worker_photo_url(worker) -> str | None:
 def payment_proof_url(payment) -> str | None:
     """Office URL of the payment's proof file (``None`` without a file)."""
     return reverse("core:payment_proof", args=[payment.pk]) if payment.proof_file else None
+
+
+def worker_document_url(document) -> str | None:
+    """Office URL of a worker document's file."""
+    return reverse("workers:document_file", args=[document.pk]) if document.file else None
 
 
 def api_worker_photo_url(request, worker) -> str | None:

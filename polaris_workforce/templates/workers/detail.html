@@ -26,6 +26,16 @@
 {% endblock %}
 
 {% block content %}
+{% if expired_count %}
+  {% blocktranslate count n=expired_count asvar expired_title %}{{ n }} document has expired.{% plural %}{{ n }} documents have expired.{% endblocktranslate %}
+  {% translate "Ask the worker for a new one and upload it under Documents." as expired_message %}
+  {% include "components/alert.html" with variant="danger" title=expired_title message=expired_message only %}
+{% endif %}
+{% if expiring_count %}
+  {% blocktranslate count n=expiring_count asvar expiring_title %}{{ n }} document expires within 30 days.{% plural %}{{ n }} documents expire within 30 days.{% endblocktranslate %}
+  {% translate "See Documents below." as expiring_message %}
+  {% include "components/alert.html" with variant="warning" title=expiring_title message=expiring_message only %}
+{% endif %}
 <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="{% translate 'Summary' %}">
   {% if rate %}{% if previous_rate %}{% blocktranslate with date=rate.effective_from|date:_("j M Y") was=previous_rate asvar rate_caption %}Since {{ date }} (was {{ was }}){% endblocktranslate %}{% else %}{% blocktranslate with date=rate.effective_from|date:_("j M Y") asvar rate_caption %}Since {{ date }}{% endblocktranslate %}{% endif %}{% else %}{% translate "No rate set" as rate_caption %}{% endif %}
   {% include "components/stat_tile.html" with label=pay_type|default:_("Rate") value=rate_text caption=rate_caption only %}
@@ -87,6 +97,15 @@
       <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Paid by" %}</span><span class="text-right font-semibold">{{ payment_method }} <span class="font-normal text-steel">({{ payment_method_source }})</span></span></div>
       <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Pay frequency" %}</span><span class="text-right font-semibold">{{ pay_frequency }} <span class="font-normal text-steel">({{ pay_frequency_source }})</span></span></div>
     </section>
+    <section aria-labelledby="emergency-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+      <h2 id="emergency-title" class="font-display text-base font-bold">{% translate "Emergency contact" %}</h2>
+      {% if worker.emergency_contact_name or worker.emergency_contact_phone %}
+      <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Name" %}</span><span class="text-right font-semibold">{{ worker.emergency_contact_name|default:"—" }}{% if worker.emergency_contact_relationship %} <span class="font-normal text-steel">({{ worker.emergency_contact_relationship }})</span>{% endif %}</span></div>
+      <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Phone" %}</span><span class="text-right font-semibold tabular-nums">{% if worker.emergency_contact_phone %}<a href="tel:{{ worker.emergency_contact_phone|cut:' ' }}">{{ worker.emergency_contact_phone }}</a>{% else %}—{% endif %}</span></div>
+      {% else %}
+      <p class="text-sm text-steel">{% translate "No emergency contact yet." %}{% if can_edit %} <a href="{% url 'workers:edit' worker.pk %}#emergency-title">{% translate "Add one" %}</a>{% endif %}</p>
+      {% endif %}
+    </section>
     <section aria-labelledby="rates-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
       <h2 id="rates-title" class="font-display text-base font-bold">{% translate "Rate history" %}</h2>
       {% for h in history %}
@@ -132,4 +151,65 @@
   <p class="px-5 py-6 text-sm text-steel">{% translate "No payments yet." %}</p>
   {% endif %}
 </section>
+
+{% if show_documents %}
+<section id="documents" aria-labelledby="documents-title" class="rounded-card border border-line bg-white" x-data="{ adding: {{ show_document_form|yesno:'true,false' }} }">
+  <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4">
+    <h2 id="documents-title" class="font-display text-lg font-bold">{% translate "Documents" %}</h2>
+    {% if document_form %}<button type="button" @click="adding = !adding" :aria-expanded="adding" aria-controls="document-upload" class="text-sm font-semibold text-blue-700 hover:text-blue-800">{% translate "Add document" %}</button>{% endif %}
+  </div>
+  {% if document_form %}
+  <form id="document-upload" method="post" enctype="multipart/form-data" action="{% url 'workers:document_upload' worker.pk %}" novalidate x-show="adding"{% if not show_document_form %} x-cloak{% endif %} class="grid grid-cols-1 gap-4 border-b border-line bg-subtle px-5 py-4 sm:grid-cols-2">
+    {% csrf_token %}
+    {% if document_form.non_field_errors %}<div class="sm:col-span-2">{% for error in document_form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}</div>{% endif %}
+    {% include "components/field.html" with field=document_form.type %}
+    {% include "components/field.html" with field=document_form.title %}
+    {% include "components/field.html" with field=document_form.issued_on %}
+    {% include "components/field.html" with field=document_form.expires_on %}
+    <div class="flex flex-col gap-1.5 sm:col-span-2">
+      <label for="{{ document_form.file.auto_id }}" class="text-[13px] font-semibold">{{ document_form.file.label }}</label>
+      <input type="file" name="{{ document_form.file.html_name }}" id="{{ document_form.file.auto_id }}" accept="application/pdf,image/jpeg,image/png,image/webp" required aria-describedby="{{ document_form.file.auto_id }}_help" class="w-full text-sm file:mr-2 file:h-10 file:rounded-control file:border file:border-line-strong file:bg-white file:px-3 file:text-[13px] file:font-semibold">
+      {% if document_form.file.errors %}<p class="text-[13px] font-medium text-absent-fg">{{ document_form.file.errors|join:" " }}</p>{% endif %}
+      <p id="{{ document_form.file.auto_id }}_help" class="text-xs text-steel">{{ document_form.file.help_text }}</p>
+    </div>
+    <div class="flex justify-end sm:col-span-2">{% translate "Upload document" as upload_label %}{% include "components/button.html" with label=upload_label type="submit" only %}</div>
+  </form>
+  {% endif %}
+  {% if documents %}
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-[640px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Document" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Type" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Issued" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Expires" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Uploaded" %}</th>
+        {% if document_form %}<th scope="col" class="px-4 py-2.5"><span class="sr-only">{% translate "Actions" %}</span></th>{% endif %}
+      </tr></thead>
+      <tbody>
+        {% for d in documents %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3 font-semibold"><a href="{{ d.url }}">{{ d.document.title }}</a></td>
+          <td class="px-4 py-3">{{ d.document.get_type_display }}</td>
+          <td class="px-4 py-3 whitespace-nowrap">{{ d.document.issued_on|date:_("j M Y")|default:"—" }}</td>
+          <td class="px-4 py-3 whitespace-nowrap">{{ d.document.expires_on|date:_("j M Y")|default:"—" }}
+            {% if d.expiry == "expired" %}<span class="ml-1 inline-flex h-[22px] items-center rounded-full bg-absent-bg px-2 text-xs font-semibold text-absent-fg">{% translate "Expired" %}</span>{% elif d.expiry == "expiring" %}<span class="ml-1 inline-flex h-[22px] items-center rounded-full bg-warning-bg px-2 text-xs font-semibold text-warning-fg">{% translate "Expires soon" %}</span>{% endif %}</td>
+          <td class="px-4 py-3 text-steel">{{ d.document.uploaded_at|date:_("j M Y") }}{% if d.document.uploaded_by %} · {{ d.document.uploaded_by.get_full_name|default:d.document.uploaded_by.username }}{% endif %}</td>
+          {% if document_form %}<td class="px-4 py-3 text-right">
+            <form method="post" action="{% url 'workers:document_delete' worker.pk d.document.pk %}">
+              {% csrf_token %}
+              {% translate "Delete" as delete_label %}{% blocktranslate with title=d.document.title asvar delete_confirm %}Delete “{{ title }}”? The file is removed.{% endblocktranslate %}
+              <button type="submit" onclick="return confirm(this.dataset.confirm)" data-confirm="{{ delete_confirm }}" class="text-sm font-semibold text-absent-fg hover:underline">{{ delete_label }}<span class="sr-only"> · {{ d.document.title }}</span></button>
+            </form>
+          </td>{% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="px-5 py-6 text-sm text-steel">{% translate "No documents yet. Keep the contract, ID scans and certificates here." %}</p>
+  {% endif %}
+</section>
+{% endif %}
 {% endblock %}

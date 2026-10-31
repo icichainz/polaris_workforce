@@ -10,7 +10,7 @@ from apps.core.validators import validate_file_size
 from apps.worksites.models import Site
 
 from .fields import MoneyField
-from .models import Trade, Worker
+from .models import Trade, Worker, WorkerDocument
 
 PHOTO_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
 
@@ -85,8 +85,21 @@ class WorkerForm(forms.ModelForm):
             "is_active",
             "payment_method",
             "pay_frequency",
+            "emergency_contact_name",
+            "emergency_contact_relationship",
+            "emergency_contact_phone",
         ]
-        widgets = {"phone": forms.TextInput(attrs={"type": "tel", "autocomplete": "off"})}
+        widgets = {
+            "phone": forms.TextInput(attrs={"type": "tel", "autocomplete": "off"}),
+            "emergency_contact_phone": forms.TextInput(
+                attrs={"type": "tel", "autocomplete": "off"}
+            ),
+        }
+        labels = {
+            "emergency_contact_name": _("Name"),
+            "emergency_contact_relationship": _("Relationship"),
+            "emergency_contact_phone": _("Phone"),
+        }
 
     def __init__(self, *args, sites, decimals: int, today, **kwargs):
         super().__init__(*args, **kwargs)
@@ -154,8 +167,55 @@ class WorkerFilterForm(forms.Form):
         label=_("Trade"), queryset=Trade.objects.none(), required=False, empty_label=_("All trades")
     )
     status = forms.ChoiceField(label=_("Status"), choices=STATUS_CHOICES, required=False)
+    DOCUMENT_CHOICES = [
+        ("", _("Any documents")),
+        ("attention", _("Expired or expiring")),
+        ("expired", _("Expired")),
+    ]
+    documents = forms.ChoiceField(label=_("Documents"), choices=DOCUMENT_CHOICES, required=False)
 
-    def __init__(self, *args, sites, **kwargs):
+    def __init__(self, *args, sites, show_documents: bool = True, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["site"].queryset = sites
         self.fields["trade"].queryset = Trade.objects.filter(company=current_company())
+        if not show_documents:
+            del self.fields["documents"]
+
+
+class WorkerImportForm(forms.Form):
+    """The Excel / CSV file of the workers import (read by ``workers.importer``)."""
+
+    file = forms.FileField(
+        label=_("File"),
+        validators=[FileExtensionValidator(["xlsx", "csv"])],
+        help_text=_("The filled-in template (.xlsx) or a CSV file with the same columns."),
+        widget=forms.ClearableFileInput(
+            attrs={
+                "accept": ".xlsx,.csv,application/vnd.openxmlformats-officedocument"
+                ".spreadsheetml.sheet,text/csv"
+            }
+        ),
+    )
+
+
+class WorkerDocumentForm(forms.ModelForm):
+    """Upload a contract, an ID scan, a certificate… (PDF, JPG, PNG or WebP, 5 MB)."""
+
+    class Meta:
+        model = WorkerDocument
+        fields = ["type", "title", "file", "issued_on", "expires_on"]
+        widgets = {
+            "issued_on": DateInput(),
+            "expires_on": DateInput(),
+            "file": forms.ClearableFileInput(
+                attrs={"accept": "application/pdf,image/jpeg,image/png,image/webp"}
+            ),
+        }
+        help_texts = {"file": _("PDF, JPG, PNG or WebP, 5 MB at most.")}
+
+    def clean(self):
+        cleaned = super().clean()
+        issued, expires = cleaned.get("issued_on"), cleaned.get("expires_on")
+        if issued and expires and expires < issued:
+            self.add_error("expires_on", _("The expiry date is before the issue date."))
+        return cleaned
