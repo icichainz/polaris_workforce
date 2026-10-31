@@ -356,7 +356,7 @@ void main() {
     expect(find.text('FR'), findsOneWidget);
     await tester.tap(find.byKey(const Key('language')));
     await tester.pumpAndSettle();
-    expect(find.text('Entrez votre code à 4 chiffres'), findsOneWidget);
+    expect(find.text('Saisissez votre code à 4 chiffres'), findsOneWidget);
     expect(find.text('EN'), findsOneWidget);
   });
 

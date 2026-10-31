@@ -19,7 +19,7 @@ from django.utils.translation import gettext as _
 from apps.accounts.permissions import Role, has_role, scoped_sites
 from apps.attendance.models import AttendanceRecord
 from apps.core import dates, files
-from apps.core.choices import LateRule, PayType
+from apps.core.choices import WEEKDAY_ABBRS, LateRule, PayType
 from apps.core.models import CompanySettings
 from apps.core.settings import resolve_setting
 from apps.worksites import services as site_services
@@ -270,7 +270,7 @@ def worker_detail(request, pk):
         "prev_month": _shift_month(first, -1),
         "next_month": _shift_month(first, 1) if _shift_month(first, 1) <= today else None,
         "weeks": _calendar(first, records, today, working_days),
-        "weekday_names": [_("Mon"), _("Tue"), _("Wed"), _("Thu"), _("Fri"), _("Sat"), _("Sun")],
+        "weekday_names": WEEKDAY_ABBRS,
         "units": display.decimal_text(summary["units"]),
         "expected": expected,
         "expected_suffix": f"/ {expected}",

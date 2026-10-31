@@ -7,7 +7,7 @@ from django.db.models import Sum
 from django.utils import formats, timezone
 from django.utils.translation import gettext as _
 
-from apps.core.choices import PayFrequency, PaymentMethod, ProofType
+from apps.core.choices import PayFrequency, PaymentMethod, ProofType, status_letter
 from apps.core.models import CompanySettings
 from apps.core.money import format_money
 
@@ -24,8 +24,6 @@ SUBTLE = "#F8F9FA"
 ADVANCE = "#8A4A06"
 
 LEFT, RIGHT = 48.0, 547.28
-
-STATUS_LETTERS = {"present": "P", "absent": "A", "half_day": "½", "late": "L"}
 
 
 def _status_word(status: str) -> str:
@@ -137,9 +135,7 @@ def render_payslip(line: PayLine, *, printed_at: datetime.datetime | None = None
         overtime = Decimal(day.get("overtime_hours") or "0")
         doc.text(columns[0][0], y + 15, labels.short_date(date), size=9.5)
         status = day.get("status", "")
-        letter_width = doc.text(
-            columns[1][0], y + 15, STATUS_LETTERS.get(status, "–"), size=9.5, bold=True
-        )
+        letter_width = doc.text(columns[1][0], y + 15, status_letter(status), size=9.5, bold=True)
         status_text = _status_word(status)
         if status == "late" and day.get("late_minutes"):
             status_text += " · " + _("%(minutes)s min") % {"minutes": day["late_minutes"]}
@@ -206,7 +202,7 @@ def render_payslip(line: PayLine, *, printed_at: datetime.datetime | None = None
         proof = dict(ProofType.choices).get(payment.proof_type, payment.proof_type)
         paid_at = timezone.localtime(payment.paid_at)
         receipt = _("Paid %(when)s · receipt: %(proof)s") % {
-            "when": formats.date_format(paid_at, "j M Y H:i"),
+            "when": formats.date_format(paid_at, _("j M Y H:i")),
             "proof": proof,
         }
     else:
@@ -241,7 +237,10 @@ def render_payslip(line: PayLine, *, printed_at: datetime.datetime | None = None
     doc.text(
         LEFT,
         footer_y,
-        _("P present · ½ half day · L late · A absent"),
+        " · ".join(
+            f"{status_letter(status)} {_status_word(status).lower()}"
+            for status in ("present", "half_day", "late", "absent")
+        ),
         size=8,
         color=STEEL,
     )
@@ -249,7 +248,7 @@ def render_payslip(line: PayLine, *, printed_at: datetime.datetime | None = None
         RIGHT,
         footer_y,
         _("Printed %(when)s · Polaris Workforce")
-        % {"when": formats.date_format(printed_at, "j M Y H:i")},
+        % {"when": formats.date_format(printed_at, _("j M Y H:i"))},
         size=8,
         color=STEEL,
         align="right",

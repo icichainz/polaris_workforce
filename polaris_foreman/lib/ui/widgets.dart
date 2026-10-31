@@ -22,6 +22,14 @@ String statusWord(AppLocalizations l, AttendanceStatus s) => switch (s) {
   AttendanceStatus.late => l.statusLate,
 };
 
+/// The letter shown next to the status word (P, A, ½, L; R for "retard" in French).
+String statusLetter(AppLocalizations l, AttendanceStatus s) => switch (s) {
+  AttendanceStatus.present => l.statusLetterPresent,
+  AttendanceStatus.absent => l.statusLetterAbsent,
+  AttendanceStatus.halfDay => l.statusLetterHalfDay,
+  AttendanceStatus.late => l.statusLetterLate,
+};
+
 String initials(String name) {
   final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
   return parts.take(2).map((p) => p[0].toUpperCase()).join();
@@ -199,11 +207,12 @@ class StatusButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = StatusColors.of(status);
     final word = statusWord(context.l10n, status);
+    final letter = statusLetter(context.l10n, status);
     return Semantics(
       button: true,
       selected: selected,
       enabled: onTap != null,
-      label: '${status.letter} $word',
+      label: '$letter $word',
       child: Material(
         color: selected ? c.bg : PColors.white,
         shape: RoundedRectangleBorder(
@@ -225,7 +234,7 @@ class StatusButton extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      status.letter,
+                      letter,
                       style: TextStyle(
                         fontSize: 16,
                         height: 1.1,
@@ -273,7 +282,7 @@ class StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        status.letter,
+        statusLetter(context.l10n, status),
         style: TextStyle(
           color: c.fg,
           fontWeight: FontWeight.w800,

@@ -16,6 +16,22 @@
   "@statusHalfDay": {},
   "statusLate": "Late",
   "@statusLate": {},
+  "statusLetterPresent": "P",
+  "@statusLetterPresent": {
+    "description": "Letter shown with the word Present."
+  },
+  "statusLetterAbsent": "A",
+  "@statusLetterAbsent": {
+    "description": "Letter shown with the word Absent."
+  },
+  "statusLetterHalfDay": "½",
+  "@statusLetterHalfDay": {
+    "description": "Letter shown with the words Half day."
+  },
+  "statusLetterLate": "L",
+  "@statusLetterLate": {
+    "description": "Letter shown with the word Late. Follows the translated word (French: R for Retard)."
+  },
   "phoneTitle": "Sign in",
   "@phoneTitle": {},
   "phoneLabel": "Phone number",

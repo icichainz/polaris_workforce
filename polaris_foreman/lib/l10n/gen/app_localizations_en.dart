@@ -33,6 +33,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusLate => 'Late';
 
   @override
+  String get statusLetterPresent => 'P';
+
+  @override
+  String get statusLetterAbsent => 'A';
+
+  @override
+  String get statusLetterHalfDay => '½';
+
+  @override
+  String get statusLetterLate => 'L';
+
+  @override
   String get phoneTitle => 'Sign in';
 
   @override

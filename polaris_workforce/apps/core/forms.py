@@ -10,19 +10,11 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.utils.translation import gettext_lazy as _
 
-from .choices import ProofType
+from .choices import WEEKDAY_ABBRS, ProofType
 from .models import AuditLog, CompanySettings
 from .money import from_minor, to_minor
 
-WEEKDAYS = [
-    (1, _("Mon")),
-    (2, _("Tue")),
-    (3, _("Wed")),
-    (4, _("Thu")),
-    (5, _("Fri")),
-    (6, _("Sat")),
-    (7, _("Sun")),
-]
+WEEKDAYS = list(enumerate(WEEKDAY_ABBRS, start=1))
 
 # Suggestions for the currency input (any ISO 4217 code is accepted).
 CURRENCY_SUGGESTIONS = [

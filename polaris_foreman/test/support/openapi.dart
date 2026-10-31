@@ -84,9 +84,10 @@ class OpenApi {
   ) {
     final r = _response(path, method, status);
     final content = r?['content'] as Map?;
-    if (content == null) return null;
-    return (content['application/json'] as Map)['schema']
-        as Map<String, dynamic>;
+    // Not every body is JSON: file downloads (worker photos, payment proofs) are binary.
+    final json = content?['application/json'] as Map?;
+    if (json == null) return null;
+    return json['schema'] as Map<String, dynamic>;
   }
 
   /// Statuses the contract lists for an operation.

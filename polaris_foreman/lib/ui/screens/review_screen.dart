@@ -241,7 +241,8 @@ class _CountTile extends StatelessWidget {
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                '${status.letter} ${statusWord(context.l10n, status)}',
+                '${statusLetter(context.l10n, status)} '
+                '${statusWord(context.l10n, status)}',
                 style: TextStyle(
                   color: c.fg,
                   fontSize: 12,

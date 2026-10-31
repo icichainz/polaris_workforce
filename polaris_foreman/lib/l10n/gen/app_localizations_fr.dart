@@ -33,6 +33,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String get statusLate => 'Retard';
 
   @override
+  String get statusLetterPresent => 'P';
+
+  @override
+  String get statusLetterAbsent => 'A';
+
+  @override
+  String get statusLetterHalfDay => '½';
+
+  @override
+  String get statusLetterLate => 'R';
+
+  @override
   String get phoneTitle => 'Connexion';
 
   @override
@@ -42,7 +54,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get continueButton => 'Continuer';
 
   @override
-  String get pinPrompt => 'Entrez votre code à 4 chiffres';
+  String get pinPrompt => 'Saisissez votre code à 4 chiffres';
 
   @override
   String get pinEntered => 'Code saisi';
@@ -53,7 +65,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get notYou => 'Ce n’est pas vous ?';
+  String get notYou => 'Ce n’est pas vous ?';
 
   @override
   String foremanAt(String site) {
@@ -106,7 +118,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get sessionExpired =>
-      'Votre session a expiré. Entrez votre code. Le travail non envoyé reste sur ce téléphone.';
+      'Votre session a expiré. Saisissez votre code. Le travail non envoyé reste sur ce téléphone.';
 
   @override
   String get bannerOffline => 'Hors ligne';
@@ -155,7 +167,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String crewCount(int count) {
-    return '$count ouvriers sur votre liste';
+    return '$count ouvriers dans votre équipe';
   }
 
   @override
@@ -172,7 +184,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String sentBack(String note) {
-    return 'Renvoyé : $note';
+    return 'Renvoyé : $note';
   }
 
   @override
@@ -187,13 +199,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get daySubmitted => 'Envoyé';
 
   @override
-  String get dayApproved => 'Approuvé';
+  String get dayApproved => 'Validé';
 
   @override
   String get dayRejected => 'Renvoyé';
 
   @override
-  String get dayLocked => 'Verrouillé';
+  String get dayLocked => 'Clôturé';
 
   @override
   String get dayPaid => 'Payé';
@@ -205,11 +217,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get cashPayout => 'Paie en espèces';
 
   @override
-  String get payoutAfterApproval => 'Après approbation';
+  String get payoutAfterApproval => 'Après validation';
 
   @override
   String get payoutOpensText =>
-      'S’ouvre quand le chef de chantier approuve l’appel du jour.';
+      'S’ouvre quand le conducteur de travaux valide l’appel du jour.';
 
   @override
   String get previewPayout => 'Voir la paie de ce soir';
@@ -297,13 +309,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'Envoyé. Toute modification demande un motif.';
 
   @override
-  String get lockedReadOnly => 'Verrouillé. Plus de modification possible.';
+  String get lockedReadOnly => 'Clôturé. Plus de modification possible.';
 
   @override
   String get everyoneMarked => 'Tout le monde est marqué.';
 
   @override
-  String get reasonTitle => 'Pourquoi ce changement ?';
+  String get reasonTitle => 'Pourquoi ce changement ?';
 
   @override
   String get reasonHint => 'Motif (obligatoire)';
@@ -359,7 +371,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get noteLabel => 'Note pour le chef de chantier';
+  String get noteLabel => 'Note pour le conducteur de travaux';
 
   @override
   String get optional => 'Facultatif';
@@ -383,16 +395,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String submittedWaiting(String manager) {
-    return 'En attente d’envoi (hors ligne) — puis $manager l’approuve. Toute modification demande désormais un motif.';
+    return 'En attente d’envoi (hors ligne) — puis $manager le valide. Toute modification demande désormais un motif.';
   }
 
   @override
   String submittedSent(String manager) {
-    return 'Transmis — $manager l’approuve ensuite. Toute modification demande désormais un motif.';
+    return 'Transmis — $manager le valide ensuite. Toute modification demande désormais un motif.';
   }
 
   @override
-  String get theSiteManager => 'le chef de chantier';
+  String get theSiteManager => 'le conducteur de travaux';
 
   @override
   String get backToToday => 'Retour à aujourd’hui';
@@ -416,7 +428,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String payoutSubtitleApproved(String site, String date, String time) {
-    return '$site · $date · approuvé à $time';
+    return '$site · $date · validé à $time';
   }
 
   @override
@@ -443,7 +455,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get handOver => 'À remettre';
 
   @override
-  String get proofOfReceipt => 'Preuve de réception';
+  String get proofOfReceipt => 'Preuve de remise';
 
   @override
   String get proofPhoto => 'Photo';
@@ -467,7 +479,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String returnCash(String amount) {
-    return 'Rendez $amount au bureau. La feuille se verrouille quand le bureau a compté.';
+    return 'Rendez $amount au bureau. La feuille est clôturée quand le bureau a compté l’argent.';
   }
 
   @override
@@ -484,7 +496,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String previewBanner(String manager) {
-    return 'Aperçu. La paie s’ouvre quand $manager approuve l’appel.';
+    return 'Aperçu. La paie s’ouvre quand $manager valide l’appel.';
   }
 
   @override
@@ -513,7 +525,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get noPayout =>
-      'Pas encore de feuille de paie sur ce téléphone. Connectez-vous au réseau pour la charger.';
+      'Pas encore de feuille de caisse sur ce téléphone. Connectez-vous au réseau pour la charger.';
 
   @override
   String get photoFailed => 'Impossible de prendre la photo.';
@@ -552,8 +564,8 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get mockOfflineOn => 'Mock : hors ligne';
+  String get mockOfflineOn => 'Mock : hors ligne';
 
   @override
-  String get mockOfflineOff => 'Mock : en ligne';
+  String get mockOfflineOff => 'Mock : en ligne';
 }

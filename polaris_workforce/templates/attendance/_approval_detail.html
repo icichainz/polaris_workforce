@@ -1,4 +1,4 @@
-{% load i18n %}{% comment %}
+{% load i18n polaris %}{% comment %}
 Approvals detail panel for one day (included by attendance/approvals.html).
 
 Context
@@ -10,7 +10,7 @@ Context
   <div class="flex flex-col gap-4 border-b border-line p-5">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="flex flex-col gap-1">
-        <h2 id="approval-detail-title" class="font-display text-[22px] font-bold">{{ day.site.name }} · {{ day.date|date:"D j M" }}</h2>
+        <h2 id="approval-detail-title" class="font-display text-[22px] font-bold">{{ day.site.name }} · {{ day.date|date:_("D j M") }}</h2>
         {% if day.submitted_at %}
         <p class="text-sm text-ink-700">{% if detail.sent != detail.synced %}{% blocktranslate with foreman=detail.foreman|default:"—" sent=detail.sent synced=detail.synced %}Submitted by {{ foreman }} at {{ sent }} · synced {{ synced }}{% endblocktranslate %}{% else %}{% blocktranslate with foreman=detail.foreman|default:"—" sent=detail.sent %}Submitted by {{ foreman }} at {{ sent }}{% endblocktranslate %}{% endif %}</p>
         {% endif %}
@@ -44,10 +44,10 @@ Context
 
     <p class="flex flex-wrap gap-x-2.5 gap-y-1 text-[13px] font-semibold tabular-nums">
       <span class="text-ink-700">{% blocktranslate with n=detail.counts.expected %}{{ n }} on the crew{% endblocktranslate %}</span>
-      <span class="text-present-fg">P {{ detail.counts.present }}</span>
-      <span class="text-half-fg">½ {{ detail.counts.half_day }}</span>
-      <span class="text-late-fg">L {{ detail.counts.late }}</span>
-      <span class="text-absent-fg">A {{ detail.counts.absent }}</span>
+      <span class="text-present-fg">{{ "present"|status_letter }} {{ detail.counts.present }}</span>
+      <span class="text-half-fg">{{ "half_day"|status_letter }} {{ detail.counts.half_day }}</span>
+      <span class="text-late-fg">{{ "late"|status_letter }} {{ detail.counts.late }}</span>
+      <span class="text-absent-fg">{{ "absent"|status_letter }} {{ detail.counts.absent }}</span>
       {% if detail.counts.unmarked %}<span class="text-steel">{% blocktranslate with n=detail.counts.unmarked %}{{ n }} not marked{% endblocktranslate %}</span>{% endif %}
     </p>
   </div>

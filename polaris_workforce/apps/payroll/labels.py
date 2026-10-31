@@ -53,15 +53,17 @@ def money(amount: int, currency: str, decimals: int) -> str:
 
 def short_date(value: datetime.date) -> str:
     """ "Fri 30 Oct"."""
-    return formats.date_format(value, "D j M")
+    # Translators: date formats use Django's |date syntax. French writes "N" (the
+    # abbreviated month with its dot, "oct.") where English writes "M" ("Oct").
+    return formats.date_format(value, _("D j M"))
 
 
 def period_label(period: PayPeriod) -> str:
     """ "Fri 30 Oct" for a day, "25 Oct – 31 Oct" for longer periods."""
     if period.start_date == period.end_date:
         return short_date(period.start_date)
-    start = formats.date_format(period.start_date, "j M")
-    end = formats.date_format(period.end_date, "j M Y")
+    start = formats.date_format(period.start_date, _("j M"))
+    end = formats.date_format(period.end_date, _("j M Y"))
     return f"{start} – {end}"
 
 
@@ -76,7 +78,7 @@ def adjustment_label(adjustment) -> str:
     dates = [datetime.date.fromisoformat(d) for d in adjustment.dates or []]
     if not dates:
         dates = [adjustment.source_line.period.end_date]
-    days = ", ".join(formats.date_format(d, "j M") for d in dates)
+    days = ", ".join(formats.date_format(d, _("j M")) for d in dates)
     return _("Correction of %(days)s") % {"days": days}
 
 

@@ -20,7 +20,7 @@
         <tbody>
           {% for row in periods %}
           <tr class="border-t border-line-soft">
-            <td class="px-4 py-3 font-semibold"><a href="{% url 'payroll:cash_sheet' site.pk row.period.end_date %}">{{ row.period.start_date|date:"j M" }}{% if row.period.end_date != row.period.start_date %} – {{ row.period.end_date|date:"j M Y" }}{% else %} {{ row.period.start_date|date:"Y" }}{% endif %}</a></td>
+            <td class="px-4 py-3 font-semibold"><a href="{% url 'payroll:cash_sheet' site.pk row.period.end_date %}">{{ row.period.start_date|date:_("j M") }}{% if row.period.end_date != row.period.start_date %} – {{ row.period.end_date|date:_("j M Y") }}{% else %} {{ row.period.start_date|date:"Y" }}{% endif %}</a></td>
             <td class="px-4 py-3">{% if row.period.status == "open" %}{% include "components/status_badge.html" with status="draft" label=row.period.get_status_display only %}{% elif row.period.status == "ready" or row.period.status == "paying" %}{% include "components/status_badge.html" with status="to_pay" label=row.period.get_status_display only %}{% else %}{% include "components/status_badge.html" with status=row.period.status only %}{% endif %}</td>
             <td class="px-4 py-3 text-right tabular-nums">{{ row.workers }}</td>
             <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ row.net }}</td>
@@ -50,7 +50,7 @@
         <tbody>
           {% for row in issues %}
           <tr class="border-t border-line-soft">
-            <td class="px-4 py-3 font-semibold"><a href="{% url 'payroll:cash_sheet' site.pk row.issue.date %}">{{ row.issue.date|date:"D j M Y" }}</a></td>
+            <td class="px-4 py-3 font-semibold"><a href="{% url 'payroll:cash_sheet' site.pk row.issue.date %}">{{ row.issue.date|date:_("D j M Y") }}</a></td>
             <td class="px-4 py-3">{{ row.issue.received_by|default:"—" }}</td>
             <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ row.amount }}</td>
           </tr>

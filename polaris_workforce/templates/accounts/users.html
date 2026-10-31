@@ -39,7 +39,7 @@
             <td class="px-4 py-3">
               {% if row.uses_pin %}{% if row.user.has_pin %}{% translate "4-digit PIN" %}{% if row.user.is_pin_locked %} <span class="text-xs font-semibold text-absent-fg">· {% translate "Locked" %}</span>{% endif %}{% else %}<span class="text-steel">{% translate "PIN not set" %}</span>{% endif %}{% else %}{% translate "Password" %}{% endif %}
             </td>
-            <td class="px-4 py-3 text-ink-700">{% if row.last_active %}{{ row.last_active|date:"j M Y H:i" }}{% else %}—{% endif %}</td>
+            <td class="px-4 py-3 text-ink-700">{% if row.last_active %}{{ row.last_active|date:_("j M Y H:i") }}{% else %}—{% endif %}</td>
             <td class="px-5 py-3 text-right">
               {% url 'accounts:user_edit' pk=row.user.pk as edit_url %}
               <a href="{{ edit_url }}" class="inline-flex h-8 items-center rounded-md border border-line-strong bg-white px-2.5 text-[13px] font-semibold text-ink no-underline hover:bg-ground hover:text-ink">{% translate "Edit" %}<span class="sr-only"> {{ row.user }}</span></a>

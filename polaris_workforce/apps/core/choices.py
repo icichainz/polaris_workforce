@@ -2,6 +2,7 @@
 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import pgettext_lazy
 
 
 class Language(models.TextChoices):
@@ -52,3 +53,37 @@ class NumberFormat(models.TextChoices):
     SPACE = "space", _("12 500 XOF · 1 234.50 EUR")
     COMMA = "comma", _("12,500 XOF · 1,234.50 EUR")
     DOT = "dot", _("XOF 12.500 · EUR 1.234,50")
+
+
+# Short weekday names, Monday first, for the working-days checkboxes and calendar headers.
+# A context keeps them apart from Django's own "Mon" (the |date "D" abbreviation), which
+# French writes in lowercase ("lun").
+WEEKDAY_ABBRS = [
+    pgettext_lazy("weekday", "Mon"),
+    pgettext_lazy("weekday", "Tue"),
+    pgettext_lazy("weekday", "Wed"),
+    pgettext_lazy("weekday", "Thu"),
+    pgettext_lazy("weekday", "Fri"),
+    pgettext_lazy("weekday", "Sat"),
+    pgettext_lazy("weekday", "Sun"),
+]
+
+
+# The letter shown next to an attendance status word (status is never shown by colour
+# alone). Translatable because the words differ: "late" is "retard" in French, so its
+# letter is R there. Keys are the attendance record statuses; the one-letter model codes
+# (P, A, H, L) are accepted too.
+STATUS_LETTERS = {
+    "present": pgettext_lazy("attendance status letter (Present)", "P"),
+    "absent": pgettext_lazy("attendance status letter (Absent)", "A"),
+    "half_day": pgettext_lazy("attendance status letter (Half day)", "½"),
+    "late": pgettext_lazy("attendance status letter (Late)", "L"),
+}
+_STATUS_CODES = {"P": "present", "A": "absent", "H": "half_day", "L": "late"}
+
+
+def status_letter(status: str) -> str:
+    """The translated letter for an attendance status (or its code); "–" if unknown."""
+    status = _STATUS_CODES.get(status, status)
+    letter = STATUS_LETTERS.get(status)
+    return str(letter) if letter is not None else "–"
