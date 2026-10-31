@@ -35,6 +35,11 @@ MO_FILE = LOCALE_DIR / "django.mo"
 FR = {"accept-language": "fr"}
 
 
+def _pick_language(client, language="fr"):
+    """Signed in, the office follows the switcher cookie (not Accept-Language)."""
+    client.cookies[django_settings.LANGUAGE_COOKIE_NAME] = language
+
+
 # --- the catalogue -------------------------------------------------------------------------
 
 
@@ -206,6 +211,7 @@ SIDEBAR_FR = ["Aujourd’hui", "Validations", "Feuilles de caisse", "Périodes d
 
 def test_every_office_page_renders_in_french(client, scenario):
     client.force_login(scenario["admin"])
+    _pick_language(client)
     pages = _office_pages(scenario)
     assert set(pages) == set(EXPECTED_FR)
     phrases = _english_phrases()
@@ -263,6 +269,7 @@ def test_status_badge_letter_and_word(language, expected):
 def test_site_overview_counts_use_translated_letters(client, scenario, language, expected):
     client.force_login(scenario["admin"])
     url = reverse("worksites:detail", args=[scenario["site"].pk])
+    _pick_language(client, language)
 
     page = client.get(url, headers={"accept-language": language}).content.decode()
 
@@ -271,6 +278,7 @@ def test_site_overview_counts_use_translated_letters(client, scenario, language,
 
 def test_letters_in_french_on_approvals_reports_and_worker_calendar(client, scenario):
     client.force_login(scenario["admin"])
+    _pick_language(client)
 
     approvals = client.get(reverse("attendance:approvals"), headers=FR).content.decode()
     assert '<span aria-hidden="true">R</span><span class="sr-only">Retard</span>' in approvals
@@ -297,6 +305,7 @@ def test_payslip_legend_uses_french_letters(client, scenario):
 
     with translation.override("en"):
         english = _pdf_text(client.get(reverse("payroll:payslip", args=[line.pk])).content)
+    _pick_language(client)
     french = _pdf_text(client.get(reverse("payroll:payslip", args=[line.pk]), headers=FR).content)
 
     assert "P present · ½ half day · L late · A absent".encode("cp1252").decode("latin-1") in (
@@ -330,6 +339,7 @@ def test_dates_use_french_day_and_month_names():
 
 def test_today_page_subtitle_is_a_french_date(client, scenario):
     client.force_login(scenario["admin"])
+    _pick_language(client)
     now = datetime.datetime(2026, 10, 30, 9, 15, tzinfo=datetime.UTC)
 
     with mock.patch("django.utils.timezone.now", return_value=now):
