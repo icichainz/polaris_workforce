@@ -69,6 +69,13 @@ class PayoutNotOpenException implements Exception {
   const PayoutNotOpenException();
 }
 
+/// The proof does not follow `company.payments`: a type the company does
+/// not accept, or no file for a type in `file_required_for`.
+class ProofNotAcceptedException implements Exception {
+  const ProofNotAcceptedException(this.proofType);
+  final ProofType proofType;
+}
+
 class PayoutService {
   PayoutService(
     this.store, {
@@ -91,7 +98,12 @@ class PayoutService {
     required PayoutLine line,
     required ProofType proofType,
     String? proofPath,
+    PaymentRules rules = PaymentRules.standard,
   }) async {
+    if (!rules.accepts(proofType) ||
+        (rules.needsFile(proofType) && proofPath == null)) {
+      throw ProofNotAcceptedException(proofType);
+    }
     final cached = await store.loadPayout(siteId, date);
     if (cached == null || cached.status != PayoutStatus.open) {
       throw const PayoutNotOpenException();

@@ -818,6 +818,12 @@ abstract class AppLocalizations {
   /// **'Thumb mark'**
   String get proofThumb;
 
+  /// Proof button: pay without a photo, signature or thumb mark (only when the company accepts it).
+  ///
+  /// In en, this message translates to:
+  /// **'No proof'**
+  String get proofNone;
+
   /// No description provided for @confirmPaid.
   ///
   /// In en, this message translates to:

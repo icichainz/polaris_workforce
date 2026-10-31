@@ -120,6 +120,7 @@
   "proofPhoto": "Photo",
   "proofSignature": "Signature",
   "proofThumb": "Empreinte",
+  "proofNone": "Sans preuve",
   "confirmPaid": "Confirmer payé · {amount}",
   "everyonePaid": "Tout le monde est payé",
   "returnCash": "Rendez {amount} au bureau. La feuille se verrouille quand le bureau a compté.",

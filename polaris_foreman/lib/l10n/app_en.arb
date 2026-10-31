@@ -447,6 +447,10 @@
   "@proofSignature": {},
   "proofThumb": "Thumb mark",
   "@proofThumb": {},
+  "proofNone": "No proof",
+  "@proofNone": {
+    "description": "Proof button: pay without a photo, signature or thumb mark (only when the company accepts it)."
+  },
   "confirmPaid": "Confirm paid · {amount}",
   "@confirmPaid": {
     "placeholders": {

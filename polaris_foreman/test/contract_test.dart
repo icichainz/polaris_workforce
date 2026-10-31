@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:polaris_foreman/data/models/models.dart';
 import 'package:yaml/yaml.dart';
 
+import 'support/openapi.dart';
+
 final _spec = File('../docs/api/openapi.yaml');
 
 Map<String, dynamic> _plain(Object yaml) =>
@@ -180,8 +182,137 @@ void main() {
       final e = response('/auth/pin/', 'post', '429', 'Throttled');
       roundTrip(e, ApiError.fromJson, (v) => v.toJson());
       expect(ApiException(429, ApiError.fromJson(e)).retryAfterSeconds, 42);
-      final c = response('/payments/', 'post', '409', 'Conflict');
+      final c = response('/payments/', 'post', '409', 'AlreadyPaid');
       roundTrip(c, ApiError.fromJson, (v) => v.toJson());
+      final locked = ApiException(
+        423,
+        ApiError.fromJson(
+          response('/auth/pin/', 'post', '423', 'LockedAfterWrongPINs'),
+        ),
+      );
+      expect(locked.lockedUntil, '2026-10-31T06:57:00Z');
+      final wrong = ApiException(
+        401,
+        ApiError.fromJson(response('/auth/pin/', 'post', '401', 'WrongPIN')),
+      );
+      expect((wrong.attemptsLeft, wrong.lockedUntil), (2, null));
+      final unmarked = ApiException(
+        409,
+        ApiError.fromJson(
+          response(
+            '/sites/{site_id}/days/{date}/submit/',
+            'post',
+            '409',
+            'UnmarkedWorkers',
+          ),
+        ),
+      );
+      expect(unmarked.unmarkedWorkerIds, [58]);
+    });
+
+    test('1.1: list-shaped item errors', () {
+      final e = ApiError.fromJson(
+        response(
+          '/sites/{site_id}/days/{date}/records/',
+          'put',
+          '400',
+          'WorkerNotOnTheCrew',
+        ),
+      );
+      expect(e.itemErrors('records'), [
+        <String, dynamic>{},
+        {
+          'worker_id': [
+            'This worker is not on the crew of this site that day.',
+          ],
+        },
+      ]);
+      const tooMany = ApiError(
+        code: 'validation_error',
+        message: 'Invalid input.',
+        details: {
+          'records': {
+            'non_field_errors': [
+              'Ensure this field has no more than 200 elements.',
+            ],
+          },
+        },
+      );
+      expect(tooMany.itemErrors('records'), isNull);
+    });
+
+    test('1.1: records carry site_id and date; Me carries proof rules', () {
+      final sync = SyncResponse.fromJson(
+        response('/sync/', 'get', '200', 'Changes'),
+      );
+      for (final r in [
+        ...sync.records,
+        ...sync.corrections.map((c) => c.record),
+      ]) {
+        expect((r.siteId, r.date), (3, '2026-10-31'));
+      }
+      final me = Me.fromJson(response('/me/', 'get', '200', 'Foreman'));
+      expect(me.company.payments.acceptedProofs, [
+        ProofType.photo,
+        ProofType.signature,
+        ProofType.thumbMark,
+      ]);
+      expect(me.company.payments.needsFile(ProofType.photo), isTrue);
+      expect(me.company.payments.needsFile(ProofType.signature), isFalse);
+      // A profile cached before 1.1 has no rules: the server defaults apply.
+      final old = Map<String, dynamic>.from(me.toJson());
+      old['company'] = Map<String, dynamic>.from(old['company'] as Map)
+        ..remove('payments');
+      expect(
+        Me.fromJson(old).company.payments.toJson(),
+        PaymentRules.standard.toJson(),
+      );
+    });
+
+    test('every example of every response matches its schema', () {
+      final api = OpenApi.load();
+      var count = 0;
+      for (final path in api.paths.entries) {
+        for (final op in (path.value as Map<String, dynamic>).entries) {
+          final responses = (op.value as Map)['responses'] as Map;
+          for (final status in responses.keys.cast<String>()) {
+            final p = path.key.substring('/api/v1'.length);
+            final schema = api.responseSchema(p, op.key, status);
+            if (schema == null) continue;
+            for (final ex in api.responses(p, op.key, status).entries) {
+              count++;
+              expect(
+                api.check(ex.value, schema),
+                isEmpty,
+                reason: '${op.key} $p $status ${ex.key}',
+              );
+            }
+          }
+        }
+      }
+      expect(count, greaterThan(40));
+      // The checker does catch problems.
+      expect(api.checkSchema({'id': 1}, 'AttendanceRecord'), isNotEmpty);
+      final record = Map<String, dynamic>.from(
+        api.response('/sync/', 'get', '200', 'Changes')['records'][0] as Map,
+      );
+      expect(api.checkSchema(record, 'AttendanceRecord'), isEmpty);
+      expect(
+        api.checkSchema({...record, 'status': 'gone'}, 'AttendanceRecord'),
+        isNotEmpty,
+      );
+      expect(
+        api.checkSchema({...record, 'extra': 1}, 'AttendanceRecord'),
+        isNotEmpty,
+      );
+      expect(
+        api.checkSchema({...record, 'arrival': '7:00'}, 'AttendanceRecord'),
+        isNotEmpty,
+      );
+    });
+
+    test('the contract is version 1.1', () {
+      expect(OpenApi.load().version, startsWith('1.1.'));
     });
   });
 

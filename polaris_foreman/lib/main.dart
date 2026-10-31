@@ -35,16 +35,22 @@ Future<void> main() async {
       await store.setValue(StoreKeys.rememberedSite, MockSeed.site.name);
     }
   }
+  // The HTTP client reads the current language and reports 401s through the
+  // container, which needs the repositories: hence `late`.
+  late final ProviderContainer container;
   final repos = mock != null
       ? mockRepositories(mock, tokens.read)
       : httpRepositories(
           baseUrl: AppConfig.apiBaseUrl,
           token: tokens.read,
-          language: () => language ?? 'en',
+          language: () => container.read(localeProvider).languageCode,
+          // A 401 on any call: back to the PIN screen, outbox kept.
+          onUnauthorized: () =>
+              container.read(sessionProvider.notifier).expired(),
         );
   final session = await loadSession(store, await tokens.read());
 
-  final container = ProviderContainer(
+  container = ProviderContainer(
     overrides: [
       localStoreProvider.overrideWithValue(store),
       tokenStoreProvider.overrideWithValue(tokens),

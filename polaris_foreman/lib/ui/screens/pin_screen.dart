@@ -60,11 +60,14 @@ class _PinScreenState extends ConsumerState<PinScreen> {
       await ref.read(sessionProvider.notifier).signIn(phone, _pin);
     } on ApiException catch (e) {
       String message;
+      // The 5th wrong PIN answers 401 with `attempts_left: 0` and
+      // `locked_until`; later tries answer 423 with `locked_until`. Both lock.
+      final lockedNow = e.statusCode == 423 || e.lockedUntil != null;
       switch (e.statusCode) {
-        case 401:
+        case 401 when !lockedNow:
           final left = e.attemptsLeft;
           message = left == null ? l.wrongPinNoCount : l.wrongPin(left);
-        case 423:
+        case 401 || 423:
           final until = DateTime.tryParse(e.lockedUntil ?? '');
           if (until != null) {
             _lockedUntil = until;

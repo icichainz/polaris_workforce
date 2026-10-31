@@ -57,27 +57,73 @@ class AssignedSite {
   };
 }
 
+/// `company.payments` (contract 1.1): which proofs `POST /payments/` takes.
+class PaymentRules {
+  const PaymentRules({
+    required this.acceptedProofs,
+    required this.fileRequiredFor,
+  });
+
+  factory PaymentRules.fromJson(Map<String, dynamic> json) => PaymentRules(
+    acceptedProofs: _proofs(json['accepted_proofs']),
+    fileRequiredFor: _proofs(json['file_required_for']),
+  );
+
+  static List<ProofType> _proofs(Object? raw) => [
+    for (final v in (raw as List<dynamic>? ?? const []))
+      ProofType.fromWire(v as String),
+  ];
+
+  /// What a 1.0 server did (and the server default): photo, signature or
+  /// thumb mark; a file only for the photo.
+  static const standard = PaymentRules(
+    acceptedProofs: [ProofType.photo, ProofType.signature, ProofType.thumbMark],
+    fileRequiredFor: [ProofType.photo],
+  );
+
+  /// Offer only these on the payout screen. `none` only when listed.
+  final List<ProofType> acceptedProofs;
+
+  /// These need a `proof_file`; for the others a file is optional.
+  final List<ProofType> fileRequiredFor;
+
+  bool accepts(ProofType type) => acceptedProofs.contains(type);
+  bool needsFile(ProofType type) => fileRequiredFor.contains(type);
+
+  Map<String, dynamic> toJson() => {
+    'accepted_proofs': acceptedProofs.map((p) => p.wire).toList(),
+    'file_required_for': fileRequiredFor.map((p) => p.wire).toList(),
+  };
+}
+
 class Company {
   const Company({
     required this.country,
     required this.timeZone,
     required this.currency,
+    this.payments = PaymentRules.standard,
   });
 
   factory Company.fromJson(Map<String, dynamic> json) => Company(
     country: json['country'] as String,
     timeZone: json['time_zone'] as String,
     currency: Currency.fromJson(json['currency'] as Map<String, dynamic>),
+    // A profile cached by an older build (or a 1.0 server) has no rules.
+    payments: json['payments'] == null
+        ? PaymentRules.standard
+        : PaymentRules.fromJson(json['payments'] as Map<String, dynamic>),
   );
 
   final String country;
   final String timeZone;
   final Currency currency;
+  final PaymentRules payments;
 
   Map<String, dynamic> toJson() => {
     'country': country,
     'time_zone': timeZone,
     'currency': currency.toJson(),
+    'payments': payments.toJson(),
   };
 }
 

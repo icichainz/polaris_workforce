@@ -18,13 +18,11 @@ class LocalRecord {
     this.updatedAt,
   });
 
-  factory LocalRecord.fromServer(
-    AttendanceRecord r, {
-    required int siteId,
-    required String date,
-  }) => LocalRecord(
-    siteId: siteId,
-    date: date,
+  /// A record from the server. Every record carries its day's `site_id` and
+  /// `date` (contract 1.1), so it can be stored without its day.
+  factory LocalRecord.fromServer(AttendanceRecord r) => LocalRecord(
+    siteId: r.siteId,
+    date: r.date,
     workerId: r.workerId,
     clientUuid: r.clientUuid,
     serverId: r.id,

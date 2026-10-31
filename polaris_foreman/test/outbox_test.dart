@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:polaris_foreman/data/local/local_store.dart';
 import 'package:polaris_foreman/data/models/models.dart';
 import 'package:polaris_foreman/data/repositories/mock/mock_seed.dart';
+import 'package:polaris_foreman/data/repositories/repositories.dart';
 import 'package:polaris_foreman/services/payout_service.dart';
 import 'package:polaris_foreman/services/roll_call_service.dart';
 import 'package:polaris_foreman/services/sync_service.dart';
@@ -402,6 +403,75 @@ void main() {
     });
   });
 
+  group('contract 1.1', () {
+    test('submit carries submitted_at from the phone clock', () async {
+      final h = await Harness.create();
+      final rc = RollCallService(h.store, clock: h.clock);
+      await rc.mark(
+        siteId: site,
+        date: today,
+        workerId: 44,
+        status: AttendanceStatus.present,
+      );
+      await rc.submit(siteId: site, date: today, crewWorkerIds: [44]);
+      final entry = (await h.store.loadOutbox()).firstWhere(
+        (e) => e.kind == OutboxKind.submit,
+      );
+      expect(entry.payload['submitted_at'], '2026-10-31T07:30:00Z');
+      expect(
+        SubmitDayRequest.fromJson(entry.payload).submittedAt,
+        '2026-10-31T07:30:00Z',
+      );
+    });
+
+    test('pull stores records whose day is not on the phone', () async {
+      final h = await Harness.create();
+      await h.store.setValue(
+        StoreKeys.me,
+        '{"id":7,"name":"Kossi Amegah","role":"foreman","phone":"+22890112233",'
+        '"language":"fr","company":{"country":"TG","time_zone":"Africa/Lome",'
+        '"currency":{"code":"XOF","decimals":0}},"sites":[]}',
+      );
+      // Marked on another phone: the server has the records.
+      await h.backend.putRecords(await h.token(), site, today, const [
+        RecordUpsert(
+          clientUuid: '22222222-2222-4222-8222-222222222222',
+          workerId: 51,
+          status: AttendanceStatus.halfDay,
+        ),
+      ]);
+      // A sync without the day: only its records changed.
+      final resp = await h.backend.sync(await h.token(), null);
+      expect(resp.records, isNotEmpty);
+      final sync = SyncService(
+        store: h.store,
+        repos: Repositories(
+          auth: h.repos.auth,
+          crew: h.repos.crew,
+          attendance: h.repos.attendance,
+          payout: h.repos.payout,
+          sync: _FixedSync(
+            SyncResponse(
+              serverTime: resp.serverTime,
+              since: null,
+              days: const [],
+              records: resp.records,
+              corrections: const [],
+            ),
+          ),
+        ),
+        clock: h.clock,
+      );
+      addTearDown(sync.dispose);
+      await sync.pull();
+      expect(await h.store.loadDay(site, today), isNull);
+      final r = await h.store.loadRecord(site, today, 51);
+      expect(r, isNotNull);
+      expect(r!.status, AttendanceStatus.halfDay);
+      expect(r.serverId, resp.records.single.id);
+    });
+  });
+
   group('roll call rules', () {
     test('submit needs every worker marked', () async {
       final h = await Harness.create();
@@ -457,4 +527,15 @@ void main() {
       },
     );
   });
+}
+
+class _FixedSync implements SyncRepository {
+  _FixedSync(this.response);
+  final SyncResponse response;
+
+  @override
+  Future<bool> health() async => true;
+
+  @override
+  Future<SyncResponse> sync({String? since}) async => response;
 }

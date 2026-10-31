@@ -82,6 +82,11 @@ final currencyProvider = Provider<Currency>(
   (ref) => ref.watch(meProvider)?.company.currency ?? Currency.xof,
 );
 
+/// Proof-of-payment rules (`GET /me/` → `company.payments`).
+final paymentRulesProvider = Provider<PaymentRules>(
+  (ref) => ref.watch(meProvider)?.company.payments ?? PaymentRules.standard,
+);
+
 class SiteController extends Notifier<AssignedSite?> {
   @override
   AssignedSite? build() {

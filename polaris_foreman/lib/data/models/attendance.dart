@@ -71,6 +71,8 @@ class AttendanceRecord {
     required this.id,
     required this.clientUuid,
     required this.dayId,
+    required this.siteId,
+    required this.date,
     required this.workerId,
     required this.status,
     required this.arrival,
@@ -85,6 +87,8 @@ class AttendanceRecord {
         id: json['id'] as int,
         clientUuid: json['client_uuid'] as String,
         dayId: json['day_id'] as int,
+        siteId: json['site_id'] as int,
+        date: json['date'] as String,
         workerId: json['worker_id'] as int,
         status: AttendanceStatus.fromWire(json['status'] as String),
         arrival: json['arrival'] as String?,
@@ -97,6 +101,10 @@ class AttendanceRecord {
   final int id;
   final String clientUuid;
   final int dayId;
+
+  /// The day's site and date (1.1): a record can be stored without its day.
+  final int siteId;
+  final String date;
   final int workerId;
   final AttendanceStatus status;
   final String? arrival;
@@ -117,6 +125,8 @@ class AttendanceRecord {
     id: id,
     clientUuid: clientUuid ?? this.clientUuid,
     dayId: dayId,
+    siteId: siteId,
+    date: date,
     workerId: workerId,
     status: status ?? this.status,
     arrival: arrival != null ? arrival() : this.arrival,
@@ -130,6 +140,8 @@ class AttendanceRecord {
     'id': id,
     'client_uuid': clientUuid,
     'day_id': dayId,
+    'site_id': siteId,
+    'date': date,
     'worker_id': workerId,
     'status': status.wire,
     'arrival': arrival,
@@ -315,20 +327,30 @@ class RecordUpsert {
 }
 
 class SubmitDayRequest {
-  const SubmitDayRequest({required this.clientUuid, this.foremanNote = ''});
+  const SubmitDayRequest({
+    required this.clientUuid,
+    this.foremanNote = '',
+    this.submittedAt,
+  });
 
   factory SubmitDayRequest.fromJson(Map<String, dynamic> json) =>
       SubmitDayRequest(
         clientUuid: json['client_uuid'] as String,
         foremanNote: (json['foreman_note'] as String?) ?? '',
+        submittedAt: json['submitted_at'] as String?,
       );
 
   final String clientUuid;
   final String foremanNote;
 
+  /// Phone clock when the foreman tapped Submit (1.1, optional): the office
+  /// flags a roll call that reached the server an hour or more later.
+  final String? submittedAt;
+
   Map<String, dynamic> toJson() => {
     'client_uuid': clientUuid,
     'foreman_note': foremanNote,
+    if (submittedAt != null) 'submitted_at': submittedAt,
   };
 }
 
@@ -344,9 +366,13 @@ class Correction {
     required this.createdBy,
     required this.createdAt,
     required this.record,
+    this.replayed = false,
   });
 
-  factory Correction.fromJson(Map<String, dynamic> json) => Correction(
+  factory Correction.fromJson(
+    Map<String, dynamic> json, {
+    bool replayed = false,
+  }) => Correction(
     id: json['id'] as int,
     clientUuid: json['client_uuid'] as String,
     recordId: json['record_id'] as int,
@@ -357,6 +383,7 @@ class Correction {
     createdBy: PersonRef.fromJson(json['created_by'] as Map<String, dynamic>),
     createdAt: json['created_at'] as String,
     record: AttendanceRecord.fromJson(json['record'] as Map<String, dynamic>),
+    replayed: replayed,
   );
 
   final int id;
@@ -371,6 +398,12 @@ class Correction {
 
   /// The record after the correction.
   final AttendanceRecord record;
+
+  /// `200` + `Idempotent-Replayed: true`: the server already had this
+  /// `client_uuid` and returned the original correction. Not part of the JSON.
+  final bool replayed;
+
+  Correction asReplayed() => Correction.fromJson(toJson(), replayed: true);
 
   Map<String, dynamic> toJson() => {
     'id': id,

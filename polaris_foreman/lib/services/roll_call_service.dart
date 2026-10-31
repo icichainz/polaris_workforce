@@ -227,12 +227,16 @@ class RollCallService {
               e.date == date,
         )
         .firstOrNull;
+    // When Submit was tapped, by the phone clock (1.1 `submitted_at`): the
+    // write may reach the server hours later.
+    final tappedAt = isoTimestamp(clock.instant());
     // A submit still waiting keeps its client_uuid (only the note changes);
     // a rejected day is submitted again with a new one.
     if (previous != null && previous.state == OutboxState.pending) {
       final payload = SubmitDayRequest(
         clientUuid: previous.clientUuid,
         foremanNote: foremanNote,
+        submittedAt: tappedAt,
       ).toJson();
       await store.updateOutbox(
         previous.copyWith(payload: payload, version: previous.version + 1),
@@ -242,6 +246,7 @@ class RollCallService {
       final fresh = SubmitDayRequest(
         clientUuid: _newUuid(),
         foremanNote: foremanNote,
+        submittedAt: tappedAt,
       );
       await store.insertOutbox(
         OutboxEntry(
@@ -250,7 +255,7 @@ class RollCallService {
           date: date,
           clientUuid: fresh.clientUuid,
           payload: fresh.toJson(),
-          createdAt: isoTimestamp(clock.instant()),
+          createdAt: tappedAt,
         ),
       );
     }
@@ -262,7 +267,7 @@ class RollCallService {
       day.copyWith(
         status: DayStatus.submitted,
         foremanNote: foremanNote,
-        submittedAt: isoTimestamp(clock.instant()),
+        submittedAt: tappedAt,
         submittedBy: foreman,
       ),
     ]);

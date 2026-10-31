@@ -359,4 +359,112 @@ void main() {
     expect(find.text('Entrez votre code à 4 chiffres'), findsOneWidget);
     expect(find.text('EN'), findsOneWidget);
   });
+
+  testWidgets('payout: only the accepted proofs; `none` needs no proof', (
+    tester,
+  ) async {
+    final h = await Harness.create();
+    const rules = PaymentRules(
+      acceptedProofs: [ProofType.signature, ProofType.none],
+      fileRequiredFor: [],
+    );
+    h.backend.paymentRules = rules;
+    final siteId = MockSeed.site2.id;
+    final crew = await seedCrew(h, siteId);
+    final token = await h.token();
+    await h.backend.putRecords(token, siteId, today, [
+      for (final w in crew.workers)
+        RecordUpsert(
+          clientUuid: 'uuid-${w.id}',
+          workerId: w.id,
+          status: AttendanceStatus.present,
+        ),
+    ]);
+    await h.backend.submit(
+      token,
+      siteId,
+      today,
+      const SubmitDayRequest(clientUuid: 'submit-1'),
+    );
+    h.backend.approve(siteId, today);
+    final sheet = await h.backend.payout(token, siteId, today);
+    await h.store.savePayout(sheet);
+    final me = MockSeed.me(language: Language.en);
+    await pumpAt(
+      tester,
+      h,
+      location: '/payout',
+      siteId: siteId,
+      session: SignedIn(
+        Me(
+          id: me.id,
+          name: me.name,
+          role: me.role,
+          phone: me.phone,
+          language: me.language,
+          company: const Company(
+            country: 'TG',
+            timeZone: 'Africa/Lome',
+            currency: Currency.xof,
+            payments: rules,
+          ),
+          sites: me.sites,
+        ),
+      ),
+    );
+    expect(find.byKey(const Key('proof-photo')), findsNothing);
+    expect(find.byKey(const Key('proof-thumb_mark')), findsNothing);
+    expect(find.byKey(const Key('proof-signature')), findsOneWidget);
+    expect(find.text('No proof'), findsOneWidget);
+    // A signature needs no file here (it may be on the paper sheet).
+    expect(enabled(tester, const Key('confirmPaid')), isTrue);
+
+    await tester.tap(find.byKey(const Key('proof-none')));
+    await tester.pumpAndSettle();
+    expect(enabled(tester, const Key('confirmPaid')), isTrue);
+    await tester.tap(find.byKey(const Key('confirmPaid')));
+    await tester.pumpAndSettle();
+    expect(find.text('1/6'), findsOneWidget);
+    final server = await h.backend.payout(token, siteId, today);
+    final paid = server.lines.firstWhere((l) => l.payment != null);
+    expect(paid.payment!.proofType, ProofType.none);
+  });
+
+  testWidgets('PIN: the 5th wrong PIN (401 + locked_until) locks', (
+    tester,
+  ) async {
+    final h = await Harness.create();
+    for (var i = 0; i < 4; i++) {
+      await h.backend
+          .signIn(
+            const PinLoginRequest(
+              phone: MockSeed.foremanPhone,
+              pin: '0000',
+              deviceId: 'd',
+            ),
+          )
+          .then<void>((_) {}, onError: (Object _) {});
+    }
+    await pumpAt(
+      tester,
+      h,
+      location: '/pin',
+      session: const SignedOut(
+        remembered: RememberedUser(
+          phone: MockSeed.foremanPhone,
+          name: 'Kossi Amegah',
+        ),
+      ),
+    );
+    for (final k in ['9', '9', '9', '9']) {
+      await tester.tap(find.byKey(Key('key-$k')));
+      await tester.pump();
+    }
+    await tester.tap(find.byKey(const Key('signIn')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Too many wrong PINs. Try again at 07:45.'),
+      findsOneWidget,
+    );
+  });
 }
