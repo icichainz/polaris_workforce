@@ -1,0 +1,30 @@
+{% extends "worksites/_detail_base.html" %}
+{% load i18n %}
+
+{% block tab_content %}
+<form method="post" novalidate class="flex max-w-[720px] flex-col gap-5 rounded-card border border-line bg-white p-5 sm:p-6">
+  {% csrf_token %}
+  <div class="flex flex-col gap-1">
+    <h2 class="font-display text-lg font-bold">{% translate "Assign workers" %}</h2>
+    <p class="text-sm text-ink-700">{% translate "The workers appear on this site’s roll call from the start date." %}</p>
+  </div>
+  {% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}
+  <div class="max-w-xs">{% include "components/field.html" with field=form.start_date %}</div>
+  <fieldset class="flex flex-col gap-2">
+    <legend class="mb-1 text-[13px] font-semibold">{{ form.workers.label }}</legend>
+    <p class="text-xs text-steel">{{ form.workers.help_text }}</p>
+    {% if form.workers.errors %}<p class="text-[13px] font-medium text-absent-fg">{{ form.workers.errors|join:" " }}</p>{% endif %}
+    <ul class="m-0 grid max-h-[480px] list-none grid-cols-1 gap-1 overflow-y-auto rounded-control border border-line p-2 sm:grid-cols-2">
+      {% for option in form.workers %}
+      <li><label class="flex min-h-10 items-center gap-2 rounded-md px-2 text-sm hover:bg-subtle">{{ option.tag }}<span>{{ option.choice_label }}</span></label></li>
+      {% empty %}
+      <li class="px-2 py-3 text-sm text-steel">{% translate "Every active worker is already on this site." %}</li>
+      {% endfor %}
+    </ul>
+  </fieldset>
+  <div class="flex flex-wrap justify-end gap-2.5 border-t border-line-soft pt-4">
+    {% translate "Cancel" as cancel_label %}{% url "worksites:crew" site.pk as cancel_url %}{% include "components/button.html" with label=cancel_label href=cancel_url variant="ghost" only %}
+    {% translate "Assign to this site" as save_label %}{% include "components/button.html" with label=save_label type="submit" variant="primary" only %}
+  </div>
+</form>
+{% endblock %}

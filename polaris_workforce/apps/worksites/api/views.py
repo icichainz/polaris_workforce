@@ -1,13 +1,19 @@
-"""Crew list. Stub: Wave 2 agent B replaces the body (assignment rules live in services)."""
+"""Crew list for the phone roll call (assignment rules live in ``worksites.services``)."""
 
+from django.utils.translation import gettext
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema
+from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.api.exceptions import NotImplementedYet
+from apps.accounts.permissions import get_site_or_403
 from apps.api.schema import SITE_ID, error_responses
+from apps.core.models import CompanySettings
+from apps.core.settings import resolve_setting
+from apps.workers import services as worker_services
 
-from .serializers import CrewSerializer
+from .. import services
+from .serializers import CrewQuerySerializer, CrewSerializer
 
 TAGS = ["worksites"]
 
@@ -66,4 +72,28 @@ class CrewView(APIView):
         ],
     )
     def get(self, request, site_id):
-        raise NotImplementedYet()
+        site = get_site_or_403(request.user, site_id)
+        query = CrewQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        company = CompanySettings.load()
+        date = query.validated_data.get("date") or services.company_today(company)
+
+        crew = list(services.crew_for(site, date))
+        rates = worker_services.rates_on(crew, date)
+        streaks = worker_services.absent_streaks(crew, date)
+        default_pay_type = resolve_setting("default_pay_type", company=company)
+        workers = [
+            {
+                "id": worker.pk,
+                "number": worker.number,
+                "first_name": worker.first_name,
+                "last_name": worker.last_name,
+                "trade": gettext(worker.trade.name) if worker.trade else None,
+                "photo_url": request.build_absolute_uri(worker.photo.url) if worker.photo else None,
+                "pay_type": rates[worker.pk].pay_type if worker.pk in rates else default_pay_type,
+                "absent_streak": streaks[worker.pk],
+            }
+            for worker in crew
+        ]
+        data = {"site_id": site.pk, "date": date, "count": len(workers), "workers": workers}
+        return Response(CrewSerializer(data).data)

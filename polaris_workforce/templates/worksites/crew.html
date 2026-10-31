@@ -1,0 +1,61 @@
+{% extends "worksites/_detail_base.html" %}
+{% load i18n %}
+
+{% block tab_content %}
+<section aria-labelledby="crew-title" class="rounded-card border border-line bg-white">
+  <div class="flex flex-wrap items-end justify-between gap-3 border-b border-line px-5 py-4">
+    <div class="flex flex-col gap-0.5">
+      <h2 id="crew-title" class="font-display text-lg font-bold">{% blocktranslate with date=date|date:"l j F Y" %}Crew on {{ date }}{% endblocktranslate %}</h2>
+      <span class="text-[13px] text-steel">{% blocktranslate count n=rows|length %}{{ n }} worker expected{% plural %}{{ n }} workers expected{% endblocktranslate %}</span>
+    </div>
+    <form method="get" class="flex items-end gap-2">
+      <label class="flex flex-col gap-1.5 text-[13px] font-semibold">{% translate "Day" %}
+        <input type="date" name="date" value="{{ date|date:'Y-m-d' }}" class="h-10 rounded-control border border-line-strong bg-white px-3 text-sm font-normal">
+      </label>
+      {% translate "Show" as show_label %}{% include "components/button.html" with label=show_label type="submit" only %}
+    </form>
+  </div>
+  {% if rows %}
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-[720px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "On site since" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Status" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Rate" %}</th>
+        {% if can_manage %}<th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel"><span class="sr-only">{% translate "Actions" %}</span></th>{% endif %}
+      </tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3"><span class="flex items-center gap-2.5"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-line text-xs font-bold">{{ row.initials }}</span>
+            <span><a href="{% url 'workers:detail' row.worker.pk %}" class="font-semibold">{{ row.worker.full_name }}</a><br><span class="text-xs text-steel">{{ row.worker.number }}{% if row.worker.trade %} · {{ row.worker.trade.name }}{% endif %}</span></span></span></td>
+          <td class="px-4 py-3 tabular-nums">{{ row.assignment.start_date|date:"j M Y" }}{% if row.assignment.end_date %} → {{ row.assignment.end_date|date:"j M Y" }}{% endif %}</td>
+          <td class="px-4 py-3">{% include "components/status_badge.html" with status=row.status only %}</td>
+          <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ row.rate }}{% if row.unit %} <span class="text-xs font-normal text-steel">/ {{ row.unit }}</span>{% endif %}</td>
+          {% if can_manage %}
+          <td class="px-4 py-3 text-right">
+            {% if row.assignment %}
+            <form method="post" action="{% url 'worksites:end_assignment' site.pk row.assignment.pk %}" class="inline">
+              {% csrf_token %}
+              <input type="hidden" name="end_date" value="{{ date|date:'Y-m-d' }}">
+              {% translate "Remove from crew" as remove_label %}{% translate "Remove this worker from the crew after this day?" as remove_confirm %}
+              <button type="submit" class="inline-flex h-10 items-center rounded-control border border-danger-line bg-white px-3 text-[13px] font-semibold text-absent-fg hover:bg-absent-bg" onclick="return confirm('{{ remove_confirm|escapejs }}')">{{ remove_label }}</button>
+            </form>
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="p-5">
+    {% translate "No workers expected that day" as empty_title %}{% translate "Workers appear here from their assignment start date." as empty_message %}
+    {% if can_manage %}{% translate "Assign workers" as empty_action %}{% url "worksites:assign" site.pk as empty_href %}{% endif %}
+    {% include "components/empty_state.html" with icon="workers" title=empty_title message=empty_message action_label=empty_action action_href=empty_href only %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

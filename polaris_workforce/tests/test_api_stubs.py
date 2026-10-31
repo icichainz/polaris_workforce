@@ -13,8 +13,8 @@ UUID = "6f1c2b9e-1d1a-4c55-9a52-3f0e8a9d7b10"
 PROTECTED = [
     ("post", "api:accounts:auth-logout", {}, None),
     ("get", "api:accounts:me", {}, None),
-    ("get", "api:worksites:crew", {"site_id": 3}, None),
-    # Attendance endpoints are implemented: see tests/test_attendance_api.py.
+    # Crew and attendance endpoints are implemented: see tests/test_sites_crew_api.py
+    # and tests/test_attendance_api.py.
     ("get", "api:payroll:payout", {"site_id": 3, "date": DAY}, None),
     (
         "post",

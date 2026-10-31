@@ -1,0 +1,66 @@
+{% extends "worksites/_detail_base.html" %}
+{% load i18n %}
+
+{% block tab_content %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+  <section aria-labelledby="periods-title" class="min-w-0 rounded-card border border-line bg-white">
+    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4">
+      <h2 id="periods-title" class="font-display text-lg font-bold">{% translate "Pay periods" %}</h2>
+      <a href="{% url 'payroll:periods' %}" class="text-sm font-semibold">{% translate "All pay periods" %}</a>
+    </div>
+    {% if periods %}
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[480px] border-collapse text-sm">
+        <thead><tr class="bg-subtle text-left">
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Period" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Status" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Workers" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Net to pay" %}</th>
+        </tr></thead>
+        <tbody>
+          {% for row in periods %}
+          <tr class="border-t border-line-soft">
+            <td class="px-4 py-3 font-semibold">{{ row.period.start_date|date:"j M" }}{% if row.period.end_date != row.period.start_date %} – {{ row.period.end_date|date:"j M Y" }}{% else %} {{ row.period.start_date|date:"Y" }}{% endif %}</td>
+            <td class="px-4 py-3">{% if row.period.status == "open" %}{% include "components/status_badge.html" with status="draft" label=row.period.get_status_display only %}{% elif row.period.status == "ready" or row.period.status == "paying" %}{% include "components/status_badge.html" with status="to_pay" label=row.period.get_status_display only %}{% else %}{% include "components/status_badge.html" with status=row.period.status only %}{% endif %}</td>
+            <td class="px-4 py-3 text-right tabular-nums">{{ row.workers }}</td>
+            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ row.net }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="p-5">{% translate "No pay periods yet" as empty_title %}{% include "components/empty_state.html" with icon="payroll" title=empty_title only %}</div>
+    {% endif %}
+  </section>
+
+  <section aria-labelledby="cash-title" class="min-w-0 rounded-card border border-line bg-white">
+    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4">
+      <h2 id="cash-title" class="font-display text-lg font-bold">{% translate "Cash handed to the site" %}</h2>
+      <a href="{% url 'payroll:cash_sheets' %}" class="text-sm font-semibold">{% translate "Cash sheets" %}</a>
+    </div>
+    {% if issues %}
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[420px] border-collapse text-sm">
+        <thead><tr class="bg-subtle text-left">
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Date" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Received by" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Amount" %}</th>
+        </tr></thead>
+        <tbody>
+          {% for row in issues %}
+          <tr class="border-t border-line-soft">
+            <td class="px-4 py-3 font-semibold">{{ row.issue.date|date:"D j M Y" }}</td>
+            <td class="px-4 py-3">{{ row.issue.received_by|default:"—" }}</td>
+            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ row.amount }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="p-5">{% translate "No cash handed out yet" as empty_title %}{% include "components/empty_state.html" with icon="cash" title=empty_title only %}</div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

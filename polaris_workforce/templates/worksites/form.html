@@ -1,0 +1,45 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% if site %}{% translate "Edit site" %}{% else %}{% translate "New site" %}{% endif %} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'worksites:list' %}">{% translate "Sites" %}</a> / {% if site %}<a href="{% url 'worksites:detail' site.pk %}">{{ site.name }}</a> / {% translate "Edit" %}{% else %}{% translate "New site" %}{% endif %}</nav>{% endblock %}
+{% block page_title %}{% if site %}{% translate "Edit site" %}{% else %}{% translate "Add a site" %}{% endif %}{% endblock %}
+
+{% block content %}
+<form method="post" novalidate class="flex max-w-[860px] flex-col gap-5">
+  {% csrf_token %}
+  {% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-5 sm:p-6" aria-labelledby="site-identity">
+    <h2 id="site-identity" class="font-display text-lg font-bold">{% translate "Site" %}</h2>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {% include "components/field.html" with field=form.name %}
+      {% include "components/field.html" with field=form.address %}
+      {% include "components/field.html" with field=form.status %}
+      {% include "components/field.html" with field=form.started_on %}
+      {% include "components/money_field.html" with field=form.labour_budget currency=company_currency|default:"" %}
+    </div>
+  </section>
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-5 sm:p-6" aria-labelledby="site-people">
+    <h2 id="site-people" class="font-display text-lg font-bold">{% translate "People" %}</h2>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {% include "components/field.html" with field=form.manager %}
+      <fieldset class="flex flex-col gap-1.5">
+        <legend class="text-[13px] font-semibold">{{ form.foremen.label }}</legend>
+        <ul class="m-0 flex max-h-60 list-none flex-col gap-1 overflow-y-auto rounded-control border border-line p-2">
+          {% for option in form.foremen %}
+          <li><label class="flex min-h-10 items-center gap-2 rounded-md px-2 text-sm hover:bg-subtle">{{ option.tag }}<span>{{ option.choice_label }}</span></label></li>
+          {% empty %}
+          <li class="px-2 py-3 text-sm text-steel">{% translate "No foreman accounts yet. Add them on the Users screen." %}</li>
+          {% endfor %}
+        </ul>
+        {% if form.foremen.errors %}<p class="text-[13px] font-medium text-absent-fg">{{ form.foremen.errors|join:" " }}</p>{% endif %}
+      </fieldset>
+    </div>
+  </section>
+  <p class="text-sm text-ink-700">{% translate "Pay frequency, payment method and hours come from the company settings. Override them on the site’s Settings tab." %}</p>
+  <div class="flex flex-wrap justify-end gap-2.5">
+    {% translate "Cancel" as cancel_label %}{% if site %}{% url "worksites:detail" site.pk as cancel_url %}{% else %}{% url "worksites:list" as cancel_url %}{% endif %}{% include "components/button.html" with label=cancel_label href=cancel_url variant="ghost" only %}
+    {% translate "Save site" as save_label %}{% include "components/button.html" with label=save_label type="submit" variant="primary" only %}
+  </div>
+</form>
+{% endblock %}

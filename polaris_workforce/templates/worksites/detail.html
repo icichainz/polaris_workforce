@@ -1,0 +1,85 @@
+{% extends "worksites/_detail_base.html" %}
+{% load i18n %}
+
+{% block tab_content %}
+<section aria-labelledby="week-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4">
+  <h2 id="week-title" class="font-display text-base font-bold">{% translate "This week" %}</h2>
+  <ol class="m-0 grid list-none grid-cols-2 gap-2.5 p-0 sm:grid-cols-3 lg:grid-cols-6">
+    {% for d in week %}
+    <li class="flex flex-col gap-1.5 rounded-control border px-3 py-2.5 {% if d.status == 'submitted' %}border-line bg-amber-tint{% elif d.status == 'upcoming' %}border-line bg-subtle{% else %}border-line bg-white{% endif %}{% if d.is_today %} ring-2 ring-ink{% endif %}">
+      <span class="text-[13px] font-semibold">{{ d.date|date:"D j" }}{% if d.is_today %} · {% translate "today" %}{% endif %}</span>
+      <span class="font-display text-xl font-bold tabular-nums">{% if d.present is None %}—{% else %}{{ d.present }} / {{ d.crew }}{% endif %}</span>
+      <span>{% if d.status == "upcoming" %}{% translate "Upcoming" as up_label %}{% include "components/status_badge.html" with status="draft" label=up_label only %}{% elif d.status == "not_started" %}{% translate "Not started" as ns_label %}{% include "components/status_badge.html" with status="draft" label=ns_label only %}{% else %}{% include "components/status_badge.html" with status=d.status only %}{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+
+<div class="flex flex-wrap items-start gap-6">
+  <section aria-labelledby="crew-title" class="min-w-0 flex-[2_1_560px] rounded-card border border-line bg-white">
+    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4">
+      <div class="flex flex-col gap-0.5">
+        <h2 id="crew-title" class="font-display text-lg font-bold">{% translate "Crew today" %}</h2>
+        <span class="text-[13px] text-steel">{% if day and day.submitted_at %}{% blocktranslate with name=day.foreman|default:"—" time=submitted_at %}Submitted by {{ name }} at {{ time }}{% endblocktranslate %}{% elif day.status == "draft" %}{% translate "Roll call in progress" %}{% elif day %}{{ day.get_status_display }}{% else %}{% translate "No roll call yet today" %}{% endif %}</span>
+      </div>
+      <span class="text-[13px] font-semibold tabular-nums text-ink-700">P {{ counts.present }} · ½ {{ counts.half_day }} · L {{ counts.late }} · A {{ counts.absent }}</span>
+    </div>
+    {% if crew_rows %}
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[620px] border-collapse text-sm">
+        <thead><tr class="bg-subtle text-left">
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Status" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Arrived" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Left" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Rate" %}</th>
+        </tr></thead>
+        <tbody>
+          {% for row in crew_rows %}
+          <tr class="border-t border-line-soft">
+            <td class="px-4 py-3"><span class="flex items-center gap-2.5"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-line text-xs font-bold">{{ row.initials }}</span>
+              <span><a href="{% url 'workers:detail' row.worker.pk %}" class="font-semibold">{{ row.worker.full_name }}</a><br><span class="text-xs text-steel">{{ row.worker.number }}{% if row.worker.trade %} · {{ row.worker.trade.name }}{% endif %}</span></span></span></td>
+            <td class="px-4 py-3">{% include "components/status_badge.html" with status=row.status only %}</td>
+            <td class="px-4 py-3 tabular-nums">{{ row.arrival }}</td>
+            <td class="px-4 py-3 tabular-nums">{{ row.departure }}</td>
+            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ row.rate }}{% if row.unit %} <span class="text-xs font-normal text-steel">/ {{ row.unit }}</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if crew_count > crew_rows|length %}<div class="border-t border-line-soft px-5 py-3 text-sm"><a href="{% url 'worksites:crew' site.pk %}" class="font-semibold">{% blocktranslate count n=crew_count %}Show all {{ n }} worker{% plural %}Show all {{ n }} workers{% endblocktranslate %}</a></div>{% endif %}
+    {% else %}
+    <div class="p-5">
+      {% translate "No workers on this site today" as empty_title %}{% translate "Assign workers to see them on the roll call." as empty_message %}
+      {% if can_manage %}{% translate "Assign workers" as empty_action %}{% url "worksites:assign" site.pk as empty_href %}{% endif %}
+      {% include "components/empty_state.html" with icon="workers" title=empty_title message=empty_message action_label=empty_action action_href=empty_href only %}
+    </div>
+    {% endif %}
+  </section>
+
+  <aside class="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
+    <section aria-labelledby="people-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+      <h2 id="people-title" class="font-display text-base font-bold">{% translate "People" %}</h2>
+      <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Site manager" %}</span><span class="text-right font-semibold">{{ site.manager|default:"—" }}</span></div>
+      {% for foreman in foremen %}
+      <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% if forloop.first %}{% translate "Foreman" %}{% else %}{% translate "Backup foreman" %}{% endif %}</span><span class="text-right font-semibold">{{ foreman }}</span></div>
+      {% empty %}
+      <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Foreman" %}</span><span class="text-right font-semibold">—</span></div>
+      {% endfor %}
+    </section>
+    <section aria-labelledby="pay-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+      <h2 id="pay-title" class="font-display text-base font-bold">{% translate "Pay settings for this site" %}</h2>
+      {% for s in pay_settings %}
+      <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{{ s.label }}</span><span class="text-right"><span class="font-semibold">{{ s.value }}</span><br><span class="text-xs text-steel">{{ s.source }}</span></span></div>
+      {% endfor %}
+      <a href="{% url 'worksites:settings' site.pk %}" class="text-sm font-semibold">{% if can_manage %}{% translate "Override for this site" %}{% else %}{% translate "See site settings" %}{% endif %}</a>
+    </section>
+    <section class="flex flex-col gap-1.5 rounded-card border border-ink bg-ink px-5 py-4.5 text-white">
+      <span class="text-xs font-semibold uppercase tracking-[0.06em] text-rail-text">{% translate "Labour cost this month" %}</span>
+      <span class="font-display text-[28px] font-bold leading-tight tabular-nums">{{ labour_cost }} <span class="text-base text-rail-text">{{ currency }}</span></span>
+      <span class="text-[13px] text-rail-text">{% if budget %}{% blocktranslate with budget=budget %}Budget {{ budget }}{% endblocktranslate %}{% else %}{% translate "Budget not set" %}{% endif %} · <a href="{% url 'dashboard:reports' %}" class="text-white underline hover:text-white">{% translate "Reports" %}</a></span>
+    </section>
+  </aside>
+</div>
+{% endblock %}
