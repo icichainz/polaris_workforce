@@ -115,11 +115,8 @@ def test_foreman_device_helpers():
     assert device.token_hash == ForemanDevice.hash_token("raw-secret")
     assert len(device.token_hash) == 64
     assert device.is_active
-    assert not device.is_locked
 
-    device.locked_until = timezone.now() + datetime.timedelta(minutes=5)
     device.revoked_at = timezone.now()
-    assert device.is_locked
     assert not device.is_active
     assert list(device.user.devices.all()) == [device]
 

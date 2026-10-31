@@ -15,6 +15,7 @@ from django.views.decorators.http import require_POST
 from rest_framework.exceptions import APIException, ValidationError
 
 from apps.accounts.permissions import Role, can_manage_site, role_required, scoped_sites
+from apps.core import dates
 
 from . import selectors, services
 from .forms import DecisionForm
@@ -32,7 +33,7 @@ def _scoped_day(user, day_id) -> AttendanceDay:
 
 def _render_board(request, selected_id=None, form=None, status=200):
     waiting = list(selectors.days_waiting_for_approval(request.user))
-    tz = selectors.company_tz()
+    tz = dates.company_tz()
     selected = None
     if selected_id is not None:
         selected = _scoped_day(request.user, selected_id)
@@ -49,7 +50,6 @@ def _render_board(request, selected_id=None, form=None, status=200):
         "cards": [selectors.approval_card(day, tz) for day in waiting],
         "selected_id": selected.pk if selected else None,
         "detail": detail,
-        "nav_badges": {"approvals": len(waiting) or None},
     }
     return render(request, "attendance/approvals.html", context, status=status)
 

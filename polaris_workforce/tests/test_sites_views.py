@@ -33,7 +33,7 @@ TODAY = datetime.date(2026, 10, 30)  # a Friday
 
 @pytest.fixture(autouse=True)
 def _fixed_today():
-    with mock.patch("apps.worksites.services.company_today", return_value=TODAY):
+    with mock.patch("apps.core.dates.company_today", return_value=TODAY):
         yield
 
 

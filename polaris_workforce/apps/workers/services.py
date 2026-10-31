@@ -16,6 +16,7 @@ from django.utils.translation import gettext as _
 
 from apps.accounts.permissions import Role, has_role, scoped_sites
 from apps.attendance.models import AttendanceRecord
+from apps.core import dates
 from apps.core.choices import PayType, ProofType
 from apps.core.models import AuditLog
 from apps.payroll.models import Advance, PayLine, Payment, PayPeriod
@@ -93,7 +94,7 @@ def create_worker(
                     target=worker,
                     after=_worker_snapshot(worker),
                 )
-                start_date = start_date or site_services.company_today()
+                start_date = start_date or dates.company_today()
                 if site is not None:
                     site_services.assign(worker, site, start_date, actor=actor)
                 if amount is not None:

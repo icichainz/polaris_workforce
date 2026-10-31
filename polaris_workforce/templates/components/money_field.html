@@ -14,13 +14,13 @@ Parameters
 {% endcomment %}{% with w=field.subwidgets.0.data %}<div class="flex flex-col gap-1.5">
   <label for="{{ field.auto_id }}" class="text-[13px] font-semibold text-ink">{{ label|default:field.label }}</label>
   <span class="flex overflow-hidden rounded-control bg-white focus-within:outline-3 focus-within:outline-offset-2 focus-within:outline-amber-500 {% if size == 'phone' %}h-14{% else %}h-10{% endif %} {% if field.errors %}border-2 border-danger-strong{% else %}border border-line-strong{% endif %}">
-    <input type="text" inputmode="numeric" name="{{ field.html_name }}"{% if w.value is not None %} value="{{ w.value|stringformat:'s' }}"{% endif %}{% for k, v in w.attrs.items %}{% if k != 'class' and k != 'type' and k != 'step' and k != 'min' and k != 'max' %}{% if v is True %} {{ k }}{% elif v is not False and v is not None %} {{ k }}="{{ v }}"{% endif %}{% endif %}{% endfor %}{% if field.errors %} aria-invalid="true" aria-describedby="{{ field.auto_id }}_error {{ field.auto_id }}_currency"{% else %} aria-describedby="{{ field.auto_id }}_currency{% if help or field.help_text %} {{ field.auto_id }}_help{% endif %}"{% endif %}
+    <input type="text" inputmode="numeric" name="{{ field.html_name }}"{% if w.value is not None %} value="{{ w.value|stringformat:'s' }}"{% endif %}{% for k, v in w.attrs.items %}{% if k != 'class' and k != 'type' and k != 'step' and k != 'min' and k != 'max' and k != 'aria-describedby' and k != 'aria-invalid' %}{% if v is True %} {{ k }}{% elif v is not False and v is not None %} {{ k }}="{{ v }}"{% endif %}{% endif %}{% endfor %}{% if field.errors %} aria-invalid="true" aria-describedby="{{ field.auto_id }}_error {{ field.auto_id }}_currency"{% else %} aria-describedby="{{ field.auto_id }}_currency{% if help or field.help_text %} {{ field.auto_id }}_helptext{% endif %}"{% endif %}
       class="min-w-0 grow border-0 bg-transparent px-3 text-right font-medium tabular-nums text-ink focus:outline-none {% if size == 'phone' %}text-[17px]{% else %}text-sm{% endif %}">
     <span id="{{ field.auto_id }}_currency" class="flex items-center border-l border-line bg-ground px-3 text-[13px] font-semibold text-ink-700">{{ currency }}</span>
   </span>
   {% if field.errors %}
     <p id="{{ field.auto_id }}_error" class="text-[13px] font-medium text-absent-fg">{% for error in field.errors %}{{ error }}{% if not forloop.last %} {% endif %}{% endfor %}</p>
   {% elif help or field.help_text %}
-    <p id="{{ field.auto_id }}_help" class="text-xs text-steel">{{ help|default:field.help_text }}</p>
+    <p id="{{ field.auto_id }}_helptext" class="text-xs text-steel">{{ help|default:field.help_text }}</p>
   {% endif %}
 </div>{% endwith %}

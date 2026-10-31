@@ -47,7 +47,5 @@ class ForemanDeviceAdmin(admin.ModelAdmin):
     )
     list_select_related = ("user",)
     autocomplete_fields = ("user",)
-    # Hashes are never edited by hand: tokens are issued by the API. pin_hash,
-    # failed_attempts and locked_until are unused (the PIN lives on User).
-    exclude = ("pin_hash", "failed_attempts", "locked_until")
+    # Hashes are never edited by hand: tokens are issued by the API.
     readonly_fields = ("token_hash", "created_at", "last_seen_at")

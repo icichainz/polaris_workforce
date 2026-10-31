@@ -22,7 +22,6 @@ attendance, stores the results and enforces the workflow:
 from __future__ import annotations
 
 import datetime
-import zoneinfo
 from collections import defaultdict
 from dataclasses import dataclass, field
 
@@ -44,11 +43,13 @@ from apps.api.exceptions import Conflict, Locked
 from apps.attendance.models import AttendanceDay, AttendanceRecord
 from apps.attendance.services import lock_day
 from apps.core.choices import PayType, ProofType
+from apps.core.dates import company_today
 from apps.core.models import AuditLog, CompanySettings
 from apps.core.settings import resolve_setting
 from apps.core.validators import UPLOAD_VALIDATORS
 from apps.workers.models import PayRate, Worker
 from apps.worksites.models import Site, SiteAssignment
+from apps.worksites.services import crew_ids_by_date
 
 from . import engine
 from .models import Advance, AdvanceRepayment, CashIssue, PayLine, Payment, PayPeriod
@@ -80,16 +81,6 @@ def pay_rules(site: Site | None, company: CompanySettings) -> engine.PayRules:
         overtime_after_hours=get("overtime_after_hours"),
         overtime_multiplier=get("overtime_multiplier"),
     )
-
-
-def company_today(company: CompanySettings | None = None) -> datetime.date:
-    """Today in the company's time zone (a work day is a date there, not on the server)."""
-    company = company or CompanySettings.load()
-    try:
-        zone = zoneinfo.ZoneInfo(company.time_zone)
-    except (zoneinfo.ZoneInfoNotFoundError, ValueError):
-        zone = timezone.get_current_timezone()
-    return timezone.localdate(timezone=zone)
 
 
 def period_bounds_for(
@@ -352,25 +343,11 @@ def refresh_period(
 def _days_with_expected_crew(period: PayPeriod, company: CompanySettings) -> set[datetime.date]:
     """Working days of the period on which active workers are assigned to the site.
 
-    Same rule as ``apps.attendance.selectors.expected_by_date``: assignment dates inclusive.
+    The crew rule is ``apps.worksites.services.crew_ids_by_date`` (dates inclusive).
     """
     working_days = set(company.working_days or [])
-    assignments = list(
-        SiteAssignment.objects.filter(
-            site=period.site, worker__is_active=True, start_date__lte=period.end_date
-        )
-        .filter(Q(end_date__isnull=True) | Q(end_date__gte=period.start_date))
-        .values_list("start_date", "end_date")
-    )
-    dates = set()
-    day = period.start_date
-    while day <= period.end_date:
-        if day.isoweekday() in working_days and any(
-            first <= day and (last is None or last >= day) for first, last in assignments
-        ):
-            dates.add(day)
-        day += datetime.timedelta(days=1)
-    return dates
+    crews = crew_ids_by_date(period.site, period.start_date, period.end_date)
+    return {day for day, crew in crews.items() if crew and day.isoweekday() in working_days}
 
 
 def period_is_ready(
@@ -623,6 +600,34 @@ def cash_sheet(
         status=_sheet_status(periods, lines, today or company_today(company), company),
         absent=absent,
     )
+
+
+def reconciliations(site_ids, day: datetime.date) -> dict[int, engine.CashReconciliation]:
+    """``cash_sheet(site, day, refresh=False).reconciliation`` for many sites, in two queries.
+
+    For overviews such as the dashboard, which must not run a query per site. Locked
+    periods are left out (nothing more is paid on them: workers left unpaid were closed
+    with a reason). Sites with neither a pay line nor cash issued that day are absent.
+    """
+    lines: dict[int, list[tuple[int, int]]] = defaultdict(list)
+    rows = (
+        PayLine.objects.filter(period__site__in=site_ids, period__end_date=day)
+        .exclude(period__status=PayPeriod.Status.LOCKED)
+        .annotate(paid=Sum("payments__amount"))
+        .values_list("period__site", "net", "paid")
+    )
+    for site_id, net, paid in rows:
+        lines[site_id].append((net, paid or 0))
+    issued = dict(
+        CashIssue.objects.filter(site__in=site_ids, date=day)
+        .values("site")
+        .annotate(total=Sum("amount"))
+        .values_list("site", "total")
+    )
+    return {
+        site_id: engine.reconcile(issued.get(site_id, 0), lines.get(site_id, []))
+        for site_id in set(lines) | set(issued)
+    }
 
 
 def _ensure_sheet_open_for_changes(site: Site, day: datetime.date) -> None:

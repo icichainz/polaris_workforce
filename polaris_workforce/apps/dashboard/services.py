@@ -8,17 +8,18 @@ import datetime
 from collections import defaultdict
 from dataclasses import dataclass, field
 from decimal import Decimal
-from zoneinfo import ZoneInfo
 
-from django.db.models import Count, Q, Sum
-from django.utils import timezone
+from django.db.models import Count, Q
 
 from apps.accounts.permissions import scoped_sites
 from apps.attendance.models import AttendanceCorrection, AttendanceDay, AttendanceRecord
+from apps.core.dates import company_now
 from apps.core.models import CompanySettings
 from apps.core.settings import resolve_setting
-from apps.payroll.models import PayLine, Payment, PayPeriod
-from apps.worksites.models import Site, SiteAssignment
+from apps.payroll import services as payroll_services
+from apps.payroll.models import PayPeriod
+from apps.worksites.models import Site
+from apps.worksites.services import active_assignments
 
 Status = AttendanceRecord.Status
 DayStatus = AttendanceDay.Status
@@ -28,11 +29,6 @@ ABSENT_STREAK = 3
 # How far back to look for an absence streak (covers weekends and holidays).
 STREAK_LOOKBACK_DAYS = 21
 UNPAID_PERIOD_STATUSES = (PayPeriod.Status.OPEN, PayPeriod.Status.READY, PayPeriod.Status.PAYING)
-
-
-def company_now(company: CompanySettings) -> datetime.datetime:
-    """The current time in the company time zone."""
-    return timezone.now().astimezone(ZoneInfo(company.time_zone))
 
 
 def worker_days(present: int, late: int, half: int, half_day_units: Decimal) -> Decimal:
@@ -76,6 +72,10 @@ class Alert:
     person: str = ""
     detail: str = ""
     due: datetime.time | None = None
+    # What the item links to (the template picks the page for ``kind``).
+    site_id: int | None = None
+    worker_id: int | None = None
+    day_id: int | None = None
 
 
 @dataclass
@@ -127,8 +127,8 @@ def today_overview(
     active_ids = [site.pk for site in active]
 
     expected = dict(
-        SiteAssignment.objects.active_on(today)
-        .filter(site__in=active_ids, worker__is_active=True)
+        active_assignments(today)
+        .filter(site__in=active_ids)
         .values("site")
         .annotate(n=Count("worker", distinct=True))
         .values_list("site", "n")
@@ -174,6 +174,7 @@ def today_overview(
                     kind="missing_roll_call",
                     severity="danger",
                     site_name=site.name,
+                    site_id=site.pk,
                     person=row.foreman_name,
                     due=due,
                 )
@@ -214,26 +215,17 @@ def _name(user) -> str:
 
 
 def _cash_tonight(site_ids, today) -> dict[int, int]:
-    """Net still to hand over for pay periods ending today, per site."""
-    periods = Q(period__site__in=site_ids, period__end_date=today) & ~Q(
-        period__status__in=(PayPeriod.Status.PAID, PayPeriod.Status.LOCKED)
-    )
-    net = dict(
-        PayLine.objects.filter(periods)
-        .values("period__site")
-        .annotate(total=Sum("net"))
-        .values_list("period__site", "total")
-    )
-    paid_filter = Q(pay_line__period__site__in=site_ids, pay_line__period__end_date=today) & ~Q(
-        pay_line__period__status__in=(PayPeriod.Status.PAID, PayPeriod.Status.LOCKED)
-    )
-    paid = dict(
-        Payment.objects.filter(paid_filter)
-        .values("pay_line__period__site")
-        .annotate(total=Sum("amount"))
-        .values_list("pay_line__period__site", "total")
-    )
-    return {site: max(total - paid.get(site, 0), 0) for site, total in net.items()}
+    """Cash still to hand over tonight per site: payroll's cash-sheet reconciliation.
+
+    ``left_to_pay`` of today's cash sheet (``apps.payroll.services.reconciliations``,
+    the same figures as the Cash sheets screen, read for every site in two queries).
+    Sites without a pay line today are left out.
+    """
+    return {
+        site_id: max(0, reconciliation.left_to_pay)
+        for site_id, reconciliation in payroll_services.reconciliations(site_ids, today).items()
+        if reconciliation.line_count
+    }
 
 
 def _correction_alerts(site_ids) -> list[Alert]:
@@ -253,6 +245,7 @@ def _correction_alerts(site_ids) -> list[Alert]:
             site_name=row["record__day__site__name"],
             date=row["record__day__date"],
             count=row["n"],
+            day_id=row["record__day"],
         )
         for row in grouped
     ]
@@ -275,6 +268,7 @@ def _absence_alerts(site_ids, today) -> list[Alert]:
             "worker__first_name",
             "worker__last_name",
             "worker__trade__name",
+            "day__site",
             "day__site__name",
         )
     )
@@ -305,6 +299,8 @@ def _absence_alerts(site_ids, today) -> list[Alert]:
                 count=len(rows),
                 detail=detail,
                 site_name=latest["day__site__name"],
+                worker_id=latest["worker_id"],
+                site_id=latest["day__site"],
             )
         )
     return sorted(alerts, key=lambda alert: (-alert.count, alert.person))
@@ -327,6 +323,7 @@ def _unclosed_period_alerts(site_ids, today) -> list[Alert]:
             site_name=period.site.name,
             date=period.end_date,
             count=period.unpaid,
+            site_id=period.site_id,
         )
         for period in periods
     ]

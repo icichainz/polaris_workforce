@@ -13,10 +13,12 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Value
 from django.db.models.functions import Replace
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.translation import gettext as _
 
 from apps.accounts.permissions import Role, has_role, scoped_sites
 from apps.attendance.models import AttendanceRecord
+from apps.core import dates
 from apps.core.choices import LateRule, PayType
 from apps.core.models import CompanySettings
 from apps.core.settings import resolve_setting
@@ -88,7 +90,7 @@ def _site_names(workers, today) -> dict[int, str]:
 @login_required
 def worker_list(request):
     company = CompanySettings.load()
-    today = site_services.company_today(company)
+    today = dates.company_today(company)
     money = display.Money(company)
     visible = services.scoped_workers(request.user, today)
     form = WorkerFilterForm(request.GET or None, sites=scoped_sites(request.user))
@@ -187,8 +189,8 @@ def _setting_source(worker, site, name) -> str:
 @login_required
 def worker_detail(request, pk):
     company = CompanySettings.load()
-    today = site_services.company_today(company)
-    tz = site_services.company_tz(company)
+    today = dates.company_today(company)
+    tz = dates.company_tz(company)
     money = display.Money(company)
     worker = _get_worker_or_403(request.user, pk, today)
 
@@ -221,11 +223,14 @@ def worker_detail(request, pk):
     advances = services.advance_summary(worker)
 
     payments = []
-    for payment in (
+    recent = list(
         Payment.objects.filter(pay_line__worker=worker)
-        .select_related("pay_line")
+        .select_related("pay_line__period")
         .order_by("-paid_at")[:10]
-    ):
+    )
+    # A payslip only opens on a site the user may see (the worker may have moved sites).
+    visible_sites = set(scoped_sites(request.user).values_list("pk", flat=True) if recent else ())
+    for payment in recent:
         line = payment.pay_line
         paid_at = payment.paid_at.astimezone(tz)
         payments.append(
@@ -240,6 +245,9 @@ def worker_detail(request, pk):
                 "net": money(payment.amount, currency=False),
                 "proof": payment.get_proof_type_display(),
                 "proof_url": payment.proof_file.url if payment.proof_file else None,
+                "payslip_url": reverse("payroll:payslip", args=[line.pk])
+                if line.period.site_id in visible_sites
+                else None,
             }
         )
 
@@ -295,6 +303,7 @@ def worker_detail(request, pk):
         "all_with_receipt": paid["all_with_proof"],
         "owed": money(advances["owed"]),
         "deduction": money(advances["deduction"], currency=False) if advances["owed"] else None,
+        "advances_url": f"{reverse('payroll:advances')}?worker={worker.pk}",
         "history": [
             {
                 "from": h["rate"].effective_from,
@@ -383,7 +392,7 @@ def _form_fields(form) -> dict:
 
 def _worker_form_view(request, worker):
     company = CompanySettings.load()
-    today = site_services.company_today(company)
+    today = dates.company_today(company)
     if not services.can_edit_worker(request.user, worker, today):
         raise PermissionDenied
     sites = services.assignable_sites(request.user).order_by("name")
@@ -458,5 +467,5 @@ def worker_create(request):
 @login_required
 def worker_edit(request, pk):
     company = CompanySettings.load()
-    today = site_services.company_today(company)
+    today = dates.company_today(company)
     return _worker_form_view(request, _get_worker_or_403(request.user, pk, today))

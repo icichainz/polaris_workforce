@@ -33,10 +33,11 @@ from rest_framework.exceptions import ValidationError
 from apps.accounts.permissions import can_manage_site, can_view_site
 from apps.api.exceptions import Conflict, Locked
 from apps.api.idempotency import IdempotentResult, apply_changes, run_once
+from apps.core.dates import company_today
 from apps.core.models import AuditLog
 
 from .models import AttendanceCorrection, AttendanceDay, AttendanceRecord
-from .selectors import NOT_STARTED, company_today, expected_worker_ids, unmarked_worker_ids
+from .selectors import NOT_STARTED, expected_worker_ids, unmarked_worker_ids
 
 Status = AttendanceDay.Status
 

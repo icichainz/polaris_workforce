@@ -35,7 +35,7 @@ D = datetime.date
 
 @pytest.fixture(autouse=True)
 def _fixed_today():
-    with mock.patch("apps.worksites.services.company_today", return_value=TODAY):
+    with mock.patch("apps.core.dates.company_today", return_value=TODAY):
         yield
 
 
@@ -48,7 +48,13 @@ def admin_client(client):
 @pytest.fixture
 def yao():
     site = SiteFactory(name="Riverside Apartments")
-    worker = WorkerFactory(first_name="Yao", last_name="Mensah", phone="+228 90 12 34 56")
+    # A fixed trade: the factory's trade iterator depends on which tests ran before.
+    worker = WorkerFactory(
+        first_name="Yao",
+        last_name="Mensah",
+        phone="+228 90 12 34 56",
+        trade=TradeFactory(name="Carpenter"),
+    )
     SiteAssignmentFactory(site=site, worker=worker, start_date=D(2026, 3, 3))
     PayRateFactory(worker=worker, amount=5500, effective_from=D(2026, 3, 3))
     PayRateFactory(worker=worker, amount=6000, effective_from=D(2026, 9, 1))
