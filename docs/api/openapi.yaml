@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Polaris Workforce API
-  version: 1.1.0
+  version: 1.2.0
   description: 'Foreman phone API: PIN sign-in, crew lists, roll call, corrections,
     sync and cash payouts. Authenticate with `Authorization: Device <token>` from
     `POST /api/v1/auth/pin/`. Errors are `{code, message, details}`. Every phone write
@@ -4059,5 +4059,8 @@ tags:
   description: 'Roll call, corrections, sync (Wave 2: C).'
 - name: payroll
   description: 'Cash payout and payments (Wave 2: D).'
+- name: checkin
+  description: QR badges, kiosk phones, check-ins and roll-call suggestions (Wave
+    4).
 - name: files
   description: Worker photos and payment proofs; send the Authorization header.

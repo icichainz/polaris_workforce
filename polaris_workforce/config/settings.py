@@ -271,7 +271,7 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Polaris Workforce API",
-    "VERSION": "1.1.0",
+    "VERSION": "1.2.0",
     "DESCRIPTION": (
         "Foreman phone API: PIN sign-in, crew lists, roll call, corrections, sync and "
         "cash payouts. Authenticate with `Authorization: Device <token>` from "
@@ -300,6 +300,10 @@ SPECTACULAR_SETTINGS = {
         {"name": "worksites", "description": "Crew lists (Wave 2: B)."},
         {"name": "attendance", "description": "Roll call, corrections, sync (Wave 2: C)."},
         {"name": "payroll", "description": "Cash payout and payments (Wave 2: D)."},
+        {
+            "name": "checkin",
+            "description": "QR badges, kiosk phones, check-ins and roll-call suggestions (Wave 4).",
+        },
         {
             "name": "files",
             "description": "Worker photos and payment proofs; send the Authorization header.",
