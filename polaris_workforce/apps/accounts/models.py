@@ -2,6 +2,7 @@
 
 import hashlib
 
+from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
@@ -27,21 +28,55 @@ class User(AbstractUser):
     # Blank means "use CompanySettings.language".
     language = models.CharField(_("language"), max_length=2, choices=Language.choices, blank=True)
 
+    # Phone sign-in. The PIN belongs to the person, not to a phone: it is set on the
+    # Users screen before the first sign-in and works on any device. Stored with
+    # Django's password hashers; the clear PIN is never kept.
+    pin_hash = models.CharField(_("PIN hash"), max_length=128, blank=True)
+    pin_failed_attempts = models.PositiveSmallIntegerField(_("failed PIN attempts"), default=0)
+    pin_locked_until = models.DateTimeField(_("PIN locked until"), null=True, blank=True)
+
     def __str__(self) -> str:
         return self.get_full_name() or self.username
+
+    @property
+    def has_pin(self) -> bool:
+        return bool(self.pin_hash)
+
+    @property
+    def is_pin_locked(self) -> bool:
+        """True while a PIN lockout is in effect."""
+        return self.pin_locked_until is not None and self.pin_locked_until > timezone.now()
+
+    def set_pin(self, raw_pin: str) -> None:
+        """Hash and store a PIN (not saved). Use ``accounts.services.set_pin`` from views."""
+        self.pin_hash = make_password(raw_pin)
+
+    def check_pin(self, raw_pin: str) -> bool:
+        return bool(self.pin_hash) and check_password(raw_pin, self.pin_hash)
+
+    def can(self, action: str, site=None) -> bool:
+        """Shortcut for ``accounts.permissions.can(user, action, site)``."""
+        from .permissions import can
+
+        return can(self, action, site)
 
 
 class ForemanDevice(models.Model):
     """A phone a foreman has signed in on.
 
     The raw device token is only ever shown to the phone; the database keeps its sha256
-    hex digest (``token_hash``). The PIN is stored with Django's password hashers.
+    hex digest (``token_hash``).
+
+    ``pin_hash``, ``failed_attempts`` and ``locked_until`` are unused: the PIN and its
+    lockout live on ``User`` (a device row only exists after the first sign-in). They
+    are kept to avoid a destructive migration and may be dropped later.
     """
 
     user = models.ForeignKey(
         User, verbose_name=_("user"), on_delete=models.CASCADE, related_name="devices"
     )
     device_id = models.CharField(_("device ID"), max_length=128)
+    name = models.CharField(_("device name"), max_length=100, blank=True)
     token_hash = models.CharField(_("token hash"), max_length=64, unique=True)
     pin_hash = models.CharField(_("PIN hash"), max_length=128, blank=True)
     failed_attempts = models.PositiveSmallIntegerField(_("failed attempts"), default=0)

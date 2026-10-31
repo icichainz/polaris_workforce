@@ -1,0 +1,122 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% if creating %}{% translate "Invite user" %}{% else %}{{ subject }}{% endif %} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}
+  <nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] font-semibold text-steel">
+    <a href="{% url 'accounts:users' %}">{% translate "Users & roles" %}</a> / <span aria-current="page">{% if creating %}{% translate "Invite user" %}{% else %}{{ subject }}{% endif %}</span>
+  </nav>
+{% endblock %}
+{% block page_title %}{% if creating %}{% translate "Invite user" %}{% else %}{{ subject }}{% endif %}{% endblock %}
+{% block page_status %}{% if subject and not subject.is_active %}{% translate "Disabled" as disabled_label %}{% include "components/status_badge.html" with status="inactive" label=disabled_label size="lg" only %}{% endif %}{% endblock %}
+
+{% block content %}
+  <section class="rounded-card border border-line bg-white" aria-labelledby="details-heading"
+    x-data="{ role: '{{ form.role.value|default:''|escapejs }}' }">
+    <div class="border-b border-line px-5 py-4">
+      <h2 id="details-heading" class="font-display text-lg font-bold">{% translate "Details and role" %}</h2>
+    </div>
+    <form method="post" class="flex flex-col gap-5 px-5 py-5" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        {% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}
+      {% endif %}
+      <div class="grid gap-4 sm:grid-cols-2">
+        {% include "components/field.html" with field=form.first_name only %}
+        {% include "components/field.html" with field=form.last_name only %}
+        {% include "components/field.html" with field=form.username only %}
+        {% include "components/field.html" with field=form.email only %}
+        {% include "components/field.html" with field=form.phone only %}
+        {% include "components/field.html" with field=form.language only %}
+        {% include "components/field.html" with field=form.role only %}
+        {% if form.password %}{% include "components/field.html" with field=form.password only %}{% endif %}
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div x-show="role === 'site_manager'">{% include "components/field.html" with field=form.managed_sites only %}</div>
+        <div x-show="role === 'foreman'">{% include "components/field.html" with field=form.foreman_sites only %}</div>
+      </div>
+      <p class="text-[13px] text-steel" x-show="role === 'admin' || role === 'accountant'">{% translate "Admins and accountants see every site; accountants read only." %}</p>
+      {% if form.is_active %}{% include "components/field.html" with field=form.is_active only %}{% endif %}
+      <div class="flex flex-wrap gap-2.5">
+        {% if creating %}{% translate "Invite user" as save_label %}{% else %}{% translate "Save changes" as save_label %}{% endif %}
+        {% include "components/button.html" with label=save_label variant="primary" type="submit" only %}
+        {% url 'accounts:users' as back_url %}{% translate "Cancel" as cancel_label %}
+        {% include "components/button.html" with label=cancel_label href=back_url variant="ghost" only %}
+      </div>
+    </form>
+  </section>
+
+  {% if not creating %}
+    {% if can_have_pin %}
+      <section class="rounded-card border border-line bg-white" aria-labelledby="pin-heading">
+        <div class="flex flex-col gap-1 border-b border-line px-5 py-4">
+          <h2 id="pin-heading" class="font-display text-lg font-bold">{% if subject.has_pin %}{% translate "Reset phone PIN" %}{% else %}{% translate "Set phone PIN" %}{% endif %}</h2>
+          <p class="text-[13px] text-steel">{% translate "The foreman signs in on the phone with their phone number and this 4-digit PIN. Tell them the PIN in person; it is not shown again." %}</p>
+        </div>
+        <div class="flex flex-col gap-4 px-5 py-5">
+          {% if subject.is_pin_locked %}
+            {% blocktranslate asvar locked_message with until=subject.pin_locked_until|time:"H:i" %}Too many wrong PINs: locked until {{ until }}. Setting a new PIN unlocks it.{% endblocktranslate %}
+            {% include "components/alert.html" with variant="warning" message=locked_message only %}
+          {% elif not subject.has_pin %}
+            {% translate "No PIN yet: this user cannot sign in on the phone." as no_pin_message %}
+            {% include "components/alert.html" with variant="info" message=no_pin_message only %}
+          {% endif %}
+          <form method="post" action="{% url 'accounts:user_set_pin' pk=subject.pk %}" class="flex flex-col gap-4" novalidate>
+            {% csrf_token %}
+            <div class="grid gap-4 sm:max-w-md sm:grid-cols-2">
+              {% include "components/field.html" with field=pin_form.pin only %}
+              {% include "components/field.html" with field=pin_form.pin_confirm only %}
+            </div>
+            <div>
+              {% if subject.has_pin %}{% translate "Reset PIN" as pin_label %}{% else %}{% translate "Set PIN" as pin_label %}{% endif %}
+              {% include "components/button.html" with label=pin_label type="submit" only %}
+            </div>
+          </form>
+        </div>
+      </section>
+    {% endif %}
+
+    <section class="rounded-card border border-line bg-white" aria-labelledby="devices-heading">
+      <div class="flex flex-col gap-1 border-b border-line px-5 py-4">
+        <h2 id="devices-heading" class="font-display text-lg font-bold">{% translate "Phones" %}</h2>
+        <p class="text-[13px] text-steel">{% translate "Phones this user has signed in on. Signing a phone out makes it ask for the PIN again; unsent work stays on the phone." %}</p>
+      </div>
+      {% if devices %}
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[680px] border-collapse text-sm">
+            <thead>
+              <tr class="bg-subtle text-left">
+                <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Phone" %}</th>
+                <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "First sign-in" %}</th>
+                <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Last seen" %}</th>
+                <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Status" %}</th>
+                <th scope="col" class="px-5 py-2.5"><span class="sr-only">{% translate "Actions" %}</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for device in devices %}
+                <tr class="border-t border-line-soft">
+                  <td class="px-5 py-3"><span class="font-semibold">{{ device.name|default:_("Unnamed phone") }}</span><br><span class="text-xs text-steel">{{ device.device_id }}</span></td>
+                  <td class="px-4 py-3 text-ink-700">{{ device.created_at|date:"j M Y H:i" }}</td>
+                  <td class="px-4 py-3 text-ink-700">{% if device.last_seen_at %}{{ device.last_seen_at|date:"j M Y H:i" }}{% else %}—{% endif %}</td>
+                  <td class="px-4 py-3">{% if device.is_active %}{% translate "Signed in" as signed_in_label %}{% include "components/status_badge.html" with status="active" label=signed_in_label only %}{% else %}{% translate "Signed out" as signed_out_label %}{% include "components/status_badge.html" with status="inactive" label=signed_out_label only %}{% endif %}</td>
+                  <td class="px-5 py-3 text-right">
+                    {% if device.is_active %}
+                      <form method="post" action="{% url 'accounts:device_revoke' pk=subject.pk device_pk=device.pk %}">
+                        {% csrf_token %}
+                        {% translate "Sign out" as revoke_label %}{% blocktranslate asvar revoke_aria with name=device.name|default:device.device_id %}Sign out {{ name }}{% endblocktranslate %}
+                        {% include "components/button.html" with label=revoke_label aria_label=revoke_aria variant="danger" type="submit" only %}
+                      </form>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="px-5 py-5 text-sm text-steel">{% translate "No phone has signed in yet." %}</p>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

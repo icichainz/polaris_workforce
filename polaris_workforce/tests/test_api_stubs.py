@@ -44,6 +44,13 @@ PROTECTED = [
     ),
 ]
 
+# Endpoints built in Wave 2 leave the 501 checks; they keep the 401 checks.
+IMPLEMENTED = {
+    "api:accounts:auth-logout",
+    "api:accounts:me",
+}
+STUBS = [endpoint for endpoint in PROTECTED if endpoint[1] not in IMPLEMENTED]
+
 PIN_BODY = {"phone": "+22890112233", "pin": "4821", "device_id": "abc", "device_name": "Tecno"}
 
 
@@ -74,7 +81,7 @@ def _assert_error(response, status_code, code):
     return body
 
 
-@pytest.mark.parametrize(("method", "name", "kwargs", "body"), PROTECTED)
+@pytest.mark.parametrize(("method", "name", "kwargs", "body"), STUBS)
 def test_stub_returns_501_when_authenticated(foreman, method, name, kwargs, body):
     client = APIClient()
     client.force_authenticate(foreman)
@@ -90,7 +97,7 @@ def test_stub_requires_authentication(db, method, name, kwargs, body):
     assert response["WWW-Authenticate"] == "Device"
 
 
-@pytest.mark.parametrize(("method", "name", "kwargs", "body"), PROTECTED[:3])
+@pytest.mark.parametrize(("method", "name", "kwargs", "body"), STUBS[:3])
 def test_stub_works_with_session_login(foreman, method, name, kwargs, body):
     client = APIClient(enforce_csrf_checks=False)
     client.force_login(foreman)
@@ -101,22 +108,15 @@ def test_stub_works_with_session_login(foreman, method, name, kwargs, body):
 def test_pin_login_is_reachable_anonymously(db):
     response = APIClient().post(reverse("api:accounts:auth-pin"), PIN_BODY, format="json")
 
-    _assert_error(response, 501, "not_implemented")
-
-
-def test_pin_login_ignores_a_bad_device_token(db):
-    client = APIClient(HTTP_AUTHORIZATION="Device not-a-real-token")
-
-    response = client.post(reverse("api:accounts:auth-pin"), PIN_BODY, format="json")
-
-    _assert_error(response, 501, "not_implemented")
+    # Unknown phone number: a plain sign-in failure (tests/test_accounts_api.py has the rest).
+    _assert_error(response, 401, "not_authenticated")
 
 
 def test_pin_login_is_throttled(db):
     client = APIClient()
     url = reverse("api:accounts:auth-pin")
     for _ in range(10):
-        assert client.post(url, PIN_BODY, format="json").status_code == 501
+        assert client.post(url, PIN_BODY, format="json").status_code == 401
 
     response = client.post(url, PIN_BODY, format="json")
 
