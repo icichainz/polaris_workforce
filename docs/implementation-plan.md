@@ -436,3 +436,41 @@ translations, plus the lead's integration fixes.
   `docs/security-review.md`, a device test of the Flutter app (Android emulator, iOS
   simulator, real camera uploads, HTTPS), `device_info_plus` for the device name, and
   per-entry outbox ownership when foremen share a phone.
+
+---
+
+## 12. Wave 4 — features from the original list
+
+**Owner decisions (2026-10-31):** bank transfer / mobile money = **bulk-payment export
+files** first (provider APIs later on the same model); SMS/WhatsApp = **pluggable
+messaging** with a log-only provider now, a real adapter once a provider is chosen;
+statutory deductions = **configurable rules** (no country hard-coded); include **worker
+portal**, **self check-in / QR badges**, **several companies** and **notifications**.
+Presence tracking (`polaris_tracker/`) stays a separate track.
+
+### 4.0 Several companies (sequential, first — touches every app)
+
+One agent (**MC**) adds multi-tenancy before anything else, the same way F1 laid the data
+model in Wave 1: a `Company` model; `CompanySettings` becomes one row per company;
+company on users and on every top-level record; every queryset, view, API endpoint,
+report, export and the admin scoped to the current company; a platform admin who can
+switch companies; a data migration putting existing data in a default company; isolation
+tests across companies (extending `test_e2e_isolation.py`). Merged before 4.1 starts.
+
+### 4.1 Parallel feature agents (after 4.0 is on `main`)
+
+New features go in **new apps where possible**, so agents never share migrations.
+
+| Agent | Owns | Builds |
+| --- | --- | --- |
+| **PX · Payout exports** | new app `apps/payouts/` | Worker payout accounts (bank / mobile-money number, per worker), payment method per line, bulk-payment export per pay day in configurable column layouts (CSV + XLSX), batch status (exported → confirmed → lines marked paid with reference), import of a provider's confirmation file, provider interface for later APIs |
+| **PR · Pay rules** | `apps/payroll/` (engine, services, migrations) | Piece work (tasks/quantities × unit rate), rate multipliers (Sunday, public holiday, night), bonuses, rain/stoppage days, **configurable statutory deduction rules** (name, % of gross, floor/ceiling, employee/employer share, scope) on cash sheet, payslip and reports |
+| **MS · Messaging & notifications** | new app `apps/messaging/` | Message outbox, templates (EN/FR), provider interface + log-only provider, opt-in per user/worker, payslip summary by SMS/WhatsApp, notification rules (missing roll call, day waiting for approval, unclosed cash sheet, advance limit), a `send_notifications` management command for cron |
+| **WP · Worker portal** | new app `apps/portal/` | Mobile web pages for workers: phone + PIN sign-in (own PIN model and lockout), my days, my pay and payslips (PDF), my advances; FR/EN; strictly own data |
+| **CK · Check-in & badges** | new app `apps/checkin/` | QR badge per worker (segno), printable badge sheets, site geofence, check-in events (badge scan by foreman, kiosk mode on a site phone, optional GPS + photo), `attendance_mode` self check-in / both made real: check-ins pre-fill the roll call; API endpoints for the phone |
+| **WX · Workers & reports extras** | `apps/workers/`, `apps/dashboard/` reports | Excel import of workers (template + validation + preview), worker documents (contract, ID scans, certificates) and emergency contact, XLSX report export, bulk approve days (attendance views) |
+| **FL3 · Phone app** (after CK's API) | `polaris_foreman/` | QR scanning (`mobile_scanner`), kiosk mode, GPS (`geolocator`) and photo at check-in, worker photos with the device token, bundled fonts, device model name |
+
+Shared rules from §6 and §10 still apply; agents branch from `main` explicitly; the lead
+merges in the order MC → (PX, PR, MS, WP, CK, WX in completion order) → FL3, rebuilds CSS
+and regenerates the OpenAPI file after merges.
