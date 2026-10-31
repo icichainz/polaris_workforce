@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roll call</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F5F7; color: #16191D; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column">
+  <header style="background: #FFFFFF; border-bottom: 1px solid #E3E5E9; padding: 16px 16px 12px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <a href="MobileHome.dc.html" aria-label="Back" style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16191D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      </a>
+      <div style="flex-grow: 1; display: flex; flex-direction: column">
+        <h1 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 800; font-size: 20px">Roll call</h1>
+        <span style="font-size: 13px; color: #5B626E">Riverside · Fri 31 Oct · saved on phone</span>
+      </div>
+      <span style="font-family: Archivo, sans-serif; font-weight: 800; font-size: 18px; font-variant-numeric: tabular-nums">{{marked}}/42</span>
+    </div>
+    <span style="height: 6px; border-radius: 999px; background: #EEF0F3; overflow: hidden"><span style="display: block; height: 6px; background: #135C33; width: {{pct}}"></span></span>
+    <div style="display: flex; gap: 8px">
+      <div role="tablist" aria-label="Show" style="flex-grow: 1; display: flex; gap: 4px; padding: 4px; background: #E9EBEF; border-radius: 10px">
+        <button type="button" role="tab" aria-selected="true" style="flex-grow: 1; height: 36px; border: 0; border-radius: 7px; background: #FFFFFF; font: 600 14px Inter, sans-serif">To mark · {{left}}</button>
+        <button type="button" role="tab" aria-selected="false" style="flex-grow: 1; height: 36px; border: 0; border-radius: 7px; background: transparent; color: #3F4650; font: 600 14px Inter, sans-serif">All 42</button>
+      </div>
+      <button type="button" onClick="{{allPresent}}" style="height: 44px; padding: 0 12px; border: 2px solid #135C33; border-radius: 10px; background: #FFFFFF; color: #135C33; font: 700 14px Inter, sans-serif">All P</button>
+    </div>
+  </header>
+
+  <main style="flex-grow: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px">
+    <sc-for list="{{crew}}" as="w" hint-placeholder-count="6">
+      <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <span style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 999px; background: #E3E5E9; display: flex; align-items: center; justify-content: center; font-weight: 700">{{w.ini}}</span>
+          <span style="flex-grow: 1; display: flex; flex-direction: column"><span style="font-size: 17px; font-weight: 600">{{w.name}}</span><span style="font-size: 13px; color: #5B626E">{{w.trade}}</span></span>
+          <sc-if value="{{w.hasTime}}" hint-placeholder-val="{{false}}"><span style="font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: #3F4650">{{w.time}}</span></sc-if>
+        </div>
+        <div role="group" aria-label="Status for {{w.name}}" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
+          <sc-for list="{{w.opts}}" as="o" hint-placeholder-count="4">
+            <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.pressed}}" style="height: 52px; border-radius: 10px; font: 700 16px Inter, sans-serif; line-height: 1.1; border: {{o.border}}; background: {{o.bg}}; color: {{o.fg}}">{{o.letter}}<br><span style="font-size: 11px; font-weight: 600">{{o.label}}</span></button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </main>
+
+  <footer style="background: #FFFFFF; border-top: 1px solid #E3E5E9; padding: 12px 16px 20px; box-shadow: 0 -4px 16px rgba(22, 25, 29, 0.08)">
+    <a href="MobileSubmit.dc.html" style="height: 56px; border-radius: 12px; background: {{goBg}}; color: {{goFg}}; font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center; text-decoration: none">{{goLabel}}</a>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { s: { 0: 'P', 1: 'P', 2: 'H' } };
+  }
+  renderVals() {
+    const people = [
+      ['Yao Mensah', 'Mason'], ['Komlan Agbeko', 'Carpenter'], ['Afi Dosseh', 'Labourer'],
+      ['Kodjo Atsu', 'Labourer'], ['Akouvi Tete', 'Steel fixer'], ['Sena Kumah', 'Mason'],
+      ['Delali Agbo', 'Painter'], ['Selom Akakpo', 'Welder']
+    ];
+    const O = [
+      { k: 'P', letter: 'P', label: 'Present', on: { bg: '#DCF2E4', fg: '#135C33', border: '2px solid #135C33' } },
+      { k: 'A', letter: 'A', label: 'Absent', on: { bg: '#FBE1DE', fg: '#9B1C13', border: '2px solid #9B1C13' } },
+      { k: 'H', letter: '½', label: 'Half', on: { bg: '#FDEBD2', fg: '#8A4A06', border: '2px solid #8A4A06' } },
+      { k: 'L', letter: 'L', label: 'Late', on: { bg: '#DDE8F8', fg: '#1A4C99', border: '2px solid #1A4C99' } }
+    ];
+    const off = { bg: '#FFFFFF', fg: '#3F4650', border: '1px solid #C9CED6' };
+    const times = { P: '07:00', H: '07:00', L: '07:35' };
+    const s = this.state.s;
+    const crew = people.map(([name, trade], i) => ({
+      name, trade, ini: name.split(' ').map(p => p[0]).join(''),
+      hasTime: !!times[s[i]], time: times[s[i]] || '',
+      opts: O.map(o => ({
+        letter: o.letter, label: o.label, pressed: s[i] === o.k ? 'true' : 'false',
+        ...(s[i] === o.k ? o.on : off),
+        pick: () => this.setState({ s: { ...this.state.s, [i]: o.k } })
+      }))
+    }));
+    const done = Object.keys(s).length;
+    const marked = 34 + done;
+    const all = marked === 42;
+    return {
+      crew, marked, left: 42 - marked, pct: Math.round(100 * marked / 42) + '%',
+      allPresent: () => {
+        const n = { ...this.state.s };
+        people.forEach((_, i) => { if (!n[i]) n[i] = 'P'; });
+        this.setState({ s: n });
+      },
+      goLabel: all ? 'Review & submit' : 'Review · ' + (42 - marked) + ' not marked',
+      goBg: all ? '#F5B000' : '#16191D', goFg: all ? '#16191D' : '#FFFFFF'
+    };
+  }
+}
+</script>
+</body>
+</html>

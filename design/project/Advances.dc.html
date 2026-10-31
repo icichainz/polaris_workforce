@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Advances</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}a:hover{color:#123E8F}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F4F5F7; color: #16191D; font-family: Inter, system-ui, sans-serif">
+  <div style="flex: 1 1 248px; max-width: 100%; background: #16191D">
+    <dc-import name="Sidebar" active="advances" hint-size="248px,960px"></dc-import>
+  </div>
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 32px 56px">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px">
+      <header style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 13px; font-weight: 600; color: #5B626E">7 workers owe 54 500 XOF in total</span>
+        <h1 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 800; font-size: 32px">Salary advances</h1>
+      </header>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <section style="flex: 3 1 560px; min-width: 0; background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px">
+          <div style="overflow-x: auto">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 680px">
+              <thead><tr style="text-align: left; background: #F8F9FA">
+                <th style="padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Worker</th>
+                <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Given</th>
+                <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">Amount</th>
+                <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Repaid</th>
+                <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">Owed</th>
+                <th style="padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Per pay</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{advances}}" as="a" hint-placeholder-count="7">
+                  <tr style="border-top: 1px solid #EEF0F3">
+                    <td style="padding: 12px 20px"><a href="WorkerProfile.dc.html" style="font-weight: 600; color: #16191D; text-decoration: none">{{a.name}}</a><br><span style="font-size: 12px; color: #5B626E">{{a.site}}</span></td>
+                    <td style="padding: 12px 16px; font-size: 13px">{{a.date}}<br><span style="color: #5B626E">“{{a.reason}}”</span></td>
+                    <td style="padding: 12px 16px; text-align: right; font-variant-numeric: tabular-nums">{{a.amount}}</td>
+                    <td style="padding: 12px 16px; min-width: 120px"><span style="display: block; height: 6px; border-radius: 999px; background: #EEF0F3; overflow: hidden"><span style="display: block; height: 6px; background: #135C33; width: {{a.pct}}"></span></span><span style="font-size: 12px; color: #5B626E">{{a.pct}}</span></td>
+                    <td style="padding: 12px 16px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; color: #8A4A06">{{a.owed}}</td>
+                    <td style="padding: 12px 20px; font-variant-numeric: tabular-nums">{{a.per}}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside style="flex: 1 1 320px; min-width: 0; background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+          <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Give an advance</h2>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Worker
+            <select style="height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>Yao Mensah · W-0142</option><option>Komlan Agbeko · W-0119</option></select>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Amount
+            <span style="display: flex; height: 40px; border: 1px solid #C9CED6; border-radius: 8px; overflow: hidden">
+              <input type="text" inputmode="numeric" value="10 000" style="flex-grow: 1; min-width: 0; border: 0; padding: 0 12px; font: 500 14px Inter, sans-serif; text-align: right">
+              <span style="display: flex; align-items: center; padding: 0 12px; background: #F4F5F7; border-left: 1px solid #E3E5E9; font-size: 13px; font-weight: 600; color: #3F4650">XOF</span>
+            </span>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Deduct per pay
+            <span style="display: flex; height: 40px; border: 1px solid #C9CED6; border-radius: 8px; overflow: hidden">
+              <input type="text" inputmode="numeric" value="2 000" style="flex-grow: 1; min-width: 0; border: 0; padding: 0 12px; font: 500 14px Inter, sans-serif; text-align: right">
+              <span style="display: flex; align-items: center; padding: 0 12px; background: #F4F5F7; border-left: 1px solid #E3E5E9; font-size: 13px; font-weight: 600; color: #3F4650">XOF</span>
+            </span>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Reason
+            <input type="text" value="School fees" style="height: 40px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif">
+          </label>
+          <div style="padding: 12px; border-radius: 8px; background: #F4F5F7; font-size: 13px; line-height: 1.5; color: #3F4650">
+            Yao already owes <strong>4 000</strong>. New total <strong>14 000</strong> = 39% of his expected weekly pay (limit 50%, set in Settings). Fully repaid in about <strong>7 pays</strong>.
+          </div>
+          <button type="button" style="height: 44px; border: 0; border-radius: 8px; background: #F5B000; color: #16191D; font: 700 14px Inter, sans-serif">Record advance · paid in cash</button>
+          <span style="font-size: 12px; color: #5B626E">Needs the worker’s receipt proof, like a pay-out.</span>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":950}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const f = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    const A = (name, site, date, reason, amount, owed, per) => ({
+      name, site, date, reason, amount: f(amount), owed: f(owed), per: f(per),
+      pct: Math.round(100 * (amount - owed) / amount) + '%'
+    });
+    return {
+      advances: [
+        A('Kodjo Atsu', 'Market Hall', '14 Oct', 'Medical', 15000, 7000, 2000),
+        A('Yao Mensah', 'Riverside', '20 Oct', 'Rent', 10000, 4000, 2000),
+        A('Kafui Amedome', 'Market Hall', '22 Oct', 'Transport', 10000, 5000, 2500),
+        A('Selom Akakpo', 'Route 4 Bridge', '24 Oct', 'Family', 9000, 6000, 1500),
+        A('Akouvi Tete', 'Riverside', '27 Oct', 'School fees', 20000, 18000, 2000),
+        A('Edo Gbedemah', 'Route 4 Bridge', '28 Oct', 'Tools', 6000, 4500, 1500),
+        A('Delali Agbo', 'Riverside', '29 Oct', 'Rent', 12000, 10000, 2000)
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

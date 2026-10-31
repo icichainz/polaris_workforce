@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dashboard — today</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}a:hover{color:#123E8F}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F4F5F7; color: #16191D; font-family: Inter, system-ui, sans-serif">
+  <div style="flex: 1 1 248px; max-width: 100%; background: #16191D">
+    <dc-import name="Sidebar" active="dashboard" hint-size="248px,960px"></dc-import>
+  </div>
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 32px 56px">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px">
+
+      <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 13px; font-weight: 600; color: #5B626E">Friday 31 October 2026 · 10:12</span>
+          <h1 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 800; font-size: 32px">Today across sites</h1>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px">
+          <button type="button" style="height: 40px; padding: 0 16px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; color: #16191D; font: 600 14px Inter, sans-serif">Export day</button>
+          <a href="Approvals.dc.html" style="height: 40px; padding: 0 16px; border-radius: 8px; background: #F5B000; color: #16191D; font-weight: 600; font-size: 14px; display: flex; align-items: center; text-decoration: none">Review 3 days</a>
+        </div>
+      </header>
+
+      <section aria-label="Key figures" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+        <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Present</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 32px; font-variant-numeric: tabular-nums">86 <span style="font-size: 17px; color: #5B626E">/ 104 expected</span></span>
+          <span style="height: 6px; border-radius: 999px; background: #EEF0F3; overflow: hidden"><span style="display: block; width: 83%; height: 6px; background: #135C33"></span></span>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Absent · half · late</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 32px; font-variant-numeric: tabular-nums">9 · 5 · 4</span>
+          <span style="font-size: 13px; color: #3F4650">Roll call missing at 1 site</span>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Awaiting approval</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 32px">3 days</span>
+          <a href="Approvals.dc.html" style="font-size: 13px; font-weight: 600">Oldest: yesterday, Market Hall</a>
+        </div>
+        <div style="background: #16191D; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 8px; color: #FFFFFF">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #C9CDD3">Cash to pay tonight</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 32px; font-variant-numeric: tabular-nums">412 500 <span style="font-size: 16px; color: #C9CDD3">XOF</span></span>
+          <a href="CashSheet.dc.html" style="font-size: 13px; font-weight: 600; color: #F5B000">Open cash sheets</a>
+        </div>
+      </section>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+        <section style="flex: 2 1 560px; min-width: 0; background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid #E3E5E9">
+            <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Sites today</h2>
+            <a href="Sites.dc.html" style="font-size: 14px; font-weight: 600">All sites</a>
+          </div>
+          <div style="overflow-x: auto">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 640px">
+              <thead><tr style="text-align: left; background: #F8F9FA">
+                <th style="padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Site</th>
+                <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Roll call</th>
+                <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Present</th>
+                <th style="padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">Cash tonight</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{sites}}" as="s" hint-placeholder-count="3">
+                  <tr style="border-top: 1px solid #EEF0F3">
+                    <td style="padding: 14px 20px"><a href="SiteDetail.dc.html" style="font-weight: 600; color: #16191D; text-decoration: none">{{s.name}}</a><br><span style="font-size: 12px; color: #5B626E">Foreman: {{s.foreman}}</span></td>
+                    <td style="padding: 14px 16px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: {{s.bg}}; color: {{s.fg}}"><span style="width: 7px; height: 7px; border-radius: 999px; background: {{s.fg}}"></span>{{s.status}}</span><br><span style="font-size: 12px; color: #5B626E">{{s.when}}</span></td>
+                    <td style="padding: 14px 16px; min-width: 160px">
+                      <span style="font-weight: 600; font-variant-numeric: tabular-nums">{{s.present}} / {{s.expected}}</span>
+                      <span style="display: block; margin-top: 6px; height: 6px; border-radius: 999px; background: #EEF0F3; overflow: hidden"><span style="display: block; height: 6px; background: #135C33; width: {{s.pct}}"></span></span>
+                    </td>
+                    <td style="padding: 14px 20px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums">{{s.cash}}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section style="flex: 1 1 320px; min-width: 0; background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+          <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Needs attention</h2>
+          <sc-for list="{{alerts}}" as="a" hint-placeholder-count="4">
+            <div style="display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid #EEF0F3">
+              <span style="width: 28px; height: 28px; flex-shrink: 0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; background: {{a.bg}}; color: {{a.fg}}">!</span>
+              <span style="display: flex; flex-direction: column; gap: 2px; font-size: 14px">
+                <span style="font-weight: 600">{{a.title}}</span>
+                <span style="color: #3F4650">{{a.body}}</span>
+                <a href="{{a.href}}" style="font-size: 13px; font-weight: 600">{{a.cta}}</a>
+              </span>
+            </div>
+          </sc-for>
+        </section>
+      </div>
+
+      <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px">
+          <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Worker-days, last 7 working days</h2>
+          <span style="font-size: 13px; color: #5B626E">All sites · present + half days counted as 0.5</span>
+        </div>
+        <div role="img" aria-label="Worker-days per day: Fri 24 Oct 92, Sat 25 Oct 71, Mon 27 Oct 95, Tue 28 Oct 97, Wed 29 Oct 90, Thu 30 Oct 94, Fri 31 Oct 88.5 so far" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 16px; align-items: end; height: 200px; border-bottom: 1px solid #C9CED6; padding: 0 4px">
+          <sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+            <div title="{{d.label}}: {{d.v}} worker-days" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%">
+              <span style="font-size: 12px; font-weight: 600; color: #3F4650; font-variant-numeric: tabular-nums">{{d.v}}</span>
+              <span style="width: 100%; max-width: 44px; border-radius: 4px 4px 0 0; background: {{d.color}}; height: {{d.h}}"></span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 16px; padding: 0 4px; margin-top: -8px">
+          <sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+            <span style="text-align: center; font-size: 12px; color: #5B626E">{{d.label}}</span>
+          </sc-for>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1150}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const T = {
+      sub: { bg: '#DDE8F8', fg: '#1A4C99' }, app: { bg: '#DCF2E4', fg: '#135C33' },
+      none: { bg: '#FBE1DE', fg: '#9B1C13' }, draft: { bg: '#EEF0F3', fg: '#3F4650' }
+    };
+    const sites = [
+      { name: 'Riverside Apartments', foreman: 'Kossi Amegah', status: 'Submitted', when: '07:42 · waiting for approval', present: 38, expected: 42, cash: '171 500 XOF', ...T.sub },
+      { name: 'Market Hall Renovation', foreman: 'Mawuli Adjovi', status: 'Approved', when: '08:15 by E. Kpodar', present: 31, expected: 34, cash: '148 000 XOF', ...T.app },
+      { name: 'Route 4 Bridge', foreman: 'Sena Lawson', status: 'Not started', when: 'Expected by 08:00', present: 17, expected: 28, cash: '93 000 XOF', ...T.none }
+    ].map(s => ({ ...s, pct: Math.round(100 * s.present / s.expected) + '%' }));
+    const raw = [['Fri 24', 92], ['Sat 25', 71], ['Mon 27', 95], ['Tue 28', 97], ['Wed 29', 90], ['Thu 30', 94], ['Today', 88.5]];
+    const max = 100;
+    const days = raw.map(([label, v], i) => ({ label, v, h: Math.round(150 * v / max) + 'px', color: i === raw.length - 1 ? '#8FA9D6' : '#1A56C4' }));
+    return {
+      sites,
+      days,
+      alerts: [
+        { title: 'Route 4 Bridge — no roll call yet', body: 'Sena Lawson has not submitted. Last sync 06:58.', cta: 'Call foreman', href: 'SiteDetail.dc.html', bg: '#FBE1DE', fg: '#9B1C13' },
+        { title: '2 corrections after submission', body: 'Riverside, yesterday — reasons given, check before approving.', cta: 'Review', href: 'Approvals.dc.html', bg: '#FFF4DB', fg: '#8A5A00' },
+        { title: 'Kodjo Atsu absent 3 days in a row', body: 'Labourer · Market Hall', cta: 'Open profile', href: 'WorkerProfile.dc.html', bg: '#FFF4DB', fg: '#8A5A00' },
+        { title: 'Cash sheet not closed', body: 'Market Hall, Thu 30 Oct — 2 workers unpaid.', cta: 'Open sheet', href: 'CashSheet.dc.html', bg: '#FFF4DB', fg: '#8A5A00' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-31T10:00:00Z" },
+  "title": "Polaris Workforce — Screens",
+  "launch": { "view": "canvas", "page": "foundations" },
+  "pages": [
+    { "id": "foundations", "name": "Key design elements" },
+    { "id": "admin", "name": "Office dashboard" },
+    { "id": "foreman", "name": "Foreman app" }
+  ],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1440, "h": 1560, "title": "Foundations", "page": "foundations" },
+    "Components.dc.html": { "x": 1520, "y": 0, "w": 1440, "h": 1560, "title": "Components", "page": "foundations" },
+    "Sidebar.dc.html": { "x": 3040, "y": 0, "w": 248, "h": 960, "title": "Sidebar (shared)", "page": "foundations", "is_interactive": true },
+
+    "Login.dc.html": { "x": 0, "y": 0, "w": 1440, "h": 900, "title": "Sign in", "page": "admin", "expand": "fill", "is_interactive": true },
+    "Dashboard.dc.html": { "x": 1520, "y": 0, "w": 1440, "h": 1150, "title": "Dashboard — today", "page": "admin", "expand": "fill", "is_interactive": true },
+    "Sites.dc.html": { "x": 3040, "y": 0, "w": 1440, "h": 900, "title": "Sites", "page": "admin", "expand": "fill", "is_interactive": true },
+
+    "SiteDetail.dc.html": { "x": 0, "y": 1270, "w": 1440, "h": 1150, "title": "Site detail", "page": "admin", "expand": "fill", "is_interactive": true },
+    "Workers.dc.html": { "x": 1520, "y": 1270, "w": 1440, "h": 1000, "title": "Workers", "page": "admin", "expand": "fill", "is_interactive": true },
+    "WorkerProfile.dc.html": { "x": 3040, "y": 1270, "w": 1440, "h": 1250, "title": "Worker profile", "page": "admin", "expand": "fill", "is_interactive": true },
+
+    "WorkerForm.dc.html": { "x": 0, "y": 2640, "w": 1440, "h": 1150, "title": "Add / edit worker", "page": "admin", "expand": "fill", "is_interactive": true },
+    "Approvals.dc.html": { "x": 1520, "y": 2640, "w": 1440, "h": 1150, "title": "Approvals", "page": "admin", "expand": "fill", "is_interactive": true },
+    "Payroll.dc.html": { "x": 3040, "y": 2640, "w": 1440, "h": 1000, "title": "Pay periods", "page": "admin", "expand": "fill", "is_interactive": true },
+
+    "CashSheet.dc.html": { "x": 0, "y": 3910, "w": 1440, "h": 1200, "title": "Daily cash sheet", "page": "admin", "expand": "fill", "is_interactive": true },
+    "Advances.dc.html": { "x": 1520, "y": 3910, "w": 1440, "h": 950, "title": "Advances", "page": "admin", "expand": "fill", "is_interactive": true },
+    "Reports.dc.html": { "x": 3040, "y": 3910, "w": 1440, "h": 1150, "title": "Reports", "page": "admin", "expand": "fill", "is_interactive": true },
+
+    "Users.dc.html": { "x": 0, "y": 5230, "w": 1440, "h": 980, "title": "Users & roles", "page": "admin", "expand": "fill", "is_interactive": true },
+    "Settings.dc.html": { "x": 1520, "y": 5230, "w": 1440, "h": 1500, "title": "Settings", "page": "admin", "expand": "fill", "is_interactive": true },
+    "Payslip.dc.html": { "x": 3040, "y": 5230, "w": 794, "h": 1123, "title": "Payslip (print)", "page": "admin", "paper": "a4" },
+
+    "MobileLogin.dc.html": { "x": 0, "y": 0, "w": 390, "h": 844, "title": "PIN sign-in", "page": "foreman", "is_interactive": true },
+    "MobileHome.dc.html": { "x": 470, "y": 0, "w": 390, "h": 844, "title": "Today", "page": "foreman", "is_interactive": true },
+    "MobileRollCall.dc.html": { "x": 940, "y": 0, "w": 390, "h": 844, "title": "Roll call", "page": "foreman", "is_interactive": true },
+    "MobileSubmit.dc.html": { "x": 1410, "y": 0, "w": 390, "h": 844, "title": "Review & submit", "page": "foreman", "is_interactive": true },
+    "MobilePayout.dc.html": { "x": 1880, "y": 0, "w": 390, "h": 844, "title": "Cash payout", "page": "foreman", "is_interactive": true }
+  },
+  "order": [
+    "Main.dc.html", "Components.dc.html", "Sidebar.dc.html",
+    "Login.dc.html", "Dashboard.dc.html", "Sites.dc.html",
+    "SiteDetail.dc.html", "Workers.dc.html", "WorkerProfile.dc.html",
+    "WorkerForm.dc.html", "Approvals.dc.html", "Payroll.dc.html",
+    "CashSheet.dc.html", "Advances.dc.html", "Reports.dc.html",
+    "Users.dc.html", "Settings.dc.html", "Payslip.dc.html",
+    "MobileLogin.dc.html", "MobileHome.dc.html", "MobileRollCall.dc.html", "MobileSubmit.dc.html", "MobilePayout.dc.html"
+  ],
+  "notes": {
+    "tFound": { "x": 0, "y": -300, "text": "Key design elements", "kind": "title1", "maxW": 3288, "page": "foundations" },
+    "tAdmin": { "x": 0, "y": -300, "text": "Office dashboard — admin, site manager, accountant", "kind": "title1", "maxW": 4480, "page": "admin" },
+    "tForeman": { "x": 0, "y": -300, "text": "Foreman app — phone, works offline", "kind": "title1", "maxW": 2270, "page": "foreman" },
+    "flowForeman": { "x": 0, "y": 964, "w": 520, "text": "Morning: PIN → Today → Roll call → Review & submit (saved on the phone, syncs when online).\nEvening, after the manager approves: Cash payout, one worker at a time, with proof of receipt.", "fill": "orange", "page": "foreman" }
+  },
+  "designSystems": []
+}

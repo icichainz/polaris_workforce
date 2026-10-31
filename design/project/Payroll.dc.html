@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pay periods</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}a:hover{color:#123E8F}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F4F5F7; color: #16191D; font-family: Inter, system-ui, sans-serif">
+  <div style="flex: 1 1 248px; max-width: 100%; background: #16191D">
+    <dc-import name="Sidebar" active="payroll" hint-size="248px,960px"></dc-import>
+  </div>
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 32px 56px">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px">
+      <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 13px; font-weight: 600; color: #5B626E">Daily by default · Route 4 Bridge pays weekly</span>
+          <h1 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 800; font-size: 32px">Pay periods</h1>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap">
+          <button type="button" style="height: 40px; padding: 0 16px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 600 14px Inter, sans-serif">Export for accountant</button>
+          <button type="button" style="height: 40px; padding: 0 16px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 600 14px Inter, sans-serif">Print payslips</button>
+        </div>
+      </header>
+
+      <section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+        <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Gross this week</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 26px; font-variant-numeric: tabular-nums">2 131 500 XOF</span>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Advances deducted</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 26px; font-variant-numeric: tabular-nums">38 000 XOF</span>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Paid out</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 26px; font-variant-numeric: tabular-nums">1 681 000 XOF</span>
+        </div>
+        <div style="background: #FFF4DB; border: 1px solid #F5D78A; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B4600">Still to pay</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 26px; font-variant-numeric: tabular-nums">412 500 XOF</span>
+        </div>
+      </section>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center">
+        <div role="tablist" aria-label="Period status" style="display: flex; gap: 4px; padding: 4px; background: #E9EBEF; border-radius: 10px">
+          <button type="button" role="tab" aria-selected="true" style="height: 34px; padding: 0 14px; border: 0; border-radius: 7px; background: #FFFFFF; font: 600 14px Inter, sans-serif">Open · 4</button>
+          <button type="button" role="tab" aria-selected="false" style="height: 34px; padding: 0 14px; border: 0; border-radius: 7px; background: transparent; color: #3F4650; font: 600 14px Inter, sans-serif">Locked</button>
+          <button type="button" role="tab" aria-selected="false" style="height: 34px; padding: 0 14px; border: 0; border-radius: 7px; background: transparent; color: #3F4650; font: 600 14px Inter, sans-serif">All</button>
+        </div>
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600">Site
+          <select style="height: 38px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>All sites</option><option>Riverside Apartments</option><option>Market Hall Renovation</option><option>Route 4 Bridge</option></select>
+        </label>
+      </div>
+
+      <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px">
+        <div style="overflow-x: auto">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 900px">
+            <thead><tr style="text-align: left; background: #F8F9FA">
+              <th style="padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Period</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Site</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">Workers</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">Gross</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">Deductions</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">Net</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Paid</th>
+              <th style="padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Status</th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{periods}}" as="p" hint-placeholder-count="8">
+                <tr style="border-top: 1px solid #EEF0F3">
+                  <td style="padding: 12px 20px"><a href="CashSheet.dc.html" style="font-weight: 600; color: #16191D; text-decoration: none">{{p.period}}</a><br><span style="font-size: 12px; color: #5B626E">{{p.kind}}</span></td>
+                  <td style="padding: 12px 16px">{{p.site}}</td>
+                  <td style="padding: 12px 16px; text-align: right; font-variant-numeric: tabular-nums">{{p.workers}}</td>
+                  <td style="padding: 12px 16px; text-align: right; font-variant-numeric: tabular-nums">{{p.gross}}</td>
+                  <td style="padding: 12px 16px; text-align: right; font-variant-numeric: tabular-nums; color: #8A4A06">{{p.ded}}</td>
+                  <td style="padding: 12px 16px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums">{{p.net}}</td>
+                  <td style="padding: 12px 16px; min-width: 110px"><span style="font-size: 13px; font-variant-numeric: tabular-nums">{{p.paid}}</span><span style="display: block; margin-top: 4px; height: 5px; border-radius: 999px; background: #EEF0F3; overflow: hidden"><span style="display: block; height: 5px; background: #135C33; width: {{p.pct}}"></span></span></td>
+                  <td style="padding: 12px 20px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; background: {{p.bg}}; color: {{p.fg}}">{{p.status}}</span></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <p style="margin: 0; font-size: 13px; color: #5B626E">A period is ready to pay once every day in it is approved. It locks when every worker is paid or the sheet is closed with reasons.</p>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const T = {
+      wait: { status: 'Waiting approval', bg: '#DDE8F8', fg: '#1A4C99' },
+      ready: { status: 'Ready to pay', bg: '#FDEBD2', fg: '#8A4A06' },
+      paying: { status: 'Paying', bg: '#FDEBD2', fg: '#8A4A06' },
+      paid: { status: 'Paid', bg: '#DCF2E4', fg: '#135C33' },
+      locked: { status: 'Locked', bg: '#16191D', fg: '#FFFFFF' },
+      open: { status: 'Open · in progress', bg: '#EEF0F3', fg: '#3F4650' }
+    };
+    const P = (period, kind, site, workers, gross, ded, net, paidN, t) => ({
+      period, kind, site, workers, gross, ded, net, paid: paidN + ' / ' + workers,
+      pct: Math.round(100 * paidN / workers) + '%', ...T[t]
+    });
+    return {
+      periods: [
+        P('Fri 31 Oct', 'Daily', 'Riverside Apartments', 38, '175 500', '− 4 000', '171 500', 0, 'wait'),
+        P('Fri 31 Oct', 'Daily', 'Market Hall Renovation', 31, '152 000', '− 4 000', '148 000', 0, 'ready'),
+        P('Thu 30 Oct', 'Daily', 'Market Hall Renovation', 30, '146 500', '− 6 000', '140 500', 28, 'paying'),
+        P('27 Oct – 1 Nov', 'Weekly', 'Route 4 Bridge', 26, '—', '—', '—', 0, 'open'),
+        P('Thu 30 Oct', 'Daily', 'Riverside Apartments', 40, '182 000', '− 6 000', '176 000', 40, 'paid'),
+        P('Wed 29 Oct', 'Daily', 'Riverside Apartments', 39, '178 500', '− 4 000', '174 500', 39, 'locked'),
+        P('Wed 29 Oct', 'Daily', 'Market Hall Renovation', 32, '154 000', '— ', '154 000', 32, 'locked'),
+        P('20 – 25 Oct', 'Weekly', 'Route 4 Bridge', 27, '612 500', '− 18 000', '594 500', 27, 'locked')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

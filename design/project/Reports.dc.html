@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reports</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}a:hover{color:#123E8F}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F4F5F7; color: #16191D; font-family: Inter, system-ui, sans-serif">
+  <div style="flex: 1 1 248px; max-width: 100%; background: #16191D">
+    <dc-import name="Sidebar" active="reports" hint-size="248px,960px"></dc-import>
+  </div>
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 32px 56px">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px">
+      <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+        <h1 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 800; font-size: 32px">Reports</h1>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap">
+          <button type="button" style="height: 40px; padding: 0 16px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 600 14px Inter, sans-serif">Download CSV</button>
+          <button type="button" style="height: 40px; padding: 0 16px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 600 14px Inter, sans-serif">Download Excel</button>
+        </div>
+      </header>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; padding: 14px 16px; background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px">
+        <div role="tablist" aria-label="Period" style="display: flex; gap: 4px; padding: 4px; background: #E9EBEF; border-radius: 10px">
+          <button type="button" role="tab" aria-selected="false" style="height: 34px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: #3F4650; font: 600 13px Inter, sans-serif">This week</button>
+          <button type="button" role="tab" aria-selected="true" style="height: 34px; padding: 0 12px; border: 0; border-radius: 7px; background: #FFFFFF; font: 600 13px Inter, sans-serif">October</button>
+          <button type="button" role="tab" aria-selected="false" style="height: 34px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: #3F4650; font: 600 13px Inter, sans-serif">Custom…</button>
+        </div>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600">Site
+          <select style="height: 38px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>All sites</option><option>Riverside Apartments</option></select>
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600">Trade
+          <select style="height: 38px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>All trades</option><option>Mason</option></select>
+        </label>
+      </div>
+
+      <section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+        <div style="background: #16191D; color: #FFFFFF; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #C9CDD3">Labour cost · October</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 26px; font-variant-numeric: tabular-nums">11 940 500 XOF</span>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Worker-days</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 26px; font-variant-numeric: tabular-nums">2 412.5</span>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Attendance rate</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 26px; font-variant-numeric: tabular-nums">89%</span>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Avg cost per worker-day</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 26px; font-variant-numeric: tabular-nums">4 949 XOF</span>
+        </div>
+      </section>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch">
+        <section style="flex: 1 1 420px; min-width: 0; background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+          <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Labour cost by site · October</h2>
+          <div style="display: flex; flex-direction: column; gap: 14px">
+            <sc-for list="{{bySite}}" as="s" hint-placeholder-count="3">
+              <div title="{{s.name}}: {{s.v}} XOF" style="display: flex; flex-direction: column; gap: 6px">
+                <div style="display: flex; justify-content: space-between; font-size: 14px"><span style="font-weight: 600">{{s.name}}</span><span style="font-variant-numeric: tabular-nums">{{s.v}} XOF</span></div>
+                <span style="height: 14px; border-radius: 0 4px 4px 0; background: #1A56C4; width: {{s.w}}"></span>
+              </div>
+            </sc-for>
+          </div>
+          <span style="font-size: 12px; color: #5B626E">Add a labour budget per site to compare against plan.</span>
+        </section>
+
+        <section style="flex: 1 1 420px; min-width: 0; background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+          <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Attendance rate by week</h2>
+          <div role="img" aria-label="Attendance rate by week: week 40 91%, week 41 88%, week 42 86%, week 43 90%, week 44 89%" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; align-items: end; height: 170px; border-bottom: 1px solid #C9CED6">
+            <sc-for list="{{weeks}}" as="w" hint-placeholder-count="5">
+              <div title="{{w.label}}: {{w.v}}" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%">
+                <span style="font-size: 12px; font-weight: 600; color: #3F4650">{{w.v}}</span>
+                <span style="width: 100%; max-width: 48px; border-radius: 4px 4px 0 0; background: #1A56C4; height: {{w.h}}"></span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; margin-top: -6px">
+            <sc-for list="{{weeks}}" as="w" hint-placeholder-count="5"><span style="text-align: center; font-size: 12px; color: #5B626E">{{w.label}}</span></sc-for>
+          </div>
+          <span style="font-size: 12px; color: #5B626E">Axis starts at 50% · present + late ÷ expected days</span>
+        </section>
+      </div>
+
+      <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px">
+        <div style="padding: 16px 20px; border-bottom: 1px solid #E3E5E9"><h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Attendance by worker · October</h2></div>
+        <div style="overflow-x: auto">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 760px">
+            <thead><tr style="text-align: left; background: #F8F9FA">
+              <th style="padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Worker</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">P</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">½</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">L</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">A</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">Rate</th>
+              <th style="padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">Earned</th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{workers}}" as="w" hint-placeholder-count="5">
+                <tr style="border-top: 1px solid #EEF0F3">
+                  <td style="padding: 12px 20px"><span style="font-weight: 600">{{w.name}}</span><br><span style="font-size: 12px; color: #5B626E">{{w.site}}</span></td>
+                  <td style="padding: 12px 16px; text-align: right; font-variant-numeric: tabular-nums">{{w.p}}</td>
+                  <td style="padding: 12px 16px; text-align: right; font-variant-numeric: tabular-nums">{{w.h}}</td>
+                  <td style="padding: 12px 16px; text-align: right; font-variant-numeric: tabular-nums">{{w.l}}</td>
+                  <td style="padding: 12px 16px; text-align: right; font-variant-numeric: tabular-nums; font-weight: {{w.aWeight}}; color: {{w.aColor}}">{{w.a}}</td>
+                  <td style="padding: 12px 16px; text-align: right; font-variant-numeric: tabular-nums">{{w.rate}}</td>
+                  <td style="padding: 12px 20px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums">{{w.earned}}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1150}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const f = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    const sites = [['Riverside Apartments', 4986000], ['Market Hall Renovation', 3964500], ['Route 4 Bridge', 2990000]];
+    const max = sites[0][1];
+    const weeks = [['Wk 40', 91], ['Wk 41', 88], ['Wk 42', 86], ['Wk 43', 90], ['Wk 44', 89]];
+    const W = (name, site, p, h, l, a, earned) => {
+      const exp = p + h + l + a;
+      return { name, site, p, h, l, a, rate: Math.round(100 * (p + l + h * 0.5) / exp) + '%', earned: f(earned) + ' XOF',
+        aWeight: a >= 3 ? 700 : 400, aColor: a >= 3 ? '#9B1C13' : '#16191D' };
+    };
+    return {
+      bySite: sites.map(([name, v]) => ({ name, v: f(v), w: Math.round(100 * v / max) + '%' })),
+      weeks: weeks.map(([label, v]) => ({ label, v: v + '%', h: Math.round(140 * (v - 50) / 50) + 'px' })),
+      workers: [
+        W('Kodjo Atsu', 'Market Hall', 19, 1, 2, 5, 77000),
+        W('Akouvi Tete', 'Riverside', 22, 0, 4, 1, 130000),
+        W('Yao Mensah', 'Riverside', 24, 1, 1, 1, 153000),
+        W('Afi Dosseh', 'Riverside', 23, 3, 0, 1, 85750),
+        W('Komlan Agbeko', 'Riverside', 26, 0, 1, 0, 148500)
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

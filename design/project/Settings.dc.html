@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}a:hover{color:#123E8F}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F4F5F7; color: #16191D; font-family: Inter, system-ui, sans-serif">
+  <div style="flex: 1 1 248px; max-width: 100%; background: #16191D">
+    <dc-import name="Sidebar" active="settings" hint-size="248px,960px"></dc-import>
+  </div>
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 32px 56px">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px">
+      <header style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 13px; font-weight: 600; color: #5B626E">Company defaults — each site can override pay and attendance rules</span>
+        <h1 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 800; font-size: 32px">Settings</h1>
+      </header>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+        <nav aria-label="Settings sections" style="flex: 1 1 200px; max-width: 100%; display: flex; flex-direction: column; gap: 2px">
+          <a href="#company" style="height: 40px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; background: #FFFFFF; border: 1px solid #E3E5E9; color: #16191D; font-weight: 600; font-size: 14px; text-decoration: none">Company &amp; region</a>
+          <a href="#attendance" style="height: 40px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; color: #3F4650; font-weight: 500; font-size: 14px; text-decoration: none">Attendance</a>
+          <a href="#pay" style="height: 40px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; color: #3F4650; font-weight: 500; font-size: 14px; text-decoration: none">Pay rules</a>
+          <a href="#payments" style="height: 40px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; color: #3F4650; font-weight: 500; font-size: 14px; text-decoration: none">Payments &amp; advances</a>
+          <a href="#holidays" style="height: 40px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; color: #3F4650; font-weight: 500; font-size: 14px; text-decoration: none">Working days &amp; holidays</a>
+        </nav>
+
+        <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+          <section id="company" style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+            <h2 style="grid-column: span 2; margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Company &amp; region</h2>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Company name
+              <input type="text" value="[Company name]" style="height: 40px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif">
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Country
+              <select style="height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>[Select country]</option></select>
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Currency
+              <select style="height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>XOF — CFA franc (no decimals)</option><option>EUR — Euro (2 decimals)</option><option>USD — US dollar (2 decimals)</option></select>
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Number format
+              <select style="height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>12 500 XOF</option><option>12,500 XOF</option><option>XOF 12.500</option></select>
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Time zone
+              <select style="height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>[Time zone]</option></select>
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">App language
+              <select style="height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>English</option><option>Français</option></select>
+            </label>
+            <p style="grid-column: span 2; margin: 0; font-size: 13px; color: #8A4A06; background: #FFF4DB; padding: 10px 12px; border-radius: 8px">Changing the currency only applies to new pay periods. Locked periods keep their original currency.</p>
+          </section>
+
+          <section id="attendance" style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+            <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Attendance</h2>
+            <fieldset style="margin: 0; padding: 0; border: 0">
+              <legend style="font-size: 13px; font-weight: 600; padding-bottom: 8px">Who records attendance</legend>
+              <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+                <label style="display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 2px solid #16191D; border-radius: 8px; font-size: 14px"><input type="radio" name="mode" checked style="width: 18px; height: 18px; margin: 0; accent-color: #16191D"><span><strong>Foreman roll call</strong><br><span style="font-size: 12px; color: #5B626E">Foreman marks the whole crew</span></span></label>
+                <label style="display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid #C9CED6; border-radius: 8px; font-size: 14px"><input type="radio" name="mode" style="width: 18px; height: 18px; margin: 0; accent-color: #16191D"><span><strong>Self check-in</strong><br><span style="font-size: 12px; color: #5B626E">Workers check in on a phone</span></span></label>
+                <label style="display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid #C9CED6; border-radius: 8px; font-size: 14px"><input type="radio" name="mode" style="width: 18px; height: 18px; margin: 0; accent-color: #16191D"><span><strong>Both</strong><br><span style="font-size: 12px; color: #5B626E">Self check-in, foreman confirms</span></span></label>
+              </div>
+            </fieldset>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Half day counts as
+                <select style="height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>0.5 day</option><option>Hours actually worked</option></select>
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Late counts as
+                <select style="height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>Full day, flagged</option><option>Deduct late minutes</option></select>
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Late after
+                <input type="time" value="07:15" style="height: 40px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif">
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Roll call due by
+                <input type="time" value="08:00" style="height: 40px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif">
+              </label>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <label style="display: flex; align-items: center; gap: 10px; font-size: 14px"><input type="checkbox" checked style="width: 20px; height: 20px; accent-color: #16191D"> Record arrival and departure times</label>
+              <label style="display: flex; align-items: center; gap: 10px; font-size: 14px"><input type="checkbox" checked style="width: 20px; height: 20px; accent-color: #16191D"> Corrections after submission need a reason</label>
+              <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: #5B626E"><input type="checkbox" disabled style="width: 20px; height: 20px"> Photo at check-in · <em>coming later</em></label>
+              <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: #5B626E"><input type="checkbox" disabled style="width: 20px; height: 20px"> Require GPS inside site boundary · <em>coming later</em></label>
+            </div>
+          </section>
+
+          <section id="pay" style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+            <h2 style="grid-column: span 2; margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Pay rules</h2>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Default pay frequency
+              <select style="height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>Daily</option><option>Weekly</option><option>Every 2 weeks</option><option>Monthly</option><option>Every N days…</option></select>
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Default pay type
+              <select style="height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>Daily rate</option><option>Hourly rate</option></select>
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Normal working hours
+              <input type="text" value="07:00 – 17:00 (1 h break)" style="height: 40px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif">
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Overtime
+              <span style="display: flex; gap: 8px; align-items: center; font-weight: 400; font-size: 14px">after <input type="text" value="9" aria-label="Overtime after hours" style="width: 56px; height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif; text-align: right"> h × <input type="text" value="1.5" aria-label="Overtime multiplier" style="width: 64px; height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif; text-align: right"></span>
+            </label>
+            <label style="grid-column: span 2; display: flex; align-items: center; gap: 10px; font-size: 14px; color: #5B626E"><input type="checkbox" disabled style="width: 20px; height: 20px"> Statutory deductions (tax, social security) · <em>coming later, depends on country</em></label>
+          </section>
+
+          <section id="payments" style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+            <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Payments &amp; advances</h2>
+            <fieldset style="margin: 0; padding: 0; border: 0">
+              <legend style="font-size: 13px; font-weight: 600; padding-bottom: 8px">Default payment method</legend>
+              <div style="display: flex; flex-wrap: wrap; gap: 10px">
+                <label style="display: flex; gap: 8px; align-items: center; height: 44px; padding: 0 14px; border: 2px solid #16191D; border-radius: 8px; font-size: 14px; font-weight: 600"><input type="radio" name="pm" checked style="width: 18px; height: 18px; margin: 0; accent-color: #16191D"> Cash</label>
+                <label style="display: flex; gap: 8px; align-items: center; height: 44px; padding: 0 14px; border: 1px solid #C9CED6; border-radius: 8px; font-size: 14px"><input type="radio" name="pm" style="width: 18px; height: 18px; margin: 0; accent-color: #16191D"> Bank transfer</label>
+                <label style="display: flex; gap: 8px; align-items: center; height: 44px; padding: 0 14px; border: 1px solid #C9CED6; border-radius: 8px; font-size: 14px"><input type="radio" name="pm" style="width: 18px; height: 18px; margin: 0; accent-color: #16191D"> Mobile money</label>
+              </div>
+            </fieldset>
+            <fieldset style="margin: 0; padding: 0; border: 0">
+              <legend style="font-size: 13px; font-weight: 600; padding-bottom: 8px">Accepted proof of cash receipt</legend>
+              <div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px">
+                <label style="display: flex; align-items: center; gap: 8px"><input type="checkbox" checked style="width: 20px; height: 20px; accent-color: #16191D"> Photo of worker with cash</label>
+                <label style="display: flex; align-items: center; gap: 8px"><input type="checkbox" checked style="width: 20px; height: 20px; accent-color: #16191D"> Signature on phone</label>
+                <label style="display: flex; align-items: center; gap: 8px"><input type="checkbox" checked style="width: 20px; height: 20px; accent-color: #16191D"> Thumb mark on paper sheet (photo)</label>
+              </div>
+            </fieldset>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Advance limit
+                <span style="display: flex; gap: 8px; align-items: center; font-weight: 400; font-size: 14px"><input type="text" value="50" aria-label="Advance limit percent" style="width: 64px; height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif; text-align: right"> % of expected weekly pay</span>
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Default deduction per pay
+                <span style="display: flex; height: 40px; border: 1px solid #C9CED6; border-radius: 8px; overflow: hidden">
+                  <input type="text" value="2 000" style="flex-grow: 1; min-width: 0; border: 0; padding: 0 12px; font: 500 14px Inter, sans-serif; text-align: right">
+                  <span style="display: flex; align-items: center; padding: 0 12px; background: #F4F5F7; border-left: 1px solid #E3E5E9; font-size: 13px; font-weight: 600; color: #3F4650">XOF</span>
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <section id="holidays" style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+            <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Working days &amp; holidays</h2>
+            <fieldset style="margin: 0; padding: 0; border: 0">
+              <legend style="font-size: 13px; font-weight: 600; padding-bottom: 8px">Working days</legend>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                <sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+                  <label style="display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 8px; font-size: 14px; font-weight: 600; border: {{d.border}}"><input type="checkbox" checked="{{d.on}}" style="width: 18px; height: 18px; accent-color: #16191D"> {{d.label}}</label>
+                </sc-for>
+              </div>
+            </fieldset>
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border: 1px dashed #C9CED6; border-radius: 8px; font-size: 14px">
+              <span>Public holidays: <strong>[none added yet]</strong></span>
+              <button type="button" style="height: 36px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 600 13px Inter, sans-serif">Add holiday</button>
+            </div>
+          </section>
+
+          <div style="position: sticky; bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; background: #16191D; color: #FFFFFF; border-radius: 10px; box-shadow: 0 6px 20px rgba(22, 25, 29, 0.25)">
+            <span style="font-size: 14px">3 unsaved changes</span>
+            <div style="display: flex; gap: 8px">
+              <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #3F4650; border-radius: 8px; background: transparent; color: #FFFFFF; font: 600 14px Inter, sans-serif">Discard</button>
+              <button type="button" style="height: 40px; padding: 0 16px; border: 0; border-radius: 8px; background: #F5B000; color: #16191D; font: 700 14px Inter, sans-serif">Save settings</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label, i) => ({
+      label, on: i < 6, border: i < 6 ? '2px solid #16191D' : '1px solid #C9CED6'
+    }));
+    return { days };
+  }
+}
+</script>
+</body>
+</html>

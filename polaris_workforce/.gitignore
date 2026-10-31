@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+.env
+
+# SQLite database and its WAL side files
+db.sqlite3
+db.sqlite3-wal
+db.sqlite3-shm
+
+staticfiles/
+media/

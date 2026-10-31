@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Users and roles</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}a:hover{color:#123E8F}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F4F5F7; color: #16191D; font-family: Inter, system-ui, sans-serif">
+  <div style="flex: 1 1 248px; max-width: 100%; background: #16191D">
+    <dc-import name="Sidebar" active="users" hint-size="248px,960px"></dc-import>
+  </div>
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 32px 56px">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px">
+      <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 13px; font-weight: 600; color: #5B626E">People who use the app — workers are managed in Workers</span>
+          <h1 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 800; font-size: 32px">Users &amp; roles</h1>
+        </div>
+        <button type="button" style="height: 40px; padding: 0 16px; border: 0; border-radius: 8px; background: #F5B000; color: #16191D; font: 600 14px Inter, sans-serif">Invite user</button>
+      </header>
+
+      <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px">
+        <div style="overflow-x: auto">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 820px">
+            <thead><tr style="text-align: left; background: #F8F9FA">
+              <th style="padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">User</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Role</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Sites</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Sign-in</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Last active</th>
+              <th style="padding: 10px 20px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Actions</span></th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{users}}" as="u" hint-placeholder-count="6">
+                <tr style="border-top: 1px solid #EEF0F3">
+                  <td style="padding: 12px 20px"><span style="font-weight: 600">{{u.name}}</span><br><span style="font-size: 12px; color: #5B626E">{{u.contact}}</span></td>
+                  <td style="padding: 12px 16px"><span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: {{u.bg}}; color: {{u.fg}}">{{u.role}}</span></td>
+                  <td style="padding: 12px 16px">{{u.sites}}</td>
+                  <td style="padding: 12px 16px">{{u.login}}</td>
+                  <td style="padding: 12px 16px; color: #3F4650">{{u.last}}</td>
+                  <td style="padding: 12px 20px; text-align: right"><button type="button" style="height: 32px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 6px; background: #FFFFFF; font: 600 13px Inter, sans-serif">Edit</button></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px">
+        <div style="padding: 16px 20px; border-bottom: 1px solid #E3E5E9; display: flex; flex-direction: column; gap: 4px">
+          <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">What each role can do</h2>
+          <span style="font-size: 13px; color: #5B626E">Site managers and foremen only see the sites they are assigned to.</span>
+        </div>
+        <div style="overflow-x: auto">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 680px">
+            <thead><tr style="text-align: left; background: #F8F9FA">
+              <th style="padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Permission</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: center">Admin</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: center">Site manager</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: center">Foreman</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: center">Accountant</th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{perms}}" as="p" hint-placeholder-count="8">
+                <tr style="border-top: 1px solid #EEF0F3">
+                  <td style="padding: 11px 20px">{{p.label}}</td>
+                  <td style="padding: 11px 16px; text-align: center; font-weight: 700; color: {{p.c0}}">{{p.v0}}</td>
+                  <td style="padding: 11px 16px; text-align: center; font-weight: 700; color: {{p.c1}}">{{p.v1}}</td>
+                  <td style="padding: 11px 16px; text-align: center; font-weight: 700; color: {{p.c2}}">{{p.v2}}</td>
+                  <td style="padding: 11px 16px; text-align: center; font-weight: 700; color: {{p.c3}}">{{p.v3}}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":980}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const R = {
+      Admin: { bg: '#16191D', fg: '#FFFFFF' }, 'Site manager': { bg: '#DDE8F8', fg: '#1A4C99' },
+      Foreman: { bg: '#FFF4DB', fg: '#6B4600' }, Accountant: { bg: '#EEF0F3', fg: '#3F4650' }
+    };
+    const U = (name, contact, role, sites, login, last) => ({ name, contact, role, sites, login, last, ...R[role] });
+    const yes = '✓', no = '—', own = 'Own sites';
+    const P = (label, ...v) => {
+      const o = { label };
+      v.forEach((x, i) => { o['v' + i] = x; o['c' + i] = x === no ? '#9AA1AB' : (x === yes ? '#135C33' : '#1A4C99'); });
+      return o;
+    };
+    return {
+      users: [
+        U('Edem Kpodar', 'edem@[company].com', 'Admin', 'All', 'Password', 'Now'),
+        U('Ama Fiagbe', '+[cc] 90 44 12 77', 'Site manager', 'Market Hall', 'Password', 'Today 08:15'),
+        U('Kossi Amegah', '+[cc] 91 05 66 23', 'Foreman', 'Riverside', '4-digit PIN', 'Today 07:45'),
+        U('Mawuli Adjovi', '+[cc] 91 70 03 55', 'Foreman', 'Market Hall', '4-digit PIN', 'Today 07:20'),
+        U('Sena Lawson', '+[cc] 98 11 52 30', 'Foreman', 'Route 4 Bridge', '4-digit PIN', 'Yesterday 17:55'),
+        U('Afua Mensah', 'compta@[company].com', 'Accountant', 'All (read)', 'Password', 'Mon 27 Oct')
+      ],
+      perms: [
+        P('Take roll call', yes, yes, own, no),
+        P('Correct a submitted day (with reason)', yes, own, own, no),
+        P('Approve days', yes, own, no, no),
+        P('Pay out cash & record proof', yes, own, own, no),
+        P('Give advances', yes, own, no, no),
+        P('Edit workers & pay rates', yes, own, no, no),
+        P('Close & lock pay periods', yes, no, no, yes),
+        P('Reports & exports', yes, own, no, yes),
+        P('Company settings & users', yes, no, no, no)
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

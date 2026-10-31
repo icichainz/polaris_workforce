@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cash payout</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F5F7; color: #16191D; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column">
+  <header style="background: #16191D; color: #FFFFFF; padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <a href="MobileHome.dc.html" aria-label="Back" style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      </a>
+      <div style="flex-grow: 1; display: flex; flex-direction: column">
+        <h1 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 800; font-size: 20px">Cash payout</h1>
+        <span style="font-size: 13px; color: #C9CDD3">Riverside · Fri 31 Oct · approved 16:10</span>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+      <div style="background: #2A3038; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #C9CDD3">In hand</span><span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums">{{inHand}}</span></div>
+      <div style="background: #2A3038; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #C9CDD3">Paid</span><span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums">{{paidCount}}/38</span></div>
+      <div style="background: #2A3038; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #C9CDD3">Left</span><span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; color: #F5B000">{{left}}</span></div>
+    </div>
+  </header>
+
+  <main style="flex-grow: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px">
+    <sc-if value="{{hasCurrent}}" hint-placeholder-val="{{true}}">
+      <section style="background: #FFFFFF; border: 2px solid #16191D; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <span style="width: 52px; height: 52px; border-radius: 999px; background: #E3E5E9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px">{{cur.ini}}</span>
+          <span style="flex-grow: 1; display: flex; flex-direction: column"><span style="font-size: 19px; font-weight: 700">{{cur.name}}</span><span style="font-size: 14px; color: #5B626E">{{cur.trade}} · {{cur.worked}}</span></span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 15px">
+          <div style="display: flex; justify-content: space-between"><span style="color: #3F4650">Earned today</span><span style="font-variant-numeric: tabular-nums">{{cur.grossF}}</span></div>
+          <div style="display: flex; justify-content: space-between"><span style="color: #3F4650">Advance repayment</span><span style="font-variant-numeric: tabular-nums; color: #8A4A06">{{cur.advF}}</span></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding-top: 10px; border-top: 2px solid #16191D">
+          <span style="font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em">Hand over</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 800; font-size: 34px; font-variant-numeric: tabular-nums">{{cur.netF}}</span>
+        </div>
+        <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+          <legend style="font-size: 14px; font-weight: 600; padding-bottom: 8px">Proof of receipt</legend>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+            <sc-for list="{{proofs}}" as="p" hint-placeholder-count="3">
+              <button type="button" onClick="{{p.pick}}" aria-pressed="{{p.pressed}}" style="height: 64px; border-radius: 10px; font: 600 13px Inter, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: {{p.border}}; background: {{p.bg}}; color: #16191D">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16191D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{p.icon}}"></path></svg>
+                {{p.label}}
+              </button>
+            </sc-for>
+          </div>
+        </fieldset>
+        <button type="button" onClick="{{confirm}}" style="height: 56px; border: 0; border-radius: 12px; background: #F5B000; color: #16191D; font: 700 17px Inter, sans-serif">Confirm paid · {{cur.netF}}</button>
+      </section>
+    </sc-if>
+    <sc-if value="{{allDone}}" hint-placeholder-val="{{false}}">
+      <section style="background: #DCF2E4; color: #135C33; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-family: Archivo, sans-serif; font-weight: 800; font-size: 22px">Everyone is paid</span>
+        <span style="font-size: 15px">Return <strong>{{inHand}}</strong> to the office. The sheet locks when the office counts it.</span>
+      </section>
+    </sc-if>
+
+    <h2 style="margin: 4px 0 0; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Queue</h2>
+    <sc-for list="{{queue}}" as="q" hint-placeholder-count="6">
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 12px">
+        <span style="flex-grow: 1; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 600">{{q.name}}</span><span style="font-size: 13px; color: #5B626E">{{q.trade}}</span></span>
+        <span style="font-weight: 700; font-variant-numeric: tabular-nums">{{q.netF}}</span>
+        <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: {{q.bg}}; color: {{q.fg}}">{{q.status}}</span>
+      </div>
+    </sc-for>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { paid: {}, proof: 'photo' }; }
+  renderVals() {
+    const f = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' XOF';
+    const list = [
+      ['Yao Mensah', 'Mason', '1 day', 6000, 2000], ['Komlan Agbeko', 'Carpenter', '1 day', 5500, 0],
+      ['Afi Dosseh', 'Labourer', '½ day', 1750, 0], ['Akouvi Tete', 'Steel fixer', '1 day', 5000, 2000],
+      ['Sena Kumah', 'Mason', '1 day', 6000, 0], ['Delali Agbo', 'Painter', '1 day · late', 4500, 0],
+      ['Edem Agbodjan', 'Labourer', '½ day', 1750, 0]
+    ].map(([name, trade, worked, gross, adv]) => ({
+      name, trade, worked, gross, adv, net: gross - adv,
+      ini: name.split(' ').map(p => p[0]).join(''),
+      grossF: f(gross), advF: adv ? '− ' + f(adv) : '—', netF: f(gross - adv)
+    }));
+    const paid = this.state.paid;
+    const issued = 175000, prevPaid = 145000, prevCount = 31, total = 171500;
+    let paidSum = prevPaid, count = prevCount;
+    list.forEach((w, i) => { if (paid[i]) { paidSum += w.net; count++; } });
+    const curIdx = list.findIndex((_, i) => !paid[i]);
+    const cur = curIdx >= 0 ? list[curIdx] : list[0];
+    const P = [
+      { k: 'photo', label: 'Photo', icon: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' },
+      { k: 'sign', label: 'Signature', icon: 'M3 17c3-4 5-8 7-8s0 7 2 7 3-3 4-3 1 2 5 2M3 21h18' },
+      { k: 'thumb', label: 'Thumb mark', icon: 'M12 3a7 7 0 0 0-7 7v4M19 10a7 7 0 0 0-3-5.7M9 21v-9a3 3 0 0 1 6 0v3M12 12v9M19 14v-2' }
+    ];
+    return {
+      cur, hasCurrent: curIdx >= 0, allDone: curIdx < 0,
+      inHand: f(issued - paidSum), paidCount: count, left: f(total - paidSum),
+      proofs: P.map(p => ({
+        ...p, pressed: this.state.proof === p.k ? 'true' : 'false',
+        border: this.state.proof === p.k ? '2px solid #16191D' : '1px solid #C9CED6',
+        bg: this.state.proof === p.k ? '#FFF4DB' : '#FFFFFF',
+        pick: () => this.setState({ proof: p.k })
+      })),
+      confirm: () => { if (curIdx >= 0) this.setState({ paid: { ...paid, [curIdx]: true } }); },
+      queue: list.map((w, i) => ({
+        ...w,
+        status: paid[i] ? 'Paid' : (i === curIdx ? 'Now' : 'To pay'),
+        bg: paid[i] ? '#DCF2E4' : (i === curIdx ? '#16191D' : '#FDEBD2'),
+        fg: paid[i] ? '#135C33' : (i === curIdx ? '#FFFFFF' : '#8A4A06')
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

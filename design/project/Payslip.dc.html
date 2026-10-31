@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Payslip</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+</style>
+</helmet>
+<div style="width: 794px; height: 1123px; box-sizing: border-box; padding: 64px 64px 56px; background: #FFFFFF; color: #16191D; font-family: Inter, system-ui, sans-serif; font-size: 16px; display: flex; flex-direction: column; gap: 26px">
+  <header style="display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; padding-bottom: 20px; border-bottom: 2px solid #16191D">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span style="font-family: Archivo, sans-serif; font-weight: 800; font-size: 24px">[Company name]</span>
+      <span style="font-size: 13px; color: #3F4650">[Company address] · [Registration number]</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+      <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 22px">Pay statement</span>
+      <span style="font-size: 14px; color: #3F4650">Week 27 Oct – 1 Nov 2026</span>
+      <span style="font-size: 13px; color: #3F4650">No. PS-2026-44-0142</span>
+    </div>
+  </header>
+
+  <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 32px; font-size: 15px">
+    <div style="display: flex; justify-content: space-between"><span style="color: #3F4650">Worker</span><strong>Yao Mensah</strong></div>
+    <div style="display: flex; justify-content: space-between"><span style="color: #3F4650">Worker ID</span><strong>W-0142</strong></div>
+    <div style="display: flex; justify-content: space-between"><span style="color: #3F4650">Trade</span><strong>Mason</strong></div>
+    <div style="display: flex; justify-content: space-between"><span style="color: #3F4650">Site</span><strong>Riverside Apartments</strong></div>
+    <div style="display: flex; justify-content: space-between"><span style="color: #3F4650">Rate</span><strong>6 000 XOF / day</strong></div>
+    <div style="display: flex; justify-content: space-between"><span style="color: #3F4650">Paid</span><strong>Daily, in cash</strong></div>
+  </section>
+
+  <table style="width: 100%; border-collapse: collapse; font-size: 15px">
+    <thead><tr style="text-align: left; border-bottom: 1.5px solid #16191D">
+      <th style="padding: 8px 6px; font-size: 13px; font-weight: 700">Day</th>
+      <th style="padding: 8px 6px; font-size: 13px; font-weight: 700">Status</th>
+      <th style="padding: 8px 6px; font-size: 13px; font-weight: 700; text-align: right">Gross</th>
+      <th style="padding: 8px 6px; font-size: 13px; font-weight: 700; text-align: right">Advance</th>
+      <th style="padding: 8px 6px; font-size: 13px; font-weight: 700; text-align: right">Net paid</th>
+      <th style="padding: 8px 6px; font-size: 13px; font-weight: 700">Receipt</th>
+    </tr></thead>
+    <tbody>
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+        <tr style="border-bottom: 1px solid #C9CED6">
+          <td style="padding: 9px 6px">{{r.day}}</td>
+          <td style="padding: 9px 6px"><strong>{{r.letter}}</strong> {{r.status}}</td>
+          <td style="padding: 9px 6px; text-align: right; font-variant-numeric: tabular-nums">{{r.gross}}</td>
+          <td style="padding: 9px 6px; text-align: right; font-variant-numeric: tabular-nums">{{r.adv}}</td>
+          <td style="padding: 9px 6px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600">{{r.net}}</td>
+          <td style="padding: 9px 6px; font-size: 13px">{{r.proof}}</td>
+        </tr>
+      </sc-for>
+    </tbody>
+  </table>
+
+  <section style="display: flex; justify-content: flex-end">
+    <div style="width: 340px; display: flex; flex-direction: column; gap: 8px; font-size: 15px">
+      <div style="display: flex; justify-content: space-between"><span>Days worked</span><span style="font-variant-numeric: tabular-nums">5.5</span></div>
+      <div style="display: flex; justify-content: space-between"><span>Gross</span><span style="font-variant-numeric: tabular-nums">33 000 XOF</span></div>
+      <div style="display: flex; justify-content: space-between"><span>Advance repaid</span><span style="font-variant-numeric: tabular-nums">− 6 000 XOF</span></div>
+      <div style="display: flex; justify-content: space-between; padding-top: 10px; border-top: 2px solid #16191D; font-family: Archivo, sans-serif; font-weight: 800; font-size: 20px"><span>Total paid</span><span style="font-variant-numeric: tabular-nums">27 000 XOF</span></div>
+      <div style="display: flex; justify-content: space-between; font-size: 13px; color: #3F4650"><span>Advance still owed</span><span>2 000 XOF</span></div>
+    </div>
+  </section>
+
+  <div style="flex-grow: 1"></div>
+
+  <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span style="height: 72px; border-bottom: 1.5px solid #16191D"></span>
+      <span style="font-size: 13px; color: #3F4650">Worker signature or thumb mark</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span style="height: 72px; border-bottom: 1.5px solid #16191D"></span>
+      <span style="font-size: 13px; color: #3F4650">Paymaster · Kossi Amegah</span>
+    </div>
+  </section>
+
+  <footer style="display: flex; justify-content: space-between; font-size: 12px; color: #3F4650; padding-top: 12px; border-top: 1px solid #C9CED6">
+    <span>P present · ½ half day · L late (full day) · A absent</span>
+    <span>Printed 1 Nov 2026 18:05 · Polaris Workforce</span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":1123}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      rows: [
+        { day: 'Mon 27 Oct', letter: 'P', status: 'Present', gross: '6 000', adv: '—', net: '6 000', proof: 'Thumb mark 17:50' },
+        { day: 'Tue 28 Oct', letter: 'P', status: 'Present', gross: '6 000', adv: '—', net: '6 000', proof: 'Photo 17:45' },
+        { day: 'Wed 29 Oct', letter: 'P', status: 'Present', gross: '6 000', adv: '− 2 000', net: '4 000', proof: 'Signature 17:38' },
+        { day: 'Thu 30 Oct', letter: 'P', status: 'Present', gross: '6 000', adv: '− 2 000', net: '4 000', proof: 'Photo 17:41' },
+        { day: 'Fri 31 Oct', letter: 'P', status: 'Present', gross: '6 000', adv: '− 2 000', net: '4 000', proof: 'Photo 17:39' },
+        { day: 'Sat 1 Nov', letter: '½', status: 'Half day', gross: '3 000', adv: '—', net: '3 000', proof: 'Signature 12:20' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

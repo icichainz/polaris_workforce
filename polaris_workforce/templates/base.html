@@ -1,0 +1,22 @@
+{% load i18n static %}<!doctype html>
+{% get_current_language as LANGUAGE_CODE %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Polaris Workforce{% endblock %}</title>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  {% block body %}
+  <main>
+    {% if messages %}
+      <ul>
+        {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  {% endblock %}
+</body>
+</html>

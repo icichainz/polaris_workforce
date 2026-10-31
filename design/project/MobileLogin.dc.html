@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Foreman PIN sign-in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; padding: 40px 20px 28px; background: #16191D; color: #FFFFFF; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; gap: 24px">
+  <div style="display: flex; justify-content: space-between; align-items: center">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <span style="width: 36px; height: 36px; border-radius: 9px; background: #F5B000; display: flex; align-items: center; justify-content: center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16191D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 18h20M4 18v-2a8 8 0 0 1 16 0v2M10 8V5h4v3"></path></svg>
+      </span>
+      <span style="display: flex; flex-direction: column; line-height: 1.1"><span style="font-family: Archivo, sans-serif; font-weight: 800; font-size: 20px">Polaris</span><span style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #C9CDD3">Workforce</span></span>
+    </div>
+    <button type="button" style="height: 40px; padding: 0 12px; border: 1px solid #3F4650; border-radius: 8px; background: transparent; color: #FFFFFF; font: 600 14px Inter, sans-serif">FR</button>
+  </div>
+
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 12px">
+    <span style="width: 72px; height: 72px; border-radius: 999px; background: #2E343C; display: flex; align-items: center; justify-content: center; font-family: Archivo, sans-serif; font-weight: 800; font-size: 24px">KA</span>
+    <span style="font-size: 20px; font-weight: 700">Kossi Amegah</span>
+    <span style="font-size: 15px; color: #C9CDD3">Foreman · Riverside Apartments</span>
+    <a href="#switch" style="font-size: 14px; color: #F5B000; font-weight: 600">Not you?</a>
+  </div>
+
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 14px">
+    <span style="font-size: 17px; font-weight: 600">{{prompt}}</span>
+    <div aria-label="{{pinLabel}}" style="display: flex; gap: 18px">
+      <sc-for list="{{dots}}" as="d" hint-placeholder-count="4">
+        <span style="width: 18px; height: 18px; border-radius: 999px; border: 2px solid #F5B000; background: {{d.fill}}"></span>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1"></div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+    <sc-for list="{{keys}}" as="k" hint-placeholder-count="12">
+      <button type="button" onClick="{{k.press}}" aria-label="{{k.aria}}" style="height: 64px; border: 0; border-radius: 14px; background: {{k.bg}}; color: #FFFFFF; font: 600 26px Archivo, sans-serif">{{k.label}}</button>
+    </sc-for>
+  </div>
+
+  <a href="MobileHome.dc.html" style="height: 56px; border-radius: 12px; background: {{goBg}}; color: {{goFg}}; font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center; text-decoration: none">Open today’s roll call</a>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { pin: '12' }; }
+  renderVals() {
+    const pin = this.state.pin;
+    const press = (v) => () => {
+      if (v === 'del') this.setState({ pin: pin.slice(0, -1) });
+      else if (v === 'clr') this.setState({ pin: '' });
+      else if (pin.length < 4) this.setState({ pin: pin + v });
+    };
+    const keys = ['1','2','3','4','5','6','7','8','9','clr','0','del'].map(v => ({
+      label: v === 'del' ? '⌫' : (v === 'clr' ? 'C' : v),
+      aria: v === 'del' ? 'Delete' : (v === 'clr' ? 'Clear' : v),
+      bg: (v === 'del' || v === 'clr') ? 'transparent' : '#2A3038',
+      press: press(v)
+    }));
+    const done = pin.length === 4;
+    return {
+      keys,
+      dots: [0, 1, 2, 3].map(i => ({ fill: i < pin.length ? '#F5B000' : 'transparent' })),
+      prompt: done ? 'PIN entered' : 'Enter your 4-digit PIN',
+      pinLabel: pin.length + ' of 4 digits entered',
+      goBg: done ? '#F5B000' : '#2A3038', goFg: done ? '#16191D' : '#A3A9B2'
+    };
+  }
+}
+</script>
+</body>
+</html>

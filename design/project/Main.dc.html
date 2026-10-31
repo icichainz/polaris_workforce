@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Design foundations</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}a:hover{color:#123E8F}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1560px; box-sizing: border-box; padding: 64px 72px; background: #F4F5F7; color: #16191D; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; gap: 48px">
+
+  <header style="display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 40px; height: 40px; border-radius: 10px; background: #F5B000; display: flex; align-items: center; justify-content: center">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16191D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 18h20M4 18v-2a8 8 0 0 1 16 0v2M10 8V5h4v3"></path></svg>
+      </span>
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #5B626E">Polaris Workforce · design foundations</span>
+    </div>
+    <h1 style="margin: 0; font-family: Archivo, Inter, sans-serif; font-weight: 800; font-size: 44px; line-height: 1.1">Built for the site, not the office</h1>
+    <p style="margin: 0; font-size: 17px; line-height: 1.5; color: #3F4650; max-width: 760px">Readable in sunlight, usable with one thumb and work gloves, and exact with money. Every token below maps 1:1 to a Tailwind theme value.</p>
+  </header>
+
+  <section aria-labelledby="pr" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+    <h2 id="pr" style="display: none">Principles</h2>
+    <sc-for list="{{principles}}" as="p" hint-placeholder-count="4">
+      <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-family: Archivo, sans-serif; font-weight: 800; font-size: 13px; color: #8A5A00">{{p.n}}</span>
+        <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">{{p.title}}</span>
+        <span style="font-size: 14px; line-height: 1.5; color: #3F4650">{{p.body}}</span>
+      </div>
+    </sc-for>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; align-items: baseline; justify-content: space-between">
+      <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 22px">Colour — core</h2>
+      <span style="font-size: 13px; color: #5B626E">Tailwind: <code>theme.extend.colors</code></span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px">
+      <sc-for list="{{core}}" as="c" hint-placeholder-count="8">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <div style="height: 88px; border-radius: 8px; border: 1px solid #D5D9DF; background: {{c.hex}}"></div>
+          <span style="font-weight: 600; font-size: 14px">{{c.name}}</span>
+          <span style="font-size: 12px; color: #5B626E">{{c.hex}} · <code>{{c.tw}}</code></span>
+          <span style="font-size: 12px; line-height: 1.4; color: #3F4650">{{c.use}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+    <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 20px">Attendance status</h2>
+      <p style="margin: 0; font-size: 14px; color: #3F4650">Always colour + letter + word. Never colour alone — each tone also differs in lightness.</p>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+        <sc-for list="{{att}}" as="s" hint-placeholder-count="4">
+          <div style="display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid #E3E5E9; border-radius: 8px">
+            <span style="width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: Archivo, sans-serif; font-weight: 800; font-size: 18px; background: {{s.bg}}; color: {{s.fg}}">{{s.letter}}</span>
+            <span style="display: flex; flex-direction: column; gap: 2px">
+              <span style="font-weight: 600; font-size: 14px">{{s.label}}</span>
+              <span style="font-size: 12px; color: #5B626E">{{s.rule}}</span>
+            </span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 20px">Workflow &amp; payment status</h2>
+      <p style="margin: 0; font-size: 14px; color: #3F4650">A day moves Draft → Submitted → Approved → Locked. Money moves To pay → Paid.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px">
+        <sc-for list="{{flow}}" as="s" hint-placeholder-count="7">
+          <span style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: {{s.bg}}; color: {{s.fg}}">
+            <span style="width: 7px; height: 7px; border-radius: 999px; background: {{s.fg}}"></span>{{s.label}}
+          </span>
+        </sc-for>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #3F4650; padding-top: 4px">
+        <span style="font-weight: 600">Locked</span> means read-only. Changes after locking become a logged <span style="font-weight: 600">correction</span> with a reason.
+      </div>
+    </div>
+  </section>
+
+  <section style="display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px">
+    <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 4px">
+      <h2 style="margin: 0 0 12px; font-family: Archivo, sans-serif; font-weight: 700; font-size: 20px">Type scale</h2>
+      <sc-for list="{{type}}" as="t" hint-placeholder-count="7">
+        <div style="display: flex; align-items: baseline; gap: 24px; padding: 10px 0; border-top: 1px solid #EEF0F3">
+          <span style="width: 150px; flex-shrink: 0; font-size: 12px; color: #5B626E">{{t.name}}<br>{{t.spec}}</span>
+          <span style="font-family: {{t.family}}; font-size: {{t.size}}; font-weight: {{t.weight}}; letter-spacing: {{t.track}}; text-transform: {{t.case}}; font-variant-numeric: tabular-nums">{{t.sample}}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 24px">
+      <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+        <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 20px">Spacing (4 px base)</h2>
+        <sc-for list="{{space}}" as="s" hint-placeholder-count="6">
+          <div style="display: flex; align-items: center; gap: 12px; font-size: 13px">
+            <span style="width: 48px; color: #5B626E"><code>{{s.tw}}</code></span>
+            <span style="height: 12px; border-radius: 3px; background: #F5B000; width: {{s.px}}"></span>
+            <span>{{s.px}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+        <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 20px">Shape &amp; touch</h2>
+        <div style="display: flex; gap: 16px; align-items: flex-end">
+          <div style="display: flex; flex-direction: column; gap: 6px; align-items: center; font-size: 12px; color: #5B626E"><span style="width: 56px; height: 40px; border: 2px solid #16191D; border-radius: 8px"></span>8 · control</div>
+          <div style="display: flex; flex-direction: column; gap: 6px; align-items: center; font-size: 12px; color: #5B626E"><span style="width: 72px; height: 56px; border: 2px solid #16191D; border-radius: 10px"></span>10 · card</div>
+          <div style="display: flex; flex-direction: column; gap: 6px; align-items: center; font-size: 12px; color: #5B626E"><span style="width: 72px; height: 28px; border: 2px solid #16191D; border-radius: 999px"></span>full · badge</div>
+        </div>
+        <ul style="margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.7; color: #3F4650">
+          <li>Office controls: 40 px tall</li>
+          <li>Phone controls: 56 px tall, 12 px apart — glove-safe</li>
+          <li>Borders over shadows; one shadow for floating bars only</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      principles: [
+        { n: '01', title: 'Sunlight-legible', body: 'High contrast ink on light ground. No thin grey text. Status reads at arm’s length.' },
+        { n: '02', title: 'One thumb, gloves on', body: 'Phone targets 56 px, primary action at the bottom, no tiny icons without words.' },
+        { n: '03', title: 'Status never by colour alone', body: 'Every state carries a letter and a word: P Present, A Absent, ½ Half day, L Late.' },
+        { n: '04', title: 'Money is exact', body: 'Whole units of the configured currency, tabular figures, right-aligned, totals always visible.' }
+      ],
+      core: [
+        { name: 'Ink', hex: '#16191D', tw: 'ink', use: 'Text, sidebar, primary surfaces in dark' },
+        { name: 'Graphite', hex: '#3F4650', tw: 'ink-700', use: 'Body text, secondary copy' },
+        { name: 'Steel', hex: '#5B626E', tw: 'steel', use: 'Labels, meta, captions' },
+        { name: 'Line', hex: '#E3E5E9', tw: 'line', use: 'Borders, dividers' },
+        { name: 'Ground', hex: '#F4F5F7', tw: 'ground', use: 'App background' },
+        { name: 'Surface', hex: '#FFFFFF', tw: 'white', use: 'Cards, tables, inputs' },
+        { name: 'Safety amber', hex: '#F5B000', tw: 'amber-500', use: 'Primary action fill (ink text), focus ring' },
+        { name: 'Action blue', hex: '#1A56C4', tw: 'blue-700', use: 'Links, selected row, info' }
+      ],
+      att: [
+        { letter: 'P', label: 'Present', rule: 'Counts 1 day', bg: '#DCF2E4', fg: '#135C33' },
+        { letter: 'A', label: 'Absent', rule: 'Counts 0 days', bg: '#FBE1DE', fg: '#9B1C13' },
+        { letter: '½', label: 'Half day', rule: 'Counts 0.5 day (setting)', bg: '#FDEBD2', fg: '#8A4A06' },
+        { letter: 'L', label: 'Late', rule: 'Counts 1 day, flagged (setting)', bg: '#DDE8F8', fg: '#1A4C99' }
+      ],
+      flow: [
+        { label: 'Draft', bg: '#EEF0F3', fg: '#3F4650' },
+        { label: 'Submitted', bg: '#DDE8F8', fg: '#1A4C99' },
+        { label: 'Approved', bg: '#DCF2E4', fg: '#135C33' },
+        { label: 'Rejected', bg: '#FBE1DE', fg: '#9B1C13' },
+        { label: 'Locked', bg: '#16191D', fg: '#FFFFFF' },
+        { label: 'To pay', bg: '#FDEBD2', fg: '#8A4A06' },
+        { label: 'Paid', bg: '#DCF2E4', fg: '#135C33' }
+      ],
+      type: [
+        { name: 'Display', spec: 'Archivo 800 · 32', family: 'Archivo, sans-serif', size: '32px', weight: 800, track: '0', case: 'none', sample: 'Today across sites' },
+        { name: 'Heading 1', spec: 'Archivo 700 · 24', family: 'Archivo, sans-serif', size: '24px', weight: 700, track: '0', case: 'none', sample: 'Riverside Apartments' },
+        { name: 'Heading 2', spec: 'Archivo 700 · 18', family: 'Archivo, sans-serif', size: '18px', weight: 700, track: '0', case: 'none', sample: 'Crew today' },
+        { name: 'Figure', spec: 'Archivo 700 · 28 · tabular', family: 'Archivo, sans-serif', size: '28px', weight: 700, track: '0', case: 'none', sample: '412 500 XOF' },
+        { name: 'Body', spec: 'Inter 400 · 14', family: 'Inter, sans-serif', size: '14px', weight: 400, track: '0', case: 'none', sample: 'Submitted by the foreman at 07:42, synced 07:45.' },
+        { name: 'Phone body', spec: 'Inter 500 · 17', family: 'Inter, sans-serif', size: '17px', weight: 500, track: '0', case: 'none', sample: 'Yao Mensah · Mason' },
+        { name: 'Label', spec: 'Inter 600 · 12 · caps', family: 'Inter, sans-serif', size: '12px', weight: 600, track: '0.06em', case: 'uppercase', sample: 'Net to pay' }
+      ],
+      space: [
+        { tw: '1', px: '4px' }, { tw: '2', px: '8px' }, { tw: '3', px: '12px' },
+        { tw: '4', px: '16px' }, { tw: '6', px: '24px' }, { tw: '8', px: '32px' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

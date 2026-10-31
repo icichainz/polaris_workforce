@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Site detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}a:hover{color:#123E8F}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F4F5F7; color: #16191D; font-family: Inter, system-ui, sans-serif">
+  <div style="flex: 1 1 248px; max-width: 100%; background: #16191D">
+    <dc-import name="Sidebar" active="sites" hint-size="248px,960px"></dc-import>
+  </div>
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 32px 56px">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px">
+      <nav aria-label="Breadcrumb" style="font-size: 13px; color: #5B626E"><a href="Sites.dc.html">Sites</a> / Riverside Apartments</nav>
+      <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+            <h1 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 800; font-size: 32px">Riverside Apartments</h1>
+            <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: #DCF2E4; color: #135C33; font-size: 13px; font-weight: 600"><span style="width: 7px; height: 7px; border-radius: 999px; background: #135C33"></span>Active</span>
+          </div>
+          <span style="font-size: 14px; color: #3F4650">[Street address], Block B · Started 3 March 2026</span>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap">
+          <button type="button" style="height: 40px; padding: 0 16px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 600 14px Inter, sans-serif">Assign workers</button>
+          <a href="Approvals.dc.html" style="height: 40px; padding: 0 16px; border-radius: 8px; background: #F5B000; color: #16191D; font-weight: 600; font-size: 14px; display: flex; align-items: center; text-decoration: none">Review today’s roll call</a>
+        </div>
+      </header>
+
+      <div role="tablist" aria-label="Site sections" style="display: flex; gap: 24px; border-bottom: 1px solid #E3E5E9; overflow-x: auto">
+        <button type="button" role="tab" aria-selected="true" style="height: 44px; padding: 0; border: 0; border-bottom: 3px solid #F5B000; background: transparent; font: 700 14px Inter, sans-serif; color: #16191D">Overview</button>
+        <button type="button" role="tab" aria-selected="false" style="height: 44px; padding: 0; border: 0; border-bottom: 3px solid transparent; background: transparent; font: 600 14px Inter, sans-serif; color: #3F4650">Crew · 42</button>
+        <button type="button" role="tab" aria-selected="false" style="height: 44px; padding: 0; border: 0; border-bottom: 3px solid transparent; background: transparent; font: 600 14px Inter, sans-serif; color: #3F4650">Attendance history</button>
+        <button type="button" role="tab" aria-selected="false" style="height: 44px; padding: 0; border: 0; border-bottom: 3px solid transparent; background: transparent; font: 600 14px Inter, sans-serif; color: #3F4650">Pay &amp; cash</button>
+        <button type="button" role="tab" aria-selected="false" style="height: 44px; padding: 0; border: 0; border-bottom: 3px solid transparent; background: transparent; font: 600 14px Inter, sans-serif; color: #3F4650">Site settings</button>
+      </div>
+
+      <section aria-label="This week" style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px">
+        <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 16px">This week</h2>
+        <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px">
+          <sc-for list="{{week}}" as="d" hint-placeholder-count="6">
+            <div style="border: 1px solid #E3E5E9; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; background: {{d.cardBg}}">
+              <span style="font-size: 13px; font-weight: 600">{{d.day}}</span>
+              <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums">{{d.count}}</span>
+              <span style="align-self: flex-start; display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: {{d.bg}}; color: {{d.fg}}">{{d.status}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+        <section style="flex: 2 1 560px; min-width: 0; background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 20px; border-bottom: 1px solid #E3E5E9">
+            <div style="display: flex; flex-direction: column; gap: 2px">
+              <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Crew today</h2>
+              <span style="font-size: 13px; color: #5B626E">Submitted by Kossi Amegah at 07:42 · synced 07:45</span>
+            </div>
+            <span style="font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums">P 35 · ½ 2 · L 1 · A 4</span>
+          </div>
+          <div style="overflow-x: auto">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 620px">
+              <thead><tr style="text-align: left; background: #F8F9FA">
+                <th style="padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Worker</th>
+                <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Status</th>
+                <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Arrived</th>
+                <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Left</th>
+                <th style="padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">Day rate</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{crew}}" as="w" hint-placeholder-count="7">
+                  <tr style="border-top: 1px solid #EEF0F3">
+                    <td style="padding: 12px 20px"><span style="display: flex; align-items: center; gap: 10px"><span style="width: 32px; height: 32px; flex-shrink: 0; border-radius: 999px; background: #E3E5E9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px">{{w.ini}}</span><span><a href="WorkerProfile.dc.html" style="font-weight: 600; color: #16191D; text-decoration: none">{{w.name}}</a><br><span style="font-size: 12px; color: #5B626E">{{w.trade}}</span></span></span></td>
+                    <td style="padding: 12px 16px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: {{w.bg}}; color: {{w.fg}}"><strong>{{w.letter}}</strong> {{w.status}}</span></td>
+                    <td style="padding: 12px 16px; font-variant-numeric: tabular-nums">{{w.in}}</td>
+                    <td style="padding: 12px 16px; font-variant-numeric: tabular-nums">{{w.out}}</td>
+                    <td style="padding: 12px 20px; text-align: right; font-variant-numeric: tabular-nums">{{w.rate}}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding: 12px 20px; border-top: 1px solid #EEF0F3; font-size: 14px"><a href="#all" style="font-weight: 600">Show all 42 workers</a></div>
+        </section>
+
+        <aside style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+          <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+            <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 16px">People</h2>
+            <div style="display: flex; justify-content: space-between; font-size: 14px"><span style="color: #5B626E">Site manager</span><span style="font-weight: 600">Edem Kpodar</span></div>
+            <div style="display: flex; justify-content: space-between; font-size: 14px"><span style="color: #5B626E">Foreman</span><span style="font-weight: 600">Kossi Amegah</span></div>
+            <div style="display: flex; justify-content: space-between; font-size: 14px"><span style="color: #5B626E">Backup foreman</span><span style="font-weight: 600">Yao Mensah</span></div>
+          </section>
+          <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+            <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 16px">Pay settings for this site</h2>
+            <sc-for list="{{settings}}" as="s" hint-placeholder-count="4">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px">
+                <span style="color: #5B626E">{{s.k}}</span>
+                <span style="text-align: right"><span style="font-weight: 600">{{s.v}}</span><br><span style="font-size: 12px; color: #5B626E">{{s.src}}</span></span>
+              </div>
+            </sc-for>
+            <a href="Settings.dc.html" style="font-size: 13px; font-weight: 600">Override for this site</a>
+          </section>
+          <section style="background: #16191D; color: #FFFFFF; border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px">
+            <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #C9CDD3">Labour cost this month</span>
+            <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 28px; font-variant-numeric: tabular-nums">3 864 000 <span style="font-size: 15px; color: #C9CDD3">XOF</span></span>
+            <span style="font-size: 13px; color: #C9CDD3">[Budget] not set · <a href="Reports.dc.html" style="color: #F5B000">Reports</a></span>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1150}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = {
+      P: { letter: 'P', status: 'Present', bg: '#DCF2E4', fg: '#135C33' },
+      A: { letter: 'A', status: 'Absent', bg: '#FBE1DE', fg: '#9B1C13' },
+      H: { letter: '½', status: 'Half day', bg: '#FDEBD2', fg: '#8A4A06' },
+      L: { letter: 'L', status: 'Late', bg: '#DDE8F8', fg: '#1A4C99' }
+    };
+    const W = (name, trade, s, i, o, rate) => ({ name, trade, ...S[s], in: i, out: o, rate, ini: name.split(' ').map(p => p[0]).join('') });
+    const D = {
+      locked: { status: 'Locked', bg: '#16191D', fg: '#FFFFFF', cardBg: '#FFFFFF' },
+      approved: { status: 'Approved', bg: '#DCF2E4', fg: '#135C33', cardBg: '#FFFFFF' },
+      submitted: { status: 'Submitted', bg: '#DDE8F8', fg: '#1A4C99', cardBg: '#FFFBEB' },
+      future: { status: 'Upcoming', bg: '#EEF0F3', fg: '#3F4650', cardBg: '#F8F9FA' }
+    };
+    return {
+      week: [
+        { day: 'Mon 27', count: '40 / 42', ...D.locked },
+        { day: 'Tue 28', count: '41 / 42', ...D.locked },
+        { day: 'Wed 29', count: '39 / 42', ...D.locked },
+        { day: 'Thu 30', count: '40 / 42', ...D.approved },
+        { day: 'Fri 31 · today', count: '38 / 42', ...D.submitted },
+        { day: 'Sat 1', count: '—', ...D.future }
+      ],
+      crew: [
+        W('Yao Mensah', 'Mason', 'P', '06:55', '—', '6 000 XOF'),
+        W('Komlan Agbeko', 'Carpenter', 'P', '07:01', '—', '5 500 XOF'),
+        W('Afi Dosseh', 'Labourer', 'H', '07:10', '12:00', '3 500 XOF'),
+        W('Kodjo Atsu', 'Labourer', 'A', '—', '—', '3 500 XOF'),
+        W('Akouvi Tete', 'Steel fixer', 'L', '08:20', '—', '5 000 XOF'),
+        W('Sena Kumah', 'Mason', 'P', '06:58', '—', '6 000 XOF'),
+        W('Delali Agbo', 'Painter', 'P', '07:04', '—', '4 500 XOF')
+      ],
+      settings: [
+        { k: 'Pay frequency', v: 'Daily', src: 'Company default' },
+        { k: 'Payment method', v: 'Cash', src: 'Company default' },
+        { k: 'Work hours', v: '07:00 – 17:00', src: 'Company default' },
+        { k: 'Overtime', v: 'After 9 h × 1.5', src: 'Site override' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

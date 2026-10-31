@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Sign in" %} · Polaris Workforce{% endblock %}
+
+{% block content %}
+  <h1>{% translate "Sign in" %}</h1>
+  <p>{% translate "For admins, site managers and accountants." %}</p>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_div }}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit">{% translate "Sign in" %}</button>
+  </form>
+{% endblock %}

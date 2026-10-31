@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}a:hover{color:#123E8F}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F4F5F7; color: #16191D; font-family: Inter, system-ui, sans-serif">
+  <section style="flex: 1 1 420px; box-sizing: border-box; background: #16191D; color: #FFFFFF; padding: 48px; display: flex; flex-direction: column; gap: 32px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 40px; height: 40px; border-radius: 10px; background: #F5B000; display: flex; align-items: center; justify-content: center">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16191D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 18h20M4 18v-2a8 8 0 0 1 16 0v2M10 8V5h4v3"></path></svg>
+      </span>
+      <span style="font-family: Archivo, sans-serif; font-weight: 800; font-size: 22px">Polaris Workforce</span>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 20px; max-width: 520px">
+      <h1 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 800; font-size: 44px; line-height: 1.1">Who was on site. What they’re owed. Paid and proven.</h1>
+      <p style="margin: 0; font-size: 17px; line-height: 1.55; color: #C9CDD3">Foremen take the roll call on their phone. Managers approve. Cash goes out with a receipt for every worker.</p>
+    </div>
+    <p style="margin: 0; font-size: 13px; color: #A3A9B2">[Company name] · Office access</p>
+  </section>
+
+  <main style="flex: 1 1 480px; box-sizing: border-box; padding: 48px 24px; display: flex; align-items: center; justify-content: center">
+    <div style="width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 24px">
+      <div style="display: flex; justify-content: flex-end; gap: 4px" role="group" aria-label="Language">
+        <button type="button" aria-pressed="true" style="height: 32px; padding: 0 10px; border: 1px solid #16191D; border-radius: 6px; background: #16191D; color: #FFFFFF; font: 600 13px Inter, sans-serif">EN</button>
+        <button type="button" aria-pressed="false" style="height: 32px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 6px; background: #FFFFFF; color: #16191D; font: 600 13px Inter, sans-serif">FR</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 28px">Sign in</h2>
+        <p style="margin: 0; font-size: 15px; color: #3F4650">For admins, site managers and accountants.</p>
+      </div>
+      <form style="display: flex; flex-direction: column; gap: 16px">
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Phone or email
+          <input type="text" autocomplete="username" value="edem@[company].com" style="height: 44px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 15px Inter, sans-serif">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">
+          <span style="display: flex; justify-content: space-between">Password <a href="#reset" style="font-weight: 500">Forgot?</a></span>
+          <input type="password" autocomplete="current-password" value="password" style="height: 44px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 15px Inter, sans-serif">
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 14px"><input type="checkbox" checked style="width: 18px; height: 18px; accent-color: #16191D"> Keep me signed in on this computer</label>
+        <a href="Dashboard.dc.html" style="height: 48px; border-radius: 8px; background: #F5B000; color: #16191D; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; text-decoration: none">Sign in</a>
+      </form>
+      <div style="display: flex; gap: 12px; padding: 14px; border: 1px solid #E3E5E9; border-radius: 10px; background: #FFFFFF; font-size: 14px; line-height: 1.5">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A56C4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M7 2h10v20H7zM11 18h2"></path></svg>
+        <span><strong>Foreman?</strong> Use the phone app and sign in with your 4-digit PIN. <a href="MobileLogin.dc.html">Open foreman app</a></span>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

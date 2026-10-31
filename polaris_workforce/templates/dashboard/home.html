@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Today" %} · Polaris Workforce{% endblock %}
+
+{% block content %}
+  <h1>Polaris Workforce</h1>
+  <p>{% blocktranslate with name=user.get_full_name|default:user.username %}Signed in as {{ name }}.{% endblocktranslate %}</p>
+
+  <form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="submit">{% translate "Sign out" %}</button>
+  </form>
+{% endblock %}

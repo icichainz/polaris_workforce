@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Components</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}a:hover{color:#123E8F}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1560px; box-sizing: border-box; padding: 64px 72px; background: #F4F5F7; color: #16191D; font-family: Inter, system-ui, sans-serif; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-content: start">
+
+  <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px">
+    <h1 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 800; font-size: 36px">Components</h1>
+    <p style="margin: 0; font-size: 15px; color: #3F4650">Each becomes one Gleam function in a <code>ui</code> module (e.g. <code>ui.button(Primary, "Approve day")</code>), styled with Tailwind classes written out in full.</p>
+  </div>
+
+  <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+    <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Buttons</h2>
+    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center">
+      <button type="button" style="height: 40px; padding: 0 16px; border: 0; border-radius: 8px; background: #F5B000; color: #16191D; font: 600 14px Inter, sans-serif">Approve day</button>
+      <button type="button" style="height: 40px; padding: 0 16px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; color: #16191D; font: 600 14px Inter, sans-serif">Export</button>
+      <button type="button" style="height: 40px; padding: 0 16px; border: 0; border-radius: 8px; background: #16191D; color: #FFFFFF; font: 600 14px Inter, sans-serif">Lock period</button>
+      <button type="button" style="height: 40px; padding: 0 16px; border: 1px solid #F0B8B2; border-radius: 8px; background: #FFFFFF; color: #9B1C13; font: 600 14px Inter, sans-serif">Reject</button>
+      <button type="button" style="height: 40px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: #1A56C4; font: 600 14px Inter, sans-serif">View history</button>
+      <button type="button" disabled style="height: 40px; padding: 0 16px; border: 0; border-radius: 8px; background: #EEF0F3; color: #6B7280; font: 600 14px Inter, sans-serif">Disabled</button>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center">
+      <button type="button" style="height: 56px; flex-grow: 1; border: 0; border-radius: 12px; background: #F5B000; color: #16191D; font: 700 17px Inter, sans-serif">Phone primary · 56 px</button>
+      <button type="button" style="height: 56px; flex-grow: 1; border: 2px solid #16191D; border-radius: 12px; background: #FFFFFF; color: #16191D; font: 700 17px Inter, sans-serif">Phone secondary</button>
+    </div>
+    <p style="margin: 0; font-size: 13px; color: #5B626E">One amber button per screen. Dark = irreversible (lock). Red outline = reject / remove.</p>
+  </section>
+
+  <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+    <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Form fields</h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Full name
+        <input type="text" value="Yao Mensah" style="height: 40px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif; color: #16191D">
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Trade
+        <select style="height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif; color: #16191D; background: #FFFFFF"><option>Mason</option><option>Carpenter</option><option>Labourer</option></select>
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Daily rate
+        <span style="display: flex; height: 40px; border: 1px solid #C9CED6; border-radius: 8px; overflow: hidden">
+          <input type="text" inputmode="numeric" value="6 000" style="flex-grow: 1; min-width: 0; border: 0; padding: 0 12px; font: 500 14px Inter, sans-serif; text-align: right; font-variant-numeric: tabular-nums">
+          <span style="display: flex; align-items: center; padding: 0 12px; background: #F4F5F7; border-left: 1px solid #E3E5E9; color: #3F4650; font-size: 13px; font-weight: 600">XOF</span>
+        </span>
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Correction reason <span style="font-weight: 400; color: #9B1C13">Required</span>
+        <input type="text" value="" placeholder="e.g. Bus breakdown, arrived 07:20" style="height: 40px; padding: 0 12px; border: 2px solid #C0392B; border-radius: 8px; font: 400 14px Inter, sans-serif">
+      </label>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span style="font-size: 13px; font-weight: 600">Inherited setting</span>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px dashed #C9CED6; border-radius: 8px; font-size: 14px">
+        <span style="flex-grow: 1">Pay frequency: <strong>Daily</strong></span>
+        <span style="font-size: 12px; color: #5B626E">From company default</span>
+        <button type="button" style="height: 32px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 6px; background: #FFFFFF; font: 600 13px Inter, sans-serif">Override</button>
+      </div>
+    </div>
+  </section>
+
+  <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+    <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Stat tiles</h2>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+      <div style="border: 1px solid #E3E5E9; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Present today</span>
+        <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 28px; font-variant-numeric: tabular-nums">86 <span style="font-size: 16px; color: #5B626E">/ 104</span></span>
+        <span style="height: 6px; border-radius: 999px; background: #EEF0F3; overflow: hidden"><span style="display: block; width: 83%; height: 6px; background: #135C33"></span></span>
+      </div>
+      <div style="border: 1px solid #E3E5E9; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Awaiting approval</span>
+        <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 28px">3 days</span>
+        <a href="Approvals.dc.html" style="font-size: 13px; font-weight: 600">Review now</a>
+      </div>
+      <div style="border: 1px solid #E3E5E9; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 6px; background: #16191D; color: #FFFFFF">
+        <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #C9CDD3">Cash to pay today</span>
+        <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 28px; font-variant-numeric: tabular-nums">412 500</span>
+        <span style="font-size: 13px; color: #C9CDD3">XOF · 3 sites</span>
+      </div>
+    </div>
+  </section>
+
+  <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+    <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Day workflow stepper</h2>
+    <ol style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+      <li style="display: flex; flex-direction: column; gap: 6px"><span style="height: 6px; border-radius: 999px; background: #135C33"></span><span style="font-size: 13px; font-weight: 600">1 · Draft</span><span style="font-size: 12px; color: #5B626E">Foreman 07:05</span></li>
+      <li style="display: flex; flex-direction: column; gap: 6px"><span style="height: 6px; border-radius: 999px; background: #135C33"></span><span style="font-size: 13px; font-weight: 600">2 · Submitted</span><span style="font-size: 12px; color: #5B626E">07:42 · synced 07:45</span></li>
+      <li style="display: flex; flex-direction: column; gap: 6px"><span style="height: 6px; border-radius: 999px; background: #F5B000"></span><span style="font-size: 13px; font-weight: 700">3 · Approve</span><span style="font-size: 12px; color: #8A5A00; font-weight: 600">Waiting for you</span></li>
+      <li style="display: flex; flex-direction: column; gap: 6px"><span style="height: 6px; border-radius: 999px; background: #E3E5E9"></span><span style="font-size: 13px; font-weight: 600; color: #5B626E">4 · Locked</span><span style="font-size: 12px; color: #5B626E">After payout</span></li>
+    </ol>
+  </section>
+
+  <section style="grid-column: span 2; background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+    <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Data table</h2>
+    <div style="overflow-x: auto; border: 1px solid #E3E5E9; border-radius: 8px">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+        <thead><tr style="background: #F8F9FA; text-align: left">
+          <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Worker</th>
+          <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Status</th>
+          <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">In · Out</th>
+          <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">Net to pay</th>
+          <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Payment</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-top: 1px solid #EEF0F3">
+            <td style="padding: 12px 16px"><span style="display: flex; align-items: center; gap: 10px"><span style="width: 32px; height: 32px; border-radius: 999px; background: #E3E5E9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px">YM</span><span><span style="font-weight: 600">Yao Mensah</span><br><span style="font-size: 12px; color: #5B626E">W-0142 · Mason</span></span></span></td>
+            <td style="padding: 12px 16px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: #DCF2E4; color: #135C33; font-size: 13px; font-weight: 600"><strong>P</strong> Present</span></td>
+            <td style="padding: 12px 16px; font-variant-numeric: tabular-nums">07:02 · 17:00</td>
+            <td style="padding: 12px 16px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums">4 000 XOF</td>
+            <td style="padding: 12px 16px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: #DCF2E4; color: #135C33; font-size: 13px; font-weight: 600">Paid · photo</span></td>
+          </tr>
+          <tr style="border-top: 1px solid #EEF0F3; background: #FFFBEB">
+            <td style="padding: 12px 16px"><span style="display: flex; align-items: center; gap: 10px"><span style="width: 32px; height: 32px; border-radius: 999px; background: #E3E5E9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px">AD</span><span><span style="font-weight: 600">Afi Dosseh</span><br><span style="font-size: 12px; color: #5B626E">W-0177 · Labourer</span></span></span></td>
+            <td style="padding: 12px 16px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: #FDEBD2; color: #8A4A06; font-size: 13px; font-weight: 600"><strong>½</strong> Half day</span> <span style="font-size: 12px; color: #8A5A00; font-weight: 600">Corrected</span></td>
+            <td style="padding: 12px 16px; font-variant-numeric: tabular-nums">07:10 · 12:00</td>
+            <td style="padding: 12px 16px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums">1 750 XOF</td>
+            <td style="padding: 12px 16px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: #FDEBD2; color: #8A4A06; font-size: 13px; font-weight: 600">To pay</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin: 0; font-size: 13px; color: #5B626E">Amber row tint = record changed after submission. Money right-aligned, tabular figures, currency suffix from settings.</p>
+  </section>
+
+  <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+    <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Roll-call row (phone)</h2>
+    <div style="width: 358px; border: 1px solid #E3E5E9; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="width: 44px; height: 44px; border-radius: 999px; background: #E3E5E9; display: flex; align-items: center; justify-content: center; font-weight: 700">KA</span>
+        <span style="display: flex; flex-direction: column"><span style="font-size: 17px; font-weight: 600">Komlan Agbeko</span><span style="font-size: 13px; color: #5B626E">Carpenter · W-0119</span></span>
+      </div>
+      <div role="group" aria-label="Status for Komlan Agbeko" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
+        <button type="button" aria-pressed="true" style="height: 52px; border: 2px solid #135C33; border-radius: 10px; background: #DCF2E4; color: #135C33; font: 700 15px Inter, sans-serif">P<br><span style="font-size: 11px">Present</span></button>
+        <button type="button" aria-pressed="false" style="height: 52px; border: 1px solid #C9CED6; border-radius: 10px; background: #FFFFFF; color: #3F4650; font: 700 15px Inter, sans-serif">A<br><span style="font-size: 11px">Absent</span></button>
+        <button type="button" aria-pressed="false" style="height: 52px; border: 1px solid #C9CED6; border-radius: 10px; background: #FFFFFF; color: #3F4650; font: 700 15px Inter, sans-serif">½<br><span style="font-size: 11px">Half</span></button>
+        <button type="button" aria-pressed="false" style="height: 52px; border: 1px solid #C9CED6; border-radius: 10px; background: #FFFFFF; color: #3F4650; font: 700 15px Inter, sans-serif">L<br><span style="font-size: 11px">Late</span></button>
+      </div>
+    </div>
+  </section>
+
+  <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+    <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Sync &amp; alert banners</h2>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; background: #16191D; color: #FFFFFF; font-size: 14px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F5B000" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 12.9a10 10 0 0 1 5.2-2.8M19 12.9a10 10 0 0 0-2-1.5M12 20h.01"></path></svg>
+      <span style="flex-grow: 1"><strong>Offline.</strong> 18 records saved on this phone.</span><span style="color: #C9CDD3">Will sync</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; background: #DCF2E4; color: #135C33; font-size: 14px; font-weight: 500">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#135C33" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>
+      All synced · 07:45
+    </div>
+    <div style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; background: #FFF4DB; color: #6B4600; font-size: 14px; border: 1px solid #F5D78A">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2zM12 10v5M12 18h.01"></path></svg>
+      <span><strong>2 records changed after submission.</strong> Check the reasons before approving.</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; background: #FBE1DE; color: #7F1710; font-size: 14px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9B1C13" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5M12 16h.01"></path></svg>
+      <span><strong>Cash short by 2 000 XOF.</strong> Paid out more than issued.</span>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

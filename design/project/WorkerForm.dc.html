@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Add worker</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}a:hover{color:#123E8F}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F4F5F7; color: #16191D; font-family: Inter, system-ui, sans-serif">
+  <div style="flex: 1 1 248px; max-width: 100%; background: #16191D">
+    <dc-import name="Sidebar" active="workers" hint-size="248px,960px"></dc-import>
+  </div>
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 32px 56px">
+    <form style="max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px">
+      <nav aria-label="Breadcrumb" style="font-size: 13px; color: #5B626E"><a href="Workers.dc.html">Workers</a> / New worker</nav>
+      <h1 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 800; font-size: 32px">Add a worker</h1>
+
+      <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-wrap: wrap; gap: 24px">
+        <div style="flex: 0 0 140px; display: flex; flex-direction: column; align-items: center; gap: 10px">
+          <span style="width: 120px; height: 120px; border-radius: 999px; border: 2px dashed #C9CED6; background: #F8F9FA; display: flex; align-items: center; justify-content: center">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#5B626E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path></svg>
+          </span>
+          <button type="button" style="height: 36px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 600 13px Inter, sans-serif">Add photo</button>
+          <span style="font-size: 12px; color: #5B626E; text-align: center">Used by the foreman to recognise the worker at roll call</span>
+        </div>
+        <div style="flex: 1 1 420px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+          <h2 style="grid-column: span 2; margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Identity</h2>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">First name
+            <input type="text" value="Kafui" style="height: 40px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Last name
+            <input type="text" value="Amedome" style="height: 40px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Phone
+            <input type="tel" value="+[cc] 99 34 25 71" style="height: 40px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Trade
+            <select style="height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>Electrician</option><option>Mason</option><option>Carpenter</option><option>Labourer</option><option>Add a trade…</option></select>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">ID document
+            <select style="height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>National ID</option><option>Passport</option><option>Voter card</option><option>None</option></select>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">ID number <span style="font-weight: 400; color: #5B626E">Optional</span>
+            <input type="text" value="" placeholder="[ID number]" style="height: 40px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif">
+          </label>
+        </div>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+        <h2 style="grid-column: span 2; margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Site</h2>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Assign to site
+          <select style="height: 40px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; font: 400 14px Inter, sans-serif"><option>Market Hall Renovation</option><option>Riverside Apartments</option><option>Route 4 Bridge</option></select>
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Starting
+          <input type="date" value="2026-11-02" style="height: 40px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif">
+        </label>
+        <p style="grid-column: span 2; margin: 0; font-size: 13px; color: #3F4650">The worker appears on that site’s roll call from the start date.</p>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+        <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Pay</h2>
+        <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+          <legend style="font-size: 13px; font-weight: 600; padding: 0 0 8px">Pay type</legend>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+            <label style="display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid #C9CED6; border-radius: 8px; font-size: 14px"><input type="radio" name="pt" style="width: 18px; height: 18px; margin: 0; accent-color: #16191D"><span><strong>Daily rate</strong><br><span style="font-size: 12px; color: #5B626E">Paid per day present</span></span></label>
+            <label style="display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 2px solid #16191D; border-radius: 8px; font-size: 14px"><input type="radio" name="pt" checked style="width: 18px; height: 18px; margin: 0; accent-color: #16191D"><span><strong>Hourly rate</strong><br><span style="font-size: 12px; color: #5B626E">Needs arrival &amp; departure</span></span></label>
+            <label style="display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid #E3E5E9; border-radius: 8px; font-size: 14px; color: #5B626E; background: #F8F9FA"><input type="radio" name="pt" disabled style="width: 18px; height: 18px; margin: 0"><span><strong>Piece work</strong><br><span style="font-size: 12px">Coming later</span></span></label>
+          </div>
+        </fieldset>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Rate per hour
+            <span style="display: flex; height: 40px; border: 1px solid #C9CED6; border-radius: 8px; overflow: hidden">
+              <input type="text" inputmode="numeric" value="900" style="flex-grow: 1; min-width: 0; border: 0; padding: 0 12px; font: 500 14px Inter, sans-serif; text-align: right">
+              <span style="display: flex; align-items: center; padding: 0 12px; background: #F4F5F7; border-left: 1px solid #E3E5E9; font-size: 13px; font-weight: 600; color: #3F4650">XOF</span>
+            </span>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Effective from
+            <input type="date" value="2026-11-02" style="height: 40px; padding: 0 12px; border: 1px solid #C9CED6; border-radius: 8px; font: 400 14px Inter, sans-serif">
+          </label>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px dashed #C9CED6; border-radius: 8px; font-size: 14px">
+            <span style="flex-grow: 1">Payment method: <strong>Cash</strong></span><span style="font-size: 12px; color: #5B626E">Company default</span>
+            <button type="button" style="height: 32px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 6px; background: #FFFFFF; font: 600 13px Inter, sans-serif">Override</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px dashed #C9CED6; border-radius: 8px; font-size: 14px">
+            <span style="flex-grow: 1">Pay frequency: <strong>Daily</strong></span><span style="font-size: 12px; color: #5B626E">From site · Market Hall</span>
+            <button type="button" style="height: 32px; padding: 0 10px; border: 1px solid #C9CED6; border-radius: 6px; background: #FFFFFF; font: 600 13px Inter, sans-serif">Override</button>
+          </div>
+        </div>
+      </section>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap">
+        <a href="Workers.dc.html" style="height: 44px; padding: 0 18px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; color: #16191D; font-weight: 600; font-size: 14px; display: flex; align-items: center; text-decoration: none">Cancel</a>
+        <a href="WorkerProfile.dc.html" style="height: 44px; padding: 0 18px; border-radius: 8px; background: #F5B000; color: #16191D; font-weight: 700; font-size: 14px; display: flex; align-items: center; text-decoration: none">Save worker</a>
+      </div>
+    </form>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1150}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

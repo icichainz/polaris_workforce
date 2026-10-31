@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Daily cash sheet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A56C4}a:hover{color:#123E8F}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F4F5F7; color: #16191D; font-family: Inter, system-ui, sans-serif">
+  <div style="flex: 1 1 248px; max-width: 100%; background: #16191D">
+    <dc-import name="Sidebar" active="cash" hint-size="248px,960px"></dc-import>
+  </div>
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 32px 56px">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px">
+      <nav aria-label="Breadcrumb" style="font-size: 13px; color: #5B626E"><a href="Payroll.dc.html">Pay periods</a> / Market Hall Renovation · Fri 31 Oct</nav>
+      <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+            <h1 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 800; font-size: 32px">Cash sheet</h1>
+            <span style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; background: {{statusBg}}; color: {{statusFg}}; font-size: 13px; font-weight: 600"><span style="width: 7px; height: 7px; border-radius: 999px; background: {{statusFg}}"></span>{{statusLabel}}</span>
+          </div>
+          <span style="font-size: 14px; color: #3F4650">Market Hall Renovation · Friday 31 October 2026 · Day approved by Ama Fiagbe 08:15 · Paymaster: Mawuli Adjovi</span>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap">
+          <a href="Payslip.dc.html" style="height: 40px; padding: 0 16px; border: 1px solid #C9CED6; border-radius: 8px; background: #FFFFFF; color: #16191D; font-weight: 600; font-size: 14px; display: flex; align-items: center; text-decoration: none">Print sheet</a>
+          <button type="button" style="height: 40px; padding: 0 16px; border: 0; border-radius: 8px; background: #16191D; color: #FFFFFF; font: 600 14px Inter, sans-serif">Close &amp; lock sheet</button>
+        </div>
+      </header>
+
+      <section aria-label="Cash reconciliation" style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr))">
+        <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid #EEF0F3">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Cash issued</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 24px; font-variant-numeric: tabular-nums">{{issued}}</span>
+          <span style="font-size: 12px; color: #5B626E">From office safe · 15:30</span>
+        </div>
+        <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid #EEF0F3">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Total to pay</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 24px; font-variant-numeric: tabular-nums">{{total}}</span>
+          <span style="font-size: 12px; color: #5B626E">31 workers · net of advances</span>
+        </div>
+        <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid #EEF0F3">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Paid so far</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 24px; font-variant-numeric: tabular-nums; color: #135C33">{{paid}}</span>
+          <span style="font-size: 12px; color: #5B626E">{{paidCount}} of 31 workers</span>
+        </div>
+        <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid #EEF0F3; background: #FFFBEB">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6B4600">Left to pay</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 24px; font-variant-numeric: tabular-nums">{{left}}</span>
+          <span style="font-size: 12px; color: #6B4600">{{leftCount}} workers</span>
+        </div>
+        <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Cash should be in hand</span>
+          <span style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 24px; font-variant-numeric: tabular-nums">{{inHand}}</span>
+          <span style="font-size: 12px; color: #5B626E">Return {{returnAmt}} when done</span>
+        </div>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E3E5E9; border-radius: 10px">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid #E3E5E9">
+          <h2 style="margin: 0; font-family: Archivo, sans-serif; font-weight: 700; font-size: 18px">Workers</h2>
+          <div role="tablist" aria-label="Filter" style="display: flex; gap: 4px; padding: 4px; background: #E9EBEF; border-radius: 10px">
+            <button type="button" role="tab" aria-selected="false" style="height: 32px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: #3F4650; font: 600 13px Inter, sans-serif">All 31</button>
+            <button type="button" role="tab" aria-selected="true" style="height: 32px; padding: 0 12px; border: 0; border-radius: 7px; background: #FFFFFF; font: 600 13px Inter, sans-serif">Showing last 8</button>
+          </div>
+        </div>
+        <div style="overflow-x: auto">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 920px">
+            <thead><tr style="text-align: left; background: #F8F9FA">
+              <th style="padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Worker</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Worked</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">Gross</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">Advance</th>
+              <th style="padding: 10px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E; text-align: right">Net to pay</th>
+              <th style="padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5B626E">Payment &amp; proof</th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+                <tr style="border-top: 1px solid #EEF0F3">
+                  <td style="padding: 12px 20px"><span style="font-weight: 600">{{r.name}}</span><br><span style="font-size: 12px; color: #5B626E">{{r.trade}}</span></td>
+                  <td style="padding: 12px 16px; font-variant-numeric: tabular-nums">{{r.worked}}</td>
+                  <td style="padding: 12px 16px; text-align: right; font-variant-numeric: tabular-nums">{{r.grossF}}</td>
+                  <td style="padding: 12px 16px; text-align: right; font-variant-numeric: tabular-nums; color: #8A4A06">{{r.advF}}</td>
+                  <td style="padding: 12px 16px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums">{{r.netF}}</td>
+                  <td style="padding: 8px 20px">
+                    <sc-if value="{{r.isPaid}}" hint-placeholder-val="{{false}}">
+                      <span style="display: inline-flex; align-items: center; gap: 8px">
+                        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: #DCF2E4; color: #135C33; font-size: 13px; font-weight: 600">Paid {{r.time}}</span>
+                        <a href="#proof" style="font-size: 13px">{{r.proof}}</a>
+                        <button type="button" onClick="{{r.toggle}}" style="height: 30px; padding: 0 8px; border: 0; background: transparent; color: #5B626E; font: 500 12px Inter, sans-serif; text-decoration: underline">Undo</button>
+                      </span>
+                    </sc-if>
+                    <sc-if value="{{r.isUnpaid}}" hint-placeholder-val="{{true}}">
+                      <button type="button" onClick="{{r.toggle}}" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #F5B000; color: #16191D; font: 600 13px Inter, sans-serif">Mark paid · {{r.netF}}</button>
+                    </sc-if>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding: 12px 20px; border-top: 1px solid #EEF0F3; font-size: 13px; color: #3F4650">Kodjo Atsu (absent) is not on today’s sheet. Every payment records who paid, when, and the receipt proof.</div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1200}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { paid: { 0: true, 1: true, 2: true } };
+  }
+  renderVals() {
+    const f = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    const base = { list: [
+      ['Kafui Amedome', 'Electrician · hourly', '8 h × 900', 7200, 2500, 'Photo', '17:31'],
+      ['Ama Fiagbe', 'Mason', '1 day', 6000, 0, 'Signature', '17:33'],
+      ['Edo Gbedemah', 'Labourer', '½ day', 1750, 0, 'Thumb mark', '17:34'],
+      ['Mawuli Adjovi', 'Foreman', '1 day', 8000, 0, 'Signature', '17:40'],
+      ['Selom Akakpo', 'Welder', '1 day', 5500, 1500, 'Photo', '17:41'],
+      ['Elikem Dzidzor', 'Labourer', '1 day', 3500, 0, 'Photo', '17:42'],
+      ['Dela Kumassi', 'Painter', '1 day', 4500, 0, 'Signature', '17:43'],
+      ['Yawa Sossou', 'Labourer', '1 day', 3500, 0, 'Thumb mark', '17:44']
+    ] };
+    const alreadyPaid = 112050, alreadyCount = 23, issued = 150000;
+    let paid = alreadyPaid, count = alreadyCount, total = alreadyPaid;
+    const rows = base.list.map(([name, trade, worked, gross, adv, proof, time], i) => {
+      const net = gross - adv;
+      const isPaid = !!this.state.paid[i];
+      total += net;
+      if (isPaid) { paid += net; count += 1; }
+      return {
+        name, trade, worked, proof, time,
+        grossF: f(gross), advF: adv ? '− ' + f(adv) : '—', netF: f(net) + ' XOF',
+        isPaid, isUnpaid: !isPaid,
+        toggle: () => this.setState({ paid: { ...this.state.paid, [i]: !isPaid } })
+      };
+    });
+    const done = count === 31;
+    return {
+      rows,
+      issued: f(issued) + ' XOF', total: f(total) + ' XOF', paid: f(paid) + ' XOF',
+      paidCount: count, left: f(total - paid) + ' XOF', leftCount: 31 - count,
+      inHand: f(issued - paid) + ' XOF', returnAmt: f(issued - total) + ' XOF',
+      statusLabel: done ? 'All paid · ready to lock' : 'Paying out',
+      statusBg: done ? '#DCF2E4' : '#FDEBD2', statusFg: done ? '#135C33' : '#8A4A06'
+    };
+  }
+}
+</script>
+</body>
+</html>
