@@ -104,8 +104,26 @@ three levels.
 
 ### F2 · UI shell — branch `feat/ui-shell`
 
-**Owns:** `templates/base.html`, `templates/components/`, `templates/layouts/`,
-`static/`, the Tailwind build files, `apps/dashboard/urls.py`, `apps/dashboard/views.py`.
+**Owns:** `templates/` (base, layouts, components, registration, and one placeholder
+template per screen), `static/`, the Tailwind build files, `config/urls.py`, and the
+office `urls.py` / `views.py` of every app (placeholder views only). Wave 2 agents then
+replace the placeholders inside their own app, without touching `config/urls.py`.
+
+**Office URL map** (namespace:name → path; owner in Wave 2):
+
+| URL name | Path | Wave 2 owner |
+| --- | --- | --- |
+| `dashboard:home` | `/` | E |
+| `dashboard:reports` | `/reports/` | E |
+| `core:settings` | `/settings/` | E |
+| `attendance:approvals` | `/approvals/` | C |
+| `payroll:cash_sheets` | `/cash-sheets/` | D |
+| `payroll:periods` | `/pay-periods/` | D |
+| `payroll:advances` | `/advances/` | D |
+| `workers:list` | `/workers/` | B |
+| `worksites:list` | `/sites/` | B |
+| `accounts:users` | `/users/` | A |
+| `login` / `logout` | `/accounts/login/`, `/accounts/logout/` | F2 (styled) |
 
 **Builds:**
 - **Tailwind v4 build** using the standalone CLI (no Node needed at run time), with the
