@@ -64,6 +64,11 @@ INSTALLED_APPS = [
     "apps.payroll",
     "apps.dashboard",
     "apps.api",
+    # Wave 4
+    "apps.payouts",
+    "apps.messaging",
+    "apps.portal",
+    "apps.checkin",
 ]
 
 MIDDLEWARE = [

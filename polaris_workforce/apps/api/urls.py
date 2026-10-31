@@ -31,6 +31,8 @@ urlpatterns = [
     path("", include("apps.worksites.api.urls")),
     path("", include("apps.attendance.api.urls")),
     path("", include("apps.payroll.api.urls")),
+    path("", include("apps.checkin.api.urls")),
+    path("", include("apps.payouts.api.urls")),
 ]
 
 if settings.DEBUG:

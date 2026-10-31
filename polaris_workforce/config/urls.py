@@ -17,6 +17,11 @@ urlpatterns = [
     path("", include("apps.workers.urls")),
     path("", include("apps.worksites.urls")),
     path("", include("apps.accounts.urls")),
+    # Wave 4: each new app owns its urls.py (office pages under its own prefix).
+    path("", include("apps.payouts.urls")),
+    path("", include("apps.messaging.urls")),
+    path("", include("apps.checkin.urls")),
+    path("portal/", include("apps.portal.urls")),
     # Before django.contrib.auth.urls, so this sign-in view (with the lockout) wins.
     path(
         "accounts/login/",
