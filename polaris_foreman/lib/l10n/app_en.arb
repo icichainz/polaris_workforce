@@ -1,0 +1,548 @@
+{
+  "@@locale": "en",
+  "appName": "Polaris",
+  "@appName": {},
+  "appSub": "Workforce",
+  "@appSub": {},
+  "otherLanguage": "FR",
+  "@otherLanguage": {},
+  "switchLanguage": "Passer en français",
+  "@switchLanguage": {},
+  "statusPresent": "Present",
+  "@statusPresent": {},
+  "statusAbsent": "Absent",
+  "@statusAbsent": {},
+  "statusHalfDay": "Half day",
+  "@statusHalfDay": {},
+  "statusLate": "Late",
+  "@statusLate": {},
+  "phoneTitle": "Sign in",
+  "@phoneTitle": {},
+  "phoneLabel": "Phone number",
+  "@phoneLabel": {},
+  "continueButton": "Continue",
+  "@continueButton": {},
+  "pinPrompt": "Enter your 4-digit PIN",
+  "@pinPrompt": {},
+  "pinEntered": "PIN entered",
+  "@pinEntered": {},
+  "pinDotsLabel": "{count} of 4 digits entered",
+  "@pinDotsLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notYou": "Not you?",
+  "@notYou": {},
+  "foremanAt": "Foreman · {site}",
+  "@foremanAt": {
+    "placeholders": {
+      "site": {
+        "type": "String"
+      }
+    }
+  },
+  "signInButton": "Open today’s roll call",
+  "@signInButton": {},
+  "keyClear": "Clear",
+  "@keyClear": {},
+  "keyDelete": "Delete",
+  "@keyDelete": {},
+  "wrongPin": "Wrong PIN. {count, plural, =1{1 try left} other{{count} tries left}}.",
+  "@wrongPin": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wrongPinNoCount": "Wrong phone number or PIN.",
+  "@wrongPinNoCount": {},
+  "lockedUntil": "Too many wrong PINs. Try again at {time}.",
+  "@lockedUntil": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "lockedNoTime": "Too many wrong PINs. Try again later.",
+  "@lockedNoTime": {},
+  "throttled": "Too many tries. Wait {seconds} s.",
+  "@throttled": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "signInOffline": "No network. Signing in needs a connection.",
+  "@signInOffline": {},
+  "signInError": "Could not sign in ({code}).",
+  "@signInError": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionExpired": "Your session ended. Enter your PIN. Unsent work stays on this phone.",
+  "@sessionExpired": {},
+  "bannerOffline": "Offline",
+  "@bannerOffline": {},
+  "bannerWorksNormally": "works normally",
+  "@bannerWorksNormally": {},
+  "bannerOnline": "Online",
+  "@bannerOnline": {},
+  "bannerAllSent": "all sent",
+  "@bannerAllSent": {},
+  "bannerSending": "Sending…",
+  "@bannerSending": {},
+  "bannerChecking": "Checking network…",
+  "@bannerChecking": {},
+  "bannerWaiting": "{count} waiting",
+  "@bannerWaiting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bannerFailed": "{count, plural, =1{1 not sent · tap to see} other{{count} not sent · tap to see}}",
+  "@bannerFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "morningDue": "Morning · due {time}",
+  "@morningDue": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "morning": "Morning",
+  "@morning": {},
+  "rollCall": "Roll call",
+  "@rollCall": {},
+  "crewCount": "{count} workers on your crew list",
+  "@crewCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "startRollCall": "Start roll call",
+  "@startRollCall": {},
+  "continueRollCall": "Continue roll call",
+  "@continueRollCall": {},
+  "viewRollCall": "View roll call",
+  "@viewRollCall": {},
+  "fixRollCall": "Fix and submit again",
+  "@fixRollCall": {},
+  "sentBack": "Sent back: {note}",
+  "@sentBack": {
+    "placeholders": {
+      "note": {
+        "type": "String"
+      }
+    }
+  },
+  "dayNotStarted": "Not started",
+  "@dayNotStarted": {},
+  "dayDraft": "{marked} of {total} marked",
+  "@dayDraft": {
+    "placeholders": {
+      "marked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "daySubmitted": "Submitted",
+  "@daySubmitted": {},
+  "dayApproved": "Approved",
+  "@dayApproved": {},
+  "dayRejected": "Sent back",
+  "@dayRejected": {},
+  "dayLocked": "Locked",
+  "@dayLocked": {},
+  "dayPaid": "Paid",
+  "@dayPaid": {},
+  "evening": "Evening",
+  "@evening": {},
+  "cashPayout": "Cash payout",
+  "@cashPayout": {},
+  "payoutAfterApproval": "After approval",
+  "@payoutAfterApproval": {},
+  "payoutOpensText": "Opens once the site manager approves today’s roll call.",
+  "@payoutOpensText": {},
+  "previewPayout": "Preview tonight’s payout",
+  "@previewPayout": {},
+  "payoutOpen": "Open",
+  "@payoutOpen": {},
+  "payoutOpenText": "{count} to pay · {amount} left",
+  "@payoutOpenText": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "startPayout": "Start payout",
+  "@startPayout": {},
+  "payoutPaidPill": "Everyone paid",
+  "@payoutPaidPill": {},
+  "payoutClosed": "Closed",
+  "@payoutClosed": {},
+  "viewPayout": "View payout",
+  "@viewPayout": {},
+  "thisWeek": "This week",
+  "@thisWeek": {},
+  "signOut": "Sign out",
+  "@signOut": {},
+  "chooseSite": "Choose a site",
+  "@chooseSite": {},
+  "signOutWaiting": "{count} changes are not sent yet. They stay on this phone and are sent after you sign in again.",
+  "@signOutWaiting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cancel": "Cancel",
+  "@cancel": {},
+  "loading": "Loading…",
+  "@loading": {},
+  "noSite": "No site is assigned to you. Ask the office.",
+  "@noSite": {},
+  "rollCallSubtitle": "{site} · {date} · saved on phone",
+  "@rollCallSubtitle": {
+    "placeholders": {
+      "site": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "tabToMark": "To mark · {count}",
+  "@tabToMark": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tabAll": "All {count}",
+  "@tabAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allPresent": "All P",
+  "@allPresent": {},
+  "allPresentHint": "Mark everyone not marked yet as present",
+  "@allPresentHint": {},
+  "reviewSubmit": "Review & submit",
+  "@reviewSubmit": {},
+  "reviewNotMarked": "Review · {count} not marked",
+  "@reviewNotMarked": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "statusFor": "Status for {name}",
+  "@statusFor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "submittedReadOnly": "Submitted. Changes need a reason.",
+  "@submittedReadOnly": {},
+  "lockedReadOnly": "Locked. No more changes.",
+  "@lockedReadOnly": {},
+  "everyoneMarked": "Everyone is marked.",
+  "@everyoneMarked": {},
+  "reasonTitle": "Why does this change?",
+  "@reasonTitle": {},
+  "reasonHint": "Reason (required)",
+  "@reasonHint": {},
+  "save": "Save",
+  "@save": {},
+  "arrival": "Arrival",
+  "@arrival": {},
+  "departure": "Departure",
+  "@departure": {},
+  "noCrew": "No crew list on this phone yet. Connect to the network once to download it.",
+  "@noCrew": {},
+  "reviewTitle": "Review & submit",
+  "@reviewTitle": {},
+  "exceptionsTitle": "Not full days · check these",
+  "@exceptionsTitle": {},
+  "change": "Change",
+  "@change": {},
+  "halfDayTimes": "Half day · {from}–{to}",
+  "@halfDayTimes": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "halfDayLeaves": "Half day · leaves {time}",
+  "@halfDayLeaves": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "lateArrived": "Late · arrived {time}",
+  "@lateArrived": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "absentStreak": "Absent · {count} days in a row",
+  "@absentStreak": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "absentToday": "Absent today",
+  "@absentToday": {},
+  "moreAbsent": "+ {count} more absent",
+  "@moreAbsent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noteLabel": "Note for the site manager",
+  "@noteLabel": {},
+  "optional": "Optional",
+  "@optional": {},
+  "offlineSubmitTitle": "You’re offline.",
+  "@offlineSubmitTitle": {},
+  "offlineSubmitBody": "Submitting saves the roll call on this phone and sends it as soon as there is network. You can keep working.",
+  "@offlineSubmitBody": {},
+  "submitCount": "Submit {count} workers",
+  "@submitCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "submittedAt": "Submitted {time}.",
+  "@submittedAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "submittedWaiting": "Waiting to send (offline) — then {manager} approves it. Changes from now on need a reason.",
+  "@submittedWaiting": {
+    "placeholders": {
+      "manager": {
+        "type": "String"
+      }
+    }
+  },
+  "submittedSent": "Sent — {manager} approves it next. Changes from now on need a reason.",
+  "@submittedSent": {
+    "placeholders": {
+      "manager": {
+        "type": "String"
+      }
+    }
+  },
+  "theSiteManager": "the site manager",
+  "@theSiteManager": {},
+  "backToToday": "Back to today",
+  "@backToToday": {},
+  "notMarkedWarning": "{count, plural, =1{1 worker is not marked yet.} other{{count} workers are not marked yet.}}",
+  "@notMarkedWarning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noExceptions": "Everyone worked a full day.",
+  "@noExceptions": {},
+  "payoutTitle": "Cash payout",
+  "@payoutTitle": {},
+  "payoutSubtitleApproved": "{site} · {date} · approved {time}",
+  "@payoutSubtitleApproved": {
+    "placeholders": {
+      "site": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "payoutSubtitlePreview": "{site} · {date} · preview",
+  "@payoutSubtitlePreview": {
+    "placeholders": {
+      "site": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "inHand": "In hand",
+  "@inHand": {},
+  "paid": "Paid",
+  "@paid": {},
+  "left": "Left",
+  "@left": {},
+  "earnedToday": "Earned today",
+  "@earnedToday": {},
+  "advanceRepayment": "Advance repayment",
+  "@advanceRepayment": {},
+  "handOver": "Hand over",
+  "@handOver": {},
+  "proofOfReceipt": "Proof of receipt",
+  "@proofOfReceipt": {},
+  "proofPhoto": "Photo",
+  "@proofPhoto": {},
+  "proofSignature": "Signature",
+  "@proofSignature": {},
+  "proofThumb": "Thumb mark",
+  "@proofThumb": {},
+  "confirmPaid": "Confirm paid · {amount}",
+  "@confirmPaid": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "everyonePaid": "Everyone is paid",
+  "@everyonePaid": {},
+  "returnCash": "Return {amount} to the office. The sheet locks when the office counts it.",
+  "@returnCash": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "queue": "Queue",
+  "@queue": {},
+  "queuePaid": "Paid",
+  "@queuePaid": {},
+  "queueNow": "Now",
+  "@queueNow": {},
+  "queueToPay": "To pay",
+  "@queueToPay": {},
+  "previewBanner": "Preview. The payout opens when {manager} approves the roll call.",
+  "@previewBanner": {
+    "placeholders": {
+      "manager": {
+        "type": "String"
+      }
+    }
+  },
+  "proofReady": "Proof ready",
+  "@proofReady": {},
+  "redoProof": "Redo",
+  "@redoProof": {},
+  "takeProofFirst": "Take the proof first",
+  "@takeProofFirst": {},
+  "signHere": "Ask the worker to sign",
+  "@signHere": {},
+  "thumbHere": "Ask the worker to press a thumb on the screen",
+  "@thumbHere": {},
+  "clear": "Clear",
+  "@clear": {},
+  "done": "Done",
+  "@done": {},
+  "notSentYet": "not sent yet",
+  "@notSentYet": {},
+  "noPayout": "No payout sheet on this phone yet. Connect to the network to load it.",
+  "@noPayout": {},
+  "photoFailed": "Could not take the photo.",
+  "@photoFailed": {},
+  "payoutClosedText": "The office closed this sheet.",
+  "@payoutClosedText": {},
+  "failedTitle": "Not sent",
+  "@failedTitle": {},
+  "failedHint": "The server refused these changes. Check with the office.",
+  "@failedHint": {},
+  "discard": "Discard",
+  "@discard": {},
+  "kindRecords": "Roll call marks · {date}",
+  "@kindRecords": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "kindSubmit": "Roll call submit · {date}",
+  "@kindSubmit": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "kindCorrection": "Correction · {date}",
+  "@kindCorrection": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "kindPayment": "Payment · {date}",
+  "@kindPayment": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "mockOfflineOn": "Mock: offline",
+  "@mockOfflineOn": {},
+  "mockOfflineOff": "Mock: online",
+  "@mockOfflineOff": {}
+}

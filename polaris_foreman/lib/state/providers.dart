@@ -1,0 +1,252 @@
+import 'dart:ui' show Locale;
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../core/site_clock.dart';
+import '../data/local/local_store.dart';
+import '../data/local/token_store.dart';
+import '../data/models/models.dart';
+import '../data/repositories/mock/mock_backend.dart';
+import '../data/repositories/repositories.dart';
+import '../services/payout_service.dart';
+import '../services/proof_capture.dart';
+import '../services/roll_call_service.dart';
+import '../services/sync_service.dart';
+import 'session.dart';
+
+// ------------------------------------------------- overridden in main()/tests
+
+final localStoreProvider = Provider<LocalStore>(
+  (ref) => throw UnimplementedError('Override localStoreProvider'),
+);
+
+final tokenStoreProvider = Provider<TokenStore>(
+  (ref) => throw UnimplementedError('Override tokenStoreProvider'),
+);
+
+final repositoriesProvider = Provider<Repositories>(
+  (ref) => throw UnimplementedError('Override repositoriesProvider'),
+);
+
+/// The in-memory server when running with `USE_MOCK_API` (debug switches).
+final mockBackendProvider = Provider<MockBackend?>((ref) => null);
+
+final initialLocaleProvider = Provider<String?>((ref) => null);
+final initialSiteIdProvider = Provider<int?>((ref) => null);
+
+/// Fixed "now" for tests.
+final nowProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
+final proofCaptureProvider = Provider<ProofCapture>(
+  (ref) => DeviceProofCapture(),
+);
+
+// ------------------------------------------------------------------- state
+
+class LocaleController extends Notifier<Locale> {
+  @override
+  Locale build() => Locale(ref.watch(initialLocaleProvider) ?? 'en');
+
+  void set(String code, {bool persist = true}) {
+    state = Locale(code);
+    // The mock server translates `worked` labels like Accept-Language would.
+    ref.read(mockBackendProvider)?.language = code;
+    if (persist) {
+      ref.read(localStoreProvider).setValue(StoreKeys.language, code);
+    }
+  }
+
+  void toggle() => set(state.languageCode == 'fr' ? 'en' : 'fr');
+}
+
+final localeProvider = NotifierProvider<LocaleController, Locale>(
+  LocaleController.new,
+);
+
+Me? _me(SessionState s) => s is SignedIn ? s.me : null;
+
+final meProvider = Provider<Me?>((ref) => _me(ref.watch(sessionProvider)));
+
+final siteClockProvider = Provider<SiteClock>(
+  (ref) => SiteClock(
+    now: ref.watch(nowProvider),
+    timeZone: ref.watch(meProvider)?.company.timeZone,
+  ),
+);
+
+final todayProvider = Provider<String>(
+  (ref) => ref.watch(siteClockProvider).today(),
+);
+
+final currencyProvider = Provider<Currency>(
+  (ref) => ref.watch(meProvider)?.company.currency ?? Currency.xof,
+);
+
+class SiteController extends Notifier<AssignedSite?> {
+  @override
+  AssignedSite? build() {
+    final sites = ref.watch(meProvider)?.sites ?? const [];
+    if (sites.isEmpty) return null;
+    final wanted = ref.read(initialSiteIdProvider);
+    return sites.where((s) => s.id == wanted).firstOrNull ?? sites.first;
+  }
+
+  void select(AssignedSite site) {
+    state = site;
+    ref.read(localStoreProvider).setValue(StoreKeys.siteId, '${site.id}');
+  }
+}
+
+final currentSiteProvider = NotifierProvider<SiteController, AssignedSite?>(
+  SiteController.new,
+);
+
+// ---------------------------------------------------------------- services
+
+final syncServiceProvider = Provider<SyncService>((ref) {
+  final service = SyncService(
+    store: ref.watch(localStoreProvider),
+    repos: ref.watch(repositoriesProvider),
+    clock: ref.read(siteClockProvider),
+    now: ref.watch(nowProvider),
+  );
+  service.onSignedOut = () => ref.read(sessionProvider.notifier).expired();
+  ref.listen(siteClockProvider, (_, c) => service.clock = c);
+  // Sync while signed in; stop (outbox kept) when signed out.
+  ref.listen(sessionProvider, (_, s) {
+    if (s is SignedIn) {
+      service.start();
+    } else {
+      service.pause();
+    }
+  });
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+final rollCallServiceProvider = Provider<RollCallService>(
+  (ref) => RollCallService(
+    ref.watch(localStoreProvider),
+    clock: ref.watch(siteClockProvider),
+    onWrite: () => ref.read(syncServiceProvider).kick(),
+  ),
+);
+
+final payoutServiceProvider = Provider<PayoutService>(
+  (ref) => PayoutService(
+    ref.watch(localStoreProvider),
+    clock: ref.watch(siteClockProvider),
+    onWrite: () => ref.read(syncServiceProvider).kick(),
+  ),
+);
+
+/// Ticks after every local write, so views re-read the store.
+final storeTickProvider = StreamProvider<int>((ref) async* {
+  var n = 0;
+  yield n;
+  await for (final _ in ref.watch(localStoreProvider).changes) {
+    yield ++n;
+  }
+});
+
+final syncStatusProvider = StreamProvider<SyncStatus>((ref) async* {
+  final service = ref.watch(syncServiceProvider);
+  yield service.status;
+  yield* service.statusStream;
+});
+
+// ------------------------------------------------------------------- views
+
+class RollCallView {
+  const RollCallView({
+    required this.site,
+    required this.date,
+    required this.crew,
+    required this.records,
+    required this.day,
+    required this.status,
+    required this.submitPending,
+  });
+
+  final AssignedSite site;
+  final String date;
+  final List<CrewWorker> crew;
+  final Map<int, LocalRecord> records;
+  final AttendanceDaySummary? day;
+
+  /// Counts a submit still in the outbox as submitted.
+  final DayStatus status;
+  final bool submitPending;
+
+  DayCounts get counts => DayCounts.of(
+    crew.length,
+    crew.map((w) => records[w.id]?.status).whereType<AttendanceStatus>(),
+  );
+
+  int get marked => crew.where((w) => records.containsKey(w.id)).length;
+
+  List<int> get unmarked => [
+    for (final w in crew)
+      if (!records.containsKey(w.id)) w.id,
+  ];
+
+  bool get editable => status.editable;
+  bool get correctable =>
+      status == DayStatus.submitted || status == DayStatus.approved;
+}
+
+Future<void> _tick(Ref ref) => ref.watch(storeTickProvider.future);
+
+final rollCallViewProvider = FutureProvider<RollCallView?>((ref) async {
+  await _tick(ref);
+  final site = ref.watch(currentSiteProvider);
+  if (site == null) return null;
+  final date = ref.watch(todayProvider);
+  final store = ref.watch(localStoreProvider);
+  final crew = await store.loadCrew(site.id);
+  final records = await store.loadRecords(site.id, date);
+  final day = await store.loadDay(site.id, date);
+  final outbox = await store.loadOutbox();
+  return RollCallView(
+    site: site,
+    date: date,
+    crew: crew?.workers ?? const [],
+    records: {for (final r in records) r.workerId: r},
+    day: day,
+    status: effectiveDayStatus(day, outbox),
+    submitPending: outbox.any(
+      (e) =>
+          e.kind == OutboxKind.submit &&
+          e.state == OutboxState.pending &&
+          e.siteId == site.id &&
+          e.date == date,
+    ),
+  );
+});
+
+/// Days before today, newest first ("This week").
+final weekProvider = FutureProvider<List<AttendanceDaySummary>>((ref) async {
+  await _tick(ref);
+  final site = ref.watch(currentSiteProvider);
+  if (site == null) return const [];
+  final today = ref.watch(todayProvider);
+  final days = await ref.watch(localStoreProvider).loadDays(site.id);
+  return days.where((d) => d.date.compareTo(today) < 0).take(6).toList();
+});
+
+final payoutViewProvider = FutureProvider<PayoutView?>((ref) async {
+  await _tick(ref);
+  final site = ref.watch(currentSiteProvider);
+  if (site == null) return null;
+  final date = ref.watch(todayProvider);
+  final store = ref.watch(localStoreProvider);
+  final sheet = await store.loadPayout(site.id, date);
+  if (sheet == null) return null;
+  return buildPayoutView(sheet, await store.loadPayments(site.id, date));
+});
+
+final failedOutboxProvider = FutureProvider<List<OutboxEntry>>((ref) async {
+  await _tick(ref);
+  final outbox = await ref.watch(localStoreProvider).loadOutbox();
+  return outbox.where((e) => e.state == OutboxState.failed).toList();
+});
