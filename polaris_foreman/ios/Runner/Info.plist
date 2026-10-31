@@ -12,6 +12,13 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Plain http:// to a development server on the local network
+		     (http://127.0.0.1:8000/api/v1/ from the simulator). -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Take a photo of the worker receiving their pay, as proof of payment.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

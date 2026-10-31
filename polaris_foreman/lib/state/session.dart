@@ -63,17 +63,26 @@ class SessionController extends Notifier<SessionState> {
 
   LocalStore get _store => ref.read(localStoreProvider);
 
-  Future<String> _deviceId() async {
-    final existing = await _store.getValue(StoreKeys.deviceId);
-    if (existing != null) return existing;
-    final id = const Uuid().v4();
-    await _store.setValue(StoreKeys.deviceId, id);
+  /// The install's device id: a UUID made once and kept in secure storage
+  /// for as long as the app is installed (one token per device on the
+  /// server). An id from an older build (kept in the local database) is
+  /// moved over, so the device keeps its identity.
+  Future<String> deviceId() async {
+    final tokens = ref.read(tokenStoreProvider);
+    final saved = await tokens.readDeviceId();
+    if (saved != null) return saved;
+    final id = await _store.getValue(StoreKeys.deviceId) ?? const Uuid().v4();
+    await tokens.writeDeviceId(id);
     return id;
   }
 
-  // TODO(FL2): a real model name (e.g. 'Tecno Spark 10') via device_info_plus.
-  static String _deviceName() {
+  /// Shown on the office Users screen.
+  // TODO(I2): the model name (e.g. 'Tecno Spark 10') needs device_info_plus,
+  // a new dependency; until then the platform only.
+  static String deviceName() {
     try {
+      if (Platform.isAndroid) return 'Android phone';
+      if (Platform.isIOS) return 'iPhone';
       return 'Polaris Foreman (${Platform.operatingSystem})';
     } catch (_) {
       return 'Polaris Foreman';
@@ -89,12 +98,19 @@ class SessionController extends Notifier<SessionState> {
       PinLoginRequest(
         phone: phone,
         pin: pin,
-        deviceId: await _deviceId(),
-        deviceName: _deviceName(),
+        deviceId: await deviceId(),
+        deviceName: deviceName(),
       ),
     );
     await tokens.write(resp.token);
     final me = await repos.auth.me();
+    // Writes queued before a logout or a 401 are sent once the same foreman
+    // is back (the server accepts them with the new token). Another foreman
+    // signing in does not take over a non-empty outbox.
+    final owner = await _store.getValue(StoreKeys.outboxOwner);
+    if (owner == null || (await _store.loadOutbox()).isEmpty) {
+      await _store.setValue(StoreKeys.outboxOwner, '${me.id}');
+    }
     await _store.setValue(StoreKeys.me, jsonEncode(me.toJson()));
     await _store.setValue(StoreKeys.rememberedPhone, me.phone);
     await _store.setValue(StoreKeys.rememberedName, me.name);
@@ -133,8 +149,9 @@ class SessionController extends Notifier<SessionState> {
     state = SignedOut(remembered: await _remembered(_store));
   }
 
-  /// 401 from the server: back to the PIN, outbox kept.
+  /// 401 from the server (any call): back to the PIN, outbox kept.
   Future<void> expired() async {
+    if (state is! SignedIn) return;
     await ref.read(tokenStoreProvider).clear();
     state = SignedOut(remembered: await _remembered(_store), expired: true);
   }

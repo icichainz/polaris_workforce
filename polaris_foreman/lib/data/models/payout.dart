@@ -243,9 +243,13 @@ class Payment {
     required this.proofUrl,
     required this.paidAt,
     required this.paidBy,
+    this.replayed = false,
   });
 
-  factory Payment.fromJson(Map<String, dynamic> json) => Payment(
+  factory Payment.fromJson(
+    Map<String, dynamic> json, {
+    bool replayed = false,
+  }) => Payment(
     id: json['id'] as int,
     clientUuid: json['client_uuid'] as String,
     payLineId: json['pay_line_id'] as int,
@@ -255,6 +259,7 @@ class Payment {
     proofUrl: json['proof_url'] as String?,
     paidAt: json['paid_at'] as String,
     paidBy: PersonRef.fromJson(json['paid_by'] as Map<String, dynamic>),
+    replayed: replayed,
   );
 
   final int id;
@@ -266,6 +271,12 @@ class Payment {
   final String? proofUrl;
   final String paidAt;
   final PersonRef paidBy;
+
+  /// `200` + `Idempotent-Replayed: true`: the server already had this
+  /// `client_uuid` and returned the original payment. Not part of the JSON.
+  final bool replayed;
+
+  Payment asReplayed() => Payment.fromJson(toJson(), replayed: true);
 
   PaymentSummary get summary => PaymentSummary(
     id: id,

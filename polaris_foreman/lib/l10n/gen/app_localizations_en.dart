@@ -453,6 +453,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proofThumb => 'Thumb mark';
 
   @override
+  String get proofNone => 'No proof';
+
+  @override
   String confirmPaid(String amount) {
     return 'Confirm paid · $amount';
   }

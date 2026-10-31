@@ -1,7 +1,9 @@
 import '../../models/models.dart';
 
 /// Sample data from the design artboards: Riverside Apartments, 42 workers,
-/// Kossi Amegah as foreman, rates 3 500–8 000 XOF a day.
+/// Kossi Amegah as foreman, rates 3 500–8 000 XOF a day. The ids, names and
+/// numbers of the contract's example data set (site 3, foreman 7, manager 4,
+/// workers 63/58/51/44; `polaris_workforce/apps/api/examples.py`) are kept.
 class SeedWorker {
   const SeedWorker(
     this.id,
@@ -12,6 +14,7 @@ class SeedWorker {
     this.payType = PayType.daily,
     this.advance = 0,
     this.absentStreak = 0,
+    this.number,
   });
 
   final int id;
@@ -26,6 +29,9 @@ class SeedWorker {
   /// Advance repayment taken from each pay.
   final int advance;
   final int absentStreak;
+
+  /// Worker number when it does not follow `W-0<id + 100>`.
+  final String? number;
 }
 
 abstract final class MockSeed {
@@ -54,10 +60,15 @@ abstract final class MockSeed {
     rollCallDue: '08:30',
   );
 
+  /// The server default (contract example): photo, signature or thumb mark;
+  /// a file for the photo only.
+  static const payments = PaymentRules.standard;
+
   static const company = Company(
     country: 'TG',
     timeZone: 'Africa/Lome',
     currency: Currency.xof,
+    payments: payments,
   );
 
   static Me me({Language language = Language.fr}) => Me(
@@ -71,13 +82,29 @@ abstract final class MockSeed {
   );
 
   static const workers = <SeedWorker>[
-    SeedWorker(44, 'Yao', 'Mensah', 'Mason', 6000, advance: 2000),
-    SeedWorker(51, 'Komlan', 'Agbeko', 'Carpenter', 5500),
-    SeedWorker(52, 'Afi', 'Dosseh', 'Labourer', 3500),
-    SeedWorker(58, 'Kodjo', 'Atsu', 'Labourer', 3500, absentStreak: 2),
+    SeedWorker(
+      44,
+      'Yao',
+      'Mensah',
+      'Mason',
+      6000,
+      advance: 2000,
+      number: 'W-0118',
+    ),
+    SeedWorker(51, 'Afi', 'Dosseh', 'Labourer', 3500, number: 'W-0142'),
+    SeedWorker(52, 'Komlan', 'Agbeko', 'Carpenter', 5500),
+    SeedWorker(
+      58,
+      'Kodjo',
+      'Atsu',
+      'Labourer',
+      3500,
+      absentStreak: 2,
+      number: 'W-0157',
+    ),
     SeedWorker(59, 'Akouvi', 'Tete', 'Steel fixer', 5000, advance: 2000),
     SeedWorker(60, 'Sena', 'Kumah', 'Mason', 6000),
-    SeedWorker(63, 'Delali', 'Agbo', 'Painter', 4500),
+    SeedWorker(63, 'Delali', 'Agbo', 'Painter', 7500, number: 'W-0163'),
     SeedWorker(64, 'Selom', 'Akakpo', 'Welder', 7500, absentStreak: 1),
     SeedWorker(65, 'Edem', 'Agbodjan', 'Labourer', 3500),
     SeedWorker(66, 'Yawa', 'Sossou', 'Labourer', 3500),
@@ -131,7 +158,7 @@ abstract final class MockSeed {
 
   static CrewWorker crewWorker(SeedWorker w) => CrewWorker(
     id: w.id,
-    number: 'W-0${w.id + 100}',
+    number: w.number ?? 'W-0${w.id + 100}',
     firstName: w.firstName,
     lastName: w.lastName,
     trade: w.trade,

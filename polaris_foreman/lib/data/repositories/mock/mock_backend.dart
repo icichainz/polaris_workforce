@@ -4,9 +4,11 @@ import '../../../core/dates.dart';
 import '../../models/models.dart';
 import 'mock_seed.dart';
 
-/// An in-memory stand-in for the Django API, following the rules of
-/// `docs/api/README.md`: idempotent writes by `client_uuid`, `{code, message,
-/// details}` errors, `not_started` days, payout invariants, sync by `since`.
+/// An in-memory stand-in for the Django API (contract 1.1), following the
+/// rules of `docs/api/README.md`: idempotent writes by `client_uuid` (replays
+/// flagged like `Idempotent-Replayed`), `{code, message, details}` errors with
+/// list-shaped item errors, `not_started` days, records with `site_id` and
+/// `date`, payment proof rules, payout invariants, sync by `since`.
 ///
 /// Debug switches: [offline] (every call fails with [NetworkException]),
 /// [failNext] (queue errors for the next calls), [revokeToken] (401),
@@ -186,33 +188,40 @@ class MockBackend {
   Future<PinLoginResponse> signIn(PinLoginRequest req) async {
     await _call(auth: false);
     final now = _now();
-    if (_lockedUntil != null && now.isBefore(_lockedUntil!)) {
-      throw _err(
-        423,
-        ErrorCodes.locked,
-        'Too many wrong PINs. Try again later.',
-        {'status': 'locked', 'locked_until': isoTimestamp(_lockedUntil!)},
-      );
-    }
-    if (req.phone.replaceAll(' ', '') != MockSeed.foremanPhone ||
-        req.pin != MockSeed.foremanPin) {
-      _attemptsLeft--;
-      if (_attemptsLeft <= 0) {
-        _lockedUntil = now.add(const Duration(minutes: 15));
-        _attemptsLeft = 5;
-        throw _err(
-          423,
-          ErrorCodes.locked,
-          'Too many wrong PINs. Try again later.',
-          {'status': 'locked', 'locked_until': isoTimestamp(_lockedUntil!)},
-        );
-      }
+    // Unknown phone (or no PIN, or a role without the phone app): the same
+    // plain 401 for all, and no attempt is counted.
+    if (req.phone.replaceAll(' ', '') != MockSeed.foremanPhone) {
       throw _err(
         401,
         ErrorCodes.notAuthenticated,
         'Wrong phone number or PIN.',
-        {'attempts_left': _attemptsLeft},
       );
+    }
+    if (_lockedUntil != null) {
+      if (now.isBefore(_lockedUntil!)) {
+        throw _err(
+          423,
+          ErrorCodes.locked,
+          'Too many wrong PINs. Try again later.',
+          {'locked_until': isoTimestamp(_lockedUntil!)},
+        );
+      }
+      _lockedUntil = null; // The lockout is over: count again.
+      _attemptsLeft = 5;
+    }
+    if (req.pin != MockSeed.foremanPin) {
+      _attemptsLeft--;
+      if (_attemptsLeft <= 0) {
+        // The 5th wrong PIN: still 401, with the lock time.
+        _lockedUntil = now.add(const Duration(minutes: 15));
+        throw _err(401, ErrorCodes.notAuthenticated, 'Wrong PIN.', {
+          'attempts_left': 0,
+          'locked_until': isoTimestamp(_lockedUntil!),
+        });
+      }
+      throw _err(401, ErrorCodes.notAuthenticated, 'Wrong PIN.', {
+        'attempts_left': _attemptsLeft,
+      });
     }
     _attemptsLeft = 5;
     _revoked = false;
@@ -300,19 +309,16 @@ class MockBackend {
     await _call(token: token);
     _checkSite(siteId);
     if (batch.length > 200) {
+      // An error on the field itself, not on an item.
       throw _err(400, ErrorCodes.validationError, 'Invalid input.', {
-        'records': ['At most 200 records per request.'],
+        'records': {
+          'non_field_errors': [
+            'Ensure this field has no more than 200 elements.',
+          ],
+        },
       });
     }
     final summary = _summary(siteId, date);
-    if (!summary.status.editable) {
-      throw _err(
-        423,
-        ErrorCodes.locked,
-        'This day is submitted. Use a correction.',
-        {'status': summary.status.wire},
-      );
-    }
     final crewIds = _crews[siteId]!.map((w) => w.id).toSet();
     final errors = <Map<String, dynamic>>[];
     for (final r in batch) {
@@ -320,16 +326,63 @@ class MockBackend {
         crewIds.contains(r.workerId)
             ? {}
             : {
-                'worker_id': ['This worker is not on the crew that day.'],
+                'worker_id': [
+                  'This worker is not on the crew of this site that day.',
+                ],
               },
       );
     }
     if (errors.any((e) => e.isNotEmpty)) {
+      // A JSON list, one entry per item (`{}` without errors), like the
+      // server's `upsert_records`.
       throw _err(400, ErrorCodes.validationError, 'Invalid input.', {
         'records': errors,
       });
     }
     final key = _key(siteId, date);
+    // A client_uuid already used for another worker or another day.
+    for (final r in batch) {
+      for (final e in _records.entries) {
+        for (final x in e.value.values) {
+          if (x.clientUuid == r.clientUuid &&
+              (e.key != key || x.workerId != r.workerId)) {
+            throw _err(
+              409,
+              ErrorCodes.conflict,
+              'This client_uuid was already used for another record.',
+              {'client_uuid': r.clientUuid},
+            );
+          }
+        }
+      }
+    }
+    // A batch that changes nothing writes nothing, whatever the day's status
+    // (a replay); one that changes something needs an editable day.
+    final current = _records[key] ?? const <int, AttendanceRecord>{};
+    final changes = batch.any((r) {
+      final x =
+          current.values
+              .where((x) => x.clientUuid == r.clientUuid)
+              .firstOrNull ??
+          current[r.workerId];
+      return x == null ||
+          x.status != r.status ||
+          x.arrival != r.arrival ||
+          x.departure != r.departure ||
+          x.note != r.note;
+    });
+    if (!summary.status.editable) {
+      if (!changes) return _day(siteId, date);
+      throw _err(
+        423,
+        ErrorCodes.locked,
+        summary.status == DayStatus.locked
+            ? 'This day is locked and cannot be changed.'
+            : 'This day was already submitted: change records with a '
+                  'correction.',
+        {'status': summary.status.wire},
+      );
+    }
     final dayId = summary.id ?? ++_dayId;
     final recs = _records.putIfAbsent(key, () => {});
     final ts = _ts;
@@ -343,6 +396,8 @@ class MockBackend {
           id: ++_recordId,
           clientUuid: r.clientUuid,
           dayId: dayId,
+          siteId: siteId,
+          date: date,
           workerId: r.workerId,
           status: r.status,
           arrival: r.arrival,
@@ -390,9 +445,12 @@ class MockBackend {
     final summary = _summary(siteId, date);
     if (_submitUuids[key] == req.clientUuid) return _day(siteId, date);
     if (summary.status == DayStatus.locked) {
-      throw _err(423, ErrorCodes.locked, 'This day is locked.', {
-        'status': 'locked',
-      });
+      throw _err(
+        423,
+        ErrorCodes.locked,
+        'This day is locked and cannot be changed.',
+        {'status': 'locked'},
+      );
     }
     if (summary.status == DayStatus.submitted ||
         summary.status == DayStatus.approved) {
@@ -406,9 +464,12 @@ class MockBackend {
         .where((id) => !recs.containsKey(id))
         .toList();
     if (unmarked.isNotEmpty) {
-      throw _err(409, ErrorCodes.conflict, 'Some workers are not marked.', {
-        'unmarked_worker_ids': unmarked,
-      });
+      throw _err(
+        409,
+        ErrorCodes.conflict,
+        'Mark every worker on the crew before submitting.',
+        {'unmarked_worker_ids': unmarked},
+      );
     }
     _submitUuids[key] = req.clientUuid;
     _days[key] = summary.copyWith(
@@ -471,7 +532,7 @@ class MockBackend {
           {'client_uuid': req.clientUuid},
         );
       }
-      return seen;
+      return seen.asReplayed(); // 200 + Idempotent-Replayed: true.
     }
     String? key;
     AttendanceRecord? rec;
@@ -488,15 +549,18 @@ class MockBackend {
     }
     final day = _days[key]!;
     if (day.status == DayStatus.locked) {
-      throw _err(423, ErrorCodes.locked, 'This day is locked.', {
-        'status': 'locked',
-      });
+      throw _err(
+        423,
+        ErrorCodes.locked,
+        'This resource is locked and cannot be changed.',
+        {'status': 'locked'},
+      );
     }
     if (day.status.editable) {
       throw _err(
         409,
         ErrorCodes.conflict,
-        'The day is not submitted: edit the records.',
+        'The day is not submitted: change the records instead.',
         {'status': day.status.wire},
       );
     }
@@ -632,6 +696,9 @@ class MockBackend {
     return _payout(siteId, date);
   }
 
+  /// Proof rules of `POST /payments/` (`company.payments`).
+  PaymentRules paymentRules = MockSeed.payments;
+
   Future<Payment> pay(
     String? token,
     PaymentCreateRequest req,
@@ -648,26 +715,43 @@ class MockBackend {
           {'client_uuid': req.clientUuid},
         );
       }
-      return seen; // 200 + Idempotent-Replayed on the real server.
+      return seen.asReplayed(); // 200 + Idempotent-Replayed: true.
+    }
+    if (!paymentRules.accepts(req.proofType)) {
+      throw _err(400, ErrorCodes.validationError, 'Invalid input.', {
+        'proof_type': ['This proof type is not accepted.'],
+      });
+    }
+    if (paymentRules.needsFile(req.proofType) && proofFilePath == null) {
+      throw _err(400, ErrorCodes.validationError, 'Invalid input.', {
+        'proof_file': ['Attach the photo of the worker receiving the cash.'],
+      });
     }
     for (final entry in _lines.entries) {
       final idx = entry.value.indexWhere((l) => l.payLineId == req.payLineId);
       if (idx < 0) continue;
       final day = _days[entry.key]!;
-      if (day.payoutStatus == PayoutStatus.closed) {
-        throw _err(423, ErrorCodes.locked, 'The sheet is closed.', {
-          'status': 'closed',
+      if (day.payoutStatus == PayoutStatus.closed ||
+          day.status == DayStatus.locked) {
+        throw _err(423, ErrorCodes.locked, 'This pay period is locked.', {
+          'status': 'locked',
         });
       }
       if (day.payoutStatus == PayoutStatus.notOpen) {
-        throw _err(409, ErrorCodes.conflict, 'The payout is not open.', {
-          'status': 'not_open',
-        });
+        throw _notOpen();
       }
       final line = entry.value[idx];
       if (line.payment != null) {
-        throw _err(409, ErrorCodes.conflict, 'This line is already paid.', {
-          'client_uuid': line.payment!.clientUuid,
+        throw _err(
+          409,
+          ErrorCodes.conflict,
+          'This worker has already been paid.',
+          {'pay_line_id': line.payLineId},
+        );
+      }
+      if (req.amount != line.net) {
+        throw _err(400, ErrorCodes.validationError, 'Invalid input.', {
+          'amount': ['The amount must be the net left to pay: ${line.net}.'],
         });
       }
       final payment = Payment(
@@ -693,8 +777,24 @@ class MockBackend {
       }
       return payment;
     }
+    // A line of a sheet that is still a preview (roll call not approved).
+    for (final d in _days.values) {
+      if (_computeLines(
+        d.siteId,
+        d.date,
+      ).any((l) => l.payLineId == req.payLineId)) {
+        throw _notOpen();
+      }
+    }
     throw _err(404, ErrorCodes.notFound, 'Not found.');
   }
+
+  ApiException _notOpen() => _err(
+    409,
+    ErrorCodes.conflict,
+    'The cash sheet is not open: the roll call is not approved yet.',
+    {'status': 'not_open'},
+  );
 
   // ------------------------------------------------------------------- sync
 

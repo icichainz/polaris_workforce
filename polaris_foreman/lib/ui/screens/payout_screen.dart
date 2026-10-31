@@ -19,11 +19,43 @@ class PayoutScreen extends ConsumerStatefulWidget {
   ConsumerState<PayoutScreen> createState() => _PayoutScreenState();
 }
 
+/// The order of the proof buttons; only the company's accepted ones show.
+const _proofOrder = [
+  ProofType.photo,
+  ProofType.signature,
+  ProofType.thumbMark,
+  ProofType.none,
+];
+
 class _PayoutScreenState extends ConsumerState<PayoutScreen> {
   int? _selected;
-  ProofType _proof = ProofType.photo;
+
+  /// The proof the foreman picked; null: the first accepted one.
+  ProofType? _picked;
   String? _proofPath;
   bool _busy = false;
+
+  PaymentRules get _rules => ref.read(paymentRulesProvider);
+
+  /// The selected proof type: the foreman's pick, else the first accepted
+  /// type that is not `none` (no proof is never preselected).
+  ProofType? _proofOf(PaymentRules rules) {
+    final picked = _picked;
+    if (picked != null && rules.accepts(picked)) return picked;
+    return _proofOrder
+            .where((t) => t != ProofType.none && rules.accepts(t))
+            .firstOrNull ??
+        (rules.accepts(ProofType.none) ? ProofType.none : null);
+  }
+
+  /// Confirm is allowed once the proof is there: a file for the types in
+  /// `file_required_for`, nothing more for the others (a signature may be on
+  /// the paper sheet; `none` needs nothing).
+  bool _canConfirm(PaymentRules rules) {
+    final proof = _proofOf(rules);
+    if (proof == null) return false;
+    return _proofPath != null || !rules.needsFile(proof);
+  }
 
   @override
   void initState() {
@@ -49,9 +81,10 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
 
   Future<void> _capture(ProofType type) async {
     setState(() {
-      _proof = type;
+      _picked = type;
       _proofPath = null;
     });
+    if (type == ProofType.none) return;
     final capture = ref.read(proofCaptureProvider);
     String? path;
     try {
@@ -75,7 +108,9 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
   }
 
   Future<void> _confirm(PayoutView v, PayoutLine line) async {
-    if (_proofPath == null || _busy) return;
+    final rules = _rules;
+    final proof = _proofOf(rules);
+    if (proof == null || !_canConfirm(rules) || _busy) return;
     setState(() => _busy = true);
     try {
       await ref
@@ -84,12 +119,15 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
             siteId: v.sheet.siteId,
             date: v.sheet.date,
             line: line,
-            proofType: _proof,
-            proofPath: _proofPath,
+            proofType: proof,
+            proofPath: proof == ProofType.none ? null : _proofPath,
+            rules: rules,
           );
       _select(null);
     } on PayoutNotOpenException {
       // The sheet changed under us; the view refreshes from the store.
+    } on ProofNotAcceptedException {
+      // The rules changed under us (GET /me/ refreshed); the buttons follow.
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -99,6 +137,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final site = ref.watch(currentSiteProvider);
+    final rules = ref.watch(paymentRulesProvider);
     final async = ref.watch(payoutViewProvider);
     final v = async.valueOrNull;
     final siteShort = site?.name.split(' ').first ?? '';
@@ -201,8 +240,13 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
                     line: cur,
                     currency: sheet.currency,
                     open: v.open,
-                    proof: _proof,
+                    proofs: [
+                      for (final t in _proofOrder)
+                        if (rules.accepts(t)) t,
+                    ],
+                    proof: _proofOf(rules),
                     proofReady: _proofPath != null,
+                    canConfirm: _canConfirm(rules),
                     busy: _busy,
                     onProof: _capture,
                     onConfirm: () => _confirm(v, cur),
@@ -317,8 +361,10 @@ class _CurrentCard extends StatelessWidget {
     required this.line,
     required this.currency,
     required this.open,
+    required this.proofs,
     required this.proof,
     required this.proofReady,
+    required this.canConfirm,
     required this.busy,
     required this.onProof,
     required this.onConfirm,
@@ -327,8 +373,12 @@ class _CurrentCard extends StatelessWidget {
   final PayoutLine line;
   final Currency currency;
   final bool open;
-  final ProofType proof;
+
+  /// The accepted proof types, in button order.
+  final List<ProofType> proofs;
+  final ProofType? proof;
   final bool proofReady;
+  final bool canConfirm;
   final bool busy;
   final ValueChanged<ProofType> onProof;
   final VoidCallback onConfirm;
@@ -432,11 +482,27 @@ class _CurrentCard extends StatelessWidget {
             Row(
               children: [
                 for (final (type, label, icon) in [
-                  (ProofType.photo, l.proofPhoto, Icons.photo_camera_outlined),
-                  (ProofType.signature, l.proofSignature, Icons.draw_outlined),
-                  (ProofType.thumbMark, l.proofThumb, Icons.fingerprint),
+                  for (final t in proofs)
+                    switch (t) {
+                      ProofType.photo => (
+                        t,
+                        l.proofPhoto,
+                        Icons.photo_camera_outlined,
+                      ),
+                      ProofType.signature => (
+                        t,
+                        l.proofSignature,
+                        Icons.draw_outlined,
+                      ),
+                      ProofType.thumbMark => (
+                        t,
+                        l.proofThumb,
+                        Icons.fingerprint,
+                      ),
+                      ProofType.none => (t, l.proofNone, Icons.money_outlined),
+                    },
                 ]) ...[
-                  if (type != ProofType.photo) const SizedBox(width: 8),
+                  if (type != proofs.first) const SizedBox(width: 8),
                   Expanded(
                     child: _ProofButton(
                       key: Key('proof-${type.wire}'),
@@ -450,7 +516,7 @@ class _CurrentCard extends StatelessWidget {
                 ],
               ],
             ),
-            if (proofReady)
+            if (proofReady && proof != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Row(
@@ -472,7 +538,7 @@ class _CurrentCard extends StatelessWidget {
                       ),
                     ),
                     TextButton(
-                      onPressed: () => onProof(proof),
+                      onPressed: () => onProof(proof!),
                       child: Text(l.redoProof),
                     ),
                   ],
@@ -481,10 +547,10 @@ class _CurrentCard extends StatelessWidget {
             const SizedBox(height: 12),
             FilledButton(
               key: const Key('confirmPaid'),
-              onPressed: proofReady && !busy ? onConfirm : null,
+              onPressed: canConfirm && !busy ? onConfirm : null,
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Text(proofReady ? l.confirmPaid(net) : l.takeProofFirst),
+                child: Text(canConfirm ? l.confirmPaid(net) : l.takeProofFirst),
               ),
             ),
           ],

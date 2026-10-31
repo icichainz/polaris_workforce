@@ -42,7 +42,15 @@ class SyncStatus {
   );
 }
 
-enum DrainResult { done, waiting, signedOut }
+enum DrainResult {
+  done,
+  waiting,
+  signedOut,
+
+  /// The outbox belongs to another foreman than the one signed in: nothing
+  /// is sent until they sign in again.
+  held,
+}
 
 /// Error code stored on an entry that failed for lack of network.
 const networkErrorCode = 'network';
@@ -170,7 +178,7 @@ class SyncService {
       _emit(_current.copyWith(online: reachable));
       if (!reachable) return;
       final result = await drain();
-      if (result == DrainResult.done) {
+      if (result == DrainResult.done || result == DrainResult.held) {
         await pull();
         _emit(_current.copyWith(lastSyncAt: _now()));
       }
@@ -210,6 +218,7 @@ class SyncService {
   /// Sends pending entries in order until the outbox is empty or a retryable
   /// error stops it.
   Future<DrainResult> drain() async {
+    if (await outboxHeld()) return DrainResult.held;
     while (true) {
       final pending = sendingOrder(
         (await store.loadOutbox()).where((e) => e.state == OutboxState.pending),
@@ -264,6 +273,18 @@ class SyncService {
     }
   }
 
+  /// True when the queued writes belong to another user than the one signed
+  /// in ([StoreKeys.outboxOwner]). Writes go out under the user who made them
+  /// only: the server would refuse another foreman's payment (`409`) and save
+  /// records and submissions under the wrong name.
+  Future<bool> outboxHeld() async {
+    final owner = await store.getValue(StoreKeys.outboxOwner);
+    final raw = await store.getValue(StoreKeys.me);
+    if (owner == null || raw == null) return false;
+    final me = jsonDecode(raw) as Map<String, dynamic>;
+    return '${me['id']}' != owner;
+  }
+
   // ----------------------------------------------------------------- send
 
   Future<void> _send(OutboxEntry e) async {
@@ -296,9 +317,7 @@ class SyncService {
           CorrectionCreateRequest.fromJson(e.payload),
         );
         await store.deleteOutbox(e.id!);
-        await store.upsertRecords([
-          LocalRecord.fromServer(c.record, siteId: e.siteId, date: e.date),
-        ]);
+        await store.upsertRecords([LocalRecord.fromServer(c.record)]);
       case OutboxKind.payment:
         final payment = await repos.payout.pay(
           PaymentCreateRequest.fromJson(e.payload),
@@ -339,7 +358,7 @@ class SyncService {
     for (final r in day.records) {
       final local = await store.loadRecord(s.siteId, s.date, r.workerId);
       if (overwrite || local == null || !pendingWorkers.contains(r.workerId)) {
-        out.add(LocalRecord.fromServer(r, siteId: s.siteId, date: s.date));
+        out.add(LocalRecord.fromServer(r));
       } else {
         out.add(
           local.copyWith(
@@ -428,17 +447,23 @@ class SyncService {
     final since = await store.getValue(StoreKeys.syncSince);
     final resp = await repos.sync.sync(since: since);
     await store.upsertDays(resp.days);
+    // The same record may come in `records` and in a correction: keep the
+    // newest copy. Records carry `site_id` and `date` (1.1), so they are
+    // stored even when their day is not on the phone yet.
+    final newest = <int, AttendanceRecord>{};
     for (final r in [
       ...resp.records,
       ...resp.corrections.map((c) => c.record),
     ]) {
-      final day = await store.dayById(r.dayId);
-      if (day == null) continue;
-      final pending = await _pendingWorkers(day.siteId, day.date);
+      final seen = newest[r.id];
+      if (seen == null || r.updatedAt.compareTo(seen.updatedAt) >= 0) {
+        newest[r.id] = r;
+      }
+    }
+    for (final r in newest.values) {
+      final pending = await _pendingWorkers(r.siteId, r.date);
       if (pending.contains(r.workerId)) continue; // Unsent write: send it.
-      await store.upsertRecords([
-        LocalRecord.fromServer(r, siteId: day.siteId, date: day.date),
-      ]);
+      await store.upsertRecords([LocalRecord.fromServer(r)]);
     }
     await store.setValue(StoreKeys.syncSince, resp.serverTime);
 

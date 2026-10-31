@@ -67,4 +67,9 @@ abstract final class StoreKeys {
   static const rememberedSite = 'remembered_site';
   static const language = 'language';
   static const siteId = 'site_id';
+
+  /// User id of the foreman whose writes are in the outbox. Another foreman
+  /// signed in on the phone must not send them (README "Logout and the
+  /// outbox"): they wait until their owner signs in again.
+  static const outboxOwner = 'outbox_owner';
 }

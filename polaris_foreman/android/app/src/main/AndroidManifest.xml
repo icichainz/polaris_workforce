@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The API client (release builds too). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="Polaris"
         android:name="${applicationName}"
