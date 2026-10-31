@@ -9,6 +9,16 @@ on. ``message`` is human-readable and translated (``Accept-Language``). ``detail
 always an object: field errors for ``validation_error``, ``retry_after`` for
 ``throttled``, and whatever context the raising code passes otherwise.
 
+Errors on the items of a list field are always a JSON list, one entry per item up to
+the last item with an error (``{}`` for an item without errors)::
+
+    {"records": [{}, {"worker_id": ["This worker is not on the crew..."]}]}
+
+DRF reports them as a dict keyed by index (``{"records": {1: {...}}}``); ``_as_lists``
+turns those into lists.
+
+Unknown ``/api/`` URLs get the same format (``not_found_body``), see ``apps.api.views``.
+
 Raise ``Conflict``, ``Locked`` or ``NotImplementedYet`` from views and services, with
 optional ``details``. Django's ``Http404``, ``PermissionDenied`` and ``ValidationError``
 are converted too, so services can raise plain Django exceptions.
@@ -67,6 +77,11 @@ def error_body(code: str, message, details: dict | None = None) -> dict:
     return {"code": code, "message": str(message), "details": details or {}}
 
 
+def not_found_body() -> dict:
+    """The body of a 404 for a URL that matches no API route."""
+    return error_body("not_found", exceptions.NotFound.default_detail)
+
+
 def _normalise(exc):
     """Turn Django exceptions into their DRF equivalents."""
     if isinstance(exc, Http404):
@@ -76,6 +91,26 @@ def _normalise(exc):
     if isinstance(exc, DjangoValidationError):
         return exceptions.ValidationError(as_serializer_error(exc))
     return exc
+
+
+def _as_lists(detail):
+    """Turn DRF's index-keyed list errors (``{0: {...}, 2: {...}}``) into JSON lists.
+
+    Only dicts whose keys are all ``int`` are list errors: field names are strings.
+    Items without an error become ``{}`` (or ``[]`` when the item errors are lists of
+    messages, as for a ``ListField`` of plain values).
+    """
+    if isinstance(detail, dict):
+        if detail and all(isinstance(key, int) for key in detail):
+            values = {key: _as_lists(value) for key, value in detail.items()}
+            empty = dict if any(isinstance(v, dict) for v in values.values()) else list
+            return [
+                values[index] if index in values else empty() for index in range(max(values) + 1)
+            ]
+        return {key: _as_lists(value) for key, value in detail.items()}
+    if isinstance(detail, list):
+        return [_as_lists(item) for item in detail]
+    return detail
 
 
 def _code_for(exc: exceptions.APIException) -> str:
@@ -90,7 +125,7 @@ def _message_and_details(exc: exceptions.APIException, code: str):
         detail = exc.detail
         if not isinstance(detail, dict):
             detail = {"non_field_errors": detail if isinstance(detail, list) else [detail]}
-        return _("Invalid input."), detail
+        return _("Invalid input."), _as_lists(detail)
     message = exc.detail if isinstance(exc.detail, str) else exc.default_detail
     details = dict(getattr(exc, "details", {}) or {})
     if isinstance(exc, exceptions.Throttled) and exc.wait is not None:

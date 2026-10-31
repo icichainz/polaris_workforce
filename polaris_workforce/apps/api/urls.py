@@ -5,7 +5,7 @@ Wave 2 agents edit only their own app's ``api/`` package, never this file.
 """
 
 from django.conf import settings
-from django.urls import include, path
+from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 # converters registers <isodate:...> before the includes below.
@@ -26,3 +26,8 @@ if settings.DEBUG:
     urlpatterns += [
         path("docs/", SpectacularSwaggerView.as_view(url_name="api:schema"), name="docs"),
     ]
+
+# Must stay last: any other URL under /api/v1/ (a typo, an impossible date such as
+# 2026-02-30) gets the JSON error format instead of Django's HTML 404 page. Only paths
+# ending in "/" match, so a missing trailing slash still gets APPEND_SLASH's redirect.
+urlpatterns += [re_path(r"^(?:.*/)?$", views.unknown_url, name="not-found")]

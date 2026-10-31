@@ -19,5 +19,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 ]
 
+# Unknown URLs under /api/ answer in the API error format; office pages keep HTML.
+handler404 = "apps.api.views.page_not_found"
+
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

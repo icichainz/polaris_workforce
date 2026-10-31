@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import get_site_or_403
+from apps.api import examples as ex
 from apps.api.idempotency import IdempotentCreateMixin, run_once
 from apps.api.schema import DATE, SITE_ID, error_responses
 
@@ -26,35 +27,6 @@ from .serializers import (
 
 TAGS = ["payroll"]
 
-XOF = {"code": "XOF", "decimals": 0}
-
-
-def _line(line_id, worker_id, name, trade, worked, units, gross, advance, payment=None):
-    return {
-        "pay_line_id": line_id,
-        "worker": {
-            "id": worker_id,
-            "name": name,
-            "trade": trade,
-            "photo_url": f"https://polaris.example.com/media/workers/{worker_id}.jpg",
-        },
-        "worked": worked,
-        "units": units,
-        "gross": gross,
-        "advance_deduction": advance,
-        "net": gross - advance,
-        "payment": payment,
-    }
-
-
-PAYMENT = {
-    "id": 3301,
-    "client_uuid": "e4b1c9d2-6a3f-4d8e-b7c0-1a2b3c4d5e61",
-    "amount": 4000,
-    "proof_type": "photo",
-    "paid_at": "2026-10-31T16:31:00Z",
-}
-
 
 class PayoutView(APIView):
     @extend_schema(
@@ -67,7 +39,14 @@ class PayoutView(APIView):
             "('Preview tonight's payout'). Every money value is an integer in the "
             "smallest unit of `currency`.\n\n"
             "Invariants: `total_to_pay = Σ net`, `left_to_pay = total_to_pay − paid_total`, "
-            "`cash_in_hand = cash_issued − paid_total`."
+            "`cash_in_hand = cash_issued − paid_total`.\n\n"
+            "**`pay_line_id`** is stable for a worker and pay period while the line is "
+            "recomputed (a correction, an approval): the line is updated in place. It "
+            "changes only if the worker drops off the sheet (no worked day left in the "
+            "period, e.g. corrected to absent) and comes back later, which makes a new "
+            "line. A paid line is frozen. Pay from the latest sheet: a queued payment "
+            "for a line that no longer exists gets `404 not_found`, and one whose `net` "
+            "changed gets `400` on `amount`; fetch the sheet again."
         ),
         parameters=[SITE_ID, DATE],
         responses={200: PayoutSerializer, **error_responses(401, 403, 404)},
@@ -75,26 +54,7 @@ class PayoutView(APIView):
             OpenApiExample(
                 "Open sheet",
                 response_only=True,
-                value={
-                    "site_id": 3,
-                    "date": "2026-10-31",
-                    "status": "open",
-                    "day_status": "approved",
-                    "approved_at": "2026-10-31T16:10:00Z",
-                    "currency": XOF,
-                    "cash_issued": 20000,
-                    "total_to_pay": 13250,
-                    "paid_total": 4000,
-                    "left_to_pay": 9250,
-                    "cash_in_hand": 16000,
-                    "line_count": 3,
-                    "paid_count": 1,
-                    "lines": [
-                        _line(801, 44, "Yao Mensah", "Mason", "1 day", "1.00", 6000, 2000, PAYMENT),
-                        _line(802, 51, "Afi Dosseh", "Labourer", "½ day", "0.50", 1750, 0),
-                        _line(803, 63, "Delali Agbo", "Painter", "1 day · late", "1.00", 7500, 0),
-                    ],
-                },
+                value=ex.PAYOUT,
             )
         ],
     )
@@ -118,7 +78,11 @@ class PaymentCreateView(IdempotentCreateMixin, APIView):
             "payment with 200 and `Idempotent-Replayed: true` (send the file again on a "
             "retry; it is ignored on a replay). The line already paid under another "
             "`client_uuid`, or the sheet `not_open`: `409 conflict`. Sheet closed or "
-            "period locked: `423 locked`."
+            "period locked: `423 locked`.\n\n"
+            "Proof rules come from `GET /me/` → `company.payments`: `proof_type` must be "
+            "in `accepted_proofs`, and a type in `file_required_for` (`photo`) needs "
+            "`proof_file`. `amount` must equal what is left to pay on the line (its `net` "
+            "when unpaid). A `pay_line_id` that no longer exists: `404 not_found`."
         ),
         request={
             "multipart/form-data": PaymentCreateSerializer,
@@ -127,31 +91,59 @@ class PaymentCreateView(IdempotentCreateMixin, APIView):
         responses={
             201: PaymentSerializer,
             200: PaymentSerializer,
-            **error_responses(400, 401, 403, 404, 409, 423),
+            **error_responses(
+                400,
+                401,
+                403,
+                404,
+                409,
+                423,
+                examples={
+                    400: [
+                        (
+                            "Photo missing",
+                            "Invalid input.",
+                            {"proof_file": ["Attach the photo of the worker receiving the cash."]},
+                        ),
+                        (
+                            "Wrong amount",
+                            "Invalid input.",
+                            {"amount": ["The amount must be the net left to pay: 4000."]},
+                        ),
+                    ],
+                    409: [
+                        (
+                            "Already paid",
+                            "This worker has already been paid.",
+                            {"pay_line_id": 801},
+                        ),
+                        (
+                            "Sheet not open",
+                            "The cash sheet is not open: the roll call is not approved yet.",
+                            {"status": "not_open"},
+                        ),
+                    ],
+                    423: [("Period locked", "This pay period is locked.", {"status": "locked"})],
+                },
+            ),
         },
         examples=[
             OpenApiExample(
                 "Pay with photo proof",
                 request_only=True,
                 value={
-                    "client_uuid": PAYMENT["client_uuid"],
-                    "pay_line_id": 801,
-                    "amount": 4000,
-                    "proof_type": "photo",
-                    "paid_at": "2026-10-31T16:31:00Z",
+                    "client_uuid": ex.PAYMENT["client_uuid"],
+                    "pay_line_id": ex.PAYMENT["pay_line_id"],
+                    "amount": ex.PAYMENT["amount"],
+                    "proof_type": ex.PAYMENT["proof_type"],
+                    "paid_at": ex.PAYMENT["paid_at"],
                 },
             ),
             OpenApiExample(
                 "Paid",
                 response_only=True,
                 status_codes=["201", "200"],
-                value={
-                    **PAYMENT,
-                    "pay_line_id": 801,
-                    "currency": XOF,
-                    "proof_url": "https://polaris.example.com/media/proofs/3301.jpg",
-                    "paid_by": {"id": 7, "name": "Kossi Amegah"},
-                },
+                value=ex.PAYMENT,
             ),
         ],
     )

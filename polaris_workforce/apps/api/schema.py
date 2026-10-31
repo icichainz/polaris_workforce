@@ -9,7 +9,7 @@ _ERRORS = {
     400: (
         "validation_error",
         "Invalid input.",
-        {"field_name": ["This field is required."]},
+        {"client_uuid": ["This field is required."]},
         "The request is invalid; `details` maps each field to its errors.",
     ),
     401: (
@@ -46,21 +46,34 @@ _ERRORS = {
 }
 
 
-def error_responses(*statuses: int) -> dict[int, OpenApiResponse]:
-    """Error responses in the shared format, with one example each."""
+def error_responses(
+    *statuses: int,
+    examples: dict[int, list[tuple[str, str, dict]]] | None = None,
+    descriptions: dict[int, str] | None = None,
+) -> dict[int, OpenApiResponse]:
+    """Error responses in the shared format.
+
+    Each status gets the generic example above, unless ``examples`` gives the
+    endpoint's own: ``{status: [(example name, message, details), ...]}``.
+    ``descriptions`` replaces the generic description of a status.
+    """
+    examples = examples or {}
+    descriptions = descriptions or {}
     responses = {}
     for status_code in statuses:
         code, message, details, description = _ERRORS[status_code]
+        own = examples.get(status_code) or [(code, message, details)]
         responses[status_code] = OpenApiResponse(
             ErrorSerializer,
-            description=description,
+            description=descriptions.get(status_code, description),
             examples=[
                 OpenApiExample(
-                    code,
-                    value={"code": code, "message": message, "details": details},
+                    name,
+                    value={"code": code, "message": example_message, "details": example_details},
                     response_only=True,
                     status_codes=[str(status_code)],
                 )
+                for name, example_message, example_details in own
             ],
         )
     return responses

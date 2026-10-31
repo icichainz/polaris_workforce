@@ -54,12 +54,27 @@ class AssignedSiteSerializer(serializers.Serializer):
     )
 
 
+class PaymentRulesSerializer(serializers.Serializer):
+    accepted_proofs = serializers.ListField(
+        child=serializers.ChoiceField(choices=enums.PROOF_TYPES),
+        help_text="Proof types `POST /payments/` accepts (company setting). Offer only these "
+        "on the payout screen; `none` (no proof) is accepted only when it is listed. "
+        "Anything else: `400 validation_error` on `proof_type`.",
+    )
+    file_required_for = serializers.ListField(
+        child=serializers.ChoiceField(choices=enums.PROOF_TYPES),
+        help_text="Proof types that must come with a `proof_file` (today `photo`). For the "
+        "others a file is optional. Missing file: `400 validation_error` on `proof_file`.",
+    )
+
+
 class CompanySerializer(serializers.Serializer):
     country = serializers.CharField(help_text="ISO 3166-1 alpha-2, e.g. TG.")
     time_zone = serializers.CharField(
         help_text="IANA time zone, e.g. Africa/Lome. Decides which date is 'today'."
     )
     currency = CurrencySerializer()
+    payments = PaymentRulesSerializer(help_text="Proof-of-payment rules for the payout screen.")
 
 
 class PinLoginResponseSerializer(serializers.Serializer):

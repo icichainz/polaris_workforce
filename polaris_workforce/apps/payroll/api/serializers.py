@@ -30,7 +30,11 @@ class PaymentSummarySerializer(serializers.Serializer):
 
 
 class PayoutLineSerializer(serializers.Serializer):
-    pay_line_id = serializers.IntegerField(help_text="Send this to `POST /payments/`.")
+    pay_line_id = serializers.IntegerField(
+        help_text="Send this to `POST /payments/`. Stable for this worker and pay period "
+        "while the figures are recomputed; a new id only if the worker left the sheet "
+        "(no worked day in the period) and came back."
+    )
     worker = PayoutWorkerSerializer()
     worked = serializers.CharField(
         help_text="Translated label of what was worked, e.g. '1 day', '½ day', '1 day · late'."
@@ -73,13 +77,21 @@ class PayoutSerializer(serializers.Serializer):
 class PaymentCreateSerializer(serializers.Serializer):
     client_uuid = client_uuid_field()
     pay_line_id = serializers.IntegerField()
-    amount = MoneyField(min_value=0, help_text="Smallest unit. Normally the line's `net`.")
-    proof_type = serializers.ChoiceField(choices=enums.PROOF_TYPES)
+    amount = MoneyField(
+        min_value=0,
+        help_text="Smallest unit. Must equal what is left to pay on the line: its `net` "
+        "when unpaid.",
+    )
+    proof_type = serializers.ChoiceField(
+        choices=enums.PROOF_TYPES,
+        help_text="One of `GET /me/` → `company.payments.accepted_proofs`.",
+    )
     proof_file = serializers.FileField(
         required=False,
         allow_null=True,
-        help_text="JPEG/PNG of the photo, signature or thumb mark (compress on the phone; "
-        "≤ 2 MB). Whether it is required depends on the company's proof setting.",
+        help_text="Image of the photo, signature or thumb mark: jpg, jpeg, png, webp or "
+        "pdf, at most 5 MB (compress on the phone). Required for the types in "
+        "`GET /me/` → `company.payments.file_required_for` (`photo`), optional otherwise.",
     )
     paid_at = serializers.DateTimeField(
         required=False,

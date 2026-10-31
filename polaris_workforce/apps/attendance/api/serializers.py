@@ -46,6 +46,8 @@ class AttendanceRecordSerializer(serializers.Serializer):
         "differs from its own (the same worker was marked from two phones)."
     )
     day_id = serializers.IntegerField()
+    site_id = serializers.IntegerField(help_text="The day's site (same as the day's `site_id`).")
+    date = serializers.DateField(help_text="The day's date (same as the day's `date`).")
     worker_id = serializers.IntegerField()
     status = serializers.ChoiceField(choices=enums.ATTENDANCE_STATUSES)
     arrival = ClockTimeField(allow_null=True)
@@ -140,6 +142,14 @@ class SubmitDaySerializer(serializers.Serializer):
         default="",
         help_text="Optional note for the site manager.",
     )
+    submitted_at = serializers.DateTimeField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="When the foreman tapped Submit, from the phone clock (ISO 8601 with "
+        "offset). Optional. The office flags a roll call that reached the server an hour or "
+        "more later. The day's own `submitted_at` stays the server time.",
+    )
 
 
 class CorrectionCreateSerializer(serializers.Serializer):
@@ -167,10 +177,13 @@ def person(user):
 
 
 def record_payload(record: AttendanceRecord) -> dict:
+    """Uses ``record.day``: select or prefetch it when rendering many records."""
     return {
         "id": record.pk,
         "client_uuid": record.client_uuid,
         "day_id": record.day_id,
+        "site_id": record.day.site_id,
+        "date": record.day.date,
         "worker_id": record.worker_id,
         "status": STATUS_FROM_MODEL[record.status],
         "arrival": record.arrival,

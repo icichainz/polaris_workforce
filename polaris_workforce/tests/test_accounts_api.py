@@ -317,8 +317,66 @@ def test_me_returns_profile_company_and_only_own_sites(company, foreman):
         "country": "TG",
         "time_zone": "Africa/Lome",
         "currency": {"code": "XOF", "decimals": 0},
+        "payments": {
+            "accepted_proofs": ["photo", "signature", "thumb_mark"],
+            "file_required_for": ["photo"],
+        },
     }
     assert [s["id"] for s in body["sites"]] == [mine.pk]
+
+
+@pytest.mark.parametrize(
+    ("setting", "accepted"),
+    [
+        (["signature", "photo"], ["photo", "signature"]),
+        (["none", "thumb_mark"], ["thumb_mark", "none"]),
+        ([], ["photo", "signature", "thumb_mark", "none"]),  # empty: everything goes
+    ],
+)
+def test_me_lists_the_proof_rules(company, foreman, setting, accepted):
+    company.accepted_proofs = setting
+    company.save()
+    token = sign_in().json()["token"]
+
+    payments = device_client(token).get(ME_URL).json()["company"]["payments"]
+
+    assert payments == {"accepted_proofs": accepted, "file_required_for": ["photo"]}
+
+
+@pytest.mark.parametrize("proof_type", ["photo", "signature", "thumb_mark", "none"])
+def test_proof_rules_match_the_payment_service(company, proof_type):
+    """`accepted_proofs`/`file_required_for` must say what validate_proof enforces."""
+    from django.core.exceptions import ValidationError
+
+    from apps.accounts.api.views import payment_rules
+    from apps.payroll.services import validate_proof
+
+    for setting in ([], ["photo", "signature", "thumb_mark"], ["signature", "none"]):
+        company.accepted_proofs = setting
+        rules = payment_rules(company)
+        try:
+            validate_proof(proof_type, None, company)
+            errors = {}
+        except ValidationError as exc:
+            errors = exc.message_dict
+        assert ("proof_type" not in errors) is (proof_type in rules["accepted_proofs"]), setting
+        if proof_type in rules["accepted_proofs"]:
+            assert ("proof_file" in errors) is (proof_type in rules["file_required_for"])
+
+
+def test_unknown_phone_no_pin_and_wrong_role_get_the_same_answer(company, foreman):
+    manager = SiteManagerFactory(phone="+22890000002")
+    manager.set_pin(PIN)
+    manager.save()
+    UserFactory(role=User.Role.FOREMAN, phone="+22890000003")  # no PIN
+
+    answers = [
+        sign_in(phone=phone).json() for phone in ("+22899999999", "+22890000002", "+22890000003")
+    ]
+
+    assert answers[0] == answers[1] == answers[2]
+    assert answers[0]["code"] == "not_authenticated"
+    assert answers[0]["details"] == {}
 
 
 def test_foreman_token_cannot_see_another_sites_data(company, foreman):
