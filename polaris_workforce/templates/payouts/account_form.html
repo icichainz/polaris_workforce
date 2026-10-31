@@ -1,0 +1,36 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Payout account" %} · {{ worker.full_name }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'payouts:accounts' %}">{% translate "Payout accounts" %}</a> / {{ worker.full_name }}</nav>{% endblock %}
+{% block page_title %}{% translate "Payout account" %}{% endblock %}
+{% block page_meta %}{{ worker.full_name }} · {{ worker.number }}{% endblock %}
+
+{% block content %}
+  {% if method == "cash" %}
+    {% translate "Paid in cash." as title %}{% translate "This worker is paid in cash: the account is used once their payment method (on the worker or the site) is bank transfer or mobile money." as message %}
+    {% include "components/alert.html" with variant="info" title=title message=message only %}
+  {% elif account.pk and account.method != method %}
+    {% translate "Another method." as title %}{% translate "This worker is paid by another method than this account: their transfers will wait until the account matches." as message %}
+    {% include "components/alert.html" with variant="warning" title=title message=message only %}
+  {% endif %}
+  <form method="post" x-data="{ method: '{{ form.method.value|default:"mobile_money"|escapejs }}' }" class="flex max-w-2xl flex-col gap-4 rounded-card border border-line bg-white p-5">
+    {% csrf_token %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    {% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}
+    <div x-on:change="method = $event.target.value">{% include "components/field.html" with field=form.method only %}</div>
+    {% include "components/field.html" with field=form.account_holder only %}
+    <fieldset class="flex flex-col gap-4" x-show="method === 'bank_transfer'">
+      <legend class="pb-2 text-sm font-semibold">{% translate "Bank account" %}</legend>
+      {% include "components/field.html" with field=form.bank_name only %}
+      {% include "components/field.html" with field=form.bank_code only %}
+      {% include "components/field.html" with field=form.account_number only %}
+    </fieldset>
+    <fieldset class="flex flex-col gap-4" x-show="method === 'mobile_money'">
+      <legend class="pb-2 text-sm font-semibold">{% translate "Mobile money" %}</legend>
+      {% include "components/field.html" with field=form.mobile_operator only %}
+      {% include "components/field.html" with field=form.mobile_number only %}
+    </fieldset>
+    <div>{% translate "Save payout account" as label %}{% include "components/button.html" with label=label type="submit" variant="primary" only %}</div>
+  </form>
+{% endblock %}

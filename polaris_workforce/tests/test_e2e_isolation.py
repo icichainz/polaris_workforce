@@ -43,6 +43,8 @@ SECRET = "Bravo"  # appears in site B's name, its worker's and its manager's nam
 #   "platform": platform admins only (companies); checked in test_multi_company.py
 #   "portal":   worker portal pages (phone + PIN session, no office user): only the
 #               signed-in worker's own data; checked in tests/test_portal_isolation.py
+#   "payouts":  bank & mobile-money payouts; site and company scoping checked in
+#               test_payouts_isolation.py (which builds its own batches)
 OFFICE = {
     "dashboard:home": "list",
     "dashboard:reports": "list",
@@ -67,6 +69,21 @@ OFFICE = {
     "payroll:payslip": "b_get",
     "payroll:advances": "list",  # and its POST, below
     "payroll:advance_preview": "list",
+    "payouts:batches": "payouts",
+    "payouts:prepare": "payouts",
+    "payouts:batch": "payouts",
+    "payouts:batch_export": "payouts",
+    "payouts:batch_import": "payouts",
+    "payouts:batch_close": "payouts",
+    "payouts:batch_cancel": "payouts",
+    "payouts:line_confirm": "payouts",
+    "payouts:line_fail": "payouts",
+    "payouts:line_remove": "payouts",
+    "payouts:layouts": "payouts",
+    "payouts:layout_create": "payouts",
+    "payouts:layout_edit": "payouts",
+    "payouts:accounts": "payouts",
+    "payouts:account_edit": "payouts",
     "workers:list": "list",
     "workers:create": "list",
     "workers:detail": "b_get",
@@ -353,11 +370,8 @@ def test_checks_cover_every_office_url(world):
         | set(_list_pages(ids))
         | set(_admin_urls(ids))
     )
-    wanted = {
-        name
-        for name, kind in OFFICE.items()
-        if kind not in ("public", "debug", "platform", "portal")
-    }
+    own_tests = ("public", "debug", "platform", "portal", "payouts")
+    wanted = {name for name, kind in OFFICE.items() if kind not in own_tests}
     assert wanted - covered == set()
 
 

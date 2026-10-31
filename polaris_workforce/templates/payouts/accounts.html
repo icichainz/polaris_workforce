@@ -1,0 +1,48 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Payout accounts" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% translate "Where workers paid by transfer receive their pay" %}{% endblock %}
+{% block page_title %}{% translate "Payout accounts" %}{% endblock %}
+
+{% block content %}
+  {% include "payouts/_tabs.html" with current="accounts" only %}
+  <div role="tablist" aria-label="{% translate 'Workers shown' %}" class="flex gap-1 self-start rounded-card bg-segment p-1">
+    <a role="tab" href="?show=transfer" aria-selected="{% if show == 'transfer' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show == 'transfer' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Paid by transfer" %}</a>
+    <a role="tab" href="?show=missing" aria-selected="{% if show == 'missing' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show == 'missing' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Missing an account" %}</a>
+    <a role="tab" href="?show=all" aria-selected="{% if show == 'all' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show == 'all' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "All workers" %}</a>
+  </div>
+  {% if page.object_list %}
+  <div class="overflow-x-auto rounded-control border border-line bg-white">
+    <table class="w-full min-w-[720px] border-collapse text-sm">
+      <thead>
+        <tr class="bg-subtle text-left">
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Paid by" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Payout account" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel"><span class="sr-only">{% translate "Actions" %}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in page %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3"><span class="font-semibold">{{ row.worker.full_name }}</span><br><span class="text-xs text-steel">{{ row.worker.number }}</span></td>
+          <td class="px-4 py-3">{% if row.method == "bank_transfer" %}{% translate "Bank transfer" %}{% elif row.method == "mobile_money" %}{% translate "Mobile money" %}{% else %}{% translate "Cash" %}{% endif %}</td>
+          <td class="px-4 py-3">
+            {% if row.account %}{{ row.account.get_method_display }} · {% if row.account.method == "bank_transfer" %}{{ row.account.bank_name }}{% else %}{{ row.account.mobile_operator }}{% endif %} {{ row.account.masked }}
+            {% else %}<span class="text-steel">—</span>{% endif %}
+            {% if row.method == "bank_transfer" or row.method == "mobile_money" %}{% if not row.account or row.account.method != row.method %}<br><span class="text-xs font-medium text-absent-fg">{% translate "No account for this payment method" %}</span>{% endif %}{% endif %}
+          </td>
+          <td class="px-4 py-3 text-right"><a href="{% url 'payouts:account_edit' row.worker.pk %}" class="text-[13px] font-semibold">{% if row.account %}{% translate "Edit" %}{% else %}{% translate "Add account" %}{% endif %}</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "payroll/_pagination.html" %}
+  {% else %}
+    {% translate "No workers here" as empty_title %}
+    {% translate "Workers whose payment method is bank transfer or mobile money show here. Set the payment method on the worker or the site." as empty_message %}
+    {% include "components/empty_state.html" with icon="workers" title=empty_title message=empty_message only %}
+  {% endif %}
+{% endblock %}

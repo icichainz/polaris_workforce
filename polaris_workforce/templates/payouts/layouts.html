@@ -1,0 +1,36 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Export layouts" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% translate "The columns and formats your bank or operator portal expects" %}{% endblock %}
+{% block page_title %}{% translate "Export layouts" %}{% endblock %}
+{% block page_actions %}{% if can_manage %}{% translate "New layout" as label %}{% url 'payouts:layout_create' as url %}{% include "components/button.html" with label=label href=url icon="plus" variant="primary" only %}{% endif %}{% endblock %}
+
+{% block content %}
+  {% include "payouts/_tabs.html" with current="layouts" only %}
+  <div class="overflow-x-auto rounded-control border border-line bg-white">
+    <table class="w-full min-w-[720px] border-collapse text-sm">
+      <thead>
+        <tr class="bg-subtle text-left">
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Name" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "For" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "File" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Columns" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Status" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for layout in layouts %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3">{% if can_manage %}<a href="{% url 'payouts:layout_edit' layout.pk %}" class="font-semibold">{{ layout.name }}</a>{% else %}<span class="font-semibold">{{ layout.name }}</span>{% endif %}{% if layout.builtin %}<br><span class="text-xs text-steel">{% translate "Built in" %}</span>{% endif %}</td>
+          <td class="px-4 py-3">{{ layout.get_method_display }}</td>
+          <td class="px-4 py-3">{{ layout.get_file_type_display }}{% if layout.file_type == "csv" %} · {{ layout.get_separator_display }}{% endif %}<br><span class="text-xs text-steel">{{ layout.get_date_format_display }} · {{ layout.get_amount_format_display }}</span></td>
+          <td class="px-4 py-3 text-xs text-ink-700">{% for col in layout.columns %}{{ col.header|default:col.field }}{% if not forloop.last %} · {% endif %}{% endfor %}</td>
+          <td class="px-4 py-3">{% if layout.is_active %}{% include "components/status_badge.html" with status="active" only %}{% else %}{% include "components/status_badge.html" with status="inactive" only %}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if not can_manage %}<p class="text-sm text-steel">{% translate "Only admins change export layouts." %}</p>{% endif %}
+{% endblock %}

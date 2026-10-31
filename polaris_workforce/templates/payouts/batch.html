@@ -1,0 +1,139 @@
+{% extends "layouts/app.html" %}
+{% load i18n payroll_tags %}
+
+{% block title %}{{ batch.reference }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'payouts:batches' %}">{% translate "Bank & mobile money" %}</a> / {{ batch.reference }}</nav>{% endblock %}
+{% block page_title %}{{ batch.reference }}{% endblock %}
+{% block page_status %}{% include "payouts/_batch_status.html" with batch=batch size="lg" only %}{% endblock %}
+{% block page_meta %}{{ batch.get_method_display }} · {{ batch.pay_date|date:_("l j F Y") }} · {% if batch.site %}{{ batch.site.name }}{% else %}{% translate "All sites" %}{% endif %}{% if batch.exported_at %} · {% blocktranslate with when=batch.exported_at|date:_("j M H:i") count n=batch.export_count %}exported {{ when }}{% plural %}exported {{ n }} times, last {{ when }}{% endblocktranslate %}{% endif %}{% endblock %}
+
+{% block content %}
+  <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    {% translate "Total" as label %}{% include "components/stat_tile.html" with label=label value=totals.all|money:batch dark=True only %}
+    {% translate "Confirmed" as label %}{% include "components/stat_tile.html" with label=label value=totals.confirmed|default:0|money:batch only %}
+    {% translate "Waiting for confirmation" as label %}{% include "components/stat_tile.html" with label=label value=totals.pending|default:0|money:batch only %}
+    {% translate "Failed" as label %}{% include "components/stat_tile.html" with label=label value=totals.failed|default:0|money:batch only %}
+  </div>
+
+  {% if stale %}
+    {% translate "Pay changed." as title %}{% translate "The pay of some workers changed after this batch was prepared (marked below). Mark those lines failed and pay them again." as message %}
+    {% include "components/alert.html" with variant="warning" title=title message=message only %}
+  {% endif %}
+
+  {% if can_act and batch.is_open %}
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    {% if batch.status == statuses.DRAFT or batch.status == statuses.EXPORTED or batch.status == statuses.PARTLY_CONFIRMED %}
+    <section aria-labelledby="export-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4">
+      <h2 id="export-title" class="font-display text-lg font-bold">{% translate "1 · Download the payment file" %}</h2>
+      <p class="text-sm text-ink-700">{% translate "Upload it to the bank's or operator's business portal. The lines still waiting for confirmation are in it." %}</p>
+      <form method="post" action="{% url 'payouts:batch_export' batch.pk %}" class="flex flex-wrap items-end gap-3">
+        {% csrf_token %}
+        <div class="w-64">{% include "components/field.html" with field=export_form.layout only %}</div>
+        {% if batch.status == statuses.DRAFT %}{% translate "Download & mark exported" as label %}{% else %}{% translate "Download again" as label %}{% endif %}
+        {% include "components/button.html" with label=label type="submit" variant="primary" only %}
+      </form>
+      <a href="{% url 'payouts:layouts' %}" class="text-[13px]">{% translate "Export layouts" %}</a>
+    </section>
+    {% endif %}
+    {% if batch.status != statuses.DRAFT %}
+    <section aria-labelledby="import-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4">
+      <h2 id="import-title" class="font-display text-lg font-bold">{% translate "2 · Import the confirmation report" %}</h2>
+      <p class="text-sm text-ink-700">{% translate "Rows are matched by reference, else by account and amount. Paid rows record the payment; failed rows go back to “to pay”. Importing the same file twice changes nothing." %}</p>
+      <form method="post" enctype="multipart/form-data" action="{% url 'payouts:batch_import' batch.pk %}" class="flex flex-col gap-3">
+        {% csrf_token %}
+        <div class="flex flex-col gap-1.5">
+          <label for="{{ import_form.file.auto_id }}" class="text-[13px] font-semibold text-ink">{{ import_form.file.label }}</label>
+          <input type="file" name="{{ import_form.file.html_name }}" id="{{ import_form.file.auto_id }}" required accept=".csv,.txt,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="text-sm text-ink-700 file:mr-2 file:h-9 file:rounded-control file:border file:border-line-strong file:bg-white file:px-3 file:text-[13px] file:font-semibold">
+          <p class="text-xs text-steel">{{ import_form.file.help_text }}</p>
+        </div>
+        {% include "components/field.html" with field=import_form.check_only only %}
+        <div>{% translate "Import" as label %}{% include "components/button.html" with label=label type="submit" only %}</div>
+      </form>
+    </section>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <section aria-labelledby="lines-title" class="rounded-card border border-line bg-white">
+    <div class="flex flex-wrap items-center justify-between gap-2.5 border-b border-line px-5 py-3.5">
+      <h2 id="lines-title" class="font-display text-lg font-bold">{% translate "Transfers" %}</h2>
+      <span class="text-sm text-steel">{% if batch.layout %}{% blocktranslate with name=batch.layout.name %}Layout: {{ name }}{% endblocktranslate %}{% endif %}</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[980px] border-collapse text-sm">
+        <thead>
+          <tr class="bg-subtle text-left">
+            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Reference" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Account" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Amount" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Status" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in lines %}
+          <tr id="payout-line-{{ line.pk }}" class="border-t border-line-soft{% if line.pk in stale %} bg-amber-tint{% endif %}">
+            <td class="px-4 py-3 font-semibold tabular-nums">{{ line.reference }}</td>
+            <td class="px-4 py-3"><span class="font-semibold">{{ line.pay_line.worker.full_name }}</span><br><span class="text-xs text-steel">{{ line.pay_line.worker.number }} · {{ line.pay_line.period.site.name }}</span></td>
+            <td class="px-4 py-3">{{ line.account_holder }}<br><span class="text-xs text-steel">{{ line.account_display }}</span></td>
+            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ line.amount|money:batch }}{% if line.pk in stale %}<br><span class="text-xs font-medium text-late-fg">{% translate "Pay changed" %}</span>{% endif %}</td>
+            <td class="px-4 py-2">
+              <div class="flex flex-col gap-2">
+                <span class="flex flex-wrap items-center gap-2">{% include "payouts/_line_status.html" with line=line only %}
+                  {% if line.status == line_statuses.CONFIRMED %}<span class="text-[13px] text-steel">{{ line.provider_reference|default:line.reference }}{% if line.resolved_at %} · {{ line.resolved_at|date:_("j M H:i") }}{% endif %}</span>{% endif %}
+                  {% if line.status == line_statuses.FAILED %}<span class="text-[13px] text-absent-fg">{{ line.failure_reason }}</span>{% endif %}
+                </span>
+                {% if can_act and line.status == line_statuses.PENDING %}
+                  {% if batch.status == statuses.DRAFT %}
+                  <form method="post" action="{% url 'payouts:line_remove' line.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="h-[30px] px-0 text-xs font-medium text-steel underline">{% translate "Remove from batch" %}</button>
+                  </form>
+                  {% elif batch.is_open %}
+                  <form method="post" action="{% url 'payouts:line_confirm' line.pk %}" class="flex flex-wrap items-center gap-2">
+                    {% csrf_token %}
+                    <label class="sr-only" for="ref-{{ line.pk }}">{% translate "Transfer reference" %}</label>
+                    <input id="ref-{{ line.pk }}" name="provider_reference" maxlength="100" placeholder="{% translate 'Transfer reference' %}" class="h-9 w-44 rounded-control border border-line-strong bg-white px-2 text-[13px] text-ink">
+                    {% translate "Confirm paid" as label %}{% include "components/button.html" with label=label type="submit" only %}
+                  </form>
+                  <form method="post" action="{% url 'payouts:line_fail' line.pk %}" class="flex flex-wrap items-center gap-2">
+                    {% csrf_token %}
+                    <label class="sr-only" for="reason-{{ line.pk }}">{% translate "Reason" %}</label>
+                    <input id="reason-{{ line.pk }}" name="reason" required maxlength="300" placeholder="{% translate 'Why it failed' %}" class="h-9 w-44 rounded-control border border-line-strong bg-white px-2 text-[13px] text-ink">
+                    {% translate "Mark failed" as label %}{% include "components/button.html" with label=label type="submit" variant="danger" only %}
+                  </form>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {% if can_act and batch.is_open %}
+  <section aria-labelledby="finish-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4">
+    <h2 id="finish-title" class="font-display text-lg font-bold">{% translate "Finish" %}</h2>
+    <div class="flex flex-wrap items-end gap-4">
+      {% if batch.status == statuses.CONFIRMED %}
+      <form method="post" action="{% url 'payouts:batch_close' batch.pk %}" class="flex flex-wrap items-end gap-3">
+        {% csrf_token %}
+        {% translate "Close batch" as label %}{% include "components/button.html" with label=label type="submit" variant="dark" only %}
+      </form>
+      {% endif %}
+      {% if batch.status == statuses.DRAFT or batch.status == statuses.EXPORTED %}
+      <form method="post" action="{% url 'payouts:batch_cancel' batch.pk %}" class="flex flex-wrap items-end gap-3">
+        {% csrf_token %}
+        <label class="flex flex-col gap-1.5 text-[13px] font-semibold">{% translate "Reason" %}
+          <input name="reason" maxlength="300" class="h-10 w-72 rounded-control border border-line-strong bg-white px-3 text-sm font-normal text-ink"{% if batch.status == statuses.EXPORTED %} required{% endif %}>
+        </label>
+        {% translate "Cancel batch" as label %}{% include "components/button.html" with label=label type="submit" variant="danger" only %}
+      </form>
+      {% endif %}
+    </div>
+    {% if batch.status != statuses.CONFIRMED %}<p class="text-xs text-steel">{% translate "A batch closes once every line is confirmed or failed. A batch with nothing confirmed yet can be cancelled: its workers go back to “to pay”." %}</p>{% endif %}
+  </section>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,25 @@
+{% load i18n %}{% comment %}
+Status of a pay line paid by bank transfer or mobile money, for the cash sheet (instead
+of the "Mark paid" cash form). Rendered by {% transfer_cell state pay_date site %}
+(apps/payouts/templatetags/payouts_tags.py).
+
+  state     a services.TransferState (method, line = pending/confirmed payout line,
+            failed = last failed payout line)
+  pay_date  optional, with site: the "prepare a batch" link is pre-filled
+{% endcomment %}<span class="flex flex-wrap items-center gap-2">
+{% if state.line %}
+  {% if state.line.status == "confirmed" %}
+    {% blocktranslate asvar label with method=state.method_label|lower %}Paid · {{ method }}{% endblocktranslate %}
+    {% include "components/status_badge.html" with status="paid" label=label only %}
+  {% else %}
+    {% blocktranslate asvar label with method=state.method_label|lower %}By {{ method }}{% endblocktranslate %}
+    {% include "components/status_badge.html" with status="submitted" label=label only %}
+  {% endif %}
+  <a href="{% url 'payouts:batch' state.line.batch_id %}" class="text-[13px]">{{ state.line.batch.reference }}</a>
+{% else %}
+  {% blocktranslate asvar label with method=state.method_label|lower %}By {{ method }}{% endblocktranslate %}
+  {% include "components/status_badge.html" with status="to_pay" label=label only %}
+  {% if state.failed %}<span class="text-[13px] font-medium text-absent-fg">{% blocktranslate with ref=state.failed.reference %}Transfer {{ ref }} failed{% endblocktranslate %}{% if state.failed.failure_reason %}: {{ state.failed.failure_reason }}{% endif %}</span>{% endif %}
+  <a href="{% url 'payouts:prepare' %}{% if pay_date %}?pay_date={{ pay_date|date:'Y-m-d' }}&amp;method={{ state.method }}{% if site %}&amp;site={{ site.pk }}{% endif %}{% endif %}" class="text-[13px]">{% translate "Prepare a transfer batch" %}</a>
+{% endif %}
+</span>

@@ -86,6 +86,10 @@ GET_ONLY = {
     "payroll:periods",
     "payroll:payslip",
     "payroll:advance_preview",
+    "payouts:batches",
+    "payouts:batch",
+    "payouts:layouts",
+    "payouts:accounts",
     "workers:list",
     "workers:detail",
     "worksites:list",
@@ -115,6 +119,7 @@ def _state_changing_urls(crew):
         user=crew.foreman, device_id="csrf-phone", token_hash="x" * 64
     )
     return {
+        **_payout_state_changing_urls(crew),
         "attendance:decide": reverse("attendance:decide", args=[crew.day.pk]),
         "payroll:cash_issue": reverse("payroll:cash_issue", args=[site, date]),
         "payroll:cash_sheet_lock": reverse("payroll:cash_sheet_lock", args=[site, date]),
@@ -152,6 +157,37 @@ def _state_changing_urls(crew):
         "portal:change_pin": reverse("portal:change_pin"),
         "portal:office_set_pin": reverse("portal:office_set_pin", args=[worker]),
         "portal:office_revoke": reverse("portal:office_revoke", args=[worker]),
+    }
+
+
+def _payout_state_changing_urls(crew):
+    from apps.payouts.models import ExportLayout, PayoutBatch, PayoutLine
+
+    batch = PayoutBatch.objects.create(
+        number=1, method="mobile_money", pay_date=MON, site=crew.site, currency="XOF"
+    )
+    line = PayoutLine.objects.create(
+        batch=batch,
+        pay_line=crew.open_line,
+        amount=crew.open_line.net,
+        reference="PAY-00001-001",
+        method="mobile_money",
+    )
+    layout = ExportLayout.objects.create(
+        name="CSRF check", method="mobile_money", columns=[{"field": "reference", "header": "R"}]
+    )
+    return {
+        "payouts:prepare": reverse("payouts:prepare"),
+        "payouts:batch_export": reverse("payouts:batch_export", args=[batch.pk]),
+        "payouts:batch_import": reverse("payouts:batch_import", args=[batch.pk]),
+        "payouts:batch_close": reverse("payouts:batch_close", args=[batch.pk]),
+        "payouts:batch_cancel": reverse("payouts:batch_cancel", args=[batch.pk]),
+        "payouts:line_confirm": reverse("payouts:line_confirm", args=[line.pk]),
+        "payouts:line_fail": reverse("payouts:line_fail", args=[line.pk]),
+        "payouts:line_remove": reverse("payouts:line_remove", args=[line.pk]),
+        "payouts:layout_create": reverse("payouts:layout_create"),
+        "payouts:layout_edit": reverse("payouts:layout_edit", args=[layout.pk]),
+        "payouts:account_edit": reverse("payouts:account_edit", args=[crew.open_line.worker_id]),
     }
 
 

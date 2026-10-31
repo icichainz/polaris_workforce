@@ -1,0 +1,3 @@
+{% comment %}
+Payout line status badge. Context: `line` (PayoutLine).
+{% endcomment %}{% if line.status == "pending" %}{% include "components/status_badge.html" with status="submitted" label=line.get_status_display only %}{% elif line.status == "confirmed" %}{% include "components/status_badge.html" with status="paid" label=line.get_status_display only %}{% elif line.status == "failed" %}{% include "components/status_badge.html" with status="rejected" label=line.get_status_display only %}{% else %}{% include "components/status_badge.html" with status="inactive" label=line.get_status_display only %}{% endif %}

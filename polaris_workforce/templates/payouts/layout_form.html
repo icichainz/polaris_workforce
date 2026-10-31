@@ -1,0 +1,37 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% if layout.pk %}{{ layout.name }}{% else %}{% translate "New export layout" %}{% endif %} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'payouts:layouts' %}">{% translate "Export layouts" %}</a> / {% if layout.pk %}{{ layout.name }}{% else %}{% translate "New" %}{% endif %}</nav>{% endblock %}
+{% block page_title %}{% if layout.pk %}{{ layout.name }}{% else %}{% translate "New export layout" %}{% endif %}{% endblock %}
+
+{% block content %}
+  <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <form method="post" class="flex flex-col gap-4 rounded-card border border-line bg-white p-5">
+      {% csrf_token %}
+      {% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}
+      {% include "components/field.html" with field=form.name only %}
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {% include "components/field.html" with field=form.method only %}
+        {% include "components/field.html" with field=form.file_type only %}
+        {% include "components/field.html" with field=form.separator only %}
+        {% include "components/field.html" with field=form.encoding only %}
+        {% include "components/field.html" with field=form.date_format only %}
+        {% include "components/field.html" with field=form.amount_format only %}
+      </div>
+      {% include "components/field.html" with field=form.columns_text only %}
+      {% include "components/field.html" with field=form.header_row only %}
+      {% include "components/field.html" with field=form.is_active only %}
+      <div>{% translate "Save layout" as label %}{% include "components/button.html" with label=label type="submit" variant="primary" only %}</div>
+    </form>
+    <aside aria-labelledby="fields-title" class="flex flex-col gap-3 rounded-card border border-line bg-white p-5">
+      <h2 id="fields-title" class="font-display text-lg font-bold">{% translate "Fields" %}</h2>
+      <dl class="flex flex-col gap-2 text-sm">
+        {% for key, label in fields %}<div><dt class="font-mono text-[13px] font-semibold">{{ key }}</dt><dd class="text-ink-700">{{ label }}</dd></div>{% endfor %}
+        <div><dt class="font-mono text-[13px] font-semibold">text:…</dt><dd class="text-ink-700">{% translate "A fixed value on every row" %}</dd></div>
+        <div><dt class="font-mono text-[13px] font-semibold">blank</dt><dd class="text-ink-700">{% translate "An empty column" %}</dd></div>
+      </dl>
+      <p class="text-xs text-steel">{% translate "Example: “amount = Montant” writes the amount under the header “Montant”." %}</p>
+    </aside>
+  </div>
+{% endblock %}

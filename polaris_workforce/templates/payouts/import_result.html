@@ -1,0 +1,57 @@
+{% extends "layouts/app.html" %}
+{% load i18n payroll_tags %}
+
+{% block title %}{% translate "Confirmation report" %} · {{ batch.reference }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'payouts:batches' %}">{% translate "Bank & mobile money" %}</a> / <a href="{% url 'payouts:batch' batch.pk %}">{{ batch.reference }}</a></nav>{% endblock %}
+{% block page_title %}{% translate "Confirmation report" %}{% endblock %}
+{% block page_status %}{% include "payouts/_batch_status.html" with batch=batch size="lg" only %}{% endblock %}
+{% block page_meta %}{{ filename }}{% endblock %}
+{% block page_actions %}{% translate "Back to the batch" as label %}{% url 'payouts:batch' batch.pk as back %}{% include "components/button.html" with label=label href=back only %}{% endblock %}
+
+{% block content %}
+  {% if result.check_only %}
+    {% translate "Check only." as title %}{% translate "Nothing was changed. Import the file again without “Check only” to apply it." as message %}
+    {% include "components/alert.html" with variant="info" title=title message=message only %}
+  {% endif %}
+  {% with counts=result.counts %}
+  <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    {% if result.check_only %}{% translate "Would be confirmed" as label %}{% else %}{% translate "Confirmed" as label %}{% endif %}{% include "components/stat_tile.html" with label=label value=counts.confirmed|default:0 only %}
+    {% translate "Already confirmed" as label %}{% include "components/stat_tile.html" with label=label value=counts.already_confirmed|default:0 only %}
+    {% if result.check_only %}{% translate "Would be marked failed" as label %}{% else %}{% translate "Failed" as label %}{% endif %}{% include "components/stat_tile.html" with label=label value=counts.failed|default:0 only %}
+    {% translate "Not applied" as label %}{% include "components/stat_tile.html" with label=label value=result.not_applied only %}
+  </div>
+  {% endwith %}
+
+  <div class="overflow-x-auto rounded-control border border-line bg-white">
+    <table class="w-full min-w-[820px] border-collapse text-sm">
+      <thead>
+        <tr class="bg-subtle text-left">
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Row" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "In the file" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Batch line" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Result" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in result.rows %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3 tabular-nums">{{ r.row.row }}</td>
+          <td class="px-4 py-3">{{ r.row.reference|default:"—" }}<br><span class="text-xs text-steel">{{ r.row.account }}{% if r.row.amount is not None %} · {{ r.row.amount|money:batch }}{% endif %}{% if r.row.provider_reference %} · {{ r.row.provider_reference }}{% endif %}</span></td>
+          <td class="px-4 py-3">{% if r.line %}<span class="font-semibold">{{ r.line.reference }}</span><br><span class="text-xs text-steel">{{ r.line.pay_line.worker.full_name }} · {{ r.line.amount|money:batch }}</span>{% else %}—{% endif %}</td>
+          <td class="px-4 py-3">
+            {% if r.outcome == "confirmed" %}{% if result.check_only %}{% translate "Would be confirmed" as label %}{% else %}{% translate "Confirmed" as label %}{% endif %}{% include "components/status_badge.html" with status="paid" label=label only %}
+            {% elif r.outcome == "already_confirmed" %}{% translate "Already confirmed" as label %}{% include "components/status_badge.html" with status="approved" label=label only %}
+            {% elif r.outcome == "failed" %}{% if result.check_only %}{% translate "Would be marked failed" as label %}{% else %}{% translate "Failed" as label %}{% endif %}{% include "components/status_badge.html" with status="rejected" label=label only %}
+            {% elif r.outcome == "unknown" %}{% translate "Not found" as label %}{% include "components/status_badge.html" with status="draft" label=label only %}
+            {% elif r.outcome == "amount_mismatch" %}{% translate "Amount differs" as label %}{% include "components/status_badge.html" with status="submitted" label=label only %}
+            {% else %}{% translate "Error" as label %}{% include "components/status_badge.html" with status="rejected" label=label only %}{% endif %}
+            {% if r.message %}<p class="mt-1 text-[13px] text-ink-700">{{ r.message }}</p>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-line-soft"><td colspan="4" class="px-4 py-6 text-center text-steel">{% translate "The file has no rows." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
