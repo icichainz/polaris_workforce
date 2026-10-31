@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 
 from .models import ForemanDevice, User
 
-POLARIS_FIELDSET = (_("Polaris Workforce"), {"fields": ("role", "phone")})
+POLARIS_FIELDSET = (_("Polaris Workforce"), {"fields": ("role", "phone", "language")})
 
 
 class ForemanDeviceInline(admin.TabularInline):
