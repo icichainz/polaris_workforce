@@ -18,6 +18,7 @@ from django.urls import reverse
 from django.utils import translation
 
 from apps.core.choices import status_letter
+from apps.payouts import layouts
 from apps.payroll import labels, services
 from apps.payroll.models import PayPeriod
 from tests.factories import (
@@ -104,6 +105,8 @@ def scenario(company):
         balance=10000,
         deduction_per_pay=2000,
         given_on=MON - datetime.timedelta(days=3),
+        # Typed by the office, so shown as-is: keep it free of catalogue phrases.
+        reason="Loyer",
     )
     roll_call(site, MON, {yao: "present", afi: "half_day", kofi: "late", ama: "absent"})
     services.cash_sheet(site, MON)
@@ -226,6 +229,188 @@ def test_every_office_page_renders_in_french(client, scenario):
             assert expected in text, (name, expected)
         leftovers = [p for p in phrases if re.search(rf"(?<!\w){re.escape(p)}(?!\w)", text)]
         assert not leftovers, (name, leftovers)
+
+
+def _assert_french_page(response, name, expected, phrases, allowed=()):
+    assert response.status_code == 200, name
+    page = response.content.decode()
+    assert '<html lang="fr">' in page, name
+    text = _visible_text(page)
+    for phrase in expected:
+        assert phrase in text, (name, phrase)
+    leftovers = [
+        p for p in phrases if p not in allowed and re.search(rf"(?<!\w){re.escape(p)}(?!\w)", text)
+    ]
+    assert not leftovers, (name, leftovers)
+
+
+# --- Wave 4 pages ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def wave4(scenario):
+    """The scenario plus a transfer site (an exported mobile money batch), check-ins with a
+    badge, a geofence and a kiosk, pay rules (a deduction rule, a task, piece work and a
+    bonus), messaging on with a failed text, and a worker with portal access."""
+    from apps.checkin.models import CheckIn
+    from apps.core.models import CompanySettings
+    from apps.payroll.models import SitePayRules
+    from tests.factories import (
+        BonusFactory,
+        DeductionRuleFactory,
+        PieceWorkEntryFactory,
+        TaskTypeFactory,
+    )
+    from tests.test_checkin_seed import seed_checkin
+    from tests.test_messaging_views import enable, failed_message
+    from tests.test_payouts_services import World, exported_batch
+    from tests.test_portal_auth import give
+
+    world = World()
+    batch = exported_batch(world)
+    checkin = seed_checkin(world, world.yao)
+    task = TaskTypeFactory(name="Pose de parpaings")
+    DeductionRuleFactory(name="CNSS")
+    SitePayRules.objects.create(site=scenario["site"], sunday_multiplier=2)
+    PieceWorkEntryFactory(worker=scenario["yao"], site=scenario["site"], date=TUE, task=task)
+    BonusFactory(worker=scenario["yao"], site=scenario["site"], date=TUE, reason="Dalle")
+    enable()
+    # The outbox shows each text as written, in its recipient's language: French here.
+    CompanySettings.objects.update(language="fr")
+    failed_message(scenario["yao"], key="i18n")
+    CompanySettings.objects.update(language="en")
+    give(world.yao)
+    checkin = CheckIn.objects.get(pk=checkin["checkin"])
+    return {**scenario, "world": world, "batch": batch, "checkin": checkin}
+
+
+def _wave4_pages(s):
+    world, site, yao = s["world"], s["site"], s["yao"]
+    checkin = s["checkin"]
+    return {
+        "payouts:batches": reverse("payouts:batches"),
+        "payouts:prepare": reverse("payouts:prepare")
+        + f"?pay_date={MON.isoformat()}&method=bank_transfer&site={world.site.pk}",
+        "payouts:batch": reverse("payouts:batch", args=[s["batch"].pk]),
+        "payouts:layouts": reverse("payouts:layouts"),
+        "payouts:layout_create": reverse("payouts:layout_create"),
+        "payouts:accounts": reverse("payouts:accounts"),
+        "payouts:account_edit": reverse("payouts:account_edit", args=[world.afi.pk]),
+        "payroll:pay_rules": reverse("payroll:pay_rules"),
+        "payroll:deduction_rule_create": reverse("payroll:deduction_rule_create"),
+        "payroll:task_type_create": reverse("payroll:task_type_create"),
+        "payroll:site_pay_rules": reverse("payroll:site_pay_rules", args=[site.pk]),
+        "payroll:day_extras": reverse("payroll:day_extras", args=[site.pk, TUE.isoformat()]),
+        "messaging:messages": reverse("messaging:messages"),
+        "messaging:settings": reverse("messaging:settings"),
+        "messaging:recipients": reverse("messaging:recipients"),
+        "messaging:worker": reverse("messaging:worker", args=[yao.pk]),
+        "checkin:home": reverse("checkin:home"),
+        "checkin:site_day": reverse(
+            "checkin:site_day", args=[world.site.pk, checkin.date.isoformat()]
+        ),
+        "checkin:badges": reverse("checkin:badges"),
+        "checkin:badge_sheet": reverse("checkin:badge_sheet"),
+        "checkin:kiosks": reverse("checkin:kiosks"),
+        "checkin:geofences": reverse("checkin:geofences"),
+        "checkin:geofence": reverse("checkin:geofence", args=[world.site.pk]),
+        "workers:import": reverse("workers:import"),
+        "workers:detail": reverse("workers:detail", args=[world.yao.pk]),
+        "portal:office_access": reverse("portal:office_access"),
+        "portal:office_worker": reverse("portal:office_worker", args=[world.yao.pk]),
+        "worksites:detail": reverse("worksites:detail", args=[world.site.pk]),
+    }
+
+
+WAVE4_FR = {
+    "payouts:batches": ["Lots", "Virements payés avec un fichier de paiement groupé"],
+    "payouts:prepare": ["Créer le lot", "virement prêt"],
+    "payouts:batch": ["Télécharger le fichier de paiement", "Importer le rapport de confirmation"],
+    "payouts:layouts": ["Modèles d’export", "Nouveau modèle"],
+    "payouts:layout_create": ["Nouveau modèle d’export", "Enregistrer le modèle"],
+    "payouts:accounts": ["Comptes de paiement", "Payés par virement"],
+    "payouts:account_edit": ["Enregistrer le compte de paiement", "Opérateur Mobile Money"],
+    "payroll:pay_rules": ["Majorations", "Jours d’arrêt", "Tâches du travail à la tâche"],
+    "payroll:deduction_rule_create": ["Nouvelle règle de retenue", "Plancher", "Plafond"],
+    "payroll:task_type_create": ["Nouvelle tâche (travail à la tâche)", "Tarif à l’unité"],
+    "payroll:site_pay_rules": ["Règles de paie · Chantier Lomé Port"],
+    "payroll:day_extras": [
+        "Compléments du jour",
+        "Ajouter une prime",
+        "Marquer comme jour d’arrêt",
+    ],
+    "messaging:messages": ["Messages", "Envoyer à nouveau", "Échec"],
+    "messaging:settings": ["Canaux", "M’envoyer un message de test", "Notifications"],
+    "messaging:recipients": ["Destinataires", "Rechercher des ouvriers"],
+    "messaging:worker": ["Messages récents", "Reçoit les messages"],
+    "checkin:home": ["Pointages du jour", "Bornes", "Mode de présence :"],
+    "checkin:site_day": ["Suggestions pour l’appel", "Photo du pointage", "Entrée"],
+    "checkin:badges": ["Badges QR", "Imprimer les badges", "Révoquer"],
+    "checkin:badge_sheet": ["Retour aux badges", "Badge QR de"],
+    "checkin:kiosks": ["Téléphones bornes", "Arrêter le mode borne"],
+    "checkin:geofences": ["Périmètres", "Rayon"],
+    "checkin:geofence": ["Enregistrer le périmètre", "Dernières positions des pointages"],
+    "workers:import": ["Importer des ouvriers", "Télécharger le modèle (.xlsx)"],
+    "workers:detail": ["Messages, espace ouvrier et virements", "Compte de paiement"],
+    "portal:office_access": ["Espace ouvrier", "Dernière connexion", "Avec accès"],
+    "portal:office_worker": ["Réinitialiser le code PIN", "Couper l’accès"],
+    "worksites:detail": ["Lots de virements", "m autour du chantier"],
+}
+
+
+PRINT_PAGES = {"checkin:badge_sheet"}  # no sidebar
+FILE_HEADERS = {header for _label, header in layouts.FIELDS.values()}
+
+
+def test_every_wave4_office_page_renders_in_french(client, wave4):
+    client.force_login(wave4["admin"])
+    _pick_language(client)
+    pages = _wave4_pages(wave4)
+    assert set(pages) == set(WAVE4_FR)
+    phrases = _english_phrases()
+
+    for name, url in pages.items():
+        response = client.get(url, headers=FR)
+        # The built-in layouts list their file headers: data written in the bank's file.
+        allowed = FILE_HEADERS if name == "payouts:layouts" else ()
+        sidebar = [] if name in PRINT_PAGES else SIDEBAR_FR
+        _assert_french_page(response, name, sidebar + WAVE4_FR[name], phrases, allowed)
+
+
+def test_companies_page_renders_in_french_for_the_platform_admin(client, scenario):
+    from tests.factories import PlatformAdminFactory
+
+    client.force_login(PlatformAdminFactory())
+    _pick_language(client)
+
+    response = client.get(reverse("core:companies"), headers=FR)
+
+    _assert_french_page(response, "core:companies", ["Entreprises"], _english_phrases())
+
+
+def test_worker_portal_pages_render_in_french(wave4):
+    from tests.test_portal_auth import signed_in
+
+    portal = signed_in(wave4["world"].yao)
+    portal.post(reverse("set_language"), {"language": "fr", "next": "/portal/"})
+    phrases = _english_phrases()
+    pages = {
+        "portal:home": (reverse("portal:home"), ["Bonjour", "Choisir mon code PIN"]),
+        "portal:days": (reverse("portal:days") + "?month=2025-09", ["Mes journées"]),
+        "portal:pay": (reverse("portal:pay"), ["Ma paie"]),
+        "portal:advances": (reverse("portal:advances"), ["Mes avances"]),
+        "portal:change_pin": (reverse("portal:change_pin"), ["Changer mon code PIN"]),
+    }
+
+    for name, (url, expected) in pages.items():
+        _assert_french_page(portal.get(url), name, expected, phrases)
+
+
+def test_portal_sign_in_page_renders_in_french(client, db):
+    response = client.get(reverse("portal:sign_in"), headers=FR)
+
+    _assert_french_page(response, "portal:sign_in", ["Mes journées et ma paie"], [])
+    assert "Sign in with your phone number" not in response.content.decode()
 
 
 def test_sign_in_page_renders_in_french(client, db):
