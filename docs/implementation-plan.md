@@ -474,3 +474,15 @@ New features go in **new apps where possible**, so agents never share migrations
 Shared rules from §6 and §10 still apply; agents branch from `main` explicitly; the lead
 merges in the order MC → (PX, PR, MS, WP, CK, WX in completion order) → FL3, rebuilds CSS
 and regenerates the OpenAPI file after merges.
+
+### Wave 4 results
+
+All merged on `main` (not pushed): MC several companies, PX payout exports, PR pay rules and
+statutory deductions, MS messaging and notifications, WP worker portal, CK check-in and QR
+badges (API 1.2.0), WX workers/reports extras, FL3 phone check-in/kiosk/photos, IN
+integration pass, T2 French translations. Django: 2093 tests; Flutter: 148 tests.
+
+Open before go-live (in addition to §11): choose an SMS/WhatsApp provider (the log provider
+writes phone numbers, texts and portal PINs to the log — set a retention), set up the two
+cron jobs, a real-device test of QR scanning, GPS, kiosk mode and the Android build with
+`mobile_scanner`, and extend `tool/live_smoke.dart` to the check-in endpoints.
