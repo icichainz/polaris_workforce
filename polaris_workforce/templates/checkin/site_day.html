@@ -1,0 +1,84 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Check-ins" %} · {{ site.name }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'checkin:home' %}">{% translate "Check-in" %}</a> / {{ site.name }}</p>{% endblock %}
+{% block page_subtitle %}{{ date|date:"l j F Y" }}{% endblock %}
+{% block page_title %}{{ site.name }}{% endblock %}
+{% block page_meta %}{% blocktranslate with flagged=flagged count n=rows|length %}{{ n }} check-in · {{ flagged }} flagged{% plural %}{{ n }} check-ins · {{ flagged }} flagged{% endblocktranslate %}{% endblock %}
+{% block page_actions %}
+  {% translate "Previous day" as prev_label %}{% url "checkin:site_day" site.pk previous as prev_url %}{% include "components/button.html" with label=prev_label href=prev_url only %}
+  {% translate "Next day" as next_label %}{% url "checkin:site_day" site.pk next as next_url %}{% include "components/button.html" with label=next_label href=next_url only %}
+{% endblock %}
+
+{% block content %}
+<form method="get" action="{% url 'checkin:home' %}" class="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]">
+  {% include "components/field.html" with field=form.site %}
+  {% include "components/field.html" with field=form.date %}
+  {% translate "Show" as show_label %}{% include "components/button.html" with label=show_label type="submit" only %}
+</form>
+
+<section aria-labelledby="suggestions-title" class="flex flex-col gap-3">
+  <h2 id="suggestions-title" class="font-display text-xl font-bold">{% translate "Roll-call suggestions" %}</h2>
+  <p class="text-sm text-ink-700">{% blocktranslate with late=result.late_after|time:"H:i" %}From the check-ins that count, crew only. Late after {{ late }}; an out before 12:00 is a half day.{% endblocktranslate %}</p>
+  {% if suggestions %}
+  <div class="overflow-x-auto rounded-control border border-line bg-white">
+    <table class="w-full min-w-[560px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Suggested" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "In · Out" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Scans" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for item in suggestions %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3">{% if item.worker %}<span class="font-semibold">{{ item.worker.full_name }}</span><br><span class="text-xs text-steel">{{ item.worker.number }}</span>{% else %}#{{ item.s.worker_id }}{% endif %}</td>
+          <td class="px-4 py-3">{% if item.s.status %}{% include "components/status_badge.html" with status=item.s.status only %}{% else %}{% include "components/status_badge.html" with status="not_recorded" only %}{% endif %}</td>
+          <td class="px-4 py-3 tabular-nums">{{ item.s.arrival|time:"H:i"|default:"—" }} · {{ item.s.departure|time:"H:i"|default:"—" }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ item.s.checkin_count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-sm text-steel">{% translate "No suggestions for this day." %}</p>
+  {% endif %}
+</section>
+
+<section aria-labelledby="checkins-title" class="flex flex-col gap-3">
+  <h2 id="checkins-title" class="font-display text-xl font-bold">{% translate "Check-ins" %}</h2>
+  {% if rows %}
+  <div class="overflow-x-auto rounded-control border border-line bg-white">
+    <table class="w-full min-w-[880px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Time" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Direction" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Source" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "GPS" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Flags" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Photo" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for row in rows %}{% with c=row.checkin %}
+        <tr class="border-t border-line-soft{% if row.flags %} bg-amber-tint{% endif %}">
+          <td class="px-4 py-3 tabular-nums">{{ row.time }}</td>
+          <td class="px-4 py-3">{% if c.worker %}<span class="font-semibold">{{ c.worker.full_name }}</span><br><span class="text-xs text-steel">{{ c.worker.number }}</span>{% else %}<span class="text-steel">{% translate "Unknown" %}</span><br><span class="break-all text-xs text-steel">{{ c.scanned_text }}</span>{% endif %}</td>
+          <td class="px-4 py-3">{{ c.get_direction_display }}</td>
+          <td class="px-4 py-3">{{ c.get_source_display }}<br><span class="text-xs text-steel">{{ c.recorded_by.get_full_name|default:c.recorded_by.username }}{% if c.device %} · {{ c.device.name|default:c.device.device_id }}{% endif %}</span></td>
+          <td class="px-4 py-3 tabular-nums">{% if c.latitude is not None %}{{ c.latitude }}, {{ c.longitude }}<br><span class="text-xs text-steel">{% if c.distance_m is not None %}{% blocktranslate with d=c.distance_m %}{{ d }} m from the site{% endblocktranslate %}{% endif %}{% if c.accuracy_m is not None %} · ±{{ c.accuracy_m }} m{% endif %}</span>{% else %}—{% endif %}</td>
+          <td class="px-4 py-3"><span class="flex flex-wrap gap-1.5">{% for flag in row.flags %}{% include "components/status_badge.html" with status="rejected" label=flag.label only %}{% empty %}<span class="text-steel">—</span>{% endfor %}{% if c.draft_updated %}{% translate "Draft updated" as draft_label %}{% include "components/status_badge.html" with status="draft" label=draft_label only %}{% endif %}</span></td>
+          <td class="px-4 py-3">{% if row.photo_url %}<a href="{{ row.photo_url }}" target="_blank" rel="noopener"><img src="{{ row.photo_url }}" alt="{% translate 'Check-in photo' %}" class="size-12 rounded-control object-cover"></a>{% else %}—{% endif %}</td>
+        </tr>
+        {% endwith %}{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    {% translate "No check-ins" as empty_title %}{% translate "Nobody checked in on this site that day." as empty_message %}
+    {% include "components/empty_state.html" with icon="phone" title=empty_title message=empty_message only %}
+  {% endif %}
+</section>
+{% endblock %}

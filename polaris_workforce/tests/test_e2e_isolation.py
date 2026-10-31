@@ -20,12 +20,14 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import ForemanDevice
 from apps.attendance.models import AttendanceCorrection, AttendanceDay, AttendanceRecord
+from apps.checkin.models import Badge, CheckIn, KioskDevice, SiteGeofence
 from apps.payroll import services as payroll_services
 from apps.payroll.models import Advance, CashIssue, PayLine, Payment
 from apps.worksites.models import SiteAssignment
 from tests.e2e import Office, Phone, admin_office, hire, lines_by_worker, make_site, new_uuid
 from tests.e2e import record as mark
 from tests.factories import CompanySettingsFactory
+from tests.test_checkin_seed import seed_checkin
 
 pytestmark = pytest.mark.django_db
 
@@ -83,6 +85,19 @@ OFFICE = {
     "accounts:user_edit": "admin",
     "accounts:user_set_pin": "admin",
     "accounts:device_revoke": "admin",
+    "checkin:home": "list",
+    "checkin:site_day": "b_get",
+    "checkin:photo": "b_get",
+    "checkin:badges": "list",
+    "checkin:badge_sheet": "list",
+    "checkin:badges_issue_missing": "b_post",
+    "checkin:badge_issue": "b_post",
+    "checkin:badge_revoke": "b_post",
+    "checkin:kiosks": "list",
+    "checkin:kiosk_set": "b_post",
+    "checkin:kiosk_end": "b_post",
+    "checkin:geofences": "list",
+    "checkin:geofence": "b_get",  # and its POST, below
     "login": "public",
     "logout": "public",
     "password_change": "public",
@@ -112,6 +127,12 @@ API = {
     "api:payroll:payments": "b_post",
     "api:file-worker-photo": "b_get (404)",
     "api:file-payment-proof": "b_get (404)",
+    "api:checkin:checkins": "b_post",
+    "api:checkin:device": "list",  # this phone's own kiosk setting
+    "api:checkin:setup": "b_get",
+    "api:checkin:site-checkins": "b_get",
+    "api:checkin:day-suggestions": "b_get",
+    "api:checkin:file-photo": "b_get (404)",
 }
 JPEG = b"\xff\xd8\xff\xe0" + b"0" * 64
 
@@ -188,6 +209,7 @@ def world(db):
         "foreman_b": b.foreman.pk,
         "device_b": ForemanDevice.objects.get(user=b.foreman).pk,
     }
+    ids.update(seed_checkin(b, zeb))
     return a, b, ids
 
 
@@ -211,6 +233,12 @@ def _b_state(b):
         ),
         "site": (b.site.name, b.site.pay_frequency, b.site.status),
         "devices": sorted(ForemanDevice.objects.values_list("pk", "revoked_at")),
+        "badges": sorted(Badge.objects.values_list("pk", "worker_id", "revoked_at")),
+        "kiosks": sorted(KioskDevice.objects.values_list("device_id", "site_id")),
+        "geofences": sorted(
+            SiteGeofence.objects.values_list("site_id", "latitude", "longitude", "radius_m")
+        ),
+        "checkins": CheckIn.objects.count(),
     }
 
 
@@ -231,6 +259,9 @@ def _office_b_get_urls(ids):
         "attendance:approvals?day": reverse("attendance:approvals") + f"?day={ids['pending_day']}",
         "core:worker_photo": reverse("core:worker_photo", args=[ids["worker"]]),
         "core:payment_proof": reverse("core:payment_proof", args=[ids["payment"]]),
+        "checkin:site_day": reverse("checkin:site_day", args=[site, day]),
+        "checkin:photo": reverse("checkin:photo", args=[ids["checkin"]]),
+        "checkin:geofence": reverse("checkin:geofence", args=[site]),
     }
 
 
@@ -270,6 +301,24 @@ def _office_b_posts(ids):
             reverse("worksites:settings", args=[site]),
             {"pay_frequency": "monthly"},
         ),
+        "checkin:badges_issue_missing": (
+            reverse("checkin:badges_issue_missing", args=[site]),
+            {},
+        ),
+        "checkin:badge_issue": (reverse("checkin:badge_issue", args=[ids["worker"]]), {}),
+        "checkin:badge_revoke": (
+            reverse("checkin:badge_revoke", args=[ids["worker"]]),
+            {"reason": "x"},
+        ),
+        "checkin:kiosk_set": (
+            reverse("checkin:kiosk_set", args=[ids["device_b"]]),
+            {f"d{ids['device_b']}-site": site},
+        ),
+        "checkin:kiosk_end": (reverse("checkin:kiosk_end", args=[ids["kiosk_device"]]), {}),
+        "checkin:geofence": (
+            reverse("checkin:geofence", args=[site]),
+            {"latitude": "1", "longitude": "1", "radius_m": "100"},
+        ),
     }
 
 
@@ -294,6 +343,11 @@ def _list_pages(ids):
         "workers:list": (reverse("workers:list"), {"site": ids["site"]}),
         "workers:create": (reverse("workers:create"), {}),
         "worksites:list": (reverse("worksites:list"), {}),
+        "checkin:home": (reverse("checkin:home"), {}),
+        "checkin:badges": (reverse("checkin:badges"), {"site": ids["site"]}),
+        "checkin:badge_sheet": (reverse("checkin:badge_sheet"), {"site": ids["site"]}),
+        "checkin:kiosks": (reverse("checkin:kiosks"), {}),
+        "checkin:geofences": (reverse("checkin:geofences"), {}),
     }
 
 
@@ -411,6 +465,20 @@ def _api_b_calls(ids):
             "/api/v1/payments/",
             {**body, "pay_line_id": ids["line"], "amount": 1, "proof_type": "signature"},
         ),
+        (
+            "post",
+            "/api/v1/checkins/",
+            {
+                **body,
+                "site_id": site,
+                "direction": "in",
+                "at": f"{pending}T07:00:00Z",
+                "worker_id": ids["worker"],
+            },
+        ),
+        ("get", f"/api/v1/sites/{site}/checkin-setup/", {}),
+        ("get", f"/api/v1/sites/{site}/checkins/{pending}/", {}),
+        ("get", f"/api/v1/sites/{site}/days/{pending}/suggestions/", {}),
     ]
 
 
@@ -446,6 +514,7 @@ def test_site_b_files_are_404_for_site_a_on_the_api(world):
     urls = [
         reverse("api:file-worker-photo", args=[ids["worker"]]),
         reverse("api:file-payment-proof", args=[ids["payment"]]),
+        reverse("api:checkin:file-photo", args=[ids["checkin"]]),
     ]
     own = Phone(b.phone_number, PIN)
     for url in urls:

@@ -1,0 +1,29 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Geofence" %} · {{ site.name }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'checkin:geofences' %}">{% translate "Geofences" %}</a> / {{ site.name }}</p>{% endblock %}
+{% block page_title %}{% blocktranslate with site=site.name %}Geofence of {{ site }}{% endblocktranslate %}{% endblock %}
+{% block page_meta %}{% translate "Stand at the site gate, read the position from a map or a phone, and enter it here." %}{% endblock %}
+
+{% block content %}
+<form method="post" class="flex max-w-xl flex-col gap-4 rounded-card border border-line bg-white p-5">
+  {% csrf_token %}
+  {% include "components/field.html" with field=form.latitude %}
+  {% include "components/field.html" with field=form.longitude %}
+  {% include "components/field.html" with field=form.radius_m %}
+  <div class="flex flex-wrap gap-2.5">
+    {% translate "Save geofence" as save_label %}{% include "components/button.html" with label=save_label type="submit" variant="primary" only %}
+    {% if current %}{% translate "Remove geofence" as clear_label %}{% include "components/button.html" with label=clear_label type="submit" name="action" value="clear" variant="danger" only %}{% endif %}
+  </div>
+</form>
+
+{% if recent %}
+<section aria-labelledby="recent-title" class="flex max-w-xl flex-col gap-2">
+  <h2 id="recent-title" class="font-display text-lg font-bold">{% translate "Latest positions from check-ins" %}</h2>
+  <ul class="flex flex-col gap-1 text-sm text-ink-700">
+    {% for c in recent %}<li class="tabular-nums">{{ c.at|date:"j M H:i" }} · {{ c.latitude }}, {{ c.longitude }}{% if c.distance_m is not None %} · {% blocktranslate with d=c.distance_m %}{{ d }} m from the centre{% endblocktranslate %}{% endif %}</li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

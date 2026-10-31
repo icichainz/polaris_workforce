@@ -1,0 +1,8 @@
+{% load i18n %}{% comment %}
+Tabs of the Check-in pages. Parameter: active = "home" | "badges" | "kiosks" | "geofences".
+{% endcomment %}<nav aria-label="{% translate 'Check-in' %}" class="flex flex-wrap gap-1 border-b border-line">
+  {% url "checkin:home" as tab_url %}<a href="{{ tab_url }}"{% if active == "home" %} aria-current="page"{% endif %} class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold no-underline {% if active == "home" %}border-amber-500 text-ink{% else %}border-transparent text-steel hover:text-ink{% endif %}">{% translate "Check-ins" %}</a>
+  {% url "checkin:badges" as tab_url %}<a href="{{ tab_url }}"{% if active == "badges" %} aria-current="page"{% endif %} class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold no-underline {% if active == "badges" %}border-amber-500 text-ink{% else %}border-transparent text-steel hover:text-ink{% endif %}">{% translate "Badges" %}</a>
+  {% url "checkin:kiosks" as tab_url %}<a href="{{ tab_url }}"{% if active == "kiosks" %} aria-current="page"{% endif %} class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold no-underline {% if active == "kiosks" %}border-amber-500 text-ink{% else %}border-transparent text-steel hover:text-ink{% endif %}">{% translate "Kiosk phones" %}</a>
+  {% url "checkin:geofences" as tab_url %}<a href="{{ tab_url }}"{% if active == "geofences" %} aria-current="page"{% endif %} class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold no-underline {% if active == "geofences" %}border-amber-500 text-ink{% else %}border-transparent text-steel hover:text-ink{% endif %}">{% translate "Geofences" %}</a>
+</nav>

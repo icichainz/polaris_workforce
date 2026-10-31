@@ -28,6 +28,13 @@ EXPECTED_OPERATIONS = {
     ("post", "/api/v1/payments/"),
     ("get", "/api/v1/files/workers/{worker_id}/photo/"),
     ("get", "/api/v1/files/proofs/{payment_id}/"),
+    # Check-in (contract 1.2, agent CK)
+    ("post", "/api/v1/checkins/"),
+    ("get", "/api/v1/checkin/device/"),
+    ("get", "/api/v1/sites/{site_id}/checkin-setup/"),
+    ("get", "/api/v1/sites/{site_id}/checkins/{date}/"),
+    ("get", "/api/v1/sites/{site_id}/days/{date}/suggestions/"),
+    ("get", "/api/v1/files/checkins/{checkin_id}/photo/"),
 }
 
 

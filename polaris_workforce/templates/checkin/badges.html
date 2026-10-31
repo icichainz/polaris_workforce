@@ -1,0 +1,67 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Badges" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% blocktranslate with missing=missing %}{{ missing }} without a badge{% endblocktranslate %}{% endblock %}
+{% block page_title %}{% translate "QR badges" %}{% endblock %}
+{% block page_meta %}{% translate "A badge holds a random signed code, not the worker's number. Reissuing or revoking stops the old badge at once." %}{% endblock %}
+{% block page_actions %}
+  {% if site and missing %}
+  <form method="post" action="{% url 'checkin:badges_issue_missing' site.pk %}">{% csrf_token %}
+    {% translate "Issue missing badges" as issue_label %}{% include "components/button.html" with label=issue_label type="submit" only %}
+  </form>
+  {% endif %}
+  {% translate "Print badges" as print_label %}{% include "components/button.html" with label=print_label href=print_url variant="primary" only %}
+{% endblock %}
+
+{% block content %}
+{% include "checkin/_tabs.html" with active="badges" only %}
+
+<form method="get" role="search" class="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]">
+  {% include "components/field.html" with field=form.q %}
+  {% include "components/field.html" with field=form.site %}
+  {% translate "Filter" as filter_label %}{% include "components/button.html" with label=filter_label type="submit" only %}
+</form>
+
+<section aria-label="{% translate 'Badges' %}" class="flex flex-col">
+  {% if rows %}
+  <div class="overflow-x-auto rounded-control border border-line bg-white">
+    <table class="w-full min-w-[760px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Badge" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Issued" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Actions" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3"><span class="font-semibold">{{ row.worker.full_name }}</span><br><span class="text-xs text-steel">{{ row.worker.number }}{% if row.worker.trade %} · {{ row.worker.trade.name }}{% endif %}</span></td>
+          <td class="px-4 py-3">{% if row.badge %}{% translate "Active" as active_label %}{% include "components/status_badge.html" with status="active" label=active_label only %} <span class="font-mono text-xs text-steel">{{ row.badge.public_id|slice:":4" }}…</span>{% else %}{% translate "No badge" as none_label %}{% include "components/status_badge.html" with status="inactive" label=none_label only %}{% endif %}</td>
+          <td class="px-4 py-3 text-ink-700">{% if row.badge %}{{ row.badge.issued_at|date:"j M Y" }}{% else %}—{% endif %}</td>
+          <td class="px-4 py-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <form method="post" action="{% url 'checkin:badge_issue' row.worker.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                {% if row.badge %}{% translate "Reissue" as issue_label %}{% else %}{% translate "Issue" as issue_label %}{% endif %}{% include "components/button.html" with label=issue_label type="submit" only %}
+              </form>
+              {% if row.badge %}
+              {% url "checkin:badge_sheet" as sheet_url %}<a href="{{ sheet_url }}?worker={{ row.worker.pk }}" class="text-sm font-semibold">{% translate "Print" %}</a>
+              <form method="post" action="{% url 'checkin:badge_revoke' row.worker.pk %}" class="flex items-center gap-2">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <label class="sr-only" for="reason-{{ row.worker.pk }}">{% translate "Reason" %}</label>
+                <input id="reason-{{ row.worker.pk }}" name="reason" maxlength="200" placeholder="{% translate 'Reason (lost, left…)' %}" class="h-10 w-44 rounded-control border border-line-strong bg-white px-3 text-sm">
+                {% translate "Revoke" as revoke_label %}{% include "components/button.html" with label=revoke_label type="submit" variant="danger" only %}
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    {% translate "No workers found" as empty_title %}{% translate "Change the filters." as empty_message %}
+    {% include "components/empty_state.html" with icon="workers" title=empty_title message=empty_message only %}
+  {% endif %}
+</section>
+{% endblock %}

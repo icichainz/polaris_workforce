@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load i18n %}{% comment %}
+A4 badge sheets: 10 badges per page (2 × 5, 86 × 54 mm, credit-card size), cut along
+the borders. The QR code is inline SVG drawn from segno's matrix (alphanumeric mode, level M). Print with the
+browser (margins: default; background graphics not needed).
+{% endcomment %}
+
+{% block title %}{% translate "Badges" %} · Polaris Workforce{% endblock %}
+{% block head %}<style>@page { size: A4; margin: 10mm; }</style>{% endblock %}
+
+{% block body %}
+<div class="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-4 py-3 print:hidden">
+  <p class="text-sm text-ink-700">{% blocktranslate count n=count %}{{ n }} badge to print{% plural %}{{ n }} badges to print{% endblocktranslate %}{% if site %} · {{ site.name }}{% endif %}</p>
+  <div class="flex gap-2">
+    {% translate "Back to badges" as back_label %}{% url "checkin:badges" as back_url %}{% include "components/button.html" with label=back_label href=back_url only %}
+    <button type="button" onclick="window.print()" class="inline-flex h-10 items-center justify-center rounded-control bg-amber-500 px-4 text-sm font-semibold text-ink hover:brightness-95">{% translate "Print" %}</button>
+  </div>
+</div>
+
+<main class="bg-white">
+  {% for page in pages %}
+  <section class="mx-auto grid w-[190mm] grid-cols-2 content-start gap-[2mm] py-[4mm] break-after-page print:py-0" aria-label="{% blocktranslate with n=forloop.counter %}Sheet {{ n }}{% endblocktranslate %}">
+    {% for card in page %}
+    <article class="flex h-[54mm] w-[93mm] break-inside-avoid gap-[3mm] rounded-[3mm] border border-line-strong p-[3mm]">
+      <div class="flex w-[22mm] shrink-0 flex-col items-center gap-[2mm]">
+        {% if card.photo_url %}<img src="{{ card.photo_url }}" alt="" class="h-[26mm] w-[22mm] rounded-[2mm] object-cover">{% else %}<div class="flex h-[26mm] w-[22mm] items-center justify-center rounded-[2mm] border border-dashed border-line-strong text-center text-[7pt] text-steel">{% translate "Photo" %}</div>{% endif %}
+        <p class="text-center font-mono text-[6pt] text-steel">{{ card.badge.public_id|slice:":4" }}</p>
+      </div>
+      <div class="flex min-w-0 grow flex-col justify-between">
+        <div class="flex flex-col gap-[0.5mm]">
+          <p class="truncate text-[7pt] font-semibold uppercase tracking-[0.08em] text-steel">{{ company_name }}</p>
+          <p class="font-display text-[12pt] font-extrabold leading-tight">{{ card.worker.first_name }}<br>{{ card.worker.last_name }}</p>
+          <p class="text-[8pt] text-ink-700">{{ card.worker.number }}{% if card.worker.trade %} · {{ card.worker.trade.name }}{% endif %}</p>
+        </div>
+        <p class="text-[6pt] text-steel">{% translate "Scan at the site gate. If found, return to the site office." %}</p>
+      </div>
+      <div class="size-[30mm] shrink-0 self-center" role="img" aria-label="{% blocktranslate with name=card.worker.full_name %}QR badge of {{ name }}{% endblocktranslate %}"><svg viewBox="0 0 {{ card.qr.0 }} {{ card.qr.0 }}" class="block size-full text-ink" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path d="{{ card.qr.1 }}" fill="currentColor"></path></svg></div>
+    </article>
+    {% endfor %}
+  </section>
+  {% empty %}
+  <div class="mx-auto max-w-lg px-4 py-12">
+    {% translate "No badges to print" as empty_title %}{% translate "Issue badges on the Badges page first." as empty_message %}{% translate "Badges" as empty_action %}{% url "checkin:badges" as empty_href %}
+    {% include "components/empty_state.html" with icon="workers" title=empty_title message=empty_message action_label=empty_action action_href=empty_href only %}
+  </div>
+  {% endfor %}
+</main>
+{% endblock %}

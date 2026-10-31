@@ -1,0 +1,52 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Kiosk phones" %} · Polaris Workforce{% endblock %}
+{% block page_title %}{% translate "Kiosk phones" %}{% endblock %}
+{% block page_meta %}{% translate "A kiosk is a foreman's phone left at the site gate: workers scan their own badge. Its token can then only record check-ins for that site." %}{% endblock %}
+
+{% block content %}
+{% include "checkin/_tabs.html" with active="kiosks" only %}
+
+<section aria-label="{% translate 'Phones' %}" class="flex flex-col">
+  {% if rows %}
+  <div class="overflow-x-auto rounded-control border border-line bg-white">
+    <table class="w-full min-w-[760px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Phone" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Foreman" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Mode" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Actions" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3"><span class="font-semibold">{{ row.device.name|default:row.device.device_id|truncatechars:24 }}</span><br><span class="text-xs text-steel">{% if row.device.last_seen_at %}{% blocktranslate with when=row.device.last_seen_at|timesince %}Seen {{ when }} ago{% endblocktranslate %}{% else %}{% translate "Never seen" %}{% endif %}</span></td>
+          <td class="px-4 py-3">{{ row.device.user.get_full_name|default:row.device.user.username }}</td>
+          <td class="px-4 py-3">{% if row.kiosk %}{% blocktranslate with site=row.kiosk.site.name asvar kiosk_label %}Kiosk · {{ site }}{% endblocktranslate %}{% include "components/status_badge.html" with status="submitted" label=kiosk_label only %}{% else %}{% translate "Foreman phone" %}{% endif %}</td>
+          <td class="px-4 py-3">
+            <div class="flex flex-wrap items-end gap-2">
+              {% if row.form %}
+              <form method="post" action="{% url 'checkin:kiosk_set' row.device.pk %}" class="flex items-end gap-2">{% csrf_token %}
+                {% include "components/field.html" with field=row.form.site %}
+                {% if row.kiosk %}{% translate "Move kiosk" as set_label %}{% else %}{% translate "Make kiosk" as set_label %}{% endif %}{% include "components/button.html" with label=set_label type="submit" only %}
+              </form>
+              {% endif %}
+              {% if row.can_end %}
+              <form method="post" action="{% url 'checkin:kiosk_end' row.device.pk %}">{% csrf_token %}
+                {% translate "End kiosk mode" as end_label %}{% include "components/button.html" with label=end_label type="submit" variant="danger" only %}
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    {% translate "No phones" as empty_title %}{% translate "A phone appears here once a foreman of your sites has signed in on it." as empty_message %}
+    {% include "components/empty_state.html" with icon="phone" title=empty_title message=empty_message only %}
+  {% endif %}
+</section>
+{% endblock %}

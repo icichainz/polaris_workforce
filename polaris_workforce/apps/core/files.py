@@ -8,6 +8,8 @@ object it belongs to, and only by someone who may see that object's site:
   worker has an assignment (past, current or future) on a site the user sees.
 - Payment proof: ``/files/proofs/<payment id>/`` and ``/api/v1/files/proofs/<payment id>/``.
   Allowed when the payment's site is visible (``scoped_sites`` / ``can_view_site``).
+- Check-in photo: ``/checkin/photos/<check-in id>/`` and
+  ``/api/v1/files/checkins/<check-in id>/photo/`` (rules in ``apps.checkin.files``).
 - Any file by stored name: ``/files/media/<name>``, which is what ``FieldFile.url`` gives
   (Django admin links). Admins only (403 for everyone else); a company admin only gets
   files of their own company's workers, payments and advances (404 otherwise).
@@ -30,6 +32,7 @@ from django.urls import reverse
 from django.utils.http import content_disposition_header
 
 from apps.accounts.permissions import Role, company_workers, has_role, is_admin, scoped_sites
+from apps.checkin.models import CheckIn
 from apps.core.tenancy import company_id_of, is_platform_admin
 from apps.payroll.models import Advance, Payment
 from apps.workers.models import Worker
@@ -105,6 +108,7 @@ def _company_owns_file(company_id, name: str) -> bool:
             pay_line__period__site__company_id=company_id, proof_file=name
         ).exists()
         or Advance.objects.filter(worker__company_id=company_id, proof_file=name).exists()
+        or CheckIn.objects.filter(site__company_id=company_id, photo=name).exists()
     )
 
 
