@@ -9,7 +9,7 @@ from django.utils.translation import ngettext
 
 from apps.core.money import format_money
 
-from .models import PayPeriod
+from .models import PayPeriod, RulePayType
 
 
 def number(value) -> str:
@@ -45,6 +45,37 @@ def worked_label(line, decimals: int = 0) -> str:
     if days and all(d.get("pay_type") == "hourly" for d in days) and line.hours is not None:
         return _("%(hours)s h") % {"hours": number(line.hours)}
     return day_units_label(line.units)
+
+
+def pay_types_label(values) -> str:
+    """ "Daily rate, Piece work"; "All pay types" when empty."""
+    names = dict(RulePayType.choices)
+    if not values:
+        return _("All pay types")
+    return ", ".join(str(names.get(v, v)) for v in values)
+
+
+def day_rules_label(day: dict) -> str:
+    """What the pay rules did to a day: "Sunday × 1.5", "Night 2 h", "Stoppage"."""
+    parts = []
+    if day.get("stoppage"):
+        parts.append(_("Stoppage day"))
+    if day.get("multiplier"):
+        kind = _("Public holiday") if day.get("day_kind") == "holiday" else _("Sunday")
+        parts.append(f"{kind} × {number(day['multiplier'])}")
+    if day.get("night_hours"):
+        parts.append(_("Night %(hours)s h") % {"hours": number(day["night_hours"])})
+    return " · ".join(str(p) for p in parts)
+
+
+def piece_label(piece: dict, decimals: int = 0) -> str:
+    """ "Block laying · 120 block × 50"."""
+    return _("%(task)s · %(quantity)s %(unit)s × %(rate)s") % {
+        "task": piece.get("task", ""),
+        "quantity": number(piece.get("quantity", "0")),
+        "unit": piece.get("unit", ""),
+        "rate": format_money(int(piece.get("unit_rate", 0)), "", decimals),
+    }
 
 
 def money(amount: int, currency: str, decimals: int) -> str:

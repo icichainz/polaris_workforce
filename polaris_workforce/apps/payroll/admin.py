@@ -3,12 +3,19 @@ from django.contrib import admin
 from .models import (
     Advance,
     AdvanceRepayment,
+    Bonus,
     CashIssue,
+    DeductionRule,
     PayAdjustment,
     PayAdjustmentApplication,
     PayLine,
     Payment,
     PayPeriod,
+    PayRuleSettings,
+    PieceWorkEntry,
+    SitePayRules,
+    StoppageDay,
+    TaskType,
 )
 
 
@@ -136,3 +143,65 @@ class PayAdjustmentApplicationAdmin(admin.ModelAdmin):
     list_display = ("adjustment", "pay_line", "amount", "created_at")
     list_select_related = ("adjustment__worker", "pay_line__period__site")
     raw_id_fields = ("adjustment", "pay_line")
+
+
+# --- pay rules (Wave 4) ----------------------------------------------------------------------
+
+
+@admin.register(PayRuleSettings)
+class PayRuleSettingsAdmin(admin.ModelAdmin):
+    list_display = ("company", "sunday_multiplier", "holiday_multiplier", "night_multiplier")
+    list_select_related = ("company",)
+
+
+@admin.register(SitePayRules)
+class SitePayRulesAdmin(admin.ModelAdmin):
+    list_display = ("site", "sunday_multiplier", "holiday_multiplier", "night_multiplier")
+    list_select_related = ("site",)
+    raw_id_fields = ("site",)
+
+
+@admin.register(DeductionRule)
+class DeductionRuleAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "company",
+        "employee_percent",
+        "employer_percent",
+        "active_from",
+        "active_to",
+        "order",
+    )
+    list_filter = ("company",)
+    search_fields = ("name",)
+
+
+@admin.register(TaskType)
+class TaskTypeAdmin(admin.ModelAdmin):
+    list_display = ("name", "company", "unit", "unit_rate", "is_active")
+    list_filter = ("company", "is_active")
+    search_fields = ("name",)
+
+
+@admin.register(PieceWorkEntry)
+class PieceWorkEntryAdmin(admin.ModelAdmin):
+    list_display = ("date", "worker", "site", "task", "quantity", "unit_rate")
+    list_select_related = ("worker", "site", "task")
+    raw_id_fields = ("worker", "site", "task", "day", "entered_by")
+    date_hierarchy = "date"
+
+
+@admin.register(Bonus)
+class BonusAdmin(admin.ModelAdmin):
+    list_display = ("date", "worker", "site", "amount", "reason", "applied_to")
+    list_select_related = ("worker", "site")
+    raw_id_fields = ("worker", "site", "applied_to", "created_by")
+    date_hierarchy = "date"
+
+
+@admin.register(StoppageDay)
+class StoppageDayAdmin(admin.ModelAdmin):
+    list_display = ("date", "site", "reason", "pay", "percent", "amount")
+    list_select_related = ("site",)
+    raw_id_fields = ("site", "created_by")
+    date_hierarchy = "date"

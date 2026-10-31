@@ -1,0 +1,130 @@
+{% extends "layouts/app.html" %}
+{% load i18n payroll_tags %}
+
+{% block title %}{% translate "Pay rules" %} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'payroll:periods' %}">{% translate "Pay periods" %}</a> / {% translate "Pay rules" %}</nav>{% endblock %}
+{% block page_subtitle %}{% translate "Multipliers, stoppage days, statutory deductions and piece work. Changes apply to pay that is not paid or locked yet." %}{% endblock %}
+{% block page_title %}{% translate "Pay rules" %}{% endblock %}
+{% block page_actions %}
+  {% url "core:settings" as settings_url %}{% translate "Settings" as label %}
+  {% include "components/button.html" with label=label href=settings_url icon="settings" only %}
+{% endblock %}
+
+{% block content %}
+  <form method="post" class="flex flex-col gap-5">
+    {% csrf_token %}
+    {% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}
+    <section aria-labelledby="multipliers-title" class="flex flex-col gap-4 rounded-card border border-line bg-white px-5 py-4">
+      <div>
+        <h2 id="multipliers-title" class="font-display text-lg font-bold">{% translate "Rate multipliers" %}</h2>
+        <p class="text-sm text-ink-700">{% translate "1 means normal pay. Public holidays are the ones listed in Settings; a holiday on a Sunday takes the larger multiplier. A site can have its own (below)." %}</p>
+      </div>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {% include "components/field.html" with field=form.sunday_multiplier only %}
+        {% include "components/field.html" with field=form.holiday_multiplier only %}
+        {% include "components/field.html" with field=form.night_start only %}
+        {% include "components/field.html" with field=form.night_end only %}
+        {% include "components/field.html" with field=form.night_multiplier only %}
+      </div>
+    </section>
+    <section aria-labelledby="stoppage-title" class="flex flex-col gap-4 rounded-card border border-line bg-white px-5 py-4">
+      <div>
+        <h2 id="stoppage-title" class="font-display text-lg font-bold">{% translate "Stoppage days" %}</h2>
+        <p class="text-sm text-ink-700">{% translate "When a site is stopped (rain, no materials), the workers present are paid this instead of their day. Mark a stoppage day from a cash sheet (Day extras)." %}</p>
+      </div>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {% include "components/field.html" with field=form.stoppage_pay only %}
+        {% include "components/field.html" with field=form.stoppage_percent only %}
+        {% include "components/money_field.html" with field=form.stoppage_amount currency=company.currency only %}
+      </div>
+    </section>
+    <div>{% translate "Save pay rules" as label %}{% include "components/button.html" with label=label type="submit" variant="primary" only %}</div>
+  </form>
+
+  <section id="deductions" aria-labelledby="deductions-title" class="rounded-card border border-line bg-white">
+    <div class="flex flex-wrap items-center justify-between gap-2.5 border-b border-line px-5 py-3.5">
+      <div>
+        <h2 id="deductions-title" class="font-display text-lg font-bold">{% translate "Statutory deductions" %}</h2>
+        <p class="text-sm text-ink-700">{% translate "Taken from the gross, in order, before advances and adjustments; the pay never goes below zero. The employer share is reported, not deducted." %}</p>
+      </div>
+      {% url "payroll:deduction_rule_create" as new_url %}{% translate "Add a rule" as label %}
+      {% include "components/button.html" with label=label href=new_url icon="plus" only %}
+    </div>
+    {% if deductions %}
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[820px] border-collapse text-sm">
+        <thead>
+          <tr class="bg-subtle text-left">
+            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Order" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Rule" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Employee" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Employer" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Floor · ceiling" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Applies to" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Active" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rule in deductions %}
+          <tr class="border-t border-line-soft">
+            <td class="px-4 py-3 tabular-nums">{{ rule.order }}</td>
+            <td class="px-4 py-3"><a href="{% url 'payroll:deduction_rule_edit' rule.pk %}" class="font-semibold">{{ rule.name }}</a></td>
+            <td class="px-4 py-3 text-right tabular-nums">{{ rule.employee_percent|num }} %</td>
+            <td class="px-4 py-3 text-right tabular-nums">{{ rule.employer_percent|num }} %</td>
+            <td class="px-4 py-3 tabular-nums">{% if rule.base_floor is not None %}{{ rule.base_floor|amount:company }}{% else %}—{% endif %} · {% if rule.base_ceiling is not None %}{{ rule.base_ceiling|amount:company }}{% else %}—{% endif %}</td>
+            <td class="px-4 py-3">{{ rule.pay_types|pay_types_label }}</td>
+            <td class="px-4 py-3">
+              {% if rule|active_on:today %}{% translate "Active" as label %}{% include "components/status_badge.html" with status="active" label=label only %}{% else %}{% translate "Inactive" as label %}{% include "components/status_badge.html" with status="inactive" label=label only %}{% endif %}
+              <span class="block text-xs text-steel">{{ rule.active_from|date:_("j M Y") }}{% if rule.active_to %} – {{ rule.active_to|date:_("j M Y") }}{% endif %}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <p class="px-5 py-6 text-sm text-ink-700">{% translate "No deduction rules: pay is not reduced by any statutory deduction." %}</p>
+    {% endif %}
+  </section>
+
+  <section id="tasks" aria-labelledby="tasks-title" class="rounded-card border border-line bg-white">
+    <div class="flex flex-wrap items-center justify-between gap-2.5 border-b border-line px-5 py-3.5">
+      <div>
+        <h2 id="tasks-title" class="font-display text-lg font-bold">{% translate "Piece work tasks" %}</h2>
+        <p class="text-sm text-ink-700">{% translate "Work paid by the unit. Entries are made per worker and day (Day extras) and paid once the roll call is approved, on top of the day's rate or alone for piece-rate workers." %}</p>
+      </div>
+      {% url "payroll:task_type_create" as new_url %}{% translate "Add a task" as label %}
+      {% include "components/button.html" with label=label href=new_url icon="plus" only %}
+    </div>
+    {% if tasks %}
+    <ul class="divide-y divide-line-soft">
+      {% for task in tasks %}
+      <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+        <a href="{% url 'payroll:task_type_edit' task.pk %}" class="font-semibold">{{ task.name }}</a>
+        <span class="tabular-nums text-ink-700">{% blocktranslate with rate=task.unit_rate|money:company unit=task.unit %}{{ rate }} per {{ unit }}{% endblocktranslate %}{% if not task.is_active %} · {% translate "inactive" %}{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      <p class="px-5 py-6 text-sm text-ink-700">{% translate "No piece work tasks yet." %}</p>
+    {% endif %}
+  </section>
+
+  <section id="sites" aria-labelledby="sites-title" class="rounded-card border border-line bg-white">
+    <div class="border-b border-line px-5 py-3.5">
+      <h2 id="sites-title" class="font-display text-lg font-bold">{% translate "Sites with their own multipliers" %}</h2>
+    </div>
+    {% if sites %}
+    <ul class="divide-y divide-line-soft">
+      {% for site, override in sites %}
+      <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+        <a href="{% url 'payroll:site_pay_rules' site.pk %}" class="font-semibold">{{ site.name }}</a>
+        <span class="text-ink-700">{% if override and not override.is_empty %}{% if override.sunday_multiplier %}{% translate "Sunday" %} × {{ override.sunday_multiplier|num }} {% endif %}{% if override.holiday_multiplier %}{% translate "Public holiday" %} × {{ override.holiday_multiplier|num }} {% endif %}{% if override.night_start %}{% translate "Night" %} {{ override.night_start|time:"H:i" }}–{{ override.night_end|time:"H:i" }} {% endif %}{% if override.night_multiplier %}× {{ override.night_multiplier|num }}{% endif %}{% else %}{% translate "Company rules" %}{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      <p class="px-5 py-6 text-sm text-ink-700">{% translate "No sites yet." %}</p>
+    {% endif %}
+  </section>
+{% endblock %}

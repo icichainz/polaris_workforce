@@ -1,0 +1,27 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}{% comment %}
+One pay rule form (deduction rule, piece work task, a site's multipliers).
+Context: `form`, `title`, `back` (URL), `money_fields` (names typed in money), `company`.
+{% endcomment %}
+
+{% block title %}{{ title }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'payroll:pay_rules' %}">{% translate "Pay rules" %}</a> / {{ title }}</nav>{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+  <form method="post" class="flex flex-col gap-4 rounded-card border border-line bg-white px-5 py-4 sm:max-w-2xl">
+    {% csrf_token %}
+    {% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}
+    {% for field in form %}
+      {% if field.name in money_fields %}
+        {% include "components/money_field.html" with field=field currency=company.currency only %}
+      {% else %}
+        {% include "components/field.html" with field=field only %}
+      {% endif %}
+    {% endfor %}
+    <div class="flex flex-wrap gap-2">
+      {% translate "Save" as label %}{% include "components/button.html" with label=label type="submit" variant="primary" only %}
+      {% translate "Cancel" as label %}{% include "components/button.html" with label=label href=back variant="ghost" only %}
+    </div>
+  </form>
+{% endblock %}

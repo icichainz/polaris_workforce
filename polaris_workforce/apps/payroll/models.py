@@ -7,13 +7,14 @@ import uuid
 from decimal import Decimal
 
 from django.conf import settings
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from apps.core.choices import PayFrequency, PaymentMethod, ProofType
-from apps.core.models import CompanySettings, TimeStampedModel
+from apps.core.models import Company, CompanySettings, TimeStampedModel, company_field
+from apps.core.tenancy import current_company
 from apps.core.validators import UPLOAD_VALIDATORS
 
 PROOF_UPLOAD_TO = "proofs/%Y/%m/"
@@ -118,6 +119,31 @@ class PayLine(TimeStampedModel):
         default=list,
         blank=True,
         help_text=_("What the pay engine computed for each day (kept for the payslip)."),
+    )
+    # Pay rules (Wave 4): gross = time pay (the days) + piece_amount + bonus_amount.
+    piece_amount = _money_field(_("piece work"), default=0)
+    bonus_amount = _money_field(_("bonuses"), default=0)
+    statutory_deductions = _money_field(
+        _("statutory deductions"),
+        default=0,
+        help_text=_("Employee share of the statutory deduction rules, taken from this pay."),
+    )
+    employer_contributions = _money_field(
+        _("employer contributions"),
+        default=0,
+        help_text=_("Employer share of the statutory deduction rules (a cost, not deducted)."),
+    )
+    pieces = models.JSONField(
+        _("piece work entries"),
+        default=list,
+        blank=True,
+        help_text=_("The piece work paid on this line (kept for the payslip)."),
+    )
+    deductions = models.JSONField(
+        _("statutory deductions by rule"),
+        default=list,
+        blank=True,
+        help_text=_("Each deduction rule applied: base, employee and employer amounts."),
     )
 
     class Meta:
@@ -430,3 +456,374 @@ class PayAdjustmentApplication(models.Model):
 
     def __str__(self) -> str:
         return f"{self.adjustment} → {self.pay_line} · {self.amount}"
+
+
+# --- pay rules (Wave 4): multipliers, stoppage days, deductions, piece work, bonuses ------
+
+
+def _multiplier_field(verbose_name, **kwargs):
+    kwargs.setdefault("validators", [MinValueValidator(Decimal("1")), MaxValueValidator(10)])
+    return models.DecimalField(verbose_name, max_digits=4, decimal_places=2, **kwargs)
+
+
+def _percent_field(verbose_name, **kwargs):
+    kwargs.setdefault("validators", [MinValueValidator(Decimal("0")), MaxValueValidator(100)])
+    return models.DecimalField(verbose_name, max_digits=5, decimal_places=2, **kwargs)
+
+
+class StoppagePay(models.TextChoices):
+    PERCENT = "percent", _("A share of the day's pay")
+    FIXED = "fixed", _("A fixed amount per day")
+
+
+class RulePayType(models.TextChoices):
+    """Pay types a deduction rule can be limited to (the rates' types, plus piece work)."""
+
+    DAILY = "daily", _("Daily rate")
+    HOURLY = "hourly", _("Hourly rate")
+    PIECE = "piece", _("Piece work")
+
+
+class PayRuleSettings(TimeStampedModel):
+    """A company's pay rules beyond ``CompanySettings``: one row per company, read with
+    ``PayRuleSettings.load()``. A site may override the multipliers (``SitePayRules``)."""
+
+    company = company_field(related_name="pay_rule_settings")
+    sunday_multiplier = _multiplier_field(
+        _("Sunday multiplier"),
+        default=Decimal("1"),
+        help_text=_("Time worked on a Sunday is paid × this (1 = normal pay)."),
+    )
+    holiday_multiplier = _multiplier_field(
+        _("public holiday multiplier"),
+        default=Decimal("1"),
+        help_text=_("Time worked on a public holiday (see Settings) is paid × this."),
+    )
+    night_start = models.TimeField(_("night starts"), null=True, blank=True)
+    night_end = models.TimeField(_("night ends"), null=True, blank=True)
+    night_multiplier = _multiplier_field(
+        _("night multiplier"),
+        default=Decimal("1"),
+        help_text=_("Hours worked between the night times are paid × this."),
+    )
+    stoppage_pay = models.CharField(
+        _("stoppage day pay"),
+        max_length=10,
+        choices=StoppagePay.choices,
+        default=StoppagePay.PERCENT,
+    )
+    stoppage_percent = _percent_field(
+        _("stoppage day share (%)"),
+        default=Decimal("50"),
+        help_text=_("Workers present on a stoppage day get this share of their day's pay."),
+    )
+    stoppage_amount = _money_field(
+        _("stoppage day amount"),
+        default=0,
+        help_text=_("Or this fixed amount per worker present."),
+    )
+
+    class Meta:
+        verbose_name = _("pay rules")
+        verbose_name_plural = _("pay rules")
+        constraints = [
+            models.UniqueConstraint(fields=["company"], name="unique_pay_rules_per_company"),
+        ]
+
+    def __str__(self) -> str:
+        return str(_("Pay rules · %(company)s") % {"company": self.company})
+
+    @classmethod
+    def load(cls, company=None) -> "PayRuleSettings":
+        """The pay rules of ``company`` (a ``Company`` or its id), else of the current
+        company; created with the defaults (no change to pay) if needed."""
+        if company is None:
+            company = current_company()
+        company_id = company.pk if isinstance(company, Company) else company
+        obj, _created = cls.objects.get_or_create(company_id=company_id)
+        return obj
+
+
+class SitePayRules(TimeStampedModel):
+    """A site's own multipliers and night window; empty fields inherit the company's."""
+
+    site = models.OneToOneField(
+        "worksites.Site",
+        verbose_name=_("site"),
+        on_delete=models.CASCADE,
+        related_name="pay_rules",
+    )
+    sunday_multiplier = _multiplier_field(_("Sunday multiplier"), null=True, blank=True)
+    holiday_multiplier = _multiplier_field(_("public holiday multiplier"), null=True, blank=True)
+    night_start = models.TimeField(_("night starts"), null=True, blank=True)
+    night_end = models.TimeField(_("night ends"), null=True, blank=True)
+    night_multiplier = _multiplier_field(_("night multiplier"), null=True, blank=True)
+
+    OVERRIDES = (
+        "sunday_multiplier",
+        "holiday_multiplier",
+        "night_start",
+        "night_end",
+        "night_multiplier",
+    )
+
+    class Meta:
+        verbose_name = _("site pay rules")
+        verbose_name_plural = _("site pay rules")
+
+    def __str__(self) -> str:
+        return str(self.site)
+
+    @property
+    def is_empty(self) -> bool:
+        return all(getattr(self, name) is None for name in self.OVERRIDES)
+
+
+class DeductionRule(TimeStampedModel):
+    """A statutory deduction the company configures (no country is built in).
+
+    The employee share is taken from the pay after the gross, before advances and
+    adjustments; the employer share is a cost that is reported, never deducted. See
+    ``apps.payroll.engine`` ("Pay line", step 3).
+    """
+
+    company = company_field(related_name="deduction_rules")
+    name = models.CharField(_("name"), max_length=100)
+    employee_percent = _percent_field(
+        _("employee share (%)"), default=Decimal("0"), help_text=_("Deducted from the pay.")
+    )
+    employer_percent = _percent_field(
+        _("employer share (%)"),
+        default=Decimal("0"),
+        help_text=_("Paid by the company on top: reported, not deducted."),
+    )
+    base_floor = models.BigIntegerField(
+        _("floor"),
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_("No deduction on a pay whose gross is under this amount."),
+    )
+    base_ceiling = models.BigIntegerField(
+        _("ceiling"),
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_("Only the gross up to this amount counts."),
+    )
+    pay_types = models.JSONField(
+        _("pay types"),
+        default=list,
+        blank=True,
+        help_text=_("The pay types it applies to; empty for all."),
+    )
+    active_from = models.DateField(_("active from"))
+    active_to = models.DateField(_("active until"), null=True, blank=True)
+    order = models.PositiveSmallIntegerField(
+        _("order"), default=10, help_text=_("Rules are applied from the lowest number up.")
+    )
+
+    class Meta:
+        verbose_name = _("deduction rule")
+        verbose_name_plural = _("deduction rules")
+        ordering = ["order", "name", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "name"], name="unique_deduction_rule_per_company"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(employee_percent__gte=0, employee_percent__lte=100)
+                & models.Q(employer_percent__gte=0, employer_percent__lte=100),
+                name="deduction_rule_percent_range",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(base_floor__isnull=True)
+                | models.Q(base_ceiling__isnull=True)
+                | models.Q(base_ceiling__gte=models.F("base_floor")),
+                name="deduction_rule_ceiling_above_floor",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(active_to__isnull=True)
+                | models.Q(active_to__gte=models.F("active_from")),
+                name="deduction_rule_active_range",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+
+    def is_active_on(self, day) -> bool:
+        return self.active_from <= day and (self.active_to is None or day <= self.active_to)
+
+
+class TaskType(TimeStampedModel):
+    """A kind of piece work (laying blocks, plastering…) and what one unit of it pays."""
+
+    company = company_field(related_name="task_types")
+    name = models.CharField(_("name"), max_length=100)
+    unit = models.CharField(_("unit"), max_length=30, help_text=_("For example m², block, m."))
+    unit_rate = _money_field(_("rate per unit"))
+    is_active = models.BooleanField(_("active"), default=True)
+
+    class Meta:
+        verbose_name = _("task type")
+        verbose_name_plural = _("task types")
+        ordering = ["name", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "name"], name="unique_task_type_per_company"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.unit})"
+
+
+class PieceWorkEntry(TimeStampedModel):
+    """Work done by the piece: counted on the pay once the day's roll call is approved."""
+
+    worker = models.ForeignKey(
+        "workers.Worker",
+        verbose_name=_("worker"),
+        on_delete=models.PROTECT,
+        related_name="piece_work",
+    )
+    site = models.ForeignKey(
+        "worksites.Site",
+        verbose_name=_("site"),
+        on_delete=models.PROTECT,
+        related_name="piece_work",
+    )
+    date = models.DateField(_("date"))
+    task = models.ForeignKey(
+        TaskType, verbose_name=_("task"), on_delete=models.PROTECT, related_name="entries"
+    )
+    quantity = models.DecimalField(_("quantity"), max_digits=10, decimal_places=2)
+    unit_rate = _money_field(
+        _("rate per unit"), help_text=_("The task's rate when the entry was made.")
+    )
+    day = models.ForeignKey(
+        "attendance.AttendanceDay",
+        verbose_name=_("attendance day"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="piece_work",
+    )
+    entered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=_("entered by"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="piece_work_entered",
+    )
+    note = models.CharField(_("note"), max_length=200, blank=True)
+
+    class Meta:
+        verbose_name = _("piece work entry")
+        verbose_name_plural = _("piece work entries")
+        ordering = ["date", "pk"]
+        indexes = [models.Index(fields=["site", "date"])]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(quantity__gt=0), name="piece_work_quantity_positive"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.worker} · {self.date} · {self.quantity} {self.task.unit}"
+
+
+class Bonus(TimeStampedModel):
+    """A one-off bonus, added to the worker's next pay at the site (``applied_to``)."""
+
+    worker = models.ForeignKey(
+        "workers.Worker",
+        verbose_name=_("worker"),
+        on_delete=models.PROTECT,
+        related_name="bonuses",
+    )
+    site = models.ForeignKey(
+        "worksites.Site",
+        verbose_name=_("site"),
+        on_delete=models.PROTECT,
+        related_name="bonuses",
+    )
+    amount = _money_field(_("amount"))
+    reason = models.CharField(_("reason"), max_length=200)
+    date = models.DateField(_("date"))
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=_("created by"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="bonuses_created",
+    )
+    applied_to = models.ForeignKey(
+        PayLine,
+        verbose_name=_("paid on"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="bonuses",
+    )
+
+    class Meta:
+        verbose_name = _("bonus")
+        verbose_name_plural = _("bonuses")
+        ordering = ["date", "pk"]
+        indexes = [models.Index(fields=["worker", "site"])]
+        constraints = [
+            models.CheckConstraint(condition=models.Q(amount__gt=0), name="bonus_amount_positive"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.worker} · {self.amount} ({self.date})"
+
+
+class StoppageDay(TimeStampedModel):
+    """A day the site was stopped (rain, no materials…): workers present get part pay."""
+
+    site = models.ForeignKey(
+        "worksites.Site",
+        verbose_name=_("site"),
+        on_delete=models.PROTECT,
+        related_name="stoppage_days",
+    )
+    date = models.DateField(_("date"))
+    reason = models.CharField(_("reason"), max_length=200)
+    pay = models.CharField(
+        _("pay"), max_length=10, choices=StoppagePay.choices, default=StoppagePay.PERCENT
+    )
+    percent = _percent_field(_("share of the day (%)"), null=True, blank=True)
+    amount = models.BigIntegerField(
+        _("fixed amount"), null=True, blank=True, validators=[MinValueValidator(0)]
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=_("created by"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="stoppage_days_created",
+    )
+
+    class Meta:
+        verbose_name = _("stoppage day")
+        verbose_name_plural = _("stoppage days")
+        ordering = ["-date", "site"]
+        constraints = [
+            models.UniqueConstraint(fields=["site", "date"], name="unique_stoppage_per_site_day"),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(pay="percent", percent__isnull=False)
+                    | models.Q(pay="fixed", amount__isnull=False)
+                ),
+                name="stoppage_day_pay_set",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.site} · {self.date} · {self.reason}"

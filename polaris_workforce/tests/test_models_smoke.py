@@ -38,6 +38,13 @@ FACTORIES = [
     f.PaymentFactory,
     f.PayAdjustmentFactory,
     f.PayAdjustmentApplicationFactory,
+    f.PayRuleSettingsFactory,
+    f.SitePayRulesFactory,
+    f.DeductionRuleFactory,
+    f.TaskTypeFactory,
+    f.PieceWorkEntryFactory,
+    f.BonusFactory,
+    f.StoppageDayFactory,
 ]
 
 

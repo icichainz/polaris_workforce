@@ -65,6 +65,7 @@ from tests.test_e2e_isolation import (
     _office_b_get_urls,
     _office_b_posts,
     add_document,
+    add_pay_extras,
     page_text,
 )
 
@@ -134,8 +135,10 @@ def build_company(label: str, phone: str) -> World:
         payroll_services.create_advance(
             crew.manager, worker, amount=5000, deduction_per_pay=1000, proof_type="signature"
         )
+        extras = add_pay_extras(crew, worker, today, label, label)
 
     ids = {
+        **extras,
         "site": crew.site.pk,
         "yesterday": yesterday,
         "today": today,
@@ -211,7 +214,15 @@ def test_company_a_people_cannot_reach_company_b_in_the_office(worlds, who):
         response = (
             office.post(url, {"pin": "4827", "pin_confirm": "4827"}) if post else (office.get(url))
         )
-        if who == "admin" and name in ("core:settings", "core:audit_log", "worksites:create"):
+        own_screens = (
+            "core:settings",
+            "core:audit_log",
+            "worksites:create",
+            "payroll:pay_rules",
+            "payroll:deduction_rule_create",
+            "payroll:task_type_create",
+        )
+        if who == "admin" and name in own_screens:
             assert response.status_code == 200, name  # A's own screens…
             assert "Bravo" not in _text(response), name  # …without B in them
         elif who == "admin" and name in (

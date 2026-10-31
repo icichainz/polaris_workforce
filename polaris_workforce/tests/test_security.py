@@ -27,7 +27,17 @@ from apps.attendance.models import AttendanceDay
 from apps.core.models import AuditLog
 from apps.core.validators import validate_file_size, validate_upload_extension
 from apps.payroll import services as payroll_services
-from apps.payroll.models import Advance, CashIssue, PayLine, Payment, PayPeriod
+from apps.payroll.models import (
+    Advance,
+    Bonus,
+    CashIssue,
+    DeductionRule,
+    PayLine,
+    Payment,
+    PayPeriod,
+    PieceWorkEntry,
+    TaskType,
+)
 from apps.workers.models import Worker, WorkerDocument
 from apps.worksites.models import SiteAssignment
 from tests.e2e import Office, Phone, admin_office, hire, make_site, new_uuid
@@ -134,8 +144,25 @@ def _state_changing_urls(crew):
         title="Card",
         file="worker-documents/x.pdf",
     )
+    task = TaskType.objects.create(name="Plastering", unit="m²", unit_rate=300)
+    rule = DeductionRule.objects.create(name="Levy", employee_percent=1, active_from=MON)
+    entry = PieceWorkEntry.objects.create(
+        worker_id=worker, site=crew.site, date=MON, task=task, quantity=1, unit_rate=300
+    )
+    bonus = Bonus.objects.create(
+        worker_id=worker, site=crew.site, date=MON, amount=100, reason="Award"
+    )
     return {
         **_payout_state_changing_urls(crew),
+        "payroll:pay_rules": reverse("payroll:pay_rules"),
+        "payroll:deduction_rule_create": reverse("payroll:deduction_rule_create"),
+        "payroll:deduction_rule_edit": reverse("payroll:deduction_rule_edit", args=[rule.pk]),
+        "payroll:task_type_create": reverse("payroll:task_type_create"),
+        "payroll:task_type_edit": reverse("payroll:task_type_edit", args=[task.pk]),
+        "payroll:site_pay_rules": reverse("payroll:site_pay_rules", args=[site]),
+        "payroll:day_extras": reverse("payroll:day_extras", args=[site, date]),
+        "payroll:piece_work_delete": reverse("payroll:piece_work_delete", args=[entry.pk]),
+        "payroll:bonus_delete": reverse("payroll:bonus_delete", args=[bonus.pk]),
         "attendance:decide": reverse("attendance:decide", args=[crew.day.pk]),
         "attendance:bulk_approve": reverse("attendance:bulk_approve"),
         "workers:import": reverse("workers:import"),

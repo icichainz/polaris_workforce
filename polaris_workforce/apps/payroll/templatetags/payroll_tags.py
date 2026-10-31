@@ -9,11 +9,13 @@
 {{ adjustment|raised_note }}  → "Already paid for this day: the difference of …"
 """
 
+from fractions import Fraction
+
 from django import template
 
 from apps.core.money import format_money
 
-from .. import labels
+from .. import engine, labels
 
 register = template.Library()
 
@@ -67,3 +69,37 @@ def adjustment_label(adjustment):
 @register.filter
 def raised_note(adjustment):
     return labels.raised_note(adjustment)
+
+
+@register.filter
+def num(value):
+    """``Decimal("1.50")`` → ``"1.5"`` (multipliers, percentages, quantities)."""
+    if value is None or value == "":
+        return "—"
+    return labels.number(value)
+
+
+@register.filter
+def active_on(rule, day):
+    return rule.is_active_on(day)
+
+
+@register.filter
+def day_rules(day):
+    return labels.day_rules_label(day)
+
+
+@register.filter
+def piece_label(piece, source):
+    return labels.piece_label(piece, _currency(source)[1])
+
+
+@register.filter
+def piece_amount(entry):
+    """A piece-work entry's worth: quantity × unit rate, rounded half up."""
+    return engine.round_half_up(Fraction(entry.quantity) * entry.unit_rate)
+
+
+@register.filter
+def pay_types_label(values):
+    return labels.pay_types_label(values)

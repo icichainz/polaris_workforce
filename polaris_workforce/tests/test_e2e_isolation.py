@@ -23,8 +23,19 @@ from rest_framework.test import APIClient
 from apps.accounts.models import ForemanDevice
 from apps.attendance.models import AttendanceCorrection, AttendanceDay, AttendanceRecord
 from apps.checkin.models import Badge, CheckIn, KioskDevice, SiteGeofence
+from apps.payroll import pay_rules
 from apps.payroll import services as payroll_services
-from apps.payroll.models import Advance, CashIssue, PayLine, Payment
+from apps.payroll.models import (
+    Advance,
+    Bonus,
+    CashIssue,
+    DeductionRule,
+    PayLine,
+    Payment,
+    PieceWorkEntry,
+    StoppageDay,
+    TaskType,
+)
 from apps.portal.models import WorkerAccess
 from apps.workers.models import WorkerDocument
 from apps.worksites.models import SiteAssignment
@@ -93,6 +104,15 @@ OFFICE = {
     "payouts:layout_edit": "payouts",
     "payouts:accounts": "payouts",
     "payouts:account_edit": "payouts",
+    "payroll:pay_rules": "admin",
+    "payroll:deduction_rule_create": "admin",
+    "payroll:deduction_rule_edit": "admin",  # another company's rule: 404
+    "payroll:task_type_create": "admin",
+    "payroll:task_type_edit": "admin",  # another company's task: 404
+    "payroll:site_pay_rules": "admin",  # another company's site: 403
+    "payroll:day_extras": "b_get",  # and its POST, below
+    "payroll:piece_work_delete": "b_post",
+    "payroll:bonus_delete": "b_post",
     "workers:list": "list",
     "workers:create": "list",
     "workers:detail": "b_get",
@@ -270,8 +290,10 @@ def world(db):
     payroll_services.create_advance(
         b.manager, zeb, amount=5000, deduction_per_pay=1000, proof_type="signature"
     )
+    extras = add_pay_extras(b, zeb, today)
 
     ids = {
+        **extras,
         "site": b.site.pk,
         "yesterday": yesterday,
         "today": today,
@@ -288,6 +310,22 @@ def world(db):
     }
     ids.update(seed_checkin(b, zeb))
     return a, b, ids
+
+
+def add_pay_extras(crew, worker, day, label=SECRET, company_label="") -> dict:
+    """Pay rules data of a site (Wave 4): a deduction rule, a piece-work task and entry,
+    a bonus and a stoppage day; their ids for the URL checks."""
+    company = crew.site.company
+    rule = DeductionRule.objects.create(
+        name=f"{company_label}levy", employee_percent=1, active_from=day, company=company
+    )
+    task = TaskType.objects.create(
+        name=f"{company_label}plaster", unit="m", unit_rate=10, company=company
+    )
+    entry = pay_rules.add_piece_work(crew.manager, crew.site, worker, day, task, 2)
+    bonus = pay_rules.add_bonus(crew.manager, crew.site, worker, day, 500, f"{label}bonus")
+    pay_rules.set_stoppage(crew.manager, crew.site, day, f"{label}rain")
+    return {"deduction_rule": rule.pk, "task_type": task.pk, "piece": entry.pk, "bonus": bonus.pk}
 
 
 def _b_state(b):
@@ -318,6 +356,13 @@ def _b_state(b):
         ),
         "checkins": CheckIn.objects.count(),
         "documents": sorted(WorkerDocument.objects.values_list("pk", "worker_id", "title")),
+        "pay_extras": (
+            sorted(PieceWorkEntry.objects.filter(site=b.site).values_list("pk", "quantity")),
+            sorted(Bonus.objects.filter(site=b.site).values_list("pk", "amount")),
+            sorted(StoppageDay.objects.filter(site=b.site).values_list("date", "pay", "percent")),
+            sorted(DeductionRule.objects.values_list("pk", "employee_percent")),
+            sorted(TaskType.objects.values_list("pk", "unit_rate")),
+        ),
     }
 
 
@@ -343,6 +388,7 @@ def _office_b_get_urls(ids):
         "checkin:photo": reverse("checkin:photo", args=[ids["checkin"]]),
         "checkin:geofence": reverse("checkin:geofence", args=[site]),
         "workers:document_file": reverse("workers:document_file", args=[ids["document"]]),
+        "payroll:day_extras": reverse("payroll:day_extras", args=[site, ids["today"].isoformat()]),
     }
 
 
@@ -421,6 +467,15 @@ def _office_b_posts(ids):
             reverse("checkin:geofence", args=[site]),
             {"latitude": "1", "longitude": "1", "radius_m": "100"},
         ),
+        "payroll:day_extras": (
+            reverse("payroll:day_extras", args=[site, ids["today"].isoformat()]),
+            {"action": "bonus", "bonus-worker": ids["worker"], "bonus-amount": "100"},
+        ),
+        "payroll:piece_work_delete": (
+            reverse("payroll:piece_work_delete", args=[ids["piece"]]),
+            {"reason": "x"},
+        ),
+        "payroll:bonus_delete": (reverse("payroll:bonus_delete", args=[ids["bonus"]]), {}),
     }
 
 
@@ -474,6 +529,14 @@ def _admin_urls(ids):
         "messaging:settings": reverse("messaging:settings"),
         "messaging:recipients": reverse("messaging:recipients"),
         "messaging:worker": reverse("messaging:worker", args=[ids["worker"]]),
+        "payroll:pay_rules": reverse("payroll:pay_rules"),
+        "payroll:deduction_rule_create": reverse("payroll:deduction_rule_create"),
+        "payroll:deduction_rule_edit": reverse(
+            "payroll:deduction_rule_edit", args=[ids["deduction_rule"]]
+        ),
+        "payroll:task_type_create": reverse("payroll:task_type_create"),
+        "payroll:task_type_edit": reverse("payroll:task_type_edit", args=[ids["task_type"]]),
+        "payroll:site_pay_rules": reverse("payroll:site_pay_rules", args=[ids["site"]]),
     }
 
 

@@ -22,12 +22,19 @@ from apps.core.tenancy import current_company
 from apps.payroll.models import (
     Advance,
     AdvanceRepayment,
+    Bonus,
     CashIssue,
+    DeductionRule,
     PayAdjustment,
     PayAdjustmentApplication,
     PayLine,
     Payment,
     PayPeriod,
+    PayRuleSettings,
+    PieceWorkEntry,
+    SitePayRules,
+    StoppageDay,
+    TaskType,
 )
 from apps.workers.models import PayRate, Trade, Worker, WorkerDocument
 from apps.worksites.models import Site, SiteAssignment
@@ -360,3 +367,79 @@ class PayAdjustmentApplicationFactory(factory.django.DjangoModelFactory):
         PayLineFactory, worker=factory.SelfAttribute("..adjustment.worker")
     )
     amount = factory.LazyAttribute(lambda o: o.adjustment.amount)
+
+
+# --- payroll: pay rules (Wave 4) ---------------------------------------------------------
+
+
+class PayRuleSettingsFactory(factory.django.DjangoModelFactory):
+    """The current company's pay rules (an existing row is returned unchanged)."""
+
+    class Meta:
+        model = PayRuleSettings
+        django_get_or_create = ("company",)
+
+    company = factory.LazyFunction(current_company)
+
+
+class SitePayRulesFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = SitePayRules
+
+    site = factory.SubFactory(SiteFactory)
+    sunday_multiplier = Decimal("2")
+
+
+class DeductionRuleFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = DeductionRule
+
+    company = factory.LazyFunction(current_company)
+    name = factory.Sequence(lambda n: f"Contribution {n + 1}")
+    employee_percent = Decimal("3.6")
+    employer_percent = Decimal("16.5")
+    active_from = datetime.date(2025, 1, 1)
+
+
+class TaskTypeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = TaskType
+
+    company = factory.LazyFunction(current_company)
+    name = factory.Sequence(lambda n: f"Block laying {n + 1}")
+    unit = "block"
+    unit_rate = 50
+
+
+class PieceWorkEntryFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = PieceWorkEntry
+
+    worker = factory.SubFactory(WorkerFactory)
+    site = factory.SubFactory(SiteFactory)
+    date = datetime.date(2026, 3, 2)
+    task = factory.SubFactory(TaskTypeFactory)
+    quantity = Decimal("120")
+    unit_rate = factory.SelfAttribute("task.unit_rate")
+
+
+class BonusFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Bonus
+
+    worker = factory.SubFactory(WorkerFactory)
+    site = factory.SubFactory(SiteFactory)
+    amount = 2500
+    reason = "Slab finished early"
+    date = datetime.date(2026, 3, 2)
+
+
+class StoppageDayFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = StoppageDay
+
+    site = factory.SubFactory(SiteFactory)
+    date = datetime.date(2026, 3, 2)
+    reason = "Heavy rain"
+    pay = "percent"
+    percent = Decimal("50")

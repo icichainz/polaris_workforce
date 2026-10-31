@@ -2,7 +2,7 @@ from django.urls import path
 
 from apps.api import converters  # noqa: F401  (registers <isodate:...>)
 
-from . import views
+from . import rule_views, views
 
 app_name = "payroll"
 
@@ -29,4 +29,18 @@ urlpatterns = [
     path("payslips/<int:line_id>/", views.payslip, name="payslip"),
     path("advances/", views.advances, name="advances"),
     path("advances/preview/", views.advance_preview, name="advance_preview"),
+    # Pay rules (Wave 4)
+    path("pay-rules/", rule_views.rules, name="pay_rules"),
+    path("pay-rules/deductions/new/", rule_views.deduction_rule, name="deduction_rule_create"),
+    path("pay-rules/deductions/<int:pk>/", rule_views.deduction_rule, name="deduction_rule_edit"),
+    path("pay-rules/tasks/new/", rule_views.task_type, name="task_type_create"),
+    path("pay-rules/tasks/<int:pk>/", rule_views.task_type, name="task_type_edit"),
+    path("pay-rules/sites/<int:site_id>/", rule_views.site_rules, name="site_pay_rules"),
+    path("day-extras/<int:site_id>/<isodate:date>/", rule_views.day_extras, name="day_extras"),
+    path(
+        "day-extras/piece-work/<int:pk>/delete/",
+        rule_views.piece_work_delete,
+        name="piece_work_delete",
+    ),
+    path("day-extras/bonuses/<int:pk>/delete/", rule_views.bonus_delete, name="bonus_delete"),
 ]

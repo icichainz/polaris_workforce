@@ -7,6 +7,8 @@
 {% block page_status %}<span id="sheet-status">{% include "payroll/_sheet_status.html" with sheet=sheet size="lg" only %}</span>{% endblock %}
 {% block page_meta %}{{ sheet.site.name }} · {{ sheet.date|date:_("l j F Y") }}{% if sheet.day.approved_at %} · {% blocktranslate with name=sheet.day.approved_by.get_full_name|default:sheet.day.approved_by time=sheet.day.approved_at|time:"H:i" %}Day approved by {{ name }} {{ time }}{% endblocktranslate %}{% endif %}{% for period in sheet.periods %}{% if period.start_date != period.end_date %} · {{ period.get_frequency_display }} {{ period|period_label }}{% endif %}{% endfor %}{% endblock %}
 {% block page_actions %}
+  {% url "payroll:day_extras" sheet.site.pk sheet.date|date:"Y-m-d" as extras_url %}{% translate "Day extras" as label %}
+  {% include "components/button.html" with label=label href=extras_url icon="plus" only %}
   {% if can_lock %}{% translate "Close & lock sheet" as label %}{% include "components/button.html" with label=label href="#close" variant="dark" only %}{% endif %}
 {% endblock %}
 
@@ -41,12 +43,13 @@
     </div>
     {% if rows %}
     <div class="overflow-x-auto">
-      <table class="w-full min-w-[980px] border-collapse text-sm">
+      <table class="w-full min-w-[1080px] border-collapse text-sm">
         <thead>
           <tr class="bg-subtle text-left">
             <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
             <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worked" %}</th>
             <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Gross" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Deductions" %}</th>
             <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Advance" %}</th>
             <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Adjustment" %}</th>
             <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Net to pay" %}</th>
