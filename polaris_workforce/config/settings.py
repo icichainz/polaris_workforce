@@ -73,6 +73,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.core.middleware.CurrentCompanyMiddleware",
     "apps.core.middleware.UserLanguageMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -91,6 +92,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.core.context_processors.nav_badges",
+                "apps.core.context_processors.company",
             ],
         },
     },
@@ -129,6 +131,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Authentication
 
 AUTH_USER_MODEL = "accounts.User"
+
+# Users of an inactive company cannot sign in (and their sessions stop working).
+AUTHENTICATION_BACKENDS = ["apps.accounts.backends.CompanyModelBackend"]
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

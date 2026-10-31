@@ -1,4 +1,9 @@
-"""factory_boy factories for every model, with realistic defaults (XOF, daily pay)."""
+"""factory_boy factories for every model, with realistic defaults (XOF, daily pay).
+
+Records belong to the current company (``apps.core.tenancy``; the autouse fixture in
+``conftest.py`` makes a default one current). Build another company's data inside
+``with use_company(CompanyFactory()):``, or pass ``company=``.
+"""
 
 import datetime
 import uuid
@@ -12,7 +17,8 @@ from factory import fuzzy
 from apps.accounts.models import ForemanDevice
 from apps.attendance.models import AttendanceCorrection, AttendanceDay, AttendanceRecord
 from apps.core.choices import PaymentMethod, PayType, ProofType
-from apps.core.models import AuditLog, CompanySettings
+from apps.core.models import AuditLog, Company, CompanySettings
+from apps.core.tenancy import current_company
 from apps.payroll.models import (
     Advance,
     AdvanceRepayment,
@@ -33,6 +39,19 @@ DAILY_RATES = [3500, 4000, 4500, 5000, 5500, 6000, 7000, 8000]
 TRADES = ["Mason", "Carpenter", "Steel fixer", "Labourer", "Electrician", "Plumber", "Painter"]
 
 
+# --- core: companies ---------------------------------------------------------------------
+
+
+class CompanyFactory(factory.django.DjangoModelFactory):
+    """A company (without its settings row: ``CompanySettings.load(company)`` makes it)."""
+
+    class Meta:
+        model = Company
+
+    name = factory.Sequence(lambda n: f"Company {n + 1}")
+    slug = factory.Sequence(lambda n: f"company-{n + 1}")
+
+
 # --- accounts ---------------------------------------------------------------------------
 
 
@@ -42,6 +61,7 @@ class UserFactory(factory.django.DjangoModelFactory):
         django_get_or_create = ("username",)
         skip_postgeneration_save = True
 
+    company = factory.LazyFunction(current_company)
     username = factory.Sequence(lambda n: f"user{n}")
     first_name = factory.Faker("first_name", locale="fr_FR")
     last_name = factory.Faker("last_name", locale="fr_FR")
@@ -60,6 +80,17 @@ class SiteManagerFactory(UserFactory):
 
 
 class AdminUserFactory(UserFactory):
+    """An admin of the current company (a superuser who belongs to it)."""
+
+    role = User.Role.ADMIN
+    is_staff = True
+    is_superuser = True
+
+
+class PlatformAdminFactory(UserFactory):
+    """A platform admin: a superuser without a company (switches between companies)."""
+
+    company = None
     role = User.Role.ADMIN
     is_staff = True
     is_superuser = True
@@ -81,11 +112,13 @@ class ForemanDeviceFactory(factory.django.DjangoModelFactory):
 
 
 class CompanySettingsFactory(factory.django.DjangoModelFactory):
+    """The current company's settings (an existing row is returned unchanged)."""
+
     class Meta:
         model = CompanySettings
-        django_get_or_create = ("id",)
+        django_get_or_create = ("company",)
 
-    id = CompanySettings.SINGLETON_PK
+    company = factory.LazyFunction(current_company)
     company_name = "Polaris Construction"
     country = "Togo"
     currency = "XOF"
@@ -97,6 +130,7 @@ class AuditLogFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = AuditLog
 
+    company = factory.LazyFunction(current_company)
     actor = factory.SubFactory(SiteManagerFactory)
     action = "attendance.approve"
     reason = ""
@@ -108,8 +142,9 @@ class AuditLogFactory(factory.django.DjangoModelFactory):
 class TradeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Trade
-        django_get_or_create = ("name",)
+        django_get_or_create = ("company", "name")
 
+    company = factory.LazyFunction(current_company)
     name = factory.Iterator(TRADES)
 
 
@@ -117,13 +152,14 @@ class WorkerFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Worker
 
+    company = factory.LazyFunction(current_company)
     number = factory.Sequence(lambda n: f"W-{n + 1:04d}")
     first_name = factory.Faker("first_name", locale="fr_FR")
     last_name = factory.Faker("last_name", locale="fr_FR")
     phone = factory.Sequence(lambda n: f"+228 91 {n // 100 % 100:02d} {n % 100:02d} 00")
     id_document_type = Worker.IdDocumentType.NATIONAL_ID
     id_document_number = factory.Sequence(lambda n: f"TG{n:08d}")
-    trade = factory.SubFactory(TradeFactory)
+    trade = factory.SubFactory(TradeFactory, company=factory.SelfAttribute("..company"))
     is_active = True
 
 
@@ -145,11 +181,12 @@ class SiteFactory(factory.django.DjangoModelFactory):
         model = Site
         skip_postgeneration_save = True
 
+    company = factory.LazyFunction(current_company)
     name = factory.Sequence(lambda n: f"Site {n + 1} · Résidence Agoè")
     address = "Lomé, Togo"
     status = Site.Status.ACTIVE
     started_on = datetime.date(2026, 3, 1)
-    manager = factory.SubFactory(SiteManagerFactory)
+    manager = factory.SubFactory(SiteManagerFactory, company=factory.SelfAttribute("..company"))
     labour_budget = 25_000_000
 
     @factory.post_generation

@@ -27,7 +27,7 @@ SITE_OVERRIDABLE: frozenset[str] = frozenset(
 # Names that a Worker may override (Worker has a nullable field with the same name).
 WORKER_OVERRIDABLE: frozenset[str] = frozenset({"payment_method", "pay_frequency"})
 
-_EXCLUDED_FIELDS = {"id", "created_at", "updated_at"}
+_EXCLUDED_FIELDS = {"id", "company", "created_at", "updated_at"}
 
 
 def setting_names() -> frozenset[str]:
@@ -47,8 +47,9 @@ def resolve_setting(name: str, site=None, worker=None, *, company: CompanySettin
     """Return the effective value of setting ``name``.
 
     The worker override wins if set, then the site override, then the company value.
-    ``company`` may be passed to avoid reloading ``CompanySettings`` in a loop.
-    Unknown names raise ``KeyError``.
+    ``company`` may be passed to avoid reloading ``CompanySettings`` in a loop; without
+    it, the settings of the site's (or worker's) company are read, else the current
+    company's. Unknown names raise ``KeyError``.
     """
     if name not in setting_names():
         raise KeyError(name)
@@ -61,5 +62,6 @@ def resolve_setting(name: str, site=None, worker=None, *, company: CompanySettin
         if _is_set(value):
             return value
     if company is None:
-        company = CompanySettings.load()
+        owner = getattr(site, "company_id", None) or getattr(worker, "company_id", None)
+        company = CompanySettings.load(owner)
     return getattr(company, name)

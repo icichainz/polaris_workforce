@@ -72,7 +72,7 @@ class PayPeriod(TimeStampedModel):
     def save(self, *args, **kwargs):
         # Snapshot the company currency so later settings changes never re-price a period.
         if not self.currency:
-            company = CompanySettings.load()
+            company = CompanySettings.load(self.site.company_id)
             self.currency = company.currency
             self.currency_decimals = company.currency_decimals
         super().save(*args, **kwargs)

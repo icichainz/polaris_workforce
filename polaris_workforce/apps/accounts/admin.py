@@ -4,7 +4,13 @@ from django.utils.translation import gettext_lazy as _
 
 from .models import ForemanDevice, User
 
-POLARIS_FIELDSET = (_("Polaris Workforce"), {"fields": ("role", "phone", "language")})
+POLARIS_FIELDSET = (
+    _("Polaris Workforce"),
+    {
+        "fields": ("company", "role", "phone", "language"),
+        "description": _("Leave the company empty only for platform admins (superusers)."),
+    },
+)
 # The PIN itself is set on the Users screen; here only the lockout can be cleared.
 PIN_FIELDSET = (_("Phone PIN"), {"fields": ("pin_failed_attempts", "pin_locked_until")})
 
@@ -19,8 +25,9 @@ class ForemanDeviceInline(admin.TabularInline):
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ("username", "first_name", "last_name", "role", "phone", "is_active")
-    list_filter = ("role", "is_active", "is_staff")
+    list_display = ("username", "first_name", "last_name", "company", "role", "phone", "is_active")
+    list_filter = ("company", "role", "is_active", "is_staff", "is_superuser")
+    list_select_related = ("company",)
     search_fields = ("username", "first_name", "last_name", "email", "phone")
     fieldsets = BaseUserAdmin.fieldsets + (POLARIS_FIELDSET, PIN_FIELDSET)
     add_fieldsets = BaseUserAdmin.add_fieldsets + (POLARIS_FIELDSET,)

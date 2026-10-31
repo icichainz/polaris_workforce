@@ -5,6 +5,7 @@ from django.core.validators import FileExtensionValidator
 from django.utils.translation import gettext_lazy as _
 
 from apps.core.choices import PayFrequency, PaymentMethod, PayType
+from apps.core.tenancy import current_company
 from apps.core.validators import validate_file_size
 from apps.worksites.models import Site
 
@@ -92,6 +93,7 @@ class WorkerForm(forms.ModelForm):
         self.today = today
         self.fields["site"].queryset = sites
         self.fields["rate"].decimals = decimals
+        self.fields["trade"].queryset = Trade.objects.filter(company=current_company())
         self.fields["trade"].required = False
         self.fields["trade"].empty_label = _("No trade")
         self.fields["id_document_number"].label = _("ID number")
@@ -129,8 +131,9 @@ class WorkerForm(forms.ModelForm):
         """The trade to save: an existing one, or a new one typed in."""
         name = self.cleaned_data.get("new_trade")
         if name:
-            trade = Trade.objects.filter(name__iexact=name).first()
-            return trade or Trade.objects.create(name=name)
+            trades = Trade.objects.filter(company=current_company())
+            trade = trades.filter(name__iexact=name).first()
+            return trade or Trade.objects.create(company=current_company(), name=name)
         return self.cleaned_data.get("trade")
 
 
@@ -148,10 +151,11 @@ class WorkerFilterForm(forms.Form):
         label=_("Site"), queryset=Site.objects.none(), required=False, empty_label=_("All sites")
     )
     trade = forms.ModelChoiceField(
-        label=_("Trade"), queryset=Trade.objects.all(), required=False, empty_label=_("All trades")
+        label=_("Trade"), queryset=Trade.objects.none(), required=False, empty_label=_("All trades")
     )
     status = forms.ChoiceField(label=_("Status"), choices=STATUS_CHOICES, required=False)
 
     def __init__(self, *args, sites, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["site"].queryset = sites
+        self.fields["trade"].queryset = Trade.objects.filter(company=current_company())

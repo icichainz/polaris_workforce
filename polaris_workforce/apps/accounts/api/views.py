@@ -202,7 +202,7 @@ class PinLoginView(APIView):
             raise PinRejected(_("Wrong PIN."), details=details) from exc
         except services.SignInRefused as exc:
             raise PinRejected(_("Wrong phone number or PIN.")) from exc
-        company = CompanySettings.load()
+        company = CompanySettings.load(result.user.company)
         data = {
             "token": result.token,
             "device": {

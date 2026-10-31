@@ -5,6 +5,7 @@ import datetime
 from django import forms
 from django.utils.translation import gettext_lazy as _
 
+from apps.core.tenancy import current_company
 from apps.workers.models import Trade
 from apps.worksites.models import Site
 
@@ -34,13 +35,14 @@ class ReportFilterForm(forms.Form):
         label=_("Site"), queryset=Site.objects.none(), required=False, empty_label=_("All sites")
     )
     trade = forms.ModelChoiceField(
-        label=_("Trade"), queryset=Trade.objects.all(), required=False, empty_label=_("All trades")
+        label=_("Trade"), queryset=Trade.objects.none(), required=False, empty_label=_("All trades")
     )
 
     def __init__(self, *args, sites, today: datetime.date, **kwargs):
         super().__init__(*args, **kwargs)
         self.today = today
         self.fields["site"].queryset = sites
+        self.fields["trade"].queryset = Trade.objects.filter(company=current_company())
 
     def clean(self):
         cleaned = super().clean()

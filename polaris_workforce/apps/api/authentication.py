@@ -8,7 +8,9 @@ server answers with a random device token, stores only its SHA-256 hash on a
 
 Revoking the device (``POST /auth/logout`` or the Users screen) sets ``revoked_at``;
 the token then gets ``401 not_authenticated``. So does a token unused for
-``DEVICE_TOKEN_IDLE_DAYS`` days (default 30, measured on ``last_seen_at``).
+``DEVICE_TOKEN_IDLE_DAYS`` days (default 30, measured on ``last_seen_at``), and the token
+of a user whose company is inactive. The token's user then decides the current company
+of the request (``apps.core.tenancy``).
 """
 
 import hashlib
@@ -77,12 +79,15 @@ class DeviceTokenAuthentication(BaseAuthentication):
     def authenticate_token(self, token: str):
         Device = get_device_model()
         try:
-            device = Device.objects.select_related("user").get(
+            device = Device.objects.select_related("user__company").get(
                 token_hash=hash_device_token(token), revoked_at__isnull=True
             )
         except Device.DoesNotExist as exc:
             raise exceptions.AuthenticationFailed(_("Invalid or revoked device token.")) from exc
         if not device.user.is_active:
+            raise exceptions.AuthenticationFailed(_("This user account is disabled."))
+        company = device.user.company
+        if company is None or not company.is_active:
             raise exceptions.AuthenticationFailed(_("This user account is disabled."))
         if is_idle_expired(device):
             raise exceptions.AuthenticationFailed(

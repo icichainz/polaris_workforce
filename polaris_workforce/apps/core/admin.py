@@ -1,9 +1,40 @@
+"""Django admin: platform admins only.
+
+The admin shows every company's data, so only platform admins (superusers without a
+company, ``apps.core.tenancy``) may open it. Company admins — including superusers who
+belong to a company — use the office screens, which are scoped to their company.
+"""
+
 from django.contrib import admin
-from django.shortcuts import redirect
-from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
-from .models import AuditLog, CompanySettings
+from . import services
+from .models import AuditLog, Company, CompanySettings
+from .tenancy import is_platform_admin
+
+
+def _platform_admins_only(request) -> bool:
+    user = request.user
+    return user.is_active and user.is_staff and is_platform_admin(user)
+
+
+admin.site.has_permission = _platform_admins_only
+
+
+@admin.register(Company)
+class CompanyAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "is_active", "created_at")
+    list_filter = ("is_active",)
+    search_fields = ("name", "slug")
+    readonly_fields = ("created_at",)
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if not change:
+            services.set_up_company(obj, actor=request.user)
+
+    def has_delete_permission(self, request, obj=None):
+        return False  # a company keeps its records; make it inactive instead
 
 
 @admin.register(CompanySettings)
@@ -13,6 +44,7 @@ class CompanySettingsAdmin(admin.ModelAdmin):
             _("Company"),
             {
                 "fields": (
+                    "company",
                     "company_name",
                     "country",
                     "currency",
@@ -58,28 +90,34 @@ class CompanySettingsAdmin(admin.ModelAdmin):
         ),
         (_("Advances"), {"fields": ("advance_limit_percent", "default_advance_deduction")}),
     )
-    list_display = ("__str__", "currency", "currency_decimals", "pay_frequency", "updated_at")
+    list_display = (
+        "__str__",
+        "company",
+        "currency",
+        "currency_decimals",
+        "pay_frequency",
+        "updated_at",
+    )
+    list_select_related = ("company",)
+    readonly_fields = ("company",)
 
+    # One row per company, created with the company.
     def has_add_permission(self, request):
         return False
 
     def has_delete_permission(self, request, obj=None):
         return False
 
-    def changelist_view(self, request, extra_context=None):
-        # There is only one row: go straight to it.
-        obj = CompanySettings.load()
-        return redirect(reverse("admin:core_companysettings_change", args=[obj.pk]))
-
 
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "actor", "action", "content_type", "object_id")
-    list_filter = ("action", "content_type")
+    list_display = ("created_at", "company", "actor", "action", "content_type", "object_id")
+    list_filter = ("company", "action", "content_type")
     search_fields = ("action", "object_id", "reason", "actor__username")
     date_hierarchy = "created_at"
-    list_select_related = ("actor", "content_type")
+    list_select_related = ("company", "actor", "content_type")
     readonly_fields = (
+        "company",
         "actor",
         "action",
         "content_type",

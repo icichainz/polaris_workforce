@@ -14,11 +14,12 @@ from django.db.models import Exists, OuterRef, Q, Sum
 from django.db.models.functions import Length
 from django.utils.translation import gettext as _
 
-from apps.accounts.permissions import Role, has_role, scoped_sites
+from apps.accounts.permissions import Role, company_workers, has_role, scoped_sites
 from apps.attendance.models import AttendanceRecord
 from apps.core import dates
 from apps.core.choices import PayType, ProofType
 from apps.core.models import AuditLog
+from apps.core.tenancy import current_company
 from apps.payroll.models import Advance, PayLine, Payment, PayPeriod
 from apps.worksites import services as site_services
 from apps.worksites.models import Site, SiteAssignment
@@ -48,15 +49,17 @@ WORKER_FIELDS = (
 # --- numbering --------------------------------------------------------------------------
 
 
-def next_worker_number() -> str:
-    """The next free number (``W-0001``, ``W-0002``…, wider after ``W-9999``).
+def next_worker_number(company=None) -> str:
+    """The next free number in the company (``W-0001``, ``W-0002``…, wider after
+    ``W-9999``); each company has its own sequence. Default: the current company.
 
     Call it inside the transaction that saves the worker: with SQLite's IMMEDIATE
     transactions the write lock is held from the start, so two creates can't both read
     the same last number, and the unique constraint catches anything else.
     """
+    company = company or current_company()
     numbers = (
-        Worker.objects.filter(number__startswith=NUMBER_PREFIX)
+        Worker.objects.filter(company=company, number__startswith=NUMBER_PREFIX)
         .order_by(Length("number").desc(), "-number")
         .values_list("number", flat=True)
     )
@@ -81,11 +84,13 @@ def create_worker(
     effective_from: datetime.date | None = None,
     **fields,
 ) -> Worker:
-    """Create a worker with the next number, then assign and give a first rate if given."""
+    """Create a worker of the current company (or ``fields["company"]``) with the next
+    number, then assign and give a first rate if given."""
+    company = fields.pop("company", None) or current_company()
     for attempt in range(3):
         try:
             with transaction.atomic():
-                worker = Worker(number=next_worker_number(), **fields)
+                worker = Worker(company=company, number=next_worker_number(company), **fields)
                 worker.full_clean(exclude=["photo"])
                 worker.save()
                 AuditLog.record(
@@ -311,16 +316,17 @@ def advances_owed(workers) -> dict[int, int]:
 def scoped_workers(user, today: datetime.date):
     """The workers this user may see.
 
-    Admins and accountants see everyone. Site managers and foremen see workers with an
-    assignment on one of their sites that has not ended before ``today``.
+    Admins and accountants see everyone in their company. Site managers and foremen see
+    workers with an assignment on one of their sites that has not ended before ``today``.
     """
+    workers = company_workers(user)
     if has_role(user, Role.ADMIN, Role.ACCOUNTANT):
-        return Worker.objects.all()
+        return workers
     sites = scoped_sites(user)
     on_my_sites = SiteAssignment.objects.filter(worker=OuterRef("pk"), site__in=sites).filter(
         Q(end_date__isnull=True) | Q(end_date__gte=today)
     )
-    return Worker.objects.filter(Exists(on_my_sites))
+    return workers.filter(Exists(on_my_sites))
 
 
 def can_edit_worker(user, worker: Worker | None, today: datetime.date) -> bool:
@@ -336,9 +342,7 @@ def can_edit_worker(user, worker: Worker | None, today: datetime.date) -> bool:
 
 def assignable_sites(user):
     """Sites this user may put workers on."""
-    if has_role(user, Role.ADMIN):
-        return Site.objects.exclude(status=Site.Status.COMPLETED)
-    if has_role(user, Role.SITE_MANAGER):
+    if has_role(user, Role.ADMIN, Role.SITE_MANAGER):
         return scoped_sites(user).exclude(status=Site.Status.COMPLETED)
     return Site.objects.none()
 

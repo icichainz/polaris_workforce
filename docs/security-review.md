@@ -39,6 +39,50 @@ The items of the H-sec brief; the others keep the status below.
 | L5 | documented | `docs/api/README.md` → Idempotency: drop acknowledged outbox writes; an old batch replayed after a correction can get `423` (state stays right). |
 | L6 | fixed | The worker profile lists, totals and links only payments of sites the viewer sees. |
 
+## Multi-company isolation (Wave 4, MC — branch `feat/multi-company`)
+
+One installation serves several companies. Every record belongs to one `Company`:
+directly (`company` on `User`, `Site`, `Worker`, `Trade`, `AuditLog`; one
+`CompanySettings` row per company) or through one of those (days, periods, cash issues and
+adjustments through their site; rates, advances and assignments through their worker;
+devices through their user). The rules, in `apps/core/tenancy.py`:
+
+- **One current company per request, command or test** (a context variable).
+  `CurrentCompanyMiddleware` makes it the company of `request.user`, read when first
+  needed, so a device token (authenticated later by DRF), a browser session and
+  `force_authenticate` all count; reset when the response is ready. Commands and scripts
+  use `with use_company(company):`. `CompanySettings.load()`, `company_today()` and new
+  users/sites/workers/trades use it; without one, `NoCurrentCompany` is raised (and the
+  database refuses a site, worker or trade without a company, or a non-superuser without
+  one: `user_has_company_unless_platform_admin`).
+- **Scoping starts from the company:** `scoped_sites`, `company_workers` and
+  `company_users` (`apps.accounts.permissions`) filter by the user's company before any
+  role or site rule; worker lists, trades, the Users screen, the audit log, reports,
+  exports, files and API lookups build on them. An object of another company answers
+  403/404 like an object of another site.
+- **Phones are unique across companies** (Users form and `save_user`), so
+  `POST /auth/pin/` needs no company code; the sign-in then works inside the user's
+  company. Users without a company (platform admins) cannot use the phone.
+- **Inactive company:** its users cannot sign in (office backend `CompanyModelBackend`,
+  PIN, device token → 401) and open sessions end.
+- **Platform admins** (superusers without a company) pick a company in the sidebar
+  switcher (kept in the session) and act as that company's admin; the Companies page and
+  the switcher are theirs only (403 otherwise). A company user's session key is ignored.
+- **Django admin is platform-admin only** (`admin.site.has_permission`): it shows every
+  company. Company admins — including superusers who belong to a company — use the office
+  screens. `/files/media/<name>` gives a company admin only their company's files.
+- Worker numbers (`W-0001…`) and trade names are unique per company; usernames stay
+  unique across the installation (a taken username is refused whatever its company).
+
+| Test | Covers |
+| --- | --- |
+| `tests/test_multi_company.py` | Two companies with the same structure: A's admin, accountant, manager and foreman against every office URL and API endpoint of B (the classification of `test_e2e_isolation.py`), nothing changes; no B row in lists, counts, dashboard, reports, CSV, audit log, `/me/`, `/sync/`; files 404; per-company numbering and trades; phone uniqueness; cross-company assignment refused; inactive company; platform admin switcher and Companies page; no current company fails loudly; the data migration on a pre-tenancy database |
+
+Open: a username taken in another company is refused with Django's usual message
+("already exists"), which tells an admin that the name is used somewhere (low; usernames
+are not secret). Client UUIDs are global: replaying another company's `client_uuid`
+answers `409 conflict` without data, as across sites.
+
 ## What was checked
 
 ### Site scoping — pass

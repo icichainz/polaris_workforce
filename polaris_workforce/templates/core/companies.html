@@ -1,0 +1,54 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Companies" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% translate "Platform administration" %}{% endblock %}
+{% block page_title %}{% translate "Companies" %}{% endblock %}
+{% block page_meta %}{% translate "Each company has its own sites, people, settings and pay. Pick the one to view; everything else on the dashboard shows that company only." %}{% endblock %}
+
+{% block content %}
+{% if companies %}
+<div class="overflow-x-auto rounded-control border border-line bg-white">
+  <table class="w-full min-w-[560px] border-collapse text-sm">
+    <thead>
+      <tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Company" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Short name" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Status" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel"><span class="sr-only">{% translate "View" %}</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for company in companies %}
+      <tr class="border-t border-line-soft{% if current and company.pk == current.pk %} bg-amber-tint{% endif %}">
+        <td class="px-4 py-3 font-semibold">{{ company.name }}</td>
+        <td class="px-4 py-3"><code class="font-mono text-[13px]">{{ company.slug }}</code></td>
+        <td class="px-4 py-3">{% if company.is_active %}{% translate "Active" %}{% else %}{% translate "Inactive" %}{% endif %}</td>
+        <td class="px-4 py-3 text-right">
+          {% if current and company.pk == current.pk %}
+          <span class="text-[13px] text-steel">{% translate "Viewing" %}</span>
+          {% else %}
+          <form method="post" action="{% url 'core:company_switch' %}">
+            {% csrf_token %}
+            <input type="hidden" name="company" value="{{ company.pk }}">
+            {% translate "View" as view_label %}{% include "components/button.html" with label=view_label type="submit" only %}
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  {% translate "No companies yet" as empty_title %}
+  {% translate "Add the first company below, then set it up in Settings." as empty_message %}
+  {% include "components/empty_state.html" with icon="sites" title=empty_title message=empty_message only %}
+{% endif %}
+
+<form method="post" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-white px-4 py-3.5">
+  {% csrf_token %}
+  <div class="w-full sm:w-80">{% include "components/field.html" with field=form.name %}</div>
+  {% translate "Add company" as add_label %}{% include "components/button.html" with label=add_label type="submit" variant="primary" only %}
+</form>
+{% endblock %}

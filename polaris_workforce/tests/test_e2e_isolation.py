@@ -39,6 +39,7 @@ SECRET = "Bravo"  # appears in site B's name, its worker's and its manager's nam
 #   "admin":    admin-only screen → 403 for site A's manager and foreman
 #   "public":   not site data (sign-in, language, password screens)
 #   "debug":    only served with DEBUG on
+#   "platform": platform admins only (companies); checked in test_multi_company.py
 OFFICE = {
     "dashboard:home": "list",
     "dashboard:reports": "list",
@@ -49,6 +50,8 @@ OFFICE = {
     "core:worker_photo": "b_get",
     "core:payment_proof": "b_get",
     "core:media_file": "admin",
+    "core:companies": "platform",
+    "core:company_switch": "platform",
     "attendance:approvals": "list",
     "attendance:decide": "b_post",
     "payroll:cash_sheets": "list",
@@ -318,7 +321,7 @@ def test_checks_cover_every_office_url(world):
         | set(_list_pages(ids))
         | set(_admin_urls(ids))
     )
-    wanted = {name for name, kind in OFFICE.items() if kind not in ("public", "debug")}
+    wanted = {name for name, kind in OFFICE.items() if kind not in ("public", "debug", "platform")}
     assert wanted - covered == set()
 
 

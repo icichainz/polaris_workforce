@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Polaris Workforce\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-31 17:34+0000\n"
+"POT-Creation-Date: 2026-10-31 19:21+0000\n"
 "PO-Revision-Date: 2026-10-31 18:00+0000\n"
 "Last-Translator: Polaris Workforce\n"
 "Language-Team: French\n"
@@ -15,11 +15,15 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % "
 "1000000 == 0 ? 1 : 2;\n"
 
-#: apps/accounts/admin.py:7
+#: apps/accounts/admin.py:8
 msgid "Polaris Workforce"
 msgstr "Polaris Workforce"
 
-#: apps/accounts/admin.py:9
+#: apps/accounts/admin.py:11
+msgid "Leave the company empty only for platform admins (superusers)."
+msgstr "Ne laissez l’entreprise vide que pour les administrateurs de la plateforme (superutilisateurs)."
+
+#: apps/accounts/admin.py:15
 msgid "Phone PIN"
 msgstr "Code PIN du téléphone"
 
@@ -39,30 +43,30 @@ msgstr "Numéro de téléphone ou code PIN incorrect."
 msgid "Accounts"
 msgstr "Comptes"
 
-#: apps/accounts/forms.py:25
+#: apps/accounts/forms.py:26
 msgid "Sites they manage"
 msgstr "Chantiers dont il est conducteur de travaux"
 
-#: apps/accounts/forms.py:28
+#: apps/accounts/forms.py:29
 msgid ""
 "For site managers. A site has one manager; choosing it here replaces it."
 msgstr ""
 "Pour les conducteurs de travaux. Un chantier a un seul conducteur de "
 "travaux ; le choisir ici remplace l’actuel."
 
-#: apps/accounts/forms.py:31
+#: apps/accounts/forms.py:32
 msgid "Sites they are foreman on"
 msgstr "Chantiers dont il est chef d’équipe"
 
-#: apps/accounts/forms.py:34
+#: apps/accounts/forms.py:35
 msgid "For foremen."
 msgstr "Pour les chefs d’équipe."
 
-#: apps/accounts/forms.py:37
+#: apps/accounts/forms.py:38
 msgid "Temporary password"
 msgstr "Mot de passe temporaire"
 
-#: apps/accounts/forms.py:42
+#: apps/accounts/forms.py:43
 msgid ""
 "Office roles sign in with a password. Leave empty and they can use “Forgot?” "
 "on the sign-in page."
@@ -70,67 +74,67 @@ msgstr ""
 "Les rôles du bureau se connectent avec un mot de passe. Laissez vide : la "
 "personne pourra utiliser « Oublié ? » sur la page de connexion."
 
-#: apps/accounts/forms.py:59
+#: apps/accounts/forms.py:60
 msgid "Active (may sign in)"
 msgstr "Actif (peut se connecter)"
 
-#: apps/accounts/forms.py:70
+#: apps/accounts/forms.py:72
 msgid "Foremen sign in on the phone with this number."
 msgstr "Les chefs d’équipe se connectent sur le téléphone avec ce numéro."
 
-#: apps/accounts/forms.py:71
+#: apps/accounts/forms.py:73
 msgid "Company language"
 msgstr "Langue de l’entreprise"
 
-#: apps/accounts/forms.py:73
+#: apps/accounts/forms.py:75
 msgid "Used to sign in to the office. Letters, digits and @ . + - _ only."
 msgstr ""
 "Sert à se connecter au bureau. Lettres, chiffres et @ . + - _ uniquement."
 
-#: apps/accounts/forms.py:80
+#: apps/accounts/forms.py:82
 msgid "A disabled user cannot sign in, in the office or on the phone."
 msgstr ""
 "Un utilisateur désactivé ne peut plus se connecter, ni au bureau ni sur le "
 "téléphone."
 
-#: apps/accounts/forms.py:96
+#: apps/accounts/forms.py:99
 msgid "Another user already has this phone number."
 msgstr "Un autre utilisateur a déjà ce numéro de téléphone."
 
-#: apps/accounts/forms.py:103
+#: apps/accounts/forms.py:106
 msgid "Foremen need a phone number to sign in."
 msgstr ""
 "Les chefs d’équipe ont besoin d’un numéro de téléphone pour se connecter."
 
-#: apps/accounts/forms.py:106
+#: apps/accounts/forms.py:109
 msgid "You cannot change your own role."
 msgstr "Vous ne pouvez pas modifier votre propre rôle."
 
-#: apps/accounts/forms.py:108
+#: apps/accounts/forms.py:111
 msgid "You cannot disable your own account."
 msgstr "Vous ne pouvez pas désactiver votre propre compte."
 
-#: apps/accounts/forms.py:127
+#: apps/accounts/forms.py:130
 msgid "New PIN"
 msgstr "Nouveau code PIN"
 
-#: apps/accounts/forms.py:131
+#: apps/accounts/forms.py:134
 msgid "Enter exactly 4 digits."
 msgstr "Saisissez exactement 4 chiffres."
 
-#: apps/accounts/forms.py:142
+#: apps/accounts/forms.py:145
 msgid "Repeat the PIN"
 msgstr "Répétez le code PIN"
 
-#: apps/accounts/forms.py:157
+#: apps/accounts/forms.py:160
 msgid "Too easy to guess: avoid 1111 or 1234."
 msgstr "Trop facile à deviner : évitez 1111 ou 1234."
 
-#: apps/accounts/forms.py:163
+#: apps/accounts/forms.py:166
 msgid "The two PINs are different."
 msgstr "Les deux codes PIN sont différents."
 
-#: apps/accounts/forms.py:197
+#: apps/accounts/forms.py:200
 #, python-format
 msgid "Too many failed sign-in attempts. Try again in %(minutes)d minute."
 msgid_plural ""
@@ -142,149 +146,153 @@ msgstr[1] ""
 msgstr[2] ""
 "Trop de tentatives de connexion échouées. Réessayez dans %(minutes)d minutes."
 
-#: apps/accounts/models.py:21 apps/api/enums.py:31
+#: apps/accounts/models.py:27 apps/api/enums.py:31
 msgid "Admin"
 msgstr "Administrateur"
 
-#: apps/accounts/models.py:22 apps/api/enums.py:32
+#: apps/accounts/models.py:28 apps/api/enums.py:32
 #: templates/worksites/detail.html:64 templates/worksites/list.html:38
 msgid "Site manager"
 msgstr "Conducteur de travaux"
 
-#: apps/accounts/models.py:23 apps/api/enums.py:33
+#: apps/accounts/models.py:29 apps/api/enums.py:33
 #: templates/worksites/attendance.html:18 templates/worksites/detail.html:66
 #: templates/worksites/detail.html:68 templates/worksites/list.html:39
 msgid "Foreman"
 msgstr "Chef d’équipe"
 
-#: apps/accounts/models.py:24 apps/api/enums.py:34
+#: apps/accounts/models.py:30 apps/api/enums.py:34
 msgid "Accountant"
 msgstr "Comptable"
 
-#: apps/accounts/models.py:26
+#: apps/accounts/models.py:32
 msgid "role"
 msgstr "rôle"
 
-#: apps/accounts/models.py:27 apps/workers/models.py:40
+#: apps/accounts/models.py:33 apps/workers/models.py:47
 msgid "phone"
 msgstr "téléphone"
 
-#: apps/accounts/models.py:29 apps/core/models.py:114
+#: apps/accounts/models.py:35 apps/core/models.py:193
 msgid "language"
 msgstr "langue"
 
-#: apps/accounts/models.py:34
+#: apps/accounts/models.py:40
 msgid "PIN hash"
 msgstr "empreinte du code PIN"
 
-#: apps/accounts/models.py:35
+#: apps/accounts/models.py:41
 msgid "failed PIN attempts"
 msgstr "tentatives de code PIN échouées"
 
-#: apps/accounts/models.py:36
+#: apps/accounts/models.py:42
 msgid "PIN locked until"
 msgstr "code PIN bloqué jusqu’à"
 
-#: apps/accounts/models.py:73
+#: apps/accounts/models.py:51
+msgid "Choose a company: only platform admins (superusers) have none."
+msgstr "Choisissez une entreprise : seuls les administrateurs de la plateforme (superutilisateurs) n’en ont pas."
+
+#: apps/accounts/models.py:91
 msgid "user"
 msgstr "utilisateur"
 
-#: apps/accounts/models.py:75
+#: apps/accounts/models.py:93
 msgid "device ID"
 msgstr "identifiant de l’appareil"
 
-#: apps/accounts/models.py:76
+#: apps/accounts/models.py:94
 msgid "device name"
 msgstr "nom de l’appareil"
 
-#: apps/accounts/models.py:77
+#: apps/accounts/models.py:95
 msgid "token hash"
 msgstr "empreinte du jeton"
 
-#: apps/accounts/models.py:78
+#: apps/accounts/models.py:96
 msgid "last seen at"
 msgstr "vu pour la dernière fois le"
 
-#: apps/accounts/models.py:79
+#: apps/accounts/models.py:97
 msgid "revoked at"
 msgstr "révoqué le"
 
-#: apps/accounts/models.py:80 apps/attendance/models.py:157
-#: apps/core/models.py:30 apps/core/models.py:61 apps/payroll/models.py:212
-#: apps/payroll/models.py:416
+#: apps/accounts/models.py:98 apps/attendance/models.py:157
+#: apps/core/models.py:32 apps/core/models.py:50 apps/core/models.py:119
+#: apps/payroll/models.py:212 apps/payroll/models.py:416
 msgid "created at"
 msgstr "créé le"
 
-#: apps/accounts/models.py:83
+#: apps/accounts/models.py:101
 msgid "foreman device"
 msgstr "appareil du chef d’équipe"
 
-#: apps/accounts/models.py:84
+#: apps/accounts/models.py:102
 msgid "foreman devices"
 msgstr "appareils des chefs d’équipe"
 
-#: apps/accounts/permissions.py:99
+#: apps/accounts/permissions.py:133
 msgid "Take roll call"
 msgstr "Faire l’appel"
 
-#: apps/accounts/permissions.py:103
+#: apps/accounts/permissions.py:137
 msgid "Correct a submitted day (with reason)"
 msgstr "Corriger une journée envoyée (avec motif)"
 
-#: apps/accounts/permissions.py:106
+#: apps/accounts/permissions.py:140
 msgid "Approve days"
 msgstr "Valider les journées"
 
-#: apps/accounts/permissions.py:108
+#: apps/accounts/permissions.py:142
 msgid "Pay out cash & record proof"
 msgstr "Payer en espèces et enregistrer la preuve"
 
-#: apps/accounts/permissions.py:111
+#: apps/accounts/permissions.py:145
 msgid "Give advances"
 msgstr "Accorder des avances"
 
-#: apps/accounts/permissions.py:112
+#: apps/accounts/permissions.py:146
 msgid "Edit workers & pay rates"
 msgstr "Modifier les ouvriers et les tarifs"
 
-#: apps/accounts/permissions.py:114
+#: apps/accounts/permissions.py:148
 msgid "Close & lock pay periods"
 msgstr "Clôturer les périodes de paie"
 
-#: apps/accounts/permissions.py:118
+#: apps/accounts/permissions.py:152
 msgid "Reports & exports"
 msgstr "Rapports et exports"
 
-#: apps/accounts/permissions.py:121
+#: apps/accounts/permissions.py:155
 msgid "Company settings & users"
 msgstr "Paramètres de l’entreprise et utilisateurs"
 
-#: apps/accounts/views.py:66
+#: apps/accounts/views.py:68
 #, python-format
 msgid "%(name)s was added."
 msgstr "%(name)s a été ajouté."
 
-#: apps/accounts/views.py:81
+#: apps/accounts/views.py:83
 msgid "Changes saved."
 msgstr "Modifications enregistrées."
 
-#: apps/accounts/views.py:110
+#: apps/accounts/views.py:112
 msgid "Only foremen and admins sign in with a PIN."
 msgstr ""
 "Seuls les chefs d’équipe et les administrateurs se connectent avec un code "
 "PIN."
 
-#: apps/accounts/views.py:118
+#: apps/accounts/views.py:120
 #, python-format
 msgid "PIN changed. Tell %(name)s the new PIN."
 msgstr "Code PIN modifié. Communiquez le nouveau code PIN à %(name)s."
 
-#: apps/accounts/views.py:120
+#: apps/accounts/views.py:122
 #, python-format
 msgid "PIN set. Tell %(name)s the PIN."
 msgstr "Code PIN défini. Communiquez le code PIN à %(name)s."
 
-#: apps/accounts/views.py:129
+#: apps/accounts/views.py:133
 msgid "The phone was signed out."
 msgstr "Le téléphone a été déconnecté."
 
@@ -292,23 +300,23 @@ msgstr "Le téléphone a été déconnecté."
 msgid "API"
 msgstr "API"
 
-#: apps/api/authentication.py:69
+#: apps/api/authentication.py:71
 msgid "Invalid Authorization header. Use: Device <token>."
 msgstr "En-tête Authorization invalide. Utilisez : Device <token>."
 
-#: apps/api/authentication.py:74
+#: apps/api/authentication.py:76
 msgid "Invalid device token."
 msgstr "Jeton d’appareil invalide."
 
-#: apps/api/authentication.py:84
+#: apps/api/authentication.py:86
 msgid "Invalid or revoked device token."
 msgstr "Jeton d’appareil invalide ou révoqué."
 
-#: apps/api/authentication.py:86
+#: apps/api/authentication.py:88 apps/api/authentication.py:91
 msgid "This user account is disabled."
 msgstr "Ce compte utilisateur est désactivé."
 
-#: apps/api/authentication.py:89
+#: apps/api/authentication.py:94
 msgid "This device token has expired. Sign in again with your PIN."
 msgstr "Ce jeton d’appareil a expiré. Reconnectez-vous avec votre code PIN."
 
@@ -364,11 +372,11 @@ msgstr "L’en-tête Accept ne peut pas être satisfait."
 msgid "Unexpected server error."
 msgstr "Erreur inattendue du serveur."
 
-#: apps/api/enums.py:38 apps/core/choices.py:9 config/settings.py:148
+#: apps/api/enums.py:38 apps/core/choices.py:9 config/settings.py:154
 msgid "English"
 msgstr "Anglais"
 
-#: apps/api/enums.py:39 apps/core/choices.py:10 config/settings.py:149
+#: apps/api/enums.py:39 apps/core/choices.py:10 config/settings.py:155
 msgid "French"
 msgstr "Français"
 
@@ -447,10 +455,10 @@ msgstr "Renvoyé"
 msgid "Locked"
 msgstr "Clôturé"
 
-#: apps/api/enums.py:67 apps/payroll/payslip.py:117 apps/workers/admin.py:30
-#: apps/workers/forms.py:153 templates/accounts/user_form.html:92
+#: apps/api/enums.py:67 apps/payroll/payslip.py:117 apps/workers/admin.py:44
+#: apps/workers/forms.py:156 templates/accounts/user_form.html:92
 #: templates/attendance/_approval_detail.html:60
-#: templates/components/data_table.html:29
+#: templates/components/data_table.html:29 templates/core/companies.html:17
 #: templates/payroll/cash_sheets.html:30 templates/payroll/periods.html:51
 #: templates/worksites/attendance.html:15 templates/worksites/crew.html:24
 #: templates/worksites/detail.html:32 templates/worksites/pay.html:16
@@ -486,7 +494,7 @@ msgstr "Tous payés"
 msgid "Closed by the office"
 msgstr "Clôturée par le bureau"
 
-#: apps/api/enums.py:82 apps/core/choices.py:44 apps/workers/forms.py:33
+#: apps/api/enums.py:82 apps/core/choices.py:44 apps/workers/forms.py:34
 msgid "Photo"
 msgstr "Photo"
 
@@ -546,7 +554,7 @@ msgstr "Doit être le même jour que « to » ou avant."
 msgid "At most %(n)s days at a time."
 msgstr "Au plus %(n)s jours à la fois."
 
-#: apps/attendance/apps.py:7 apps/core/admin.py:27
+#: apps/attendance/apps.py:7 apps/core/admin.py:59
 #: templates/core/settings.html:59 templates/core/settings.html:91
 msgid "Attendance"
 msgstr "Présences"
@@ -573,8 +581,8 @@ msgstr "p. ex. Kodjo a été vu sur le chantier — merci de vérifier"
 
 #: apps/attendance/models.py:25 apps/payroll/models.py:39
 #: apps/payroll/models.py:233 apps/payroll/models.py:330
-#: apps/workers/views.py:184 apps/worksites/models.py:70
-#: apps/worksites/models.py:100
+#: apps/workers/views.py:184 apps/worksites/models.py:71
+#: apps/worksites/models.py:101
 msgid "site"
 msgstr "chantier"
 
@@ -588,7 +596,7 @@ msgstr "chef d’équipe"
 
 #: apps/attendance/models.py:39 apps/attendance/models.py:111
 #: apps/payroll/models.py:49 apps/payroll/models.py:162
-#: apps/worksites/models.py:23
+#: apps/worksites/models.py:24
 msgid "status"
 msgstr "statut"
 
@@ -642,8 +650,8 @@ msgstr "journées de présence"
 
 #: apps/attendance/models.py:106 apps/payroll/models.py:93
 #: apps/payroll/models.py:144 apps/payroll/models.py:324
-#: apps/workers/models.py:70 apps/workers/models.py:90
-#: apps/workers/views.py:182 apps/worksites/models.py:95
+#: apps/workers/models.py:77 apps/workers/models.py:102
+#: apps/workers/views.py:182 apps/worksites/models.py:96
 msgid "worker"
 msgstr "ouvrier"
 
@@ -695,7 +703,7 @@ msgstr "ancienne valeur"
 msgid "new value"
 msgstr "nouvelle valeur"
 
-#: apps/attendance/models.py:149 apps/core/models.py:60
+#: apps/attendance/models.py:149 apps/core/models.py:118
 #: apps/payroll/models.py:151 apps/payroll/models.py:337
 msgid "reason"
 msgstr "motif"
@@ -802,21 +810,22 @@ msgstr "%(site)s · %(date)s validé."
 msgid "%(site)s · %(date)s sent back to the foreman."
 msgstr "%(site)s · %(date)s renvoyé au chef d’équipe."
 
-#: apps/core/admin.py:13 apps/payroll/payslip.py:76
+#: apps/core/admin.py:44 apps/payroll/payslip.py:76
+#: templates/components/sidebar.html:27 templates/core/companies.html:15
 msgid "Company"
 msgstr "Entreprise"
 
-#: apps/core/admin.py:25 templates/registration/login.html:8
+#: apps/core/admin.py:57 templates/registration/login.html:8
 msgid "Language"
 msgstr "Langue"
 
-#: apps/core/admin.py:46 templates/components/sidebar.html:40
+#: apps/core/admin.py:78 templates/components/sidebar.html:51
 #: templates/workers/form.html:54 templates/worksites/list.html:41
 #: templates/worksites/settings.html:16
 msgid "Pay"
 msgstr "Paie"
 
-#: apps/core/admin.py:59 templates/components/sidebar.html:42
+#: apps/core/admin.py:91 templates/components/sidebar.html:53
 #: templates/payroll/advances.html:12
 msgid "Advances"
 msgstr "Avances"
@@ -1121,7 +1130,7 @@ msgstr "Enregistrer les heures d’arrivée et de départ"
 msgid "Corrections after submission need a reason"
 msgstr "Les corrections après l’envoi exigent un motif"
 
-#: apps/core/forms.py:223 apps/worksites/forms.py:113
+#: apps/core/forms.py:223 apps/worksites/forms.py:115
 msgid "Work must end after it starts."
 msgstr "La fin du travail doit être après le début."
 
@@ -1139,222 +1148,259 @@ msgstr "Utilisez au plus %(decimals)d décimales."
 msgid "Line %(number)d: start with a date written YYYY-MM-DD."
 msgstr "Ligne %(number)d : commencez par une date au format AAAA-MM-JJ."
 
-#: apps/core/forms.py:271
+#: apps/core/forms.py:273
+msgid "Company name"
+msgstr "Nom de l’entreprise"
+
+#: apps/core/forms.py:278
+msgid "A company with this name already exists."
+msgstr "Une entreprise porte déjà ce nom."
+
+#: apps/core/forms.py:286
 msgid "Who"
 msgstr "Qui"
 
-#: apps/core/forms.py:274
+#: apps/core/forms.py:289
 msgid "Target type"
 msgstr "Type d’objet"
 
-#: apps/core/forms.py:277 apps/dashboard/forms.py:28
+#: apps/core/forms.py:292 apps/dashboard/forms.py:29
 msgid "From"
 msgstr "Du"
 
-#: apps/core/forms.py:280 apps/dashboard/forms.py:31
+#: apps/core/forms.py:295 apps/dashboard/forms.py:32
 msgid "To"
 msgstr "Au"
 
-#: apps/core/forms.py:289
+#: apps/core/forms.py:305
 msgid "Anyone"
 msgstr "Tout le monde"
 
-#: apps/core/forms.py:293
+#: apps/core/forms.py:309
 msgid "Any type"
 msgstr "Tous les types"
 
-#: apps/core/forms.py:300 apps/dashboard/forms.py:52
+#: apps/core/forms.py:316 apps/dashboard/forms.py:54
 msgid "The end date is before the start date."
 msgstr "La date de fin est avant la date de début."
 
-#: apps/core/models.py:31
+#: apps/core/models.py:33
 msgid "updated at"
 msgstr "modifié le"
 
-#: apps/core/models.py:42
+#: apps/core/models.py:43 apps/workers/models.py:16 apps/worksites/models.py:21
+msgid "name"
+msgstr "nom"
+
+#: apps/core/models.py:44
+msgid "short name"
+msgstr "nom court"
+
+#: apps/core/models.py:46 apps/workers/models.py:66
+msgid "active"
+msgstr "actif"
+
+#: apps/core/models.py:48
+msgid ""
+"Users of an inactive company cannot sign in, in the office or on the phone."
+msgstr "Les utilisateurs d’une entreprise inactive ne peuvent pas se connecter, ni au bureau ni sur le téléphone."
+
+#: apps/core/models.py:53 apps/core/models.py:80 apps/core/models.py:177
+msgid "company"
+msgstr "entreprise"
+
+#: apps/core/models.py:54
+msgid "companies"
+msgstr "entreprises"
+
+#: apps/core/models.py:96
+msgid "Empty for platform events (e.g. a sign-in lockout of an unknown name)."
+msgstr "Vide pour les événements de la plateforme (p. ex. un blocage de connexion pour un nom inconnu)."
+
+#: apps/core/models.py:100
 msgid "actor"
 msgstr "auteur"
 
-#: apps/core/models.py:48
+#: apps/core/models.py:106
 msgid "action"
 msgstr "action"
 
-#: apps/core/models.py:51
+#: apps/core/models.py:109
 msgid "target type"
 msgstr "type d’objet"
 
-#: apps/core/models.py:56
+#: apps/core/models.py:114
 msgid "target ID"
 msgstr "identifiant de l’objet"
 
-#: apps/core/models.py:58
+#: apps/core/models.py:116
 msgid "before"
 msgstr "avant"
 
-#: apps/core/models.py:59
+#: apps/core/models.py:117
 msgid "after"
 msgstr "après"
 
-#: apps/core/models.py:64
+#: apps/core/models.py:122
 msgid "audit log entry"
 msgstr "entrée du journal d’audit"
 
-#: apps/core/models.py:65
+#: apps/core/models.py:123
 msgid "audit log"
 msgstr "journal d’audit"
 
-#: apps/core/models.py:102
+#: apps/core/models.py:181
 msgid "company name"
 msgstr "nom de l’entreprise"
 
-#: apps/core/models.py:103
+#: apps/core/models.py:182
 msgid "country"
 msgstr "pays"
 
-#: apps/core/models.py:105 apps/payroll/models.py:51 apps/payroll/models.py:335
+#: apps/core/models.py:184 apps/payroll/models.py:51 apps/payroll/models.py:335
 msgid "currency"
 msgstr "devise"
 
-#: apps/core/models.py:105
+#: apps/core/models.py:184
 msgid "ISO 4217 code, e.g. XOF."
 msgstr "Code ISO 4217, p. ex. XOF."
 
-#: apps/core/models.py:108 apps/payroll/models.py:52 apps/payroll/models.py:336
+#: apps/core/models.py:187 apps/payroll/models.py:52 apps/payroll/models.py:336
 msgid "currency decimal places"
 msgstr "décimales de la devise"
 
-#: apps/core/models.py:111
+#: apps/core/models.py:190
 msgid "time zone"
 msgstr "fuseau horaire"
 
-#: apps/core/models.py:117
+#: apps/core/models.py:196
 msgid "number format"
 msgstr "format des nombres"
 
-#: apps/core/models.py:121
+#: apps/core/models.py:200
 msgid "Thousands and decimal separators, and where the currency code goes."
 msgstr ""
 "Séparateurs des milliers et des décimales, et position du code de la devise."
 
-#: apps/core/models.py:126
+#: apps/core/models.py:205
 msgid "attendance mode"
 msgstr "mode de présence"
 
-#: apps/core/models.py:131 apps/worksites/models.py:58
+#: apps/core/models.py:210 apps/worksites/models.py:59
 msgid "work starts"
 msgstr "début du travail"
 
-#: apps/core/models.py:132 apps/worksites/models.py:59
+#: apps/core/models.py:211 apps/worksites/models.py:60
 msgid "work ends"
 msgstr "fin du travail"
 
-#: apps/core/models.py:133
+#: apps/core/models.py:212
 msgid "break (minutes)"
 msgstr "pause (minutes)"
 
-#: apps/core/models.py:134 apps/worksites/models.py:60
+#: apps/core/models.py:213 apps/worksites/models.py:61
 msgid "late after"
 msgstr "retard après"
 
-#: apps/core/models.py:135 apps/worksites/models.py:61
+#: apps/core/models.py:214 apps/worksites/models.py:62
 msgid "roll call due by"
 msgstr "appel à faire avant"
 
-#: apps/core/models.py:137
+#: apps/core/models.py:216
 msgid "half day counts as"
 msgstr "une demi-journée compte pour"
 
-#: apps/core/models.py:144
+#: apps/core/models.py:223
 msgid "late rule"
 msgstr "règle de retard"
 
-#: apps/core/models.py:150
+#: apps/core/models.py:229
 msgid "working days"
 msgstr "jours ouvrés"
 
-#: apps/core/models.py:152
+#: apps/core/models.py:231
 msgid "ISO weekday numbers: 1 is Monday, 7 is Sunday."
 msgstr "Numéros de jour ISO : 1 est lundi, 7 est dimanche."
 
-#: apps/core/models.py:155
+#: apps/core/models.py:234
 msgid "require a reason for corrections"
 msgstr "exiger un motif pour les corrections"
 
-#: apps/core/models.py:157
+#: apps/core/models.py:236
 msgid "record arrival and departure times"
 msgstr "enregistrer les heures d’arrivée et de départ"
 
-#: apps/core/models.py:159
+#: apps/core/models.py:238
 msgid "public holidays"
 msgstr "jours fériés"
 
-#: apps/core/models.py:162
+#: apps/core/models.py:241
 msgid "A list of {\"date\": \"YYYY-MM-DD\", \"name\": \"…\"} entries."
 msgstr "Une liste d’entrées {\"date\": \"YYYY-MM-DD\", \"name\": \"…\"}."
 
-#: apps/core/models.py:167 apps/workers/models.py:66
-#: apps/worksites/models.py:50
+#: apps/core/models.py:246 apps/workers/models.py:73
+#: apps/worksites/models.py:51
 msgid "pay frequency"
 msgstr "fréquence de paie"
 
-#: apps/core/models.py:173 apps/worksites/models.py:53
+#: apps/core/models.py:252 apps/worksites/models.py:54
 msgid "pay every N days"
 msgstr "payer tous les N jours"
 
-#: apps/core/models.py:176
+#: apps/core/models.py:255
 msgid "default pay type"
 msgstr "type de rémunération par défaut"
 
-#: apps/core/models.py:179 apps/workers/models.py:63
-#: apps/worksites/models.py:56
+#: apps/core/models.py:258 apps/workers/models.py:70
+#: apps/worksites/models.py:57
 msgid "payment method"
 msgstr "mode de paiement"
 
-#: apps/core/models.py:185 apps/worksites/models.py:63
+#: apps/core/models.py:264 apps/worksites/models.py:64
 msgid "overtime after (hours)"
 msgstr "heures supplémentaires après (heures)"
 
-#: apps/core/models.py:188 apps/worksites/models.py:66
+#: apps/core/models.py:267 apps/worksites/models.py:67
 msgid "overtime multiplier"
 msgstr "majoration des heures supplémentaires"
 
-#: apps/core/models.py:191
+#: apps/core/models.py:270
 msgid "accepted proofs of payment"
 msgstr "preuves de paiement acceptées"
 
-#: apps/core/models.py:196
+#: apps/core/models.py:275
 msgid "advance limit (% of period pay)"
 msgstr "plafond d’avance (% de la paie de la période)"
 
-#: apps/core/models.py:199
+#: apps/core/models.py:278
 msgid "default advance deduction per pay"
 msgstr "retenue d’avance par défaut par paie"
 
-#: apps/core/models.py:202 apps/worksites/models.py:45
+#: apps/core/models.py:281 apps/worksites/models.py:46
 msgid "In the currency's smallest unit."
 msgstr "Dans la plus petite unité de la devise."
 
-#: apps/core/models.py:206 apps/core/models.py:207
+#: apps/core/models.py:285 apps/core/models.py:286
 msgid "company settings"
 msgstr "paramètres de l’entreprise"
 
-#: apps/core/models.py:213
+#: apps/core/models.py:289
 msgid "Company settings"
 msgstr "Paramètres de l’entreprise"
 
-#: apps/core/models.py:231 apps/worksites/forms.py:109
+#: apps/core/models.py:295 apps/worksites/forms.py:111
 msgid "Set the number of days between pay days."
 msgstr "Indiquez le nombre de jours entre deux jours de paie."
 
-#: apps/core/models.py:235
+#: apps/core/models.py:299
 msgid "Use ISO weekday numbers from 1 (Monday) to 7 (Sunday)."
 msgstr "Utilisez des numéros de jour ISO de 1 (lundi) à 7 (dimanche)."
 
-#: apps/core/models.py:240 apps/payroll/services.py:1078
+#: apps/core/models.py:304 apps/payroll/services.py:1080
 msgid "Unknown proof type."
 msgstr "Type de preuve inconnu."
 
-#: apps/core/models.py:243
+#: apps/core/models.py:307
 msgid "Use a list of {\"date\": \"YYYY-MM-DD\", \"name\": \"…\"} entries."
 msgstr ""
 "Utilisez une liste d’entrées {\"date\": \"YYYY-MM-DD\", \"name\": \"…\"}."
@@ -1375,15 +1421,15 @@ msgstr ""
 msgid "“%(value)s” is not a known time zone."
 msgstr "« %(value)s » n’est pas un fuseau horaire connu."
 
-#: apps/core/views.py:32
+#: apps/core/views.py:35
 msgid "Nothing changed."
 msgstr "Aucune modification."
 
-#: apps/core/views.py:34
+#: apps/core/views.py:37
 msgid "Settings saved."
 msgstr "Paramètres enregistrés."
 
-#: apps/core/views.py:39
+#: apps/core/views.py:42
 #, python-format
 msgid ""
 "Amounts now show in %(currency)s with %(decimals)d decimal place(s). "
@@ -1393,38 +1439,48 @@ msgstr ""
 "décimale(s). Les périodes de paie existantes et clôturées gardent la devise "
 "avec laquelle elles ont été créées."
 
-#: apps/core/views.py:46
+#: apps/core/views.py:49
 msgid "Some settings need fixing — see the highlighted fields."
 msgstr "Certains paramètres sont à corriger — voir les champs en surbrillance."
+
+#: apps/core/views.py:149
+#, python-format
+msgid "%(name)s was added. You are now viewing it: set it up in Settings."
+msgstr "%(name)s a été ajoutée. Vous la consultez maintenant : configurez-la dans Paramètres."
+
+#: apps/core/views.py:171
+#, python-format
+msgid "Now viewing %(name)s."
+msgstr "Vous consultez maintenant %(name)s."
 
 #: apps/dashboard/apps.py:7
 msgid "Dashboard"
 msgstr "Tableau de bord"
 
-#: apps/dashboard/forms.py:18 templates/payroll/periods.html:13
+#: apps/dashboard/forms.py:19 templates/payroll/periods.html:13
 #: templates/worksites/detail.html:6
 msgid "This week"
 msgstr "Cette semaine"
 
-#: apps/dashboard/forms.py:19
+#: apps/dashboard/forms.py:20
 msgid "This month"
 msgstr "Ce mois-ci"
 
-#: apps/dashboard/forms.py:20
+#: apps/dashboard/forms.py:21
 msgid "Last month"
 msgstr "Le mois dernier"
 
-#: apps/dashboard/forms.py:21
+#: apps/dashboard/forms.py:22
 msgid "Custom…"
 msgstr "Personnalisée…"
 
-#: apps/dashboard/forms.py:25 templates/dashboard/reports.html:18
+#: apps/dashboard/forms.py:26 templates/dashboard/reports.html:18
 #: templates/payroll/periods.html:44 templates/worksites/pay.html:15
 msgid "Period"
 msgstr "Période"
 
-#: apps/dashboard/forms.py:34 apps/dashboard/reports.py:293
-#: apps/payroll/payslip.py:101 apps/workers/forms.py:148
+#: apps/dashboard/forms.py:35 apps/dashboard/reports.py:293
+#: apps/payroll/payslip.py:101 apps/workers/forms.py:151
 #: templates/dashboard/home.html:66 templates/payroll/cash_sheets.html:10
 #: templates/payroll/cash_sheets.html:25 templates/payroll/periods.html:30
 #: templates/payroll/periods.html:45 templates/workers/form.html:45
@@ -1432,27 +1488,27 @@ msgstr "Période"
 msgid "Site"
 msgstr "Chantier"
 
-#: apps/dashboard/forms.py:34 apps/workers/forms.py:148
-#: templates/components/sidebar.html:25 templates/dashboard/home.html:60
+#: apps/dashboard/forms.py:35 apps/workers/forms.py:151
+#: templates/components/sidebar.html:36 templates/dashboard/home.html:60
 #: templates/payroll/cash_sheets.html:12 templates/payroll/periods.html:32
 msgid "All sites"
 msgstr "Tous les chantiers"
 
-#: apps/dashboard/forms.py:37 apps/dashboard/reports.py:292
+#: apps/dashboard/forms.py:38 apps/dashboard/reports.py:292
 #: apps/dashboard/views.py:88 apps/payroll/payslip.py:100
-#: apps/workers/forms.py:151 templates/workers/list.html:26
+#: apps/workers/forms.py:154 templates/workers/list.html:26
 msgid "Trade"
 msgstr "Métier"
 
-#: apps/dashboard/forms.py:37 apps/workers/forms.py:151
+#: apps/dashboard/forms.py:38 apps/workers/forms.py:154
 msgid "All trades"
 msgstr "Tous les métiers"
 
-#: apps/dashboard/forms.py:50
+#: apps/dashboard/forms.py:52
 msgid "Pick both dates for a custom period."
 msgstr "Choisissez les deux dates pour une période personnalisée."
 
-#: apps/dashboard/forms.py:54
+#: apps/dashboard/forms.py:56
 msgid "Pick a period of one year or less."
 msgstr "Choisissez une période d’un an au plus."
 
@@ -1668,11 +1724,11 @@ msgstr "Paiement en cours"
 msgid "Paid"
 msgstr "Payé"
 
-#: apps/payroll/models.py:43 apps/worksites/models.py:102
+#: apps/payroll/models.py:43 apps/worksites/models.py:103
 msgid "start date"
 msgstr "date de début"
 
-#: apps/payroll/models.py:44 apps/worksites/models.py:103
+#: apps/payroll/models.py:44 apps/worksites/models.py:104
 msgid "end date"
 msgstr "date de fin"
 
@@ -1759,7 +1815,7 @@ msgstr "Remboursée"
 #: apps/payroll/models.py:148 apps/payroll/models.py:211
 #: apps/payroll/models.py:238 apps/payroll/models.py:276
 #: apps/payroll/models.py:334 apps/payroll/models.py:415
-#: apps/workers/models.py:96
+#: apps/workers/models.py:108
 msgid "amount"
 msgstr "montant"
 
@@ -1908,7 +1964,7 @@ msgstr "jour"
 msgid "Worker ID"
 msgstr "Matricule"
 
-#: apps/payroll/payslip.py:102 apps/workers/forms.py:60
+#: apps/payroll/payslip.py:102 apps/workers/forms.py:61
 #: templates/dashboard/reports.html:101 templates/workers/detail.html:31
 #: templates/workers/list.html:29 templates/worksites/crew.html:25
 #: templates/worksites/detail.html:35
@@ -2019,45 +2075,45 @@ msgstr "Payeur"
 msgid "Printed %(when)s · Polaris Workforce"
 msgstr "Imprimé le %(when)s · Polaris Workforce"
 
-#: apps/payroll/services.py:1042 apps/payroll/services.py:1330
+#: apps/payroll/services.py:1044 apps/payroll/services.py:1332
 msgid "This cash sheet is closed and locked."
 msgstr "Cette feuille de caisse est clôturée."
 
-#: apps/payroll/services.py:1050 apps/payroll/services.py:1398
+#: apps/payroll/services.py:1052 apps/payroll/services.py:1400
 msgid "Enter an amount greater than zero."
 msgstr "Saisissez un montant supérieur à zéro."
 
-#: apps/payroll/services.py:1081
+#: apps/payroll/services.py:1083
 msgid "A proof of receipt is required."
 msgstr "Une preuve de remise est obligatoire."
 
-#: apps/payroll/services.py:1083
+#: apps/payroll/services.py:1085
 msgid "This proof type is not accepted (see Settings)."
 msgstr "Ce type de preuve n’est pas accepté (voir Paramètres)."
 
-#: apps/payroll/services.py:1085
+#: apps/payroll/services.py:1087
 msgid "Attach the photo of the worker receiving the cash."
 msgstr "Joignez la photo de l’ouvrier recevant l’argent."
 
-#: apps/payroll/services.py:1151 apps/payroll/services.py:1203
+#: apps/payroll/services.py:1153 apps/payroll/services.py:1205
 msgid "This pay period is locked."
 msgstr "Cette période de paie est clôturée."
 
-#: apps/payroll/services.py:1156
+#: apps/payroll/services.py:1158
 msgid "The cash sheet is not open: the roll call is not approved yet."
 msgstr ""
 "La feuille de caisse n’est pas ouverte : l’appel n’est pas encore validé."
 
-#: apps/payroll/services.py:1162
+#: apps/payroll/services.py:1164
 msgid "This worker has already been paid."
 msgstr "Cet ouvrier a déjà été payé."
 
-#: apps/payroll/services.py:1167
+#: apps/payroll/services.py:1169
 #, python-format
 msgid "The amount must be the net left to pay: %(remaining)s."
 msgstr "Le montant doit être le net restant à payer : %(remaining)s."
 
-#: apps/payroll/services.py:1208
+#: apps/payroll/services.py:1210
 msgid ""
 "This pay was corrected after it was paid and the difference is already "
 "settled on a later pay: the payment cannot be undone."
@@ -2065,33 +2121,33 @@ msgstr ""
 "Cette paie a été corrigée après son paiement et la différence est déjà "
 "régularisée sur une paie suivante : le paiement ne peut pas être annulé."
 
-#: apps/payroll/services.py:1244
+#: apps/payroll/services.py:1246
 msgid "This pay period is already locked."
 msgstr "Cette période de paie est déjà clôturée."
 
-#: apps/payroll/services.py:1247
+#: apps/payroll/services.py:1249
 msgid "Approve every day of the period before locking it."
 msgstr "Validez chaque journée de la période avant de la clôturer."
 
-#: apps/payroll/services.py:1253
+#: apps/payroll/services.py:1255
 msgid "Some workers are not paid yet: give a reason to close anyway."
 msgstr ""
 "Certains ouvriers ne sont pas encore payés : indiquez un motif pour clôturer "
 "quand même."
 
-#: apps/payroll/services.py:1326
+#: apps/payroll/services.py:1328
 msgid "There is nothing to pay on this sheet."
 msgstr "Il n’y a rien à payer sur cette feuille."
 
-#: apps/payroll/services.py:1404
+#: apps/payroll/services.py:1406
 msgid "Enter a deduction greater than zero."
 msgstr "Saisissez une retenue supérieure à zéro."
 
-#: apps/payroll/services.py:1406
+#: apps/payroll/services.py:1408
 msgid "The deduction cannot be more than the advance."
 msgstr "La retenue ne peut pas dépasser l’avance."
 
-#: apps/payroll/services.py:1415
+#: apps/payroll/services.py:1417
 #, python-format
 msgid ""
 "Over the limit: %(worker)s may owe at most %(limit)s (%(percent)s%% of a "
@@ -2138,17 +2194,17 @@ msgstr "Vous ne pouvez pas accorder d’avance à cet ouvrier."
 msgid "Advance recorded."
 msgstr "Avance enregistrée."
 
-#: apps/workers/admin.py:29
+#: apps/workers/admin.py:43
 msgid "Identity document"
 msgstr "Pièce d’identité"
 
-#: apps/workers/admin.py:32
+#: apps/workers/admin.py:46
 msgid "Setting overrides (empty = site or company setting)"
 msgstr ""
 "Paramètres personnalisés (vide = valeur du chantier ou de l’entreprise)"
 
-#: apps/workers/apps.py:7 apps/worksites/forms.py:122
-#: templates/components/sidebar.html:46 templates/payroll/cash_sheet.html:40
+#: apps/workers/apps.py:7 apps/worksites/forms.py:124
+#: templates/components/sidebar.html:57 templates/payroll/cash_sheet.html:40
 #: templates/payroll/periods.html:46 templates/workers/detail.html:8
 #: templates/workers/form.html:5 templates/workers/list.html:4
 #: templates/workers/list.html:6 templates/workers/list.html:20
@@ -2170,7 +2226,7 @@ msgstr "Saisissez un montant, par exemple 6000."
 msgid "Use at most %(decimals)s decimal place(s)."
 msgstr "Utilisez au plus %(decimals)s décimale(s)."
 
-#: apps/workers/forms.py:37
+#: apps/workers/forms.py:38
 msgid ""
 "Used by the foreman to recognise the worker at roll call. JPG, PNG or WebP, "
 "5 MB at most."
@@ -2178,201 +2234,193 @@ msgstr ""
 "Permet au chef d’équipe de reconnaître l’ouvrier pendant l’appel. JPG, PNG "
 "ou WebP, 5 Mo au plus."
 
-#: apps/workers/forms.py:43
+#: apps/workers/forms.py:44
 msgid "Or add a trade"
 msgstr "Ou ajoutez un métier"
 
-#: apps/workers/forms.py:46
+#: apps/workers/forms.py:47
 msgid "e.g. Tiler"
 msgstr "p. ex. Carreleur"
 
-#: apps/workers/forms.py:49
+#: apps/workers/forms.py:50
 msgid "Assign to site"
 msgstr "Affecter au chantier"
 
-#: apps/workers/forms.py:52 apps/worksites/forms.py:127
+#: apps/workers/forms.py:53 apps/worksites/forms.py:129
 msgid "Starting"
 msgstr "À partir du"
 
-#: apps/workers/forms.py:55
+#: apps/workers/forms.py:56
 msgid "The worker appears on that site’s roll call from the start date."
 msgstr ""
 "L’ouvrier apparaît dans l’appel de ce chantier à partir de la date de début."
 
-#: apps/workers/forms.py:58 templates/workers/detail.html:86
+#: apps/workers/forms.py:59 templates/workers/detail.html:86
 msgid "Pay type"
 msgstr "Type de rémunération"
 
-#: apps/workers/forms.py:61
+#: apps/workers/forms.py:62
 msgid "Effective from"
 msgstr "En vigueur à partir du"
 
-#: apps/workers/forms.py:63 apps/worksites/forms.py:54
+#: apps/workers/forms.py:64 apps/worksites/forms.py:56
 #: apps/worksites/views.py:208 templates/workers/form.html:82
 msgid "Payment method"
 msgstr "Mode de paiement"
 
-#: apps/workers/forms.py:64 apps/workers/forms.py:70
+#: apps/workers/forms.py:65 apps/workers/forms.py:71
 msgid "Use the inherited value"
 msgstr "Utiliser la valeur héritée"
 
-#: apps/workers/forms.py:69 apps/worksites/forms.py:51
+#: apps/workers/forms.py:70 apps/worksites/forms.py:53
 #: apps/worksites/views.py:203 templates/workers/detail.html:88
 #: templates/workers/form.html:86
 msgid "Pay frequency"
 msgstr "Fréquence de paie"
 
-#: apps/workers/forms.py:96
+#: apps/workers/forms.py:98
 msgid "No trade"
 msgstr "Sans métier"
 
-#: apps/workers/forms.py:97
+#: apps/workers/forms.py:99
 msgid "ID number"
 msgstr "Numéro de pièce"
 
-#: apps/workers/forms.py:98
+#: apps/workers/forms.py:100
 msgid "Optional"
 msgstr "Facultatif"
 
-#: apps/workers/forms.py:108
+#: apps/workers/forms.py:110
 msgid "No change"
 msgstr "Pas de changement"
 
-#: apps/workers/forms.py:109
+#: apps/workers/forms.py:111
 msgid "Pick a site to move the worker on the start date."
 msgstr "Choisissez un chantier pour y déplacer l’ouvrier à la date de début."
 
-#: apps/workers/forms.py:112
+#: apps/workers/forms.py:114
 msgid ""
 "A new rate applies from this date; earlier rates are kept in the history."
 msgstr ""
 "Un nouveau tarif s’applique à partir de cette date ; les tarifs précédents "
 "restent dans l’historique."
 
-#: apps/workers/forms.py:125
+#: apps/workers/forms.py:127
 msgid "Set the date the worker starts on this site."
 msgstr "Indiquez la date à laquelle l’ouvrier commence sur ce chantier."
 
-#: apps/workers/forms.py:138 apps/worksites/models.py:16
-#: templates/components/status_badge.html:18
+#: apps/workers/forms.py:141 apps/worksites/models.py:16
+#: templates/components/status_badge.html:18 templates/core/companies.html:26
 msgid "Active"
 msgstr "Actif"
 
-#: apps/workers/forms.py:138 templates/components/status_badge.html:18
-#: templates/workers/list.html:37
+#: apps/workers/forms.py:141 templates/components/status_badge.html:18
+#: templates/core/companies.html:26 templates/workers/list.html:37
 msgid "Inactive"
 msgstr "Inactif"
 
-#: apps/workers/forms.py:138 templates/accounts/users.html:37
+#: apps/workers/forms.py:141 templates/accounts/users.html:37
 #: templates/payroll/advances.html:15 templates/payroll/periods.html:27
 msgid "All"
 msgstr "Tous"
 
-#: apps/workers/forms.py:141
+#: apps/workers/forms.py:144
 msgid "Search"
 msgstr "Rechercher"
 
-#: apps/workers/forms.py:144
+#: apps/workers/forms.py:147
 msgid "Name, phone or worker ID"
 msgstr "Nom, téléphone ou matricule"
 
-#: apps/workers/models.py:15 apps/worksites/models.py:20
-msgid "name"
-msgstr "nom"
-
-#: apps/workers/models.py:18 apps/workers/models.py:53
+#: apps/workers/models.py:19 apps/workers/models.py:60
 msgid "trade"
 msgstr "métier"
 
-#: apps/workers/models.py:19
+#: apps/workers/models.py:20
 msgid "trades"
 msgstr "métiers"
 
-#: apps/workers/models.py:30
+#: apps/workers/models.py:34
 msgid "National ID card"
 msgstr "Carte nationale d’identité"
 
-#: apps/workers/models.py:31
+#: apps/workers/models.py:35
 msgid "Passport"
 msgstr "Passeport"
 
-#: apps/workers/models.py:32
+#: apps/workers/models.py:36
 msgid "Voter card"
 msgstr "Carte d’électeur"
 
-#: apps/workers/models.py:33
+#: apps/workers/models.py:37
 msgid "None"
 msgstr "Aucune"
 
-#: apps/workers/models.py:36
+#: apps/workers/models.py:41
 msgid "worker number"
 msgstr "matricule"
 
-#: apps/workers/models.py:36
-msgid "For example W-0142."
-msgstr "Par exemple W-0142."
+#: apps/workers/models.py:43
+msgid "For example W-0142. Unique within the company."
+msgstr "Par exemple W-0142. Unique dans l’entreprise."
 
-#: apps/workers/models.py:38
+#: apps/workers/models.py:45
 msgid "first name"
 msgstr "prénom"
 
-#: apps/workers/models.py:39
+#: apps/workers/models.py:46
 msgid "last name"
 msgstr "nom"
 
-#: apps/workers/models.py:42
+#: apps/workers/models.py:49
 msgid "photo"
 msgstr "photo"
 
-#: apps/workers/models.py:45
+#: apps/workers/models.py:52
 msgid "ID document type"
 msgstr "type de pièce d’identité"
 
-#: apps/workers/models.py:50
+#: apps/workers/models.py:57
 msgid "ID document number"
 msgstr "numéro de pièce d’identité"
 
-#: apps/workers/models.py:59
-msgid "active"
-msgstr "actif"
-
-#: apps/workers/models.py:71
+#: apps/workers/models.py:78
 msgid "workers"
 msgstr "ouvriers"
 
-#: apps/workers/models.py:93
+#: apps/workers/models.py:105
 msgid "pay type"
 msgstr "type de rémunération"
 
-#: apps/workers/models.py:98
+#: apps/workers/models.py:110
 msgid "Per day or per hour, in the currency's smallest unit."
 msgstr "Par jour ou par heure, dans la plus petite unité de la devise."
 
-#: apps/workers/models.py:100
+#: apps/workers/models.py:112
 msgid "effective from"
 msgstr "en vigueur à partir du"
 
-#: apps/workers/models.py:103
+#: apps/workers/models.py:115
 msgid "pay rate"
 msgstr "tarif"
 
-#: apps/workers/models.py:104
+#: apps/workers/models.py:116
 msgid "pay rates"
 msgstr "tarifs"
 
-#: apps/workers/services.py:174
+#: apps/workers/services.py:179
 msgid "The rate cannot be negative."
 msgstr "Le tarif ne peut pas être négatif."
 
-#: apps/workers/services.py:176
+#: apps/workers/services.py:181
 msgid "Unknown pay type."
 msgstr "Type de rémunération inconnu."
 
-#: apps/workers/services.py:178
+#: apps/workers/services.py:183
 msgid "Set the date the rate starts."
 msgstr "Indiquez la date de début du tarif."
 
-#: apps/workers/services.py:187
+#: apps/workers/services.py:192
 msgid "A locked pay period covers this date. Choose a date after it."
 msgstr ""
 "Une période de paie clôturée couvre cette date. Choisissez une date "
@@ -2438,17 +2486,17 @@ msgstr "Ouvrier %(number)s ajouté."
 msgid "Worker saved."
 msgstr "Ouvrier enregistré."
 
-#: apps/worksites/admin.py:25 templates/worksites/detail.html:63
+#: apps/worksites/admin.py:28 templates/worksites/detail.html:63
 #: templates/worksites/form.html:23
 msgid "People"
 msgstr "Personnes"
 
-#: apps/worksites/admin.py:27
+#: apps/worksites/admin.py:30
 msgid "Setting overrides (empty = company setting)"
 msgstr "Paramètres personnalisés (vide = valeur de l’entreprise)"
 
 #: apps/worksites/apps.py:7 templates/accounts/users.html:20
-#: templates/components/sidebar.html:47
+#: templates/components/sidebar.html:58
 #: templates/worksites/_detail_base.html:10 templates/worksites/form.html:5
 #: templates/worksites/list.html:4 templates/worksites/list.html:6
 #: templates/worksites/list.html:27
@@ -2459,25 +2507,25 @@ msgstr "Chantiers"
 msgid "Labour budget"
 msgstr "Budget main-d’œuvre"
 
-#: apps/worksites/forms.py:41
+#: apps/worksites/forms.py:43
 msgid "No site manager"
 msgstr "Pas de conducteur de travaux"
 
-#: apps/worksites/forms.py:81 apps/worksites/forms.py:87
+#: apps/worksites/forms.py:83 apps/worksites/forms.py:89
 #, python-format
 msgid "Company default (%(value)s)"
 msgstr "Valeur de l’entreprise (%(value)s)"
 
-#: apps/worksites/forms.py:94
+#: apps/worksites/forms.py:96
 msgid "Company default: not set. Leave blank to inherit."
 msgstr "Valeur de l’entreprise : non définie. Laissez vide pour en hériter."
 
-#: apps/worksites/forms.py:97 apps/worksites/forms.py:101
+#: apps/worksites/forms.py:99 apps/worksites/forms.py:103
 #, python-format
 msgid "Company default: %(value)s. Leave blank to inherit."
 msgstr "Valeur de l’entreprise : %(value)s. Laissez vide pour en hériter."
 
-#: apps/worksites/forms.py:125
+#: apps/worksites/forms.py:127
 msgid "Workers already on another site move here from the start date."
 msgstr ""
 "Les ouvriers déjà sur un autre chantier sont déplacés ici à partir de la "
@@ -2491,46 +2539,54 @@ msgstr "En pause"
 msgid "Completed"
 msgstr "Terminé"
 
-#: apps/worksites/models.py:21
+#: apps/worksites/models.py:22
 msgid "address"
 msgstr "adresse"
 
-#: apps/worksites/models.py:25
+#: apps/worksites/models.py:26
 msgid "started on"
 msgstr "démarré le"
 
-#: apps/worksites/models.py:28
+#: apps/worksites/models.py:29
 msgid "site manager"
 msgstr "conducteur de travaux"
 
-#: apps/worksites/models.py:36
+#: apps/worksites/models.py:37
 msgid "foremen"
 msgstr "chefs d’équipe"
 
-#: apps/worksites/models.py:41
+#: apps/worksites/models.py:42
 msgid "labour budget"
 msgstr "budget main-d’œuvre"
 
-#: apps/worksites/models.py:71
+#: apps/worksites/models.py:72
 msgid "sites"
 msgstr "chantiers"
 
-#: apps/worksites/models.py:108
+#: apps/worksites/models.py:109
 msgid "site assignment"
 msgstr "affectation au chantier"
 
-#: apps/worksites/models.py:109
+#: apps/worksites/models.py:110
 msgid "site assignments"
 msgstr "affectations aux chantiers"
 
-#: apps/worksites/services.py:138 apps/worksites/services.py:198
+#: apps/worksites/services.py:138 apps/worksites/services.py:200
 msgid "The end date must be on or after the start date."
 msgstr "La date de fin doit être le même jour que la date de début ou après."
 
-#: apps/worksites/services.py:180
+#: apps/worksites/services.py:140
+msgid "This worker belongs to another company."
+msgstr "Cet ouvrier appartient à une autre entreprise."
+
+#: apps/worksites/services.py:182
 msgid "This worker is already assigned to a site for part of that period."
 msgstr ""
 "Cet ouvrier est déjà affecté à un chantier sur une partie de cette période."
+
+#: apps/worksites/services.py:254
+msgid "Site managers and foremen must belong to the site's company."
+msgstr "Les conducteurs de travaux et les chefs d’équipe doivent appartenir à l’entreprise du chantier."
 
 #: apps/worksites/views.py:112
 msgid "Site saved."
@@ -2553,11 +2609,11 @@ msgstr "Après %(hours)s h × %(multiplier)s"
 msgid "Site settings saved."
 msgstr "Paramètres du chantier enregistrés."
 
-#: apps/worksites/views.py:413
+#: apps/worksites/views.py:414
 msgid "Crew updated."
 msgstr "Équipe mise à jour."
 
-#: apps/worksites/views.py:437
+#: apps/worksites/views.py:438
 #, python-format
 msgid "%(name)s leaves the crew after %(date)s."
 msgstr "%(name)s quitte l’équipe après le %(date)s."
@@ -2575,7 +2631,7 @@ msgid "Breadcrumb"
 msgstr "Fil d’Ariane"
 
 #: templates/accounts/user_form.html:7 templates/accounts/users.html:4
-#: templates/accounts/users.html:6 templates/components/sidebar.html:53
+#: templates/accounts/users.html:6 templates/components/sidebar.html:64
 msgid "Users & roles"
 msgstr "Utilisateurs et rôles"
 
@@ -2684,7 +2740,7 @@ msgstr "Connecté"
 msgid "Signed out"
 msgstr "Déconnecté"
 
-#: templates/accounts/user_form.html:107 templates/components/sidebar.html:67
+#: templates/accounts/user_form.html:107 templates/components/sidebar.html:81
 msgid "Sign out"
 msgstr "Déconnecter"
 
@@ -2854,7 +2910,7 @@ msgid "No workers were marked on this day."
 msgstr "Aucun ouvrier n’a été marqué ce jour-là."
 
 #: templates/attendance/approvals.html:4 templates/attendance/approvals.html:6
-#: templates/components/sidebar.html:36
+#: templates/components/sidebar.html:47
 msgid "Approvals"
 msgstr "Validations"
 
@@ -2911,56 +2967,70 @@ msgstr "Personnaliser"
 msgid "Menu"
 msgstr "Menu"
 
-#: templates/components/sidebar.html:25
+#: templates/components/sidebar.html:29
+msgid "No company yet"
+msgstr "Aucune entreprise pour l’instant"
+
+#: templates/components/sidebar.html:32 templates/core/companies.html:18
+#: templates/core/companies.html:34
+msgid "View"
+msgstr "Consulter"
+
+#: templates/components/sidebar.html:36 templates/core/companies.html:29
 msgid "Viewing"
 msgstr "Affichage"
 
-#: templates/components/sidebar.html:29
+#: templates/components/sidebar.html:40
 msgid "Main"
 msgstr "Principal"
 
-#: templates/components/sidebar.html:31
+#: templates/components/sidebar.html:42
 #: templates/worksites/_detail_base.html:22
 msgid "Overview"
 msgstr "Vue d’ensemble"
 
-#: templates/components/sidebar.html:32 templates/dashboard/home.html:4
+#: templates/components/sidebar.html:43 templates/dashboard/home.html:4
 #: templates/dashboard/home.html:163 templates/workers/list.html:30
 msgid "Today"
 msgstr "Aujourd’hui"
 
-#: templates/components/sidebar.html:35
+#: templates/components/sidebar.html:46
 msgid "Daily work"
 msgstr "Travail quotidien"
 
-#: templates/components/sidebar.html:37 templates/payroll/cash_sheet.html:5
+#: templates/components/sidebar.html:48 templates/payroll/cash_sheet.html:5
 #: templates/payroll/cash_sheets.html:4 templates/payroll/cash_sheets.html:6
 #: templates/payroll/periods.html:8
 msgid "Cash sheets"
 msgstr "Feuilles de caisse"
 
-#: templates/components/sidebar.html:41 templates/payroll/periods.html:4
+#: templates/components/sidebar.html:52 templates/payroll/periods.html:4
 #: templates/payroll/periods.html:6 templates/worksites/pay.html:8
 msgid "Pay periods"
 msgstr "Périodes de paie"
 
-#: templates/components/sidebar.html:45
+#: templates/components/sidebar.html:56
 msgid "People & sites"
 msgstr "Personnel et chantiers"
 
-#: templates/components/sidebar.html:50
+#: templates/components/sidebar.html:61
 msgid "Insight & admin"
 msgstr "Analyse et administration"
 
-#: templates/components/sidebar.html:51 templates/dashboard/reports.html:4
+#: templates/components/sidebar.html:62 templates/dashboard/reports.html:4
 #: templates/dashboard/reports.html:6 templates/worksites/detail.html:81
 msgid "Reports"
 msgstr "Rapports"
 
-#: templates/components/sidebar.html:54 templates/core/audit_log.html:5
+#: templates/components/sidebar.html:65 templates/core/audit_log.html:5
 #: templates/core/settings.html:4 templates/core/settings.html:6
 msgid "Settings"
 msgstr "Paramètres"
+
+#: templates/components/sidebar.html:68 templates/core/companies.html:4
+#: templates/core/companies.html:6
+msgid "Companies"
+msgstr "Entreprises"
 
 #: templates/components/status_badge.html:18
 #: templates/payroll/_cash_sheet_row.html:52
@@ -3057,6 +3127,32 @@ msgid "Changes to attendance, pay and settings appear here."
 msgstr ""
 "Les modifications des présences, de la paie et des paramètres apparaissent "
 "ici."
+
+#: templates/core/companies.html:5
+msgid "Platform administration"
+msgstr "Administration de la plateforme"
+
+#: templates/core/companies.html:7
+msgid ""
+"Each company has its own sites, people, settings and pay. Pick the one to "
+"view; everything else on the dashboard shows that company only."
+msgstr "Chaque entreprise a ses propres chantiers, personnes, paramètres et paies. Choisissez celle à consulter : tout le reste du tableau de bord n’affiche que cette entreprise."
+
+#: templates/core/companies.html:16
+msgid "Short name"
+msgstr "Nom court"
+
+#: templates/core/companies.html:44
+msgid "No companies yet"
+msgstr "Aucune entreprise pour l’instant"
+
+#: templates/core/companies.html:45
+msgid "Add the first company below, then set it up in Settings."
+msgstr "Ajoutez la première entreprise ci-dessous, puis configurez-la dans Paramètres."
+
+#: templates/core/companies.html:52
+msgid "Add company"
+msgstr "Ajouter l’entreprise"
 
 #: templates/core/settings.html:5
 msgid "Company defaults — each site can override pay and attendance rules"

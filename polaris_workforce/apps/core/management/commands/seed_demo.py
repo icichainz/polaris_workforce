@@ -5,8 +5,15 @@ Everything goes through the real services (attendance, payroll, workers, account
 amounts, cash sheets and audit log are exactly what the app would produce. Random choices
 use a fixed seed: the same command on the same day gives the same data.
 
+The demo is one company (``--company``, default "Polaris Demo Construction"). ``--keep``
+adds another company to a database that already has one, to show several companies: its
+usernames start with the company's short name (``other-co-admin``) and its foremen get
+other phone numbers (phones are unique across companies). The first run also creates a
+platform admin, ``platform``, who can switch between the companies.
+
     DJANGO_DEBUG=true uv run python manage.py seed_demo            # empty database only
     DJANGO_DEBUG=true uv run python manage.py seed_demo --flush    # wipe everything first
+    DJANGO_DEBUG=true uv run python manage.py seed_demo --keep --company "Other Co"
 """
 
 import datetime
@@ -18,14 +25,17 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
+from django.utils.text import slugify
 
 from apps.accounts import services as account_services
 from apps.accounts.models import User
 from apps.attendance import services as attendance
 from apps.attendance.models import AttendanceRecord
 from apps.core import dates
+from apps.core import services as core_services
 from apps.core.choices import PayType
-from apps.core.models import CompanySettings
+from apps.core.models import Company, CompanySettings
+from apps.core.tenancy import use_company
 from apps.payroll import services as payroll
 from apps.payroll.models import PayLine
 from apps.workers import services as worker_services
@@ -35,6 +45,8 @@ from apps.worksites.models import Site
 Status = AttendanceRecord.Status
 
 DEMO_PASSWORD = "Polaris-demo-2026"
+DEMO_COMPANY = "Polaris Demo Construction"
+PLATFORM_ADMIN = "platform"
 
 TRADES = {  # trade → daily rate in XOF (the electrician is paid by the hour)
     "Mason": 6000,
@@ -101,25 +113,52 @@ class Command(BaseCommand):
             "--days", type=int, default=14, help="Calendar days of history (default 14)."
         )
         parser.add_argument("--password", default=DEMO_PASSWORD, help="Password for all users.")
+        parser.add_argument(
+            "--company", default=DEMO_COMPANY, help=f'Company name (default "{DEMO_COMPANY}").'
+        )
+        parser.add_argument(
+            "--keep",
+            action="store_true",
+            help="Add this company to a database that already has data (another company).",
+        )
 
     def handle(self, *args, **options):
         if options["flush"]:
             call_command("flush", interactive=False, verbosity=0)
-        elif User.objects.exists() or Site.objects.exists():
+        elif not options["keep"] and (User.objects.exists() or Site.objects.exists()):
             raise CommandError(
-                "The database already has data. Run with --flush to wipe it and seed again."
+                "The database already has data. Run with --flush to wipe it and seed again, "
+                'or with --keep --company "Other Co" to add another company.'
             )
+        name = " ".join(options["company"].split())
+        if not name:
+            raise CommandError("The company needs a name.")
+        if Company.objects.filter(name__iexact=name).exists():
+            raise CommandError(f'A company named "{name}" already exists.')
+        # The first demo company keeps the short usernames; later ones get a prefix.
+        self.prefix = f"{slugify(name)}-" if User.objects.exists() else ""
         self.rng = random.Random(42)
         self.password = options["password"]
-        self.today = dates.company_today()
-        self.first_day = self.today - datetime.timedelta(days=options["days"])
+        self.warnings: list[str] = []
+        self._users: dict[str, User] = {}
+
+        with transaction.atomic():
+            self.company_row = core_services.create_company(
+                name, currency="XOF", currency_decimals=0
+            )
+            self.platform_admin = self._platform_admin()
+        with use_company(self.company_row):
+            self._seed(options["days"])
+
+    def _seed(self, days: int):
+        self.company = CompanySettings.load()
+        self.today = dates.company_today(self.company)
+        self.first_day = self.today - datetime.timedelta(days=days)
         # Start on a Sunday so weekly pay periods (Sunday to Saturday) are complete.
         while self.first_day.isoweekday() != 7:
             self.first_day -= datetime.timedelta(days=1)
-        self.warnings: list[str] = []
 
         with transaction.atomic():
-            self.company = self._company()
             self.admin, self.accountant = self._office_users()
             self.sites = self._sites()
             self.crews = self._crews()
@@ -130,23 +169,42 @@ class Command(BaseCommand):
 
     # --- setup -------------------------------------------------------------------------
 
-    def _company(self) -> CompanySettings:
-        company = CompanySettings.load()
-        company.company_name = "Polaris Demo Construction"
-        company.currency = "XOF"
-        company.currency_decimals = 0
-        company.save()
-        return company
+    def _platform_admin(self) -> User | None:
+        """A superuser without a company (switches between companies), made once."""
+        if User.objects.filter(username=PLATFORM_ADMIN).exists():
+            return None
+        user = User(
+            username=PLATFORM_ADMIN,
+            first_name="Platform",
+            last_name="Admin",
+            role=User.Role.ADMIN,
+            email="platform@example.com",
+            is_staff=True,
+            is_superuser=True,
+            company=None,
+        )
+        user.set_password(self.password)
+        user.save()
+        return user
 
     def _user(self, username, first, last, role, **extra) -> User:
-        user, created = User.objects.get_or_create(
-            username=username,
-            defaults={"first_name": first, "last_name": last, "role": role, **extra},
-        )
-        if created:
-            user.set_password(self.password)
-            user.save()
+        """A user of the demo company (the same person when a name comes twice)."""
+        username = self.prefix + username
+        if username in self._users:
+            return self._users[username]
+        if User.objects.filter(username=username).exists():
+            raise CommandError(f'The username "{username}" is taken: pick another --company.')
+        user = User(username=username, first_name=first, last_name=last, role=role, **extra)
+        user.set_password(self.password)
+        user.save()
+        self._users[username] = user
         return user
+
+    def _phone(self, phone: str, index: int) -> str:
+        """Foreman phones are unique across companies: other demo companies get new ones."""
+        if not self.prefix:
+            return phone
+        return f"+2299{self.company_row.pk % 1000:03d}{index:04d}"
 
     def _office_users(self):
         admin = self._user(
@@ -155,18 +213,17 @@ class Command(BaseCommand):
             "Admin",
             User.Role.ADMIN,
             email="admin@example.com",
-            is_staff=True,
-            is_superuser=True,
         )
         accountant = self._user("afua", "Afua", "Mensah", User.Role.ACCOUNTANT)
         return admin, accountant
 
     def _sites(self) -> dict[str, dict]:
         sites = {}
-        for spec in SITES:
+        for index, spec in enumerate(SITES, start=1):
             m_user, m_first, m_last = spec["manager"]
             manager = self._user(m_user, m_first, m_last, User.Role.SITE_MANAGER)
             f_user, f_first, f_last, phone, pin = spec["foreman"]
+            phone = self._phone(phone, index)
             foreman = self._user(f_user, f_first, f_last, User.Role.FOREMAN, phone=phone)
             account_services.set_pin(foreman, pin, actor=self.admin)
             site = Site.objects.create(
@@ -183,12 +240,15 @@ class Command(BaseCommand):
                 "site": site,
                 "manager": manager,
                 "foreman": foreman,
-                "foreman_login": spec["foreman"],
+                "foreman_login": (f_user, f_first, f_last, phone, pin),
             }
         return sites
 
     def _crews(self) -> dict[str, list[Worker]]:
-        trades = {name: Trade.objects.get_or_create(name=name)[0] for name in TRADES}
+        trades = {
+            name: Trade.objects.get_or_create(company=self.company_row, name=name)[0]
+            for name in TRADES
+        }
         names = iter(
             self.rng.sample(
                 [(f, last) for f in FIRST_NAMES for last in LAST_NAMES],
@@ -394,13 +454,17 @@ class Command(BaseCommand):
     def _report(self):
         out = self.stdout
         out.write(self.style.SUCCESS("Demo data created."))
+        workers = Worker.objects.filter(company=self.company_row).count()
         out.write(f"  Company: {self.company.company_name} · XOF · today = {self.today}")
-        out.write(f"  Workers: {Worker.objects.count()} on {len(self.sites)} sites")
+        out.write(f"  Workers: {workers} on {len(self.sites)} sites")
         out.write(f"  Office sign-in (password for everyone: {self.password}):")
-        out.write("    admin  — admin (all sites, settings, users)")
-        out.write("    edem   — site manager (Riverside Apartments, Route 4 Bridge)")
-        out.write("    ama    — site manager (Market Hall Renovation)")
-        out.write("    afua   — accountant")
+        p = self.prefix
+        out.write(f"    {p}admin  — admin (all sites, settings, users)")
+        out.write(f"    {p}edem   — site manager (Riverside Apartments, Route 4 Bridge)")
+        out.write(f"    {p}ama    — site manager (Market Hall Renovation)")
+        out.write(f"    {p}afua   — accountant")
+        if self.platform_admin is not None:
+            out.write(f"    {PLATFORM_ADMIN} — platform admin (switches between companies)")
         out.write("  Foreman phone app (phone → PIN):")
         for info in self.sites.values():
             _, first, last, phone, pin = info["foreman_login"]

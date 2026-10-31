@@ -21,6 +21,7 @@ from rest_framework.throttling import BaseThrottle
 
 from apps.api.authentication import generate_device_token
 from apps.core.models import AuditLog
+from apps.core.tenancy import use_company
 from apps.worksites.models import Site
 
 from .models import ForemanDevice, User
@@ -85,7 +86,11 @@ def normalize_phone(phone: str) -> str:
 
 
 def users_with_phone(phone: str, *, exclude_pk=None):
-    """Users whose phone matches once both sides are normalised (spaces, dashes…)."""
+    """Users whose phone matches once both sides are normalised (spaces, dashes…).
+
+    Deliberately across every company: phone numbers are unique installation-wide, so
+    ``POST /auth/pin/`` finds the user (and so the company) from the number alone.
+    """
     wanted = normalize_phone(phone)
     if not wanted:
         return []
@@ -201,8 +206,15 @@ class SignIn:
 
 
 def _find_pin_user(phone: str) -> User | None:
+    """The one user with this phone and a PIN, if they belong to an active company
+    (platform admins have no company and cannot use the phone)."""
     matches = [user for user in users_with_phone(phone) if user.has_pin]
-    return matches[0] if len(matches) == 1 else None
+    if len(matches) != 1:
+        return None
+    user = matches[0]
+    if user.company_id is None or not user.company.is_active:
+        return None
+    return user
 
 
 def _record_wrong_pin(user: User, now) -> WrongPin:
@@ -230,11 +242,17 @@ def pin_sign_in(*, phone: str, pin: str, device_id: str, device_name: str = "") 
     the same ``device_id`` replaces that device's token; the same phone signed in as
     someone else is revoked, so a phone holds one valid token.
     """
-    now = timezone.now()
     user = _find_pin_user(phone)
     if user is None or not user.is_active or not has_role(user, *PIN_ROLES):
         check_password(pin, _dummy_pin_hash())
         raise SignInRefused
+    # Everything below (lockout audit, device rows) belongs to the user's company.
+    with use_company(user.company):
+        return _pin_sign_in(user, pin, device_id, device_name)
+
+
+def _pin_sign_in(user: User, pin: str, device_id: str, device_name: str) -> SignIn:
+    now = timezone.now()
     if user.pin_locked_until is not None:
         if user.pin_locked_until > now:
             raise PinLocked(user.pin_locked_until)
@@ -275,6 +293,7 @@ def revoke_device(device: ForemanDevice, *, actor, reason: str = "") -> bool:
     device.revoked_at = timezone.now()
     device.save(update_fields=["revoked_at"])
     AuditLog.record(
+        company=device.user.company_id,  # a shared phone may change company
         actor=actor,
         action=AUDIT_DEVICE_REVOKE,
         target=device,
@@ -318,12 +337,18 @@ def save_user(
 ) -> User:
     """Create or update a user from the Users screen, with their site assignments.
 
-    ``user`` is an unsaved or changed instance (e.g. ``form.save(commit=False)``).
-    Managed sites are written through ``Site.manager`` and foreman sites through
-    ``Site.foremen``; only the list matching the role is kept. A user who can no
+    ``user`` is an unsaved or changed instance (e.g. ``form.save(commit=False)``); a new
+    user belongs to the current company. Managed sites are written through
+    ``Site.manager`` and foreman sites through ``Site.foremen``; only the list matching
+    the role is kept, and every site must be of the user's company. A user who can no
     longer use the phone (disabled, or a role without PIN sign-in) is signed out of
     every phone.
     """
+    if any(site.company_id != user.company_id for site in [*managed_sites, *foreman_sites]):
+        raise ValueError("A user can only be assigned to sites of their own company.")
+    if user.phone and users_with_phone(user.phone, exclude_pk=user.pk):
+        # Unique across companies: POST /auth/pin/ finds the user by phone alone.
+        raise ValueError("Another user already has this phone number.")
     creating = user.pk is None
     before = None
     if not creating:

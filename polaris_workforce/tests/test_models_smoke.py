@@ -9,13 +9,14 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import ForemanDevice
-from apps.core.models import CompanySettings
+from apps.core.models import Company, CompanySettings
 from apps.payroll.models import PayPeriod
 from tests import factories as f
 
 pytestmark = pytest.mark.django_db
 
 FACTORIES = [
+    f.CompanyFactory,
     f.UserFactory,
     f.ForemanDeviceFactory,
     f.CompanySettingsFactory,
@@ -133,10 +134,20 @@ def test_files_are_stored_under_their_folders(settings, tmp_path):
 
 
 class TestAdmin:
+    """The Django admin is for platform admins (superusers without a company)."""
+
     @pytest.fixture
     def admin_client(self, client):
-        client.force_login(f.AdminUserFactory())
+        client.force_login(f.PlatformAdminFactory())
         return client
+
+    def test_company_admins_cannot_open_the_django_admin(self, client):
+        client.force_login(f.AdminUserFactory())  # a superuser of a company
+
+        response = client.get(reverse("admin:index"))
+
+        assert response.status_code == 302
+        assert response.url.startswith(reverse("admin:login"))
 
     def test_changelists_and_change_pages_load(self, admin_client):
         for factory_class in FACTORIES:
@@ -160,14 +171,27 @@ class TestAdmin:
             assert admin_client.get(change).status_code == 200, change
 
     def test_company_settings_cannot_be_added_or_deleted(self, admin_client):
-        CompanySettings.load()
+        row = CompanySettings.load()
 
         assert admin_client.get(reverse("admin:core_companysettings_add")).status_code == 403
-        delete = reverse("admin:core_companysettings_delete", args=[1])
+        delete = reverse("admin:core_companysettings_delete", args=[row.pk])
         assert admin_client.get(delete).status_code == 403
 
-    def test_company_settings_changelist_redirects_to_the_row(self, admin_client):
+    def test_company_settings_changelist_lists_one_row_per_company(self, admin_client):
+        CompanySettings.load()
+        CompanySettings.load(f.CompanyFactory(name="Other Co"))
+
         response = admin_client.get(reverse("admin:core_companysettings_changelist"))
 
+        assert response.status_code == 200
+        assert response.context["cl"].result_count == 2
+
+    def test_adding_a_company_creates_its_settings(self, admin_client):
+        response = admin_client.post(
+            reverse("admin:core_company_add"),
+            {"name": "Lagoon Builders", "slug": "lagoon", "is_active": "on"},
+        )
+
         assert response.status_code == 302
-        assert response.url == reverse("admin:core_companysettings_change", args=[1])
+        company = Company.objects.get(slug="lagoon")
+        assert CompanySettings.objects.get(company=company).company_name == "Lagoon Builders"

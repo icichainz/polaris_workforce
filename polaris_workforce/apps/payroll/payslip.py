@@ -44,7 +44,7 @@ def payslip_filename(line: PayLine) -> str:
 
 
 def render_payslip(line: PayLine, *, printed_at: datetime.datetime | None = None) -> bytes:
-    company = CompanySettings.load()
+    company = CompanySettings.load(line.period.site.company_id)
     period, worker = line.period, line.worker
     site = period.site
     code, decimals = period.currency, period.currency_decimals

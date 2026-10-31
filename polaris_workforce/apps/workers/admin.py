@@ -13,19 +13,33 @@ class PayRateInline(admin.TabularInline):
 
 @admin.register(Trade)
 class TradeAdmin(admin.ModelAdmin):
-    list_display = ("name",)
+    list_display = ("name", "company")
+    list_filter = ("company",)
     search_fields = ("name",)
 
 
 @admin.register(Worker)
 class WorkerAdmin(admin.ModelAdmin):
-    list_display = ("number", "last_name", "first_name", "trade", "phone", "is_active")
-    list_filter = ("is_active", "trade", "id_document_type")
+    list_display = ("number", "last_name", "first_name", "company", "trade", "phone", "is_active")
+    list_filter = ("company", "is_active", "id_document_type")
     search_fields = ("number", "first_name", "last_name", "phone", "id_document_number")
-    list_select_related = ("trade",)
+    list_select_related = ("company", "trade")
     inlines = [PayRateInline]
     fieldsets = (
-        (None, {"fields": ("number", "first_name", "last_name", "phone", "photo", "trade")}),
+        (
+            None,
+            {
+                "fields": (
+                    "company",
+                    "number",
+                    "first_name",
+                    "last_name",
+                    "phone",
+                    "photo",
+                    "trade",
+                )
+            },
+        ),
         (_("Identity document"), {"fields": ("id_document_type", "id_document_number")}),
         (_("Status"), {"fields": ("is_active",)}),
         (

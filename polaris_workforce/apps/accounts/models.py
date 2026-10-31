@@ -9,13 +9,19 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from apps.core.choices import Language
+from apps.core.models import company_field
 
 
 class User(AbstractUser):
     """Someone who signs in: office staff or a foreman.
 
-    Workers are not users; they are records managed in the workers app.
+    Workers are not users; they are records managed in the workers app. Every user
+    belongs to a company, except platform admins (superusers without a company, see
+    ``apps.core.tenancy``). Usernames and phone numbers are unique across companies (the
+    phone signs in with phone + PIN, without a company code).
     """
+
+    company = company_field(null=True, blank=True, related_name="users")
 
     class Role(models.TextChoices):
         ADMIN = "admin", _("Admin")
@@ -34,6 +40,18 @@ class User(AbstractUser):
     pin_hash = models.CharField(_("PIN hash"), max_length=128, blank=True)
     pin_failed_attempts = models.PositiveSmallIntegerField(_("failed PIN attempts"), default=0)
     pin_locked_until = models.DateTimeField(_("PIN locked until"), null=True, blank=True)
+
+    class Meta(AbstractUser.Meta):
+        constraints = [
+            # Only platform admins (superusers) may have no company.
+            models.CheckConstraint(
+                condition=models.Q(company__isnull=False) | models.Q(is_superuser=True),
+                name="user_has_company_unless_platform_admin",
+                violation_error_message=_(
+                    "Choose a company: only platform admins (superusers) have none."
+                ),
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.get_full_name() or self.username

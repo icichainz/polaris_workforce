@@ -47,6 +47,7 @@ from apps.accounts.permissions import (
     can,
     can_manage_site,
     can_view_site,
+    company_workers,
     has_role,
     is_admin,
     scoped_sites,
@@ -161,9 +162,10 @@ def can_lock(user, site) -> bool:
 
 def scoped_workers(user):
     """Workers on the sites this user may see (all workers for admins and accountants)."""
+    workers = company_workers(user)
     if is_admin(user) or has_role(user, Role.ACCOUNTANT):
-        return Worker.objects.all()
-    return Worker.objects.filter(assignments__site__in=scoped_sites(user)).distinct()
+        return workers
+    return workers.filter(assignments__site__in=scoped_sites(user)).distinct()
 
 
 def current_site(worker: Worker, on: datetime.date) -> Site | None:
