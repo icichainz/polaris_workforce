@@ -167,4 +167,4 @@ def test_valid_token_reaches_the_view_over_http(device_and_token):
 
     response = APIClient(HTTP_AUTHORIZATION=f"Device {raw}").get(reverse("api:accounts:me"))
 
-    assert response.status_code == 501  # stub until Wave 2 (A)
+    assert response.status_code == 200

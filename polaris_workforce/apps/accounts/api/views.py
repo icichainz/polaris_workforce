@@ -1,16 +1,25 @@
 """Foreman sign-in (PIN → device token), sign-out and profile.
 
-Stubs: Wave 2 agent A replaces each body with a call into ``apps/accounts/services.py``
-(PIN check with lockout, token issue, revoke) and keeps the schema as is.
+The logic is in ``apps/accounts/services.py``; these views map it to the contract.
 """
 
+from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
+from rest_framework import exceptions, serializers, status
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from apps.api.exceptions import NotImplementedYet
+from apps.accounts import services
+from apps.accounts.models import ForemanDevice
+from apps.accounts.permissions import scoped_sites
+from apps.api.authentication import KEYWORD
+from apps.api.exceptions import Locked
 from apps.api.schema import error_responses
+from apps.core.models import CompanySettings
+from apps.core.settings import resolve_setting
+from apps.worksites.models import Site
 
 from .serializers import MeSerializer, PinLoginResponseSerializer, PinLoginSerializer
 
@@ -31,6 +40,61 @@ SITE_EXAMPLE = {
     "work_start": "07:00",
     "roll_call_due": "08:00",
 }
+
+
+class PinRejected(exceptions.AuthenticationFailed):
+    """401 ``not_authenticated`` that carries ``details`` (e.g. ``attempts_left``)."""
+
+    def __init__(self, message=None, *, details=None):
+        super().__init__(detail=message)
+        self.details = details or {}
+
+
+def _datetime(value):
+    return serializers.DateTimeField().to_representation(value)
+
+
+def profile_data(user, company: CompanySettings) -> dict:
+    return {
+        "id": user.pk,
+        "name": user.get_full_name() or user.username,
+        "role": user.role,
+        "phone": user.phone,
+        "language": user.language or company.language,
+    }
+
+
+def company_data(company: CompanySettings) -> dict:
+    return {
+        "country": company.country,
+        "time_zone": company.time_zone,
+        "currency": {"code": company.currency, "decimals": company.currency_decimals},
+    }
+
+
+def sites_data(user, company: CompanySettings) -> list[dict]:
+    """The sites in the user's scope that are still running (completed ones are left out)."""
+    sites = (
+        scoped_sites(user)
+        .exclude(status=Site.Status.COMPLETED)
+        .select_related("manager")
+        .order_by("name", "pk")
+    )
+    return [
+        {
+            "id": site.pk,
+            "name": site.name,
+            "address": site.address,
+            "manager": (
+                {"id": site.manager.pk, "name": site.manager.get_full_name() or str(site.manager)}
+                if site.manager
+                else None
+            ),
+            "work_start": resolve_setting("work_start", site, company=company),
+            "roll_call_due": resolve_setting("roll_call_due", site, company=company),
+        }
+        for site in sites
+    ]
 
 
 class PinLoginView(APIView):
@@ -86,7 +150,38 @@ class PinLoginView(APIView):
         ],
     )
     def post(self, request):
-        raise NotImplementedYet()
+        body = PinLoginSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        try:
+            result = services.pin_sign_in(**body.validated_data)
+        except services.PinLocked as exc:
+            raise Locked(
+                _("Too many wrong PINs. Try again later."),
+                details={"locked_until": _datetime(exc.locked_until)},
+            ) from exc
+        except services.WrongPin as exc:
+            details = {"attempts_left": exc.attempts_left}
+            if exc.locked_until is not None:
+                details["locked_until"] = _datetime(exc.locked_until)
+            raise PinRejected(_("Wrong PIN."), details=details) from exc
+        except services.SignInRefused as exc:
+            raise PinRejected(_("Wrong phone number or PIN.")) from exc
+        company = CompanySettings.load()
+        data = {
+            "token": result.token,
+            "device": {
+                "id": result.device.pk,
+                "device_id": result.device.device_id,
+                "name": result.device.name,
+            },
+            "user": profile_data(result.user, company),
+            "sites": sites_data(result.user, company),
+        }
+        return Response(PinLoginResponseSerializer(data).data)
+
+    def get_authenticate_header(self, request):
+        # No authentication classes here, but a wrong PIN must stay 401, not become 403.
+        return KEYWORD
 
 
 class LogoutView(APIView):
@@ -106,7 +201,12 @@ class LogoutView(APIView):
         },
     )
     def post(self, request):
-        raise NotImplementedYet()
+        # With a browser session there is no device to revoke: nothing to do.
+        if isinstance(request.auth, ForemanDevice):
+            services.revoke_device(
+                request.auth, actor=request.user, reason="Signed out on the phone."
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class MeView(APIView):
@@ -136,4 +236,10 @@ class MeView(APIView):
         ],
     )
     def get(self, request):
-        raise NotImplementedYet()
+        company = CompanySettings.load()
+        data = {
+            **profile_data(request.user, company),
+            "company": company_data(company),
+            "sites": sites_data(request.user, company),
+        }
+        return Response(MeSerializer(data).data)

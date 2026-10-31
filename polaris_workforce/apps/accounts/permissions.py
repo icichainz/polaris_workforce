@@ -9,12 +9,17 @@ Rules:
 - Accountants see every site, read-only, plus pay-period locking and reports.
 - Site managers see the sites they manage.
 - Foremen see the sites they are a foreman on.
+
+What each role may do is the ``PERMISSIONS`` table below (the matrix shown on the Users
+screen). Check it with ``can(user, action, site)`` or ``user.can(action, site)``.
 """
 
 from functools import wraps
 
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import AccessMixin
 from django.core.exceptions import PermissionDenied
+from django.utils.translation import gettext_lazy as _
 from rest_framework.permissions import BasePermission
 
 from apps.worksites.models import Site
@@ -72,6 +77,96 @@ def get_site_or_403(user, site_id) -> Site:
     return site
 
 
+# --- What each role may do -----------------------------------------------------------
+
+# Scope of a permission for a role.
+ALL = "all"  # on every site
+OWN = "own"  # only on the sites the user is assigned to
+
+TAKE_ROLL_CALL = "take_roll_call"
+CORRECT_DAY = "correct_day"
+APPROVE_DAYS = "approve_days"
+PAY_OUT = "pay_out"
+GIVE_ADVANCES = "give_advances"
+EDIT_WORKERS = "edit_workers"
+LOCK_PERIODS = "lock_periods"
+VIEW_REPORTS = "view_reports"
+MANAGE_COMPANY = "manage_company"
+
+# action → (label, {role: ALL | OWN}); a role that is missing may not do it.
+PERMISSIONS: dict[str, tuple] = {
+    TAKE_ROLL_CALL: (
+        _("Take roll call"),
+        {Role.ADMIN: ALL, Role.SITE_MANAGER: OWN, Role.FOREMAN: OWN},
+    ),
+    CORRECT_DAY: (
+        _("Correct a submitted day (with reason)"),
+        {Role.ADMIN: ALL, Role.SITE_MANAGER: OWN, Role.FOREMAN: OWN},
+    ),
+    APPROVE_DAYS: (_("Approve days"), {Role.ADMIN: ALL, Role.SITE_MANAGER: OWN}),
+    PAY_OUT: (
+        _("Pay out cash & record proof"),
+        {Role.ADMIN: ALL, Role.SITE_MANAGER: OWN, Role.FOREMAN: OWN},
+    ),
+    GIVE_ADVANCES: (_("Give advances"), {Role.ADMIN: ALL, Role.SITE_MANAGER: OWN}),
+    EDIT_WORKERS: (_("Edit workers & pay rates"), {Role.ADMIN: ALL, Role.SITE_MANAGER: OWN}),
+    LOCK_PERIODS: (_("Close & lock pay periods"), {Role.ADMIN: ALL, Role.ACCOUNTANT: ALL}),
+    VIEW_REPORTS: (
+        _("Reports & exports"),
+        {Role.ADMIN: ALL, Role.SITE_MANAGER: OWN, Role.ACCOUNTANT: ALL},
+    ),
+    MANAGE_COMPANY: (_("Company settings & users"), {Role.ADMIN: ALL}),
+}
+
+MATRIX_ROLES = [Role.ADMIN, Role.SITE_MANAGER, Role.FOREMAN, Role.ACCOUNTANT]
+
+
+def _role_of(user) -> str | None:
+    if not getattr(user, "is_authenticated", False) or not user.is_active:
+        return None
+    return Role.ADMIN if user.is_superuser else user.role
+
+
+def can(user, action: str, site=None) -> bool:
+    """May ``user`` do ``action`` (on ``site``)?
+
+    Without a site, an ``OWN`` permission answers "may do it on their own sites", which
+    is what an office screen checks before listing anything; pass the site to check one.
+    Unknown actions raise ``KeyError``.
+    """
+    _label, scopes = PERMISSIONS[action]
+    scope = scopes.get(_role_of(user))
+    if scope is None:
+        return False
+    if scope == ALL or site is None:
+        return True
+    return can_view_site(user, site)
+
+
+def permission_matrix() -> list[dict]:
+    """Rows for the Users screen: ``{"label", "cells": [ALL | OWN | None, …]}`` per action,
+    one cell per role in ``MATRIX_ROLES`` order."""
+    return [
+        {"action": action, "label": label, "cells": [scopes.get(role) for role in MATRIX_ROLES]}
+        for action, (label, scopes) in PERMISSIONS.items()
+    ]
+
+
+def can_lock_periods(user) -> bool:
+    """Close and lock pay periods: admins and accountants."""
+    return can(user, LOCK_PERIODS)
+
+
+def can_view_reports(user, site=None) -> bool:
+    """Reports and exports: admins and accountants everywhere, managers on their sites."""
+    return can(user, VIEW_REPORTS, site)
+
+
+def can_manage_users(user) -> bool:
+    """Company settings and the Users screen: admins only."""
+    return can(user, MANAGE_COMPANY)
+
+
 def role_required(*roles: str):
     """Office view decorator: sign-in required, then one of the roles (403 otherwise)."""
 
@@ -86,6 +181,19 @@ def role_required(*roles: str):
         return wrapper
 
     return decorator
+
+
+class RoleRequiredMixin(AccessMixin):
+    """Class-based office views: like ``role_required``. Set ``allowed_roles``."""
+
+    allowed_roles: tuple[str, ...] = ()
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        if not has_role(request.user, *self.allowed_roles):
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
 
 
 class IsForeman(BasePermission):
