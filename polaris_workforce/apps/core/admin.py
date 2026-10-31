@@ -11,7 +11,16 @@ class CompanySettingsAdmin(admin.ModelAdmin):
     fieldsets = (
         (
             _("Company"),
-            {"fields": ("company_name", "country", "currency", "currency_decimals", "time_zone")},
+            {
+                "fields": (
+                    "company_name",
+                    "country",
+                    "currency",
+                    "currency_decimals",
+                    "number_format",
+                    "time_zone",
+                )
+            },
         ),
         (_("Language"), {"fields": ("language",)}),
         (
@@ -28,6 +37,8 @@ class CompanySettingsAdmin(admin.ModelAdmin):
                     "late_rule",
                     "half_day_units",
                     "require_correction_reason",
+                    "record_times",
+                    "public_holidays",
                 )
             },
         ),

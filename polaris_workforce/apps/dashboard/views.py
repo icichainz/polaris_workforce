@@ -1,19 +1,85 @@
+"""Office views: the "Today" dashboard, reports and the CSV export."""
+
+import io
+from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
+
 from django import forms
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import render
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
+from apps.accounts.permissions import Role, has_role, role_required, scoped_sites
+from apps.core.models import CompanySettings
+
+from .forms import ReportFilterForm
+from .reports import build_report, write_csv
+from .services import company_now, today_overview
+
+REPORT_ROLES = (Role.ADMIN, Role.ACCOUNTANT, Role.SITE_MANAGER)
 
 
 @login_required
 def home(request):
-    return render(request, "dashboard/home.html")
+    company = CompanySettings.load()
+    overview = today_overview(request.user, company=company)
+    today = overview.today.isoformat()
+    context = {
+        "overview": overview,
+        "company_settings": company,
+        "can_export": has_role(request.user, *REPORT_ROLES),
+        "export_query": "?" + urlencode({"period": "custom", "start": today, "end": today}),
+    }
+    if overview.awaiting:
+        context["nav_badges"] = {"approvals": len(overview.awaiting)}
+    # Dates and times on the page are shown in the company time zone.
+    with timezone.override(ZoneInfo(company.time_zone)):
+        return render(request, "dashboard/home.html", context)
 
 
-@login_required
+def _report_context(request):
+    company = CompanySettings.load()
+    sites = scoped_sites(request.user)
+    form = ReportFilterForm(
+        request.GET or None, sites=sites.order_by("name"), today=company_now(company).date()
+    )
+    start, end = form.date_range()
+    site = form.selected("site")
+    report = build_report(
+        [site] if site else sites, start, end, trade=form.selected("trade"), company=company
+    )
+    return company, form, report
+
+
+@role_required(*REPORT_ROLES)
 def reports(request):
-    return render(request, "dashboard/reports.html")
+    company, form, report = _report_context(request)
+    return render(
+        request,
+        "dashboard/reports.html",
+        {
+            "form": form,
+            "report": report,
+            "company_settings": company,
+            "query": request.GET.urlencode(),
+            "period": form.selected("period") or "month",
+        },
+    )
+
+
+@role_required(*REPORT_ROLES)
+def reports_csv(request):
+    _company, _form, report = _report_context(request)
+    buffer = io.StringIO()
+    buffer.write("﻿")  # UTF-8 byte-order mark: Excel then reads the accents correctly.
+    write_csv(report, buffer)
+    response = HttpResponse(buffer.getvalue(), content_type="text/csv; charset=utf-8")
+    filename = f"polaris-attendance-{report.start:%Y-%m-%d}-{report.end:%Y-%m-%d}.csv"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 class _GalleryForm(forms.Form):

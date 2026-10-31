@@ -44,3 +44,11 @@ class ProofType(models.TextChoices):
     SIGNATURE = "signature", _("Signature")
     THUMB_MARK = "thumb_mark", _("Thumb mark")
     NONE = "none", _("No proof")
+
+
+class NumberFormat(models.TextChoices):
+    """How amounts are written. The separators live in ``apps.core.money.NUMBER_FORMATS``."""
+
+    SPACE = "space", _("12 500 XOF · 1 234.50 EUR")
+    COMMA = "comma", _("12,500 XOF · 1,234.50 EUR")
+    DOT = "dot", _("XOF 12.500 · EUR 1.234,50")

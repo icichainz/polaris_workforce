@@ -1,12 +1,134 @@
 {% extends "layouts/app.html" %}
-{% load i18n %}
+{% load i18n polaris %}
 
 {% block title %}{% translate "Reports" %} · Polaris Workforce{% endblock %}
-{% block page_subtitle %}{% translate "Labour cost, attendance rate and exports" %}{% endblock %}
+{% block page_subtitle %}{% blocktranslate with start=report.start|date:"j M Y" end=report.end|date:"j M Y" %}{{ start }} – {{ end }}{% endblocktranslate %}{% endblock %}
 {% block page_title %}{% translate "Reports" %}{% endblock %}
+{% block page_actions %}
+  {% url "dashboard:reports_csv" as csv_url %}
+  {% translate "Download CSV" as csv_label %}
+  {% if query %}{% with href=csv_url|add:"?"|add:query %}{% include "components/button.html" with label=csv_label href=href only %}{% endwith %}{% else %}{% include "components/button.html" with label=csv_label href=csv_url only %}{% endif %}
+  {% translate "Download Excel" as xlsx_label %}
+  <span title="{% translate 'Excel files are coming later — the CSV opens in Excel.' %}">{% include "components/button.html" with label=xlsx_label disabled=True only %}</span>
+{% endblock %}
 
 {% block content %}
-  {% translate "This screen is built in Wave 2" as empty_title %}
-  {% translate "Labour cost by site, attendance by week and by worker, with CSV and Excel downloads." as empty_message %}
-  {% include "components/empty_state.html" with icon="reports" title=empty_title message=empty_message only %}
+<form method="get" x-data="{ period: '{{ period|escapejs }}' }" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-white px-4 py-3.5">
+  <fieldset class="m-0 border-0 p-0">
+    <legend class="sr-only">{% translate "Period" %}</legend>
+    <div class="flex gap-1 rounded-card bg-segment p-1">
+      {% for radio in form.period %}
+      <label for="{{ radio.id_for_label }}" class="flex h-8.5 items-center rounded-[7px] px-3 text-[13px] font-semibold text-ink-700 has-checked:bg-white has-checked:text-ink has-focus-visible:outline-3 has-focus-visible:outline-amber-500">
+        <input type="radio" name="{{ radio.data.name }}" value="{{ radio.data.value }}" id="{{ radio.id_for_label }}" x-model="period"{% if radio.data.value == period %} checked{% endif %} class="sr-only"> {{ radio.choice_label }}
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <div class="flex flex-wrap items-end gap-3" x-show="period === 'custom'"{% if period != "custom" %} x-cloak{% endif %}>
+    <div class="w-40">{% include "components/field.html" with field=form.start %}</div>
+    <div class="w-40">{% include "components/field.html" with field=form.end %}</div>
+  </div>
+  <div class="w-full sm:w-56">{% include "components/field.html" with field=form.site %}</div>
+  <div class="w-full sm:w-48">{% include "components/field.html" with field=form.trade %}</div>
+  {% translate "Show" as show_label %}
+  {% include "components/button.html" with label=show_label type="submit" only %}
+</form>
+{% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}
+
+<section aria-label="{% translate 'Key figures' %}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  {% translate "Labour cost" as cost_label %}
+  {% money report.labour_cost as cost_value %}
+  {% include "components/stat_tile.html" with label=cost_label value=cost_value dark=True only %}
+  {% translate "Worker-days" as days_label %}
+  {% number report.worker_days as days_value %}
+  {% include "components/stat_tile.html" with label=days_label value=days_value only %}
+  {% translate "Attendance rate" as rate_label %}
+  {% if report.attendance_rate is None %}{% include "components/stat_tile.html" with label=rate_label value="—" only %}{% else %}{% include "components/stat_tile.html" with label=rate_label value=report.attendance_rate suffix="%" progress=report.attendance_rate only %}{% endif %}
+  {% translate "Avg cost per worker-day" as avg_label %}
+  {% money report.cost_per_worker_day as avg_value %}
+  {% include "components/stat_tile.html" with label=avg_label value=avg_value only %}
+</section>
+
+<div class="flex flex-col gap-5 lg:flex-row lg:items-stretch">
+  <section aria-labelledby="cost-title" class="flex min-w-0 flex-col gap-3.5 rounded-card border border-line bg-white px-5 py-4 lg:basis-1/2">
+    <h2 id="cost-title" class="font-display text-lg font-bold">{% translate "Labour cost by site" %}</h2>
+    {% if report.by_site %}
+    <ul class="m-0 flex list-none flex-col gap-3.5 p-0">
+      {% for item in report.by_site %}
+      {% money item.cost as item_cost %}
+      <li class="flex flex-col gap-1.5" title="{{ item.name }}: {{ item_cost }}">
+        <div class="flex justify-between gap-3 text-sm"><span class="font-semibold">{{ item.name }}</span><span class="tabular-nums">{{ item_cost }}</span></div>
+        <span class="block h-3.5 rounded-r bg-blue-700" style="width: {{ item.width_percent }}%" aria-hidden="true"></span>
+        {% if item.budget %}<span class="text-xs text-steel">{% money item.budget as budget %}{% blocktranslate %}Labour budget: {{ budget }}{% endblocktranslate %}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-steel">{% translate "No pay periods end in this period yet." %}</p>
+    {% endif %}
+    <span class="text-xs text-steel">{% translate "Gross pay of the pay periods that end in this period." %}</span>
+  </section>
+
+  <section aria-labelledby="week-title" class="flex min-w-0 flex-col gap-3.5 rounded-card border border-line bg-white px-5 py-4 lg:basis-1/2">
+    <h2 id="week-title" class="font-display text-lg font-bold">{% translate "Attendance rate by week" %}</h2>
+    <div role="img" aria-label="{% translate 'Attendance rate by week' %}: {% for week in report.by_week %}{% blocktranslate with week=week.week %}week {{ week }}{% endblocktranslate %} {% if week.rate is None %}{% translate 'no data' %}{% else %}{{ week.rate }}%{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}"
+      class="flex h-42.5 items-end gap-3 border-b border-line-strong sm:gap-4">
+      {% for week in report.by_week %}
+      <div class="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5" title="{% blocktranslate with week=week.week %}Week {{ week }}{% endblocktranslate %}: {% if week.rate is None %}—{% else %}{{ week.rate }}%{% endif %}">
+        <span class="text-xs font-semibold text-ink-700 tabular-nums">{% if week.rate is None %}—{% else %}{{ week.rate }}%{% endif %}</span>
+        <span class="block w-full max-w-12 rounded-t bg-blue-700" style="height: {% widthratio week.height_percent 100 140 %}px"></span>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="-mt-1.5 flex gap-3 sm:gap-4" aria-hidden="true">
+      {% for week in report.by_week %}<span class="min-w-0 flex-1 text-center text-xs text-steel">{% blocktranslate with week=week.week %}Wk {{ week }}{% endblocktranslate %}</span>{% endfor %}
+    </div>
+    <span class="text-xs text-steel">{% translate "Axis starts at 50% · present and late, plus half days, ÷ recorded days" %}</span>
+  </section>
+</div>
+
+<section aria-labelledby="workers-title" class="rounded-card border border-line bg-white">
+  <div class="border-b border-line px-5 py-4"><h2 id="workers-title" class="font-display text-lg font-bold">{% translate "Attendance by worker" %}</h2></div>
+  {% if report.workers %}
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-190 border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel"><abbr title="{% translate 'Present' %}" class="no-underline">P</abbr></th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel"><abbr title="{% translate 'Half day' %}" class="no-underline">½</abbr></th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel"><abbr title="{% translate 'Late' %}" class="no-underline">L</abbr></th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel"><abbr title="{% translate 'Absent' %}" class="no-underline">A</abbr></th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Rate" %}</th>
+        <th scope="col" class="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Earned" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for row in report.workers %}
+        <tr class="border-t border-line-soft">
+          <td class="px-5 py-3"><span class="font-semibold">{{ row.name }}</span><br><span class="text-xs text-steel">{{ row.number }}{% if row.trade %} · {{ row.trade }}{% endif %} · {{ row.site_name }}</span></td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.present }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.half }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.late }}</td>
+          <td class="px-4 py-3 text-right tabular-nums {% if row.flag_absences %}font-bold text-absent-fg{% endif %}">{{ row.absent }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{% if row.rate is None %}—{% else %}{{ row.rate }}%{% endif %}</td>
+          <td class="px-5 py-3 text-right font-semibold tabular-nums">{% money row.earned %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% with totals=report.totals %}
+      <tfoot><tr class="border-t-2 border-line bg-subtle">
+        <th scope="row" class="px-5 py-3 text-left font-semibold">{% translate "Total" %}</th>
+        <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ totals.present }}</td>
+        <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ totals.half }}</td>
+        <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ totals.late }}</td>
+        <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ totals.absent }}</td>
+        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% if report.attendance_rate is None %}—{% else %}{{ report.attendance_rate }}%{% endif %}</td>
+        <td class="px-5 py-3 text-right font-semibold tabular-nums">{% money totals.earned %}</td>
+      </tr></tfoot>
+      {% endwith %}
+    </table>
+  </div>
+  {% else %}
+  <p class="px-5 py-8 text-center text-sm text-steel">{% translate "No submitted attendance in this period." %}</p>
+  {% endif %}
+</section>
 {% endblock %}

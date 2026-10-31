@@ -1,12 +1,167 @@
 {% extends "layouts/app.html" %}
-{% load i18n %}
+{% load i18n polaris %}
 
 {% block title %}{% translate "Today" %} · Polaris Workforce{% endblock %}
-{% block page_subtitle %}{% now "l j F Y · H:i" %}{% endblock %}
+{% block page_subtitle %}{{ overview.now|date:"l j F Y · H:i" }}{% endblock %}
 {% block page_title %}{% translate "Today across sites" %}{% endblock %}
+{% block page_actions %}
+  {% if can_export %}
+    {% url "dashboard:reports_csv" as csv_url %}
+    {% translate "Export day" as export_label %}
+    {% with href=csv_url|add:export_query %}{% include "components/button.html" with label=export_label href=href only %}{% endwith %}
+  {% endif %}
+  {% if overview.awaiting %}
+    {% url "attendance:approvals" as approvals_url %}
+    {% blocktranslate count counter=overview.awaiting|length asvar review_label %}Review {{ counter }} day{% plural %}Review {{ counter }} days{% endblocktranslate %}
+    {% include "components/button.html" with label=review_label href=approvals_url variant="primary" only %}
+  {% endif %}
+{% endblock %}
 
 {% block content %}
-  {% translate "Welcome to Polaris Workforce" as empty_title %}
-  {% translate "This screen is built in Wave 2: stat tiles, the sites-today table and what needs attention." as empty_message %}
-  {% include "components/empty_state.html" with icon="dashboard" title=empty_title message=empty_message only %}
+{% with totals=overview.totals %}
+<section aria-label="{% translate 'Key figures' %}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  {% translate "Present" as present_label %}
+  {% blocktranslate with expected=totals.expected asvar present_suffix %}/ {{ expected }} expected{% endblocktranslate %}
+  {% include "components/stat_tile.html" with label=present_label value=totals.present suffix=present_suffix progress=overview.present_percent only %}
+
+  {% translate "Absent · half · late" as other_label %}
+  {% blocktranslate with absent=totals.absent half=totals.half late=totals.late asvar other_value %}{{ absent }} · {{ half }} · {{ late }}{% endblocktranslate %}
+  {% if overview.missing_roll_calls %}
+    {% blocktranslate count counter=overview.missing_roll_calls asvar other_caption %}Roll call missing at {{ counter }} site{% plural %}Roll call missing at {{ counter }} sites{% endblocktranslate %}
+  {% elif overview.is_working_day %}
+    {% translate "No roll call overdue" as other_caption %}
+  {% else %}
+    {% translate "Not a working day" as other_caption %}
+  {% endif %}
+  {% include "components/stat_tile.html" with label=other_label value=other_value caption=other_caption only %}
+
+  {% translate "Awaiting approval" as awaiting_label %}
+  {% blocktranslate count counter=overview.awaiting|length asvar awaiting_value %}{{ counter }} day{% plural %}{{ counter }} days{% endblocktranslate %}
+  {% if overview.oldest_awaiting %}
+    {% url "attendance:approvals" as approvals_url %}
+    {% blocktranslate with date=overview.oldest_awaiting.date|date:"D j M" site=overview.oldest_awaiting.site.name asvar awaiting_link %}Oldest: {{ date }}, {{ site }}{% endblocktranslate %}
+    {% include "components/stat_tile.html" with label=awaiting_label value=awaiting_value href=approvals_url link_label=awaiting_link only %}
+  {% else %}
+    {% translate "Nothing waiting" as awaiting_caption %}
+    {% include "components/stat_tile.html" with label=awaiting_label value=awaiting_value caption=awaiting_caption only %}
+  {% endif %}
+
+  {% translate "Cash to pay tonight" as cash_label %}
+  {% money totals.cash_tonight as cash_value %}
+  {% url "payroll:cash_sheets" as cash_url %}
+  {% translate "Open cash sheets" as cash_link %}
+  {% include "components/stat_tile.html" with label=cash_label value=cash_value href=cash_url link_label=cash_link dark=True only %}
+</section>
+
+<div class="flex flex-col gap-6 xl:flex-row xl:items-start">
+  <section aria-labelledby="sites-today-title" class="min-w-0 rounded-card border border-line bg-white xl:basis-2/3">
+    <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+      <h2 id="sites-today-title" class="font-display text-lg font-bold">{% translate "Sites today" %}</h2>
+      <a href="{% url 'worksites:list' %}" class="text-sm font-semibold">{% translate "All sites" %}</a>
+    </div>
+    {% if overview.sites %}
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-160 border-collapse text-sm">
+        <thead><tr class="bg-subtle text-left">
+          <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Roll call" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Present" %}</th>
+          <th scope="col" class="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Cash tonight" %}</th>
+        </tr></thead>
+        <tbody>
+          {% for row in overview.sites %}
+          <tr class="border-t border-line-soft">
+            <td class="px-5 py-3.5">
+              <span class="font-semibold">{{ row.site.name }}</span><br>
+              <span class="text-xs text-steel">{% if row.foreman_name %}{% blocktranslate with name=row.foreman_name %}Foreman: {{ name }}{% endblocktranslate %}{% else %}{% translate "No foreman assigned" %}{% endif %}</span>
+            </td>
+            <td class="px-4 py-3.5">
+              {% if row.status == "not_started" %}
+                {% translate "Not started" as badge_label %}{% include "components/status_badge.html" with status="rejected" label=badge_label only %}
+              {% elif row.status == "draft" %}
+                {% translate "In progress" as badge_label %}{% include "components/status_badge.html" with status="draft" label=badge_label only %}
+              {% elif row.status == "rejected" %}
+                {% translate "Sent back" as badge_label %}{% include "components/status_badge.html" with status="rejected" label=badge_label only %}
+              {% else %}
+                {% include "components/status_badge.html" with status=row.status only %}
+              {% endif %}
+              <br><span class="text-xs {% if row.overdue %}font-semibold text-absent-fg{% else %}text-steel{% endif %}">
+                {% if row.status == "not_started" or row.status == "draft" %}
+                  {% if row.overdue %}{% blocktranslate with time=row.roll_call_due|time:"H:i" %}Was due by {{ time }}{% endblocktranslate %}{% else %}{% blocktranslate with time=row.roll_call_due|time:"H:i" %}Expected by {{ time }}{% endblocktranslate %}{% endif %}
+                {% elif row.status == "submitted" %}
+                  {% blocktranslate with time=row.day.submitted_at|time:"H:i" %}{{ time }} · waiting for approval{% endblocktranslate %}
+                {% elif row.status == "approved" %}
+                  {% if row.day.approved_by %}{% blocktranslate with time=row.day.approved_at|time:"H:i" name=row.day.approved_by.get_full_name|default:row.day.approved_by.username %}{{ time }} by {{ name }}{% endblocktranslate %}{% else %}{{ row.day.approved_at|time:"H:i" }}{% endif %}
+                {% elif row.status == "rejected" %}
+                  {% translate "Back with the foreman" %}
+                {% else %}
+                  {% translate "Paid out and locked" %}
+                {% endif %}
+              </span>
+            </td>
+            <td class="min-w-40 px-4 py-3.5">
+              <span class="font-semibold tabular-nums">{{ row.present }} / {{ row.expected }}</span>
+              <span class="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-line-soft" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ row.present_percent }}" aria-label="{% blocktranslate with site=row.site.name %}Present at {{ site }}{% endblocktranslate %}"><span class="block h-1.5 bg-present-fg" style="width: {{ row.present_percent }}%"></span></span>
+            </td>
+            <td class="px-5 py-3.5 text-right font-semibold tabular-nums">{% money row.cash_tonight %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <p class="px-5 py-8 text-center text-sm text-steel">{% translate "No active sites to show." %}</p>
+    {% endif %}
+  </section>
+
+  <section aria-labelledby="attention-title" class="flex min-w-0 flex-col rounded-card border border-line bg-white px-5 py-4 xl:basis-1/3">
+    <h2 id="attention-title" class="pb-2 font-display text-lg font-bold">{% translate "Needs attention" %}</h2>
+    {% for alert in overview.alerts %}
+    <div class="flex gap-3 border-t border-line-soft py-3">
+      <span class="flex size-7 shrink-0 items-center justify-center rounded-control text-sm font-extrabold {% if alert.severity == 'danger' %}bg-absent-bg text-absent-fg{% else %}bg-warning-bg text-amber-text{% endif %}" aria-hidden="true">!</span>
+      <span class="flex min-w-0 flex-col gap-0.5 text-sm">
+        {% if alert.kind == "missing_roll_call" %}
+          <span class="font-semibold">{% blocktranslate with site=alert.site_name %}{{ site }} — no roll call yet{% endblocktranslate %}</span>
+          <span class="text-ink-700">{% if alert.person %}{% blocktranslate with name=alert.person time=alert.due|time:"H:i" %}{{ name }} has not submitted. Due by {{ time }}.{% endblocktranslate %}{% else %}{% blocktranslate with time=alert.due|time:"H:i" %}No foreman has submitted. Due by {{ time }}.{% endblocktranslate %}{% endif %}</span>
+          <a href="{% url 'worksites:list' %}" class="text-[13px] font-semibold">{% translate "View sites" %}</a>
+        {% elif alert.kind == "corrections" %}
+          <span class="font-semibold">{% blocktranslate count counter=alert.count %}{{ counter }} correction after submission{% plural %}{{ counter }} corrections after submission{% endblocktranslate %}</span>
+          <span class="text-ink-700">{% blocktranslate with site=alert.site_name date=alert.date|date:"D j M" %}{{ site }}, {{ date }} — check the reasons before approving.{% endblocktranslate %}</span>
+          <a href="{% url 'attendance:approvals' %}" class="text-[13px] font-semibold">{% translate "Review" %}</a>
+        {% elif alert.kind == "absent_streak" %}
+          <span class="font-semibold">{% blocktranslate with name=alert.person days=alert.count %}{{ name }} absent {{ days }} days in a row{% endblocktranslate %}</span>
+          <span class="text-ink-700">{{ alert.detail }}</span>
+          <a href="{% url 'workers:list' %}" class="text-[13px] font-semibold">{% translate "Open workers" %}</a>
+        {% elif alert.kind == "unclosed_period" %}
+          <span class="font-semibold">{% translate "Cash sheet not closed" %}</span>
+          <span class="text-ink-700">{% blocktranslate with site=alert.site_name date=alert.date|date:"D j M" count counter=alert.count %}{{ site }}, {{ date }} — {{ counter }} worker unpaid.{% plural %}{{ site }}, {{ date }} — {{ counter }} workers unpaid.{% endblocktranslate %}</span>
+          <a href="{% url 'payroll:cash_sheets' %}" class="text-[13px] font-semibold">{% translate "Open cash sheets" %}</a>
+        {% endif %}
+      </span>
+    </div>
+    {% empty %}
+    <p class="border-t border-line-soft py-3 text-sm text-steel">{% translate "Nothing needs attention right now." %}</p>
+    {% endfor %}
+  </section>
+</div>
+
+<section aria-labelledby="chart-title" class="flex flex-col gap-4 rounded-card border border-line bg-white px-5 py-4">
+  <div class="flex flex-wrap items-baseline justify-between gap-2">
+    <h2 id="chart-title" class="font-display text-lg font-bold">{% translate "Worker-days, last 7 working days" %}</h2>
+    {% number overview.half_day_units as units %}<span class="text-[13px] text-steel">{% blocktranslate %}Your sites · present and late count as 1, half days as {{ units }}{% endblocktranslate %}</span>
+  </div>
+  <div role="img" aria-label="{% translate 'Worker-days per day' %}: {% for day in overview.chart %}{{ day.date|date:'D j M' }} {% number day.value %}{% if day.is_today %} ({% translate 'today, so far' %}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}"
+    class="grid h-50 grid-cols-7 items-end gap-2 border-b border-line-strong px-1 sm:gap-4">
+    {% for day in overview.chart %}
+    <div class="flex h-full flex-col items-center justify-end gap-1.5" title="{{ day.date|date:'D j M' }}: {% number day.value %}">
+      <span class="text-xs font-semibold text-ink-700 tabular-nums">{% number day.value max_decimals=1 %}</span>
+      <span class="block w-full max-w-11 rounded-t {% if day.is_today %}bg-blue-700/50{% else %}bg-blue-700{% endif %}" style="height: {% widthratio day.height_percent 100 150 %}px"></span>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="-mt-2 grid grid-cols-7 gap-2 px-1 sm:gap-4" aria-hidden="true">
+    {% for day in overview.chart %}<span class="text-center text-xs text-steel">{% if day.is_today %}{% translate "Today" %}{% else %}{{ day.date|date:"D j" }}{% endif %}</span>{% endfor %}
+  </div>
+</section>
+{% endwith %}
 {% endblock %}

@@ -1,0 +1,70 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Audit log" %} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'core:settings' %}">{% translate "Settings" %}</a> / {% translate "Audit log" %}</p>{% endblock %}
+{% block page_subtitle %}{% translate "Who changed what, when, and why" %}{% endblock %}
+{% block page_title %}{% translate "Audit log" %}{% endblock %}
+
+{% block content %}
+<form method="get" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-white px-4 py-3.5">
+  <div class="w-full sm:w-56">{% include "components/field.html" with field=form.actor %}</div>
+  <div class="w-full sm:w-56">{% include "components/field.html" with field=form.target_type %}</div>
+  <div class="w-full sm:w-40">{% include "components/field.html" with field=form.date_from %}</div>
+  <div class="w-full sm:w-40">{% include "components/field.html" with field=form.date_to %}</div>
+  <div class="flex gap-2">
+    {% translate "Filter" as filter_label %}
+    {% include "components/button.html" with label=filter_label type="submit" only %}
+    {% if form.is_bound %}{% url "core:audit_log" as clear_url %}{% translate "Clear" as clear_label %}{% include "components/button.html" with label=clear_label href=clear_url variant="ghost" only %}{% endif %}
+  </div>
+</form>
+
+{% if rows %}
+<div class="flex flex-col gap-3">
+  {% for entry, diff in rows %}
+  <article class="rounded-card border border-line bg-white">
+    <header class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line px-4 py-3">
+      <div class="flex flex-col gap-0.5">
+        <span class="font-semibold"><code class="font-mono text-[13px]">{{ entry.action }}</code>{% if entry.content_type %} · {{ entry.content_type.name|capfirst }} {{ entry.object_id }}{% endif %}</span>
+        <span class="text-[13px] text-steel">{% if entry.actor %}{{ entry.actor.get_full_name|default:entry.actor.username }}{% else %}{% translate "System" %}{% endif %}</span>
+      </div>
+      <time datetime="{{ entry.created_at|date:'c' }}" class="text-[13px] text-steel tabular-nums">{{ entry.created_at|date:"j M Y · H:i" }}</time>
+    </header>
+    {% if entry.reason %}<p class="border-b border-line-soft px-4 py-2 text-sm"><span class="font-semibold">{% translate "Reason" %}:</span> {{ entry.reason }}</p>{% endif %}
+    {% if diff %}
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[560px] border-collapse text-sm">
+        <thead><tr class="bg-subtle text-left">
+          <th scope="col" class="px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Field" %}</th>
+          <th scope="col" class="px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Before" %}</th>
+          <th scope="col" class="px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "After" %}</th>
+        </tr></thead>
+        <tbody>
+          {% for row in diff %}
+          <tr class="border-t border-line-soft{% if row.changed %} bg-amber-tint{% endif %}">
+            <th scope="row" class="px-4 py-2 text-left font-mono text-[13px] font-medium">{{ row.key }}</th>
+            <td class="px-4 py-2 break-all {% if row.changed %}text-absent-fg line-through{% else %}text-ink-700{% endif %}">{{ row.before }}</td>
+            <td class="px-4 py-2 break-all {% if row.changed %}font-semibold text-present-fg{% else %}text-ink-700{% endif %}">{{ row.after }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>
+
+{% if page.has_other_pages %}
+<nav aria-label="{% translate 'Pages' %}" class="flex items-center justify-between gap-3 text-sm">
+  {% if page.has_previous %}<a href="?{% if query %}{{ query }}&amp;{% endif %}page={{ page.previous_page_number }}">{% translate "Newer" %}</a>{% else %}<span></span>{% endif %}
+  <span class="text-steel">{% blocktranslate with number=page.number total=page.paginator.num_pages %}Page {{ number }} of {{ total }}{% endblocktranslate %}</span>
+  {% if page.has_next %}<a href="?{% if query %}{{ query }}&amp;{% endif %}page={{ page.next_page_number }}">{% translate "Older" %}</a>{% else %}<span></span>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+  {% translate "No audit entries" as empty_title %}
+  {% translate "Changes to attendance, pay and settings appear here." as empty_message %}
+  {% include "components/empty_state.html" with icon="reports" title=empty_title message=empty_message only %}
+{% endif %}
+{% endblock %}

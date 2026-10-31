@@ -15,6 +15,7 @@ from .choices import (
     AttendanceMode,
     Language,
     LateRule,
+    NumberFormat,
     PayFrequency,
     PaymentMethod,
     PayType,
@@ -112,6 +113,13 @@ class CompanySettings(TimeStampedModel):
     language = models.CharField(
         _("language"), max_length=2, choices=Language.choices, default=Language.ENGLISH
     )
+    number_format = models.CharField(
+        _("number format"),
+        max_length=10,
+        choices=NumberFormat.choices,
+        default=NumberFormat.SPACE,
+        help_text=_("Thousands and decimal separators, and where the currency code goes."),
+    )
 
     # Attendance
     attendance_mode = models.CharField(
@@ -145,6 +153,13 @@ class CompanySettings(TimeStampedModel):
     )
     require_correction_reason = models.BooleanField(
         _("require a reason for corrections"), default=True
+    )
+    record_times = models.BooleanField(_("record arrival and departure times"), default=True)
+    public_holidays = models.JSONField(
+        _("public holidays"),
+        default=list,
+        blank=True,
+        help_text=_('A list of {"date": "YYYY-MM-DD", "name": "…"} entries.'),
     )
 
     # Pay
@@ -223,6 +238,10 @@ class CompanySettings(TimeStampedModel):
             valid_proofs
         ):
             errors["accepted_proofs"] = _("Unknown proof type.")
+        if not _valid_holidays(self.public_holidays):
+            errors["public_holidays"] = _(
+                'Use a list of {"date": "YYYY-MM-DD", "name": "…"} entries.'
+            )
         if errors:
             raise ValidationError(errors)
 
@@ -231,3 +250,30 @@ class CompanySettings(TimeStampedModel):
         """Return the settings row, creating it with the defaults if needed."""
         obj, _created = cls.objects.get_or_create(pk=cls.SINGLETON_PK)
         return obj
+
+    def holiday_dates(self) -> set[datetime.date]:
+        """The public holidays as dates (entries that don't parse are ignored)."""
+        dates = set()
+        for entry in self.public_holidays or []:
+            try:
+                dates.add(datetime.date.fromisoformat(entry["date"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+        return dates
+
+    def is_working_day(self, date: datetime.date) -> bool:
+        """True if ``date`` is one of the working weekdays and not a public holiday."""
+        return date.isoweekday() in (self.working_days or []) and date not in self.holiday_dates()
+
+
+def _valid_holidays(value) -> bool:
+    if not isinstance(value, list):
+        return False
+    for entry in value:
+        if not isinstance(entry, dict) or not isinstance(entry.get("name", ""), str):
+            return False
+        try:
+            datetime.date.fromisoformat(entry.get("date"))
+        except (TypeError, ValueError):
+            return False
+    return True
