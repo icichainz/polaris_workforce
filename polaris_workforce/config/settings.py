@@ -185,6 +185,10 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.api.exceptions.handler",
     "DEFAULT_PAGINATION_CLASS": "apps.api.pagination.StandardPagination",
     "DEFAULT_THROTTLE_RATES": {"pin": "10/minute"},
+    # Throttles key on the client IP. Without NUM_PROXIES, DRF trusts the whole
+    # X-Forwarded-For header, which a client can rotate to dodge the PIN throttle.
+    # 0: use REMOTE_ADDR. Behind N reverse proxies that set the header, use N.
+    "NUM_PROXIES": int(os.environ.get("DJANGO_NUM_PROXIES", "0")),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "TIME_FORMAT": "%H:%M",
     "TIME_INPUT_FORMATS": ["%H:%M"],

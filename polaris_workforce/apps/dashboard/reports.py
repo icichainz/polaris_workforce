@@ -269,6 +269,14 @@ def _plain_days(value: Decimal) -> str:
     return text
 
 
+FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _text_cell(value: str) -> str:
+    """Typed text (names, trades, sites) that Excel must not run as a formula."""
+    return f"'{value}" if value.startswith(FORMULA_PREFIXES) else value
+
+
 def write_csv(report: Report, out) -> None:
     """Attendance by worker as CSV (comma separated, "." decimals, money in major units).
 
@@ -296,10 +304,10 @@ def write_csv(report: Report, out) -> None:
     for row in report.workers:
         writer.writerow(
             [
-                row.number,
-                row.name,
-                row.trade,
-                row.site_name,
+                _text_cell(row.number),
+                _text_cell(row.name),
+                _text_cell(row.trade),
+                _text_cell(row.site_name),
                 row.present,
                 row.half,
                 row.late,
