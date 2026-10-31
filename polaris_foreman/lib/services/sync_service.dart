@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show File;
 
 import '../core/site_clock.dart';
 import '../data/local/local_store.dart';
@@ -60,7 +61,8 @@ int _weight(OutboxEntry e) => e.kind == OutboxKind.records
     : 1;
 
 /// Moves the outbox to the server, one write at a time and in order
-/// (records → submit → corrections → payments), then pulls changes.
+/// (check-ins → records → submit → corrections → payments), then pulls
+/// changes.
 ///
 /// * Checks `GET /health/` first.
 /// * Network errors, 5xx and 429: keep the entry, retry later with backoff.
@@ -72,6 +74,8 @@ class SyncService {
     required this.repos,
     required this.clock,
     this.onSignedOut,
+    this.onDeviceRole,
+    this.onSuggestions,
     this.pollInterval = const Duration(seconds: 20),
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now {
@@ -83,7 +87,17 @@ class SyncService {
   final Repositories repos;
   SiteClock clock;
   void Function()? onSignedOut;
+
+  /// `GET /checkin/device/` answered (kiosk mode on or off).
+  void Function(CheckInDevice device)? onDeviceRole;
+
+  /// New suggestions for a site's day are on the phone (pre-fill them).
+  Future<void> Function(int siteId, String date)? onSuggestions;
   final Duration pollInterval;
+
+  /// Days whose draft the server wrote from check-ins (`self_check_in`,
+  /// `draft_updated: true`): fetched again after the drain.
+  final Set<(int, String)> _draftDays = {};
   final DateTime Function() _now;
 
   final _status = StreamController<SyncStatus>.broadcast();
@@ -289,6 +303,8 @@ class SyncService {
 
   Future<void> _send(OutboxEntry e) async {
     switch (e.kind) {
+      case OutboxKind.checkin:
+        await _sendCheckIn(e);
       case OutboxKind.records:
         await _sendRecords(e);
       case OutboxKind.submit:
@@ -325,6 +341,32 @@ class SyncService {
         );
         await store.deleteOutbox(e.id!);
         await _applyPayment(e, payment);
+    }
+  }
+
+  Future<void> _sendCheckIn(OutboxEntry e) async {
+    final photo = e.payload['photo_path'] as String?;
+    final checkIn = await repos.checkin.checkIn(
+      CheckInCreateRequest.fromJson(e.payload),
+      photoPath: photo,
+    );
+    await store.deleteOutbox(e.id!);
+    final local = (await store.loadCheckIns(
+      e.siteId,
+      e.date,
+    )).where((c) => c.clientUuid == e.clientUuid).firstOrNull;
+    if (local != null) await store.upsertCheckIn(local.withServer(checkIn));
+    // The server has the photo: the phone's copy can go.
+    if (photo != null) _deleteQuietly(photo);
+    if (checkIn.draftUpdated) _draftDays.add((checkIn.siteId, checkIn.date));
+  }
+
+  static void _deleteQuietly(String path) {
+    try {
+      final f = File(path);
+      if (f.existsSync()) f.deleteSync();
+    } catch (_) {
+      // A file the OS already cleared.
     }
   }
 
@@ -467,8 +509,88 @@ class SyncService {
     }
     await store.setValue(StoreKeys.syncSince, resp.serverTime);
 
+    final device = await _refreshDevice();
+    final kioskSite = device?.kiosk?.siteId;
     for (final site in await _sites()) {
+      // A kiosk phone only takes its own site's check-ins (others: 403).
+      if (kioskSite != null && site.id != kioskSite) continue;
       await refreshSite(site.id);
+      await refreshCheckIns(site.id, device);
+    }
+    await refreshDraftDays();
+  }
+
+  /// `GET /checkin/device/` (after sign-in, at start-up and with every
+  /// sync). Null when the server has no check-in endpoints (a 1.1 server).
+  Future<CheckInDevice?> _refreshDevice() async {
+    try {
+      final device = await repos.checkin.device();
+      await store.setValue(
+        StoreKeys.checkinDevice,
+        jsonEncode(device.toJson()),
+      );
+      onDeviceRole?.call(device);
+      return device;
+    } on ApiException catch (e) {
+      if (e.statusCode == 401) rethrow;
+      final raw = await store.getValue(StoreKeys.checkinDevice);
+      return raw == null
+          ? null
+          : CheckInDevice.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    }
+  }
+
+  /// The site's check-in setup (badge hashes; once a day, with the crew)
+  /// and today's suggestions. Errors other than 401 leave the cache as it
+  /// is (a 1.1 server answers 404).
+  Future<void> refreshCheckIns(int siteId, CheckInDevice? device) async {
+    final today = clock.today();
+    try {
+      final raw = await store.getValue(StoreKeys.checkinSetup(siteId));
+      final cachedDate = raw == null
+          ? null
+          : (jsonDecode(raw) as Map<String, dynamic>)['date'] as String?;
+      if (cachedDate != today) {
+        final setup = await repos.checkin.setup(siteId);
+        await store.setValue(
+          StoreKeys.checkinSetup(siteId),
+          jsonEncode({'date': today, 'setup': setup.toJson()}),
+        );
+      }
+      if (device?.isKiosk ?? false) return;
+      final mode = device?.attendanceMode;
+      final scanned = (await store.loadCheckIns(siteId, today)).isNotEmpty;
+      if (mode == null ||
+          (mode == AttendanceMode.foremanRollCall && !scanned)) {
+        return;
+      }
+      final suggestions = await repos.checkin.suggestions(siteId, today);
+      await store.setValue(
+        StoreKeys.suggestions(siteId, today),
+        jsonEncode(suggestions.toJson()),
+      );
+      if (mode.serverWritesDrafts) {
+        _draftDays.add((siteId, today));
+      } else {
+        await onSuggestions?.call(siteId, today);
+      }
+    } on ApiException catch (e) {
+      if (e.statusCode == 401) rethrow;
+    }
+  }
+
+  /// `self_check_in`: the server wrote draft records from the check-ins;
+  /// fetch those days again (local edits still waiting are kept).
+  Future<void> refreshDraftDays() async {
+    final days = _draftDays.toList();
+    _draftDays.clear();
+    for (final (siteId, date) in days) {
+      try {
+        final day = await repos.attendance.day(siteId, date);
+        await _applyDay(day, overwrite: false);
+      } on ApiException catch (e) {
+        if (e.statusCode == 401) rethrow;
+      }
     }
   }
 

@@ -1,3 +1,5 @@
+import 'dart:io' show File, IOException;
+
 import '../../models/models.dart';
 import '../repositories.dart';
 import 'mock_backend.dart';
@@ -11,6 +13,8 @@ Repositories mockRepositories(MockBackend backend, TokenReader token) {
     attendance: _MockAttendance(backend, token),
     payout: _MockPayout(backend, token),
     sync: _MockSync(backend, token),
+    checkin: _MockCheckIn(backend, token),
+    files: _MockFiles(backend, token),
   );
 }
 
@@ -103,4 +107,54 @@ class _MockSync implements SyncRepository {
   @override
   Future<SyncResponse> sync({String? since}) async =>
       b.sync(await token(), since);
+}
+
+class _MockCheckIn implements CheckInRepository {
+  _MockCheckIn(this.b, this.token);
+  final MockBackend b;
+  final TokenReader token;
+
+  @override
+  Future<CheckInDevice> device() async => b.checkInDevice(await token());
+
+  @override
+  Future<CheckInSetup> setup(int siteId) async =>
+      b.checkInSetup(await token(), siteId);
+
+  /// Like the HTTP client: the photo goes with the check-in while the file
+  /// is on the phone; a photo that is gone is left out.
+  @override
+  Future<CheckIn> checkIn(
+    CheckInCreateRequest request, {
+    String? photoPath,
+  }) async {
+    List<int>? photo;
+    if (photoPath != null) {
+      try {
+        final f = File(photoPath);
+        if (f.existsSync()) photo = await f.readAsBytes();
+      } on IOException {
+        photo = null;
+      }
+    }
+    return b.checkIn(await token(), request, photo: photo);
+  }
+
+  @override
+  Future<CheckInList> checkins(int siteId, String date) async =>
+      b.siteCheckIns(await token(), siteId, date);
+
+  @override
+  Future<RollCallSuggestions> suggestions(int siteId, String date) async =>
+      b.suggestions(await token(), siteId, date);
+}
+
+class _MockFiles implements FilesRepository {
+  _MockFiles(this.b, this.token);
+  final MockBackend b;
+  final TokenReader token;
+
+  @override
+  Future<FileDownload> download(String url, {String? etag}) async =>
+      b.download(await token(), url, etag);
 }

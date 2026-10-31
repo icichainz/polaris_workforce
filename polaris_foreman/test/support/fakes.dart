@@ -8,6 +8,9 @@ import 'package:polaris_foreman/data/repositories/mock/mock_backend.dart';
 import 'package:polaris_foreman/data/repositories/mock/mock_repositories.dart';
 import 'package:polaris_foreman/data/repositories/mock/mock_seed.dart';
 import 'package:polaris_foreman/data/repositories/repositories.dart';
+import 'package:geolocator/geolocator.dart' show LocationPermission;
+import 'package:polaris_foreman/services/checkin_photo.dart';
+import 'package:polaris_foreman/services/location_service.dart';
 import 'package:polaris_foreman/services/proof_capture.dart';
 
 /// Friday 31 October 2026, 07:30 in Lomé (UTC+0).
@@ -21,7 +24,9 @@ class RecordingRepos
         CrewRepository,
         AttendanceRepository,
         PayoutRepository,
-        SyncRepository {
+        SyncRepository,
+        CheckInRepository,
+        FilesRepository {
   RecordingRepos(this.inner);
 
   final Repositories inner;
@@ -39,6 +44,8 @@ class RecordingRepos
     attendance: this,
     payout: this,
     sync: this,
+    checkin: this,
+    files: this,
   );
 
   Future<T> _call<T>(String name, Future<T> Function() f) async {
@@ -111,6 +118,32 @@ class RecordingRepos
   @override
   Future<SyncResponse> sync({String? since}) =>
       _call('sync', () => inner.sync.sync(since: since));
+
+  @override
+  Future<CheckInDevice> device() => _call('device', inner.checkin.device);
+
+  @override
+  Future<CheckInSetup> setup(int siteId) =>
+      _call('setup', () => inner.checkin.setup(siteId));
+
+  @override
+  Future<CheckIn> checkIn(CheckInCreateRequest request, {String? photoPath}) =>
+      _call(
+        'checkIn',
+        () => inner.checkin.checkIn(request, photoPath: photoPath),
+      );
+
+  @override
+  Future<CheckInList> checkins(int siteId, String date) =>
+      _call('checkins', () => inner.checkin.checkins(siteId, date));
+
+  @override
+  Future<RollCallSuggestions> suggestions(int siteId, String date) =>
+      _call('suggestions', () => inner.checkin.suggestions(siteId, date));
+
+  @override
+  Future<FileDownload> download(String url, {String? etag}) =>
+      _call('download', () => inner.files.download(url, etag: etag));
 }
 
 /// A mock server, a signed-in token, an empty phone.
@@ -164,4 +197,48 @@ class FakeProofCapture implements ProofCapture {
 
   @override
   Future<String> savePng(Uint8List bytes) async => '/tmp/signature.png';
+}
+
+/// GPS for tests: a permission answer and an optional fix.
+class FakeLocationPlatform implements LocationPlatform {
+  FakeLocationPlatform({
+    this.enabled = true,
+    this.permission = LocationPermission.whileInUse,
+    this.onRequest,
+    this.fix,
+  });
+
+  bool enabled;
+  LocationPermission permission;
+
+  /// What the permission prompt answers (null: same as [permission]).
+  LocationPermission? onRequest;
+  GpsFix? fix;
+  int requests = 0;
+
+  @override
+  Future<bool> serviceEnabled() async => enabled;
+
+  @override
+  Future<LocationPermission> checkPermission() async => permission;
+
+  @override
+  Future<LocationPermission> requestPermission() async {
+    requests++;
+    return permission = onRequest ?? permission;
+  }
+
+  @override
+  Future<GpsFix> currentPosition({required Duration timeLimit}) async {
+    final f = fix;
+    if (f == null) throw StateError('No fix');
+    return f;
+  }
+}
+
+class FakeCheckInPhoto implements CheckInPhotoCapture {
+  int taken = 0;
+
+  @override
+  Future<String?> take() async => '/tmp/checkin-${++taken}.jpg';
 }

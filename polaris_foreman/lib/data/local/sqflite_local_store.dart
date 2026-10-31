@@ -11,7 +11,8 @@ import 'local_store.dart';
 class SqfliteLocalStore implements LocalStore {
   SqfliteLocalStore._(this._db);
 
-  static const _schemaVersion = 1;
+  /// 2: check-ins (contract 1.2).
+  static const _schemaVersion = 2;
 
   final Database _db;
   final _changes = StreamController<void>.broadcast();
@@ -27,6 +28,13 @@ class SqfliteLocalStore implements LocalStore {
           batch.execute(sql);
         }
         await batch.commit(noResult: true);
+      },
+      onUpgrade: (db, from, to) async {
+        if (from < 2) {
+          for (final sql in _checkinSchema) {
+            await db.execute(sql);
+          }
+        }
       },
     );
     return SqfliteLocalStore._(db);
@@ -65,6 +73,13 @@ class SqfliteLocalStore implements LocalStore {
         'created_at TEXT NOT NULL, version INTEGER NOT NULL, '
         'attempts INTEGER NOT NULL, state TEXT NOT NULL, error_code TEXT, '
         'error_message TEXT, next_attempt_at TEXT)',
+    ..._checkinSchema,
+  ];
+
+  static const _checkinSchema = [
+    'CREATE TABLE checkins (client_uuid TEXT PRIMARY KEY, site_id INTEGER '
+        'NOT NULL, date TEXT NOT NULL, at TEXT NOT NULL, json TEXT NOT NULL)',
+    'CREATE INDEX checkins_day ON checkins (site_id, date)',
   ];
 
   void _changed() {
@@ -369,6 +384,35 @@ class SqfliteLocalStore implements LocalStore {
           serverId: r['server_id'] as int?,
         ),
     ];
+  }
+
+  // ------------------------------------------------------------- checkins
+
+  @override
+  Future<void> upsertCheckIn(LocalCheckIn checkIn) async {
+    await _db.insert('checkins', {
+      'client_uuid': checkIn.clientUuid,
+      'site_id': checkIn.siteId,
+      'date': checkIn.date,
+      'at': checkIn.at,
+      'json': jsonEncode(checkIn.toJson()),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    _changed();
+  }
+
+  @override
+  Future<List<LocalCheckIn>> loadCheckIns(int siteId, String date) async {
+    final rows = await _db.query(
+      'checkins',
+      where: 'site_id = ? AND date = ?',
+      whereArgs: [siteId, date],
+    );
+    return [
+      for (final r in rows)
+        LocalCheckIn.fromJson(
+          jsonDecode(r['json'] as String) as Map<String, dynamic>,
+        ),
+    ]..sort((a, b) => a.instant.compareTo(b.instant));
   }
 
   // --------------------------------------------------------------- outbox

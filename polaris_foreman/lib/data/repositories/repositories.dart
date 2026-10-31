@@ -67,6 +67,35 @@ abstract interface class SyncRepository {
   Future<SyncResponse> sync({String? since});
 }
 
+/// Check-in (contract 1.2): badges, kiosk phones, check-ins, suggestions.
+abstract interface class CheckInRepository {
+  /// `GET /checkin/device/`: attendance mode and kiosk role of this phone.
+  Future<CheckInDevice> device();
+
+  /// `GET /sites/{siteId}/checkin-setup/`: mode, `late_after`, geofence and
+  /// the badge hashes of today's crew.
+  Future<CheckInSetup> setup(int siteId);
+
+  /// `POST /checkins/` (multipart when [photoPath] names a file on the
+  /// phone). `201` the first time; `200` with [CheckIn.replayed] for a
+  /// repeated `client_uuid`.
+  Future<CheckIn> checkIn(CheckInCreateRequest request, {String? photoPath});
+
+  /// `GET /sites/{siteId}/checkins/{date}/`, oldest first.
+  Future<CheckInList> checkins(int siteId, String date);
+
+  /// `GET /sites/{siteId}/days/{date}/suggestions/`.
+  Future<RollCallSuggestions> suggestions(int siteId, String date);
+}
+
+/// Protected downloads under `/files/` (`photo_url`, `proof_url`): sent with
+/// the `Authorization` header and revalidated with `If-None-Match`.
+abstract interface class FilesRepository {
+  /// [url] is an absolute URL from a response. With [etag], a `304` answers
+  /// [FileDownload.notModified].
+  Future<FileDownload> download(String url, {String? etag});
+}
+
 /// The set of repositories the app runs against (mock or real).
 class Repositories {
   const Repositories({
@@ -75,6 +104,8 @@ class Repositories {
     required this.attendance,
     required this.payout,
     required this.sync,
+    required this.checkin,
+    required this.files,
   });
 
   final AuthRepository auth;
@@ -82,4 +113,6 @@ class Repositories {
   final AttendanceRepository attendance;
   final PayoutRepository payout;
   final SyncRepository sync;
+  final CheckInRepository checkin;
+  final FilesRepository files;
 }

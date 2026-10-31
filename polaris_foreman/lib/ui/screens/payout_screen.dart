@@ -8,6 +8,7 @@ import '../../state/providers.dart';
 import '../../theme/tokens.dart';
 import '../signature_pad.dart';
 import '../widgets.dart';
+import '../worker_avatar.dart';
 
 /// Cash payout (MobilePayout artboard): In hand / Paid / Left, the current
 /// worker with the amount to hand over, proof of receipt, the queue, and the
@@ -400,7 +401,12 @@ class _CurrentCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              InitialsAvatar(line.worker.name, size: 52, fontSize: 17),
+              WorkerAvatar(
+                name: line.worker.name,
+                photoUrl: line.worker.photoUrl,
+                size: 52,
+                fontSize: 17,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
 
+import 'package:crypto/crypto.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -76,10 +78,38 @@ class SessionController extends Notifier<SessionState> {
     return id;
   }
 
-  /// Shown on the office Users screen.
-  // TODO(I2): the model name (e.g. 'Tecno Spark 10') needs device_info_plus,
-  // a new dependency; until then the platform only.
-  static String deviceName() {
+  /// Shown on the office Users screen: the phone's model ("Tecno KI5q",
+  /// "iPhone (iPhone15,2)"), else the platform.
+  static Future<String> deviceName([DeviceInfoPlugin? plugin]) async {
+    try {
+      if (Platform.isAndroid) {
+        final a = await (plugin ?? DeviceInfoPlugin()).androidInfo;
+        return androidName(a.manufacturer, a.model);
+      }
+      if (Platform.isIOS) {
+        final i = await (plugin ?? DeviceInfoPlugin()).iosInfo;
+        final machine = i.utsname.machine;
+        return machine.isEmpty ? i.model : '${i.model} ($machine)';
+      }
+    } catch (_) {
+      // No model name: the platform will do.
+    }
+    return platformName();
+  }
+
+  /// "Tecno KI5q" from `TECNO` + `KI5q`, "Samsung SM-A145F" from `samsung`
+  /// + `SM-A145F`; a model that already names the brand is kept as it is.
+  static String androidName(String manufacturer, String model) {
+    final brand = manufacturer.trim();
+    final m = model.trim();
+    if (brand.isEmpty) return m.isEmpty ? 'Android phone' : m;
+    final nice = brand[0].toUpperCase() + brand.substring(1).toLowerCase();
+    if (m.isEmpty) return nice;
+    if (m.toLowerCase().startsWith(brand.toLowerCase())) return m;
+    return '$nice $m';
+  }
+
+  static String platformName() {
     try {
       if (Platform.isAndroid) return 'Android phone';
       if (Platform.isIOS) return 'iPhone';
@@ -88,6 +118,12 @@ class SessionController extends Notifier<SessionState> {
       return 'Polaris Foreman';
     }
   }
+
+  /// What the phone keeps to check the PIN offline (kiosk exit): a hash
+  /// salted with the device id, never the PIN itself.
+  static String pinCheck(String deviceId, String phone, String pin) => sha256
+      .convert(utf8.encode('polaris-pin-v1|$deviceId|$phone|$pin'))
+      .toString();
 
   /// `POST /auth/pin/` then `GET /me/`. Throws [ApiException] /
   /// [NetworkException] for the PIN screen to show.
@@ -99,11 +135,13 @@ class SessionController extends Notifier<SessionState> {
         phone: phone,
         pin: pin,
         deviceId: await deviceId(),
-        deviceName: deviceName(),
+        deviceName: await deviceName(),
       ),
     );
     await tokens.write(resp.token);
     final me = await repos.auth.me();
+    await tokens.writePinCheck(pinCheck(await deviceId(), me.phone, pin));
+    await _refreshDeviceRole();
     // Writes queued before a logout or a 401 are sent once the same foreman
     // is back (the server accepts them with the new token). Another foreman
     // signing in does not take over a non-empty outbox.
@@ -123,6 +161,51 @@ class SessionController extends Notifier<SessionState> {
       ref.read(localeProvider.notifier).set(me.language.wire, persist: false);
     }
     state = SignedIn(me); // syncServiceProvider starts on this change.
+  }
+
+  /// `GET /checkin/device/` right after sign-in: a kiosk phone opens its
+  /// kiosk screen at once. Offline or a 1.1 server: the last known role.
+  Future<void> _refreshDeviceRole() async {
+    try {
+      final device = await ref.read(repositoriesProvider).checkin.device();
+      await _store.setValue(
+        StoreKeys.checkinDevice,
+        jsonEncode(device.toJson()),
+      );
+      ref.read(checkInDeviceProvider.notifier).set(device);
+    } catch (_) {
+      // The background sync asks again.
+    }
+  }
+
+  /// Checks the signed-in foreman's PIN (kiosk exit), offline against the
+  /// hash kept at sign-in. An install signed in before that hash existed
+  /// asks the server (which also renews the token).
+  Future<bool> verifyPin(String pin) async {
+    final s = state;
+    if (s is! SignedIn) return false;
+    final tokens = ref.read(tokenStoreProvider);
+    final id = await deviceId();
+    final stored = await tokens.readPinCheck();
+    if (stored != null) return stored == pinCheck(id, s.me.phone, pin);
+    try {
+      final resp = await ref
+          .read(repositoriesProvider)
+          .auth
+          .signIn(
+            PinLoginRequest(
+              phone: s.me.phone,
+              pin: pin,
+              deviceId: id,
+              deviceName: await deviceName(),
+            ),
+          );
+      await tokens.write(resp.token);
+      await tokens.writePinCheck(pinCheck(id, s.me.phone, pin));
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Refreshes `GET /me/` when online (sites may change).

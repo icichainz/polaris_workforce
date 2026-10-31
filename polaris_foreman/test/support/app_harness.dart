@@ -6,6 +6,7 @@ import 'package:polaris_foreman/app.dart';
 import 'package:polaris_foreman/data/models/models.dart';
 import 'package:polaris_foreman/data/repositories/mock/mock_seed.dart';
 import 'package:polaris_foreman/l10n/gen/app_localizations.dart';
+import 'package:polaris_foreman/services/photo_cache.dart';
 import 'package:polaris_foreman/state/providers.dart';
 import 'package:polaris_foreman/state/session.dart';
 import 'package:polaris_foreman/theme/app_theme.dart';
@@ -21,6 +22,11 @@ Future<ProviderContainer> pumpAt(
   SessionState? session,
   int? siteId,
   FakeProofCapture? proofs,
+  List<Override> overrides = const [],
+
+  /// The app's own router (session and kiosk redirects) instead of a plain
+  /// one at [location].
+  bool appRouter = false,
 }) async {
   tester.view.devicePixelRatio = 3;
   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
@@ -38,11 +44,20 @@ Future<ProviderContainer> pumpAt(
       initialSiteIdProvider.overrideWithValue(siteId),
       nowProvider.overrideWithValue(() => fixedNow),
       proofCaptureProvider.overrideWithValue(proofs ?? FakeProofCapture()),
+      photoStorageProvider.overrideWithValue(MemoryPhotoStorage()),
+      locationPlatformProvider.overrideWithValue(FakeLocationPlatform()),
+      checkInPhotoProvider.overrideWithValue(FakeCheckInPhoto()),
+      ...overrides,
     ],
   );
   addTearDown(container.dispose);
-  final router = GoRouter(initialLocation: location, routes: appRoutes);
-  addTearDown(router.dispose);
+  final GoRouter router;
+  if (appRouter) {
+    router = container.read(routerProvider);
+  } else {
+    router = GoRouter(initialLocation: location, routes: appRoutes);
+    addTearDown(router.dispose);
+  }
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,

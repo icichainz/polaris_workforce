@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui' show Locale;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +9,11 @@ import '../data/local/token_store.dart';
 import '../data/models/models.dart';
 import '../data/repositories/mock/mock_backend.dart';
 import '../data/repositories/repositories.dart';
+import '../services/checkin_photo.dart';
+import '../services/checkin_service.dart';
+import '../services/location_service.dart';
 import '../services/payout_service.dart';
+import '../services/photo_cache.dart';
 import '../services/proof_capture.dart';
 import '../services/roll_call_service.dart';
 import '../services/sync_service.dart';
@@ -40,6 +45,24 @@ final nowProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 final proofCaptureProvider = Provider<ProofCapture>(
   (ref) => DeviceProofCapture(),
 );
+
+/// The check-in photo (front camera, compressed).
+final checkInPhotoProvider = Provider<CheckInPhotoCapture>(
+  (ref) => DeviceCheckInPhotoCapture(),
+);
+
+/// GPS for check-ins (geolocator on the phone; a fake in tests).
+final locationPlatformProvider = Provider<LocationPlatform>(
+  (ref) => const GeolocatorPlatformAdapter(),
+);
+
+/// Where downloaded photos are kept (files on the phone).
+final photoStorageProvider = Provider<PhotoStorage>(
+  (ref) => DiskPhotoStorage(),
+);
+
+/// The last `GET /checkin/device/` read before the first frame.
+final initialCheckInDeviceProvider = Provider<CheckInDevice?>((ref) => null);
 
 // ------------------------------------------------------------------- state
 
@@ -106,9 +129,37 @@ final currentSiteProvider = NotifierProvider<SiteController, AssignedSite?>(
   SiteController.new,
 );
 
+/// This phone's check-in role (`GET /checkin/device/`): attendance mode, and
+/// the kiosk site when the office switched it to kiosk mode.
+class CheckInDeviceController extends Notifier<CheckInDevice?> {
+  @override
+  CheckInDevice? build() => ref.watch(initialCheckInDeviceProvider);
+
+  void set(CheckInDevice? device) {
+    final old = state;
+    if (old != null &&
+        device != null &&
+        old.attendanceMode == device.attendanceMode &&
+        old.kiosk?.siteId == device.kiosk?.siteId) {
+      return;
+    }
+    state = device;
+  }
+}
+
+final checkInDeviceProvider =
+    NotifierProvider<CheckInDeviceController, CheckInDevice?>(
+      CheckInDeviceController.new,
+    );
+
+/// Set on a kiosk phone: only the kiosk screen of that site is shown.
+final kioskProvider = Provider<Kiosk?>(
+  (ref) => ref.watch(checkInDeviceProvider)?.kiosk,
+);
+
 // ---------------------------------------------------------------- services
 
-final syncServiceProvider = Provider<SyncService>((ref) {
+final Provider<SyncService> syncServiceProvider = Provider<SyncService>((ref) {
   final service = SyncService(
     store: ref.watch(localStoreProvider),
     repos: ref.watch(repositoriesProvider),
@@ -116,6 +167,10 @@ final syncServiceProvider = Provider<SyncService>((ref) {
     now: ref.watch(nowProvider),
   );
   service.onSignedOut = () => ref.read(sessionProvider.notifier).expired();
+  service.onDeviceRole = (d) => ref.read(checkInDeviceProvider.notifier).set(d);
+  service.onSuggestions = (siteId, date) async {
+    await ref.read(checkInServiceProvider).applySuggestions(siteId, date);
+  };
   ref.listen(siteClockProvider, (_, c) => service.clock = c);
   // Sync while signed in; stop (outbox kept) when signed out.
   ref.listen(sessionProvider, (_, s) {
@@ -129,12 +184,37 @@ final syncServiceProvider = Provider<SyncService>((ref) {
   return service;
 });
 
-final rollCallServiceProvider = Provider<RollCallService>(
-  (ref) => RollCallService(
-    ref.watch(localStoreProvider),
-    clock: ref.watch(siteClockProvider),
-    onWrite: () => ref.read(syncServiceProvider).kick(),
+final Provider<RollCallService> rollCallServiceProvider =
+    Provider<RollCallService>(
+      (ref) => RollCallService(
+        ref.watch(localStoreProvider),
+        clock: ref.watch(siteClockProvider),
+        onWrite: () => ref.read(syncServiceProvider).kick(),
+      ),
+    );
+
+final Provider<CheckInService> checkInServiceProvider =
+    Provider<CheckInService>(
+      (ref) => CheckInService(
+        ref.watch(localStoreProvider),
+        clock: ref.watch(siteClockProvider),
+        rollCall: ref.watch(rollCallServiceProvider),
+        onWrite: () => ref.read(syncServiceProvider).kick(),
+      ),
+    );
+
+final photoCacheProvider = Provider<PhotoCache>(
+  (ref) => PhotoCache(
+    ref.watch(repositoriesProvider).files,
+    ref.watch(photoStorageProvider),
+    now: ref.watch(nowProvider),
   ),
+);
+
+/// A protected photo (`photo_url`): cached on the phone, revalidated with
+/// `If-None-Match`. Null: show the initials.
+final photoProvider = FutureProvider.family<Uint8List?, String>(
+  (ref, url) => ref.watch(photoCacheProvider).load(url),
 );
 
 final payoutServiceProvider = Provider<PayoutService>(
@@ -171,6 +251,9 @@ class RollCallView {
     required this.day,
     required this.status,
     required this.submitPending,
+    this.mode,
+    this.prefilled = const {},
+    this.checkIns = const [],
   });
 
   final AssignedSite site;
@@ -182,6 +265,23 @@ class RollCallView {
   /// Counts a submit still in the outbox as submitted.
   final DayStatus status;
   final bool submitPending;
+
+  /// The attendance mode as last seen (null before the first sync with a
+  /// 1.2 server).
+  final AttendanceMode? mode;
+
+  /// Marks pre-filled from check-ins; a record still equal to one was not
+  /// changed by hand.
+  final Map<int, SuggestedMark> prefilled;
+
+  /// Today's check-ins made on this phone.
+  final List<LocalCheckIn> checkIns;
+
+  /// The worker's mark came from check-ins and was not changed by hand.
+  bool fromCheckIn(int workerId) {
+    final r = records[workerId], p = prefilled[workerId];
+    return r != null && p != null && p.matches(r);
+  }
 
   DayCounts get counts => DayCounts.of(
     crew.length,
@@ -212,7 +312,11 @@ final rollCallViewProvider = FutureProvider<RollCallView?>((ref) async {
   final records = await store.loadRecords(site.id, date);
   final day = await store.loadDay(site.id, date);
   final outbox = await store.loadOutbox();
+  final checkins = ref.watch(checkInServiceProvider);
   return RollCallView(
+    mode: await checkins.mode(site.id),
+    prefilled: await checkins.prefilled(site.id, date),
+    checkIns: await store.loadCheckIns(site.id, date),
     site: site,
     date: date,
     crew: crew?.workers ?? const [],
@@ -254,4 +358,15 @@ final failedOutboxProvider = FutureProvider<List<OutboxEntry>>((ref) async {
   await _tick(ref);
   final outbox = await ref.watch(localStoreProvider).loadOutbox();
   return outbox.where((e) => e.state == OutboxState.failed).toList();
+});
+
+/// Today's check-ins made on this phone for a site, newest first.
+final checkInListProvider = FutureProvider.family<List<LocalCheckIn>, int>((
+  ref,
+  siteId,
+) async {
+  await _tick(ref);
+  final date = ref.watch(todayProvider);
+  final list = await ref.watch(localStoreProvider).loadCheckIns(siteId, date);
+  return list.reversed.toList();
 });

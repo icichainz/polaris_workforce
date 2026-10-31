@@ -12,6 +12,7 @@ class MemoryLocalStore implements LocalStore {
   final Map<String, LocalRecord> _records = {};
   final Map<String, Payout> _payouts = {};
   final Map<String, LocalPayment> _payments = {};
+  final Map<String, LocalCheckIn> _checkins = {};
   final Map<int, OutboxEntry> _outbox = {};
   int _outboxSeq = 0;
 
@@ -115,6 +116,19 @@ class MemoryLocalStore implements LocalStore {
       _payments.values
           .where((p) => p.siteId == siteId && p.date == date)
           .toList();
+
+  @override
+  Future<void> upsertCheckIn(LocalCheckIn checkIn) async {
+    _checkins[checkIn.clientUuid] = checkIn;
+    _changed();
+  }
+
+  @override
+  Future<List<LocalCheckIn>> loadCheckIns(int siteId, String date) async =>
+      _checkins.values
+          .where((c) => c.siteId == siteId && c.date == date)
+          .toList()
+        ..sort((a, b) => a.instant.compareTo(b.instant));
 
   @override
   Future<int> insertOutbox(OutboxEntry entry) async {

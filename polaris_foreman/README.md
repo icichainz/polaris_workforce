@@ -19,8 +19,7 @@ Real API (contract 1.1, `../docs/api/README.md`): `API_BASE_URL` defaults to
 Plain `http://` is allowed in Android debug builds and for local networking on
 iOS only; real phones need `https://`. The device id (`device_id` of
 `POST /auth/pin/`) is a UUID made once per install and kept in secure storage;
-the device name is the platform ("Android phone"/"iPhone") until a model name
-is available. A `401` on any call goes back to the PIN screen and keeps the
+the device name is the phone's model (device_info_plus), else the platform. A `401` on any call goes back to the PIN screen and keeps the
 outbox: once the same foreman signs in again, the queued writes are sent. If
 another foreman signs in while the outbox is not empty, it is held until its
 owner is back.
@@ -46,6 +45,30 @@ approved by the mock "site manager" after `MOCK_APPROVAL_SECONDS` (default 12),
 which opens the cash payout. **Long-press the sync banner** on Today to simulate
 losing the network (writes keep going to the phone and the outbox). The mock
 server lives in memory: restart the app and its data is fresh again.
+
+## Check-in (contract 1.2)
+
+- **Scan badges** (roll call → "Scan badges"): each QR scan is a check-in
+  (`In` before 12:00, `Out` from 12:00, or the toggle) saved on the phone and
+  queued in the outbox with its `client_uuid` and `at`, an optional GPS fix
+  (geolocator; refused permission = no position) and an optional photo
+  (front camera, ≤ 1280 px JPEG, sent as multipart). Badges are recognised
+  offline by `sha256(text)` against the cached `checkin-setup` badge list;
+  unknown ones are still sent. Check-ins leave the outbox before records.
+- **Suggestions** pre-fill the roll call (mode `both`, and `foreman_roll_call`
+  once there are scans); a mark the foreman changed by hand is never
+  overwritten. In `self_check_in` the server writes the drafts: the phone
+  fetches the day again after sending scans.
+- **Kiosk**: when `GET /checkin/device/` names a kiosk site, the app shows only
+  the full-screen kiosk scanner for that site (works offline); leaving needs
+  the foreman's PIN (checked on the phone against a salted hash kept at
+  sign-in).
+- **Photos**: worker photos are fetched with the device token, cached on disk
+  and revalidated with `If-None-Match`; initials meanwhile.
+- Mock builds: "Simulate a scan" on the scan and kiosk screens (no badge to
+  show an emulator's camera). Kiosk mode in the mock: `MockBackend.setKiosk`.
+- Fonts: Inter and Archivo are bundled (`assets/fonts/`, OFL), static
+  instances of the dashboard's self-hosted variable WOFF2 files.
 
 ## Check
 

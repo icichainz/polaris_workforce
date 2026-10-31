@@ -1015,6 +1015,234 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Mock: online'**
   String get mockOfflineOff;
+
+  /// No description provided for @kindCheckIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Check-in · {date}'**
+  String kindCheckIn(String date);
+
+  /// No description provided for @scanBadges.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan badges'**
+  String get scanBadges;
+
+  /// No description provided for @scanBadgesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan badges · {count} today'**
+  String scanBadgesCount(int count);
+
+  /// No description provided for @scanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan badges'**
+  String get scanTitle;
+
+  /// No description provided for @scanCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No scan} =1{1 scan} other{{count} scans}}'**
+  String scanCount(int count);
+
+  /// No description provided for @directionIn.
+  ///
+  /// In en, this message translates to:
+  /// **'In'**
+  String get directionIn;
+
+  /// No description provided for @directionOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Out'**
+  String get directionOut;
+
+  /// No description provided for @photoWithScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo with each scan'**
+  String get photoWithScan;
+
+  /// No description provided for @todayScans.
+  ///
+  /// In en, this message translates to:
+  /// **'Today’s scans'**
+  String get todayScans;
+
+  /// No description provided for @backToRollCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the roll call'**
+  String get backToRollCall;
+
+  /// No description provided for @simulateScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Simulate a scan (mock)'**
+  String get simulateScan;
+
+  /// No description provided for @scanQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on the phone · not sent yet'**
+  String get scanQueued;
+
+  /// No description provided for @scanSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get scanSent;
+
+  /// No description provided for @badgeNotRecognisedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Badge not recognised'**
+  String get badgeNotRecognisedTitle;
+
+  /// No description provided for @badgeNotRecognised.
+  ///
+  /// In en, this message translates to:
+  /// **'Badge not recognised — see the foreman'**
+  String get badgeNotRecognised;
+
+  /// No description provided for @badgeRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'This badge is no longer valid'**
+  String get badgeRevoked;
+
+  /// No description provided for @notOnCrew.
+  ///
+  /// In en, this message translates to:
+  /// **'Not on today’s crew — tell the foreman'**
+  String get notOnCrew;
+
+  /// No description provided for @outsideSite.
+  ///
+  /// In en, this message translates to:
+  /// **'Outside the site'**
+  String get outsideSite;
+
+  /// No description provided for @alreadyCheckedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Already checked in'**
+  String get alreadyCheckedIn;
+
+  /// No description provided for @alreadyCheckedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Already checked out'**
+  String get alreadyCheckedOut;
+
+  /// No description provided for @workerNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Worker #{id}'**
+  String workerNumber(int id);
+
+  /// No description provided for @gpsReady.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS on · ±{metres} m'**
+  String gpsReady(int metres);
+
+  /// No description provided for @gpsReadyNoAccuracy.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS on'**
+  String get gpsReadyNoAccuracy;
+
+  /// No description provided for @gpsLooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for GPS…'**
+  String get gpsLooking;
+
+  /// No description provided for @gpsDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'No GPS permission: scans are sent without position'**
+  String get gpsDenied;
+
+  /// No description provided for @gpsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is off on this phone: scans are sent without position'**
+  String get gpsOff;
+
+  /// No description provided for @cameraDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow the camera in the phone’s settings to scan badges.'**
+  String get cameraDenied;
+
+  /// No description provided for @cameraError.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera cannot start.'**
+  String get cameraError;
+
+  /// No description provided for @selfCheckInNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Workers check in themselves: the roll call shows what their scans wrote. Check it and submit.'**
+  String get selfCheckInNote;
+
+  /// No description provided for @prefilledNote.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 mark comes from badge scans. Check it.} other{{count} marks come from badge scans. Check them.}}'**
+  String prefilledNote(int count);
+
+  /// No description provided for @fromCheckIn.
+  ///
+  /// In en, this message translates to:
+  /// **'From badge scan'**
+  String get fromCheckIn;
+
+  /// No description provided for @kioskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check-in kiosk'**
+  String get kioskTitle;
+
+  /// No description provided for @kioskHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Show your badge'**
+  String get kioskHint;
+
+  /// No description provided for @switchCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch camera'**
+  String get switchCamera;
+
+  /// No description provided for @kioskExit.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave the kiosk'**
+  String get kioskExit;
+
+  /// No description provided for @kioskExitText.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone stays a kiosk until the office ends kiosk mode. Sign out?'**
+  String get kioskExitText;
+
+  /// No description provided for @kioskPinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Foreman PIN'**
+  String get kioskPinTitle;
+
+  /// No description provided for @kioskPinWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong PIN'**
+  String get kioskPinWrong;
 }
 
 class _AppLocalizationsDelegate

@@ -1,12 +1,14 @@
 import '../models/models.dart';
 
 /// Kinds of queued writes, in the order the server needs them:
-/// records → submit → corrections → payments.
+/// check-ins → records → submit → corrections → payments (records may be
+/// built from suggestions, which need the check-ins on the server).
 enum OutboxKind {
-  records('records', 0),
-  submit('submit', 1),
-  correction('correction', 2),
-  payment('payment', 3);
+  checkin('checkin', 0),
+  records('records', 1),
+  submit('submit', 2),
+  correction('correction', 3),
+  payment('payment', 4);
 
   const OutboxKind(this.wire, this.rank);
   final String wire;
@@ -39,6 +41,8 @@ enum OutboxState {
 ///   record id is resolved when sending (records go first).
 /// * `payment`: `{client_uuid, pay_line_id, amount, proof_type, paid_at,
 ///   proof_path}`.
+/// * `checkin`: a `POST /checkins/` body plus `photo_path` (the compressed
+///   photo, kept until the server has the check-in).
 class OutboxEntry {
   const OutboxEntry({
     this.id,
@@ -99,8 +103,8 @@ class OutboxEntry {
   );
 }
 
-/// Sending order: by kind (records → submit → corrections → payments), then
-/// in the order the foreman acted.
+/// Sending order: by kind (check-ins → records → submit → corrections →
+/// payments), then in the order the foreman acted.
 List<OutboxEntry> sendingOrder(Iterable<OutboxEntry> entries) {
   final list = entries.toList();
   list.sort((a, b) {

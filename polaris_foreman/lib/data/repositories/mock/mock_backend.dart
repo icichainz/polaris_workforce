@@ -1,18 +1,25 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
+
+import '../../../core/checkin_rules.dart';
 import '../../../core/dates.dart';
 import '../../models/models.dart';
 import 'mock_seed.dart';
 
-/// An in-memory stand-in for the Django API (contract 1.1), following the
+/// An in-memory stand-in for the Django API (contract 1.2), following the
 /// rules of `docs/api/README.md`: idempotent writes by `client_uuid` (replays
 /// flagged like `Idempotent-Replayed`), `{code, message, details}` errors with
 /// list-shaped item errors, `not_started` days, records with `site_id` and
-/// `date`, payment proof rules, payout invariants, sync by `since`.
+/// `date`, payment proof rules, payout invariants, sync by `since`, and the
+/// check-in rules of 1.2 (badges, flags, kiosk restriction, `self_check_in`
+/// drafts, suggestions; see `core/checkin_rules.dart`).
 ///
 /// Debug switches: [offline] (every call fails with [NetworkException]),
 /// [failNext] (queue errors for the next calls), [revokeToken] (401),
-/// [approvalDelay] (the "site manager" approves a submitted day after it).
+/// [approvalDelay] (the "site manager" approves a submitted day after it),
+/// [attendanceMode], [setKiosk], [revokeBadge], [setWorkerPhoto].
 class MockBackend {
   MockBackend({
     this.latency = const Duration(milliseconds: 350),
@@ -57,6 +64,33 @@ class MockBackend {
   int _recordId = 9500;
   int _correctionId = 100;
   int _paymentId = 3400;
+
+  // --- Check-in (1.2)
+  /// Base of the protected file URLs in responses (`photo_url`).
+  String publicBaseUrl = 'https://polaris.example.com/api/v1/';
+
+  /// The company setting (`GET /checkin/device/`, setup, suggestions).
+  AttendanceMode attendanceMode = AttendanceMode.both;
+
+  /// `late_after` per site (the site's, else the company's).
+  final Map<int, String> lateAfter = {MockSeed.siteId: '07:15'};
+  String companyLateAfter = '07:30';
+
+  /// The sites' circles (the second site has none).
+  final Map<int, Geofence> geofences = {
+    MockSeed.siteId: const Geofence(
+      latitude: 6.131944,
+      longitude: 1.222778,
+      radiusM: 150,
+    ),
+  };
+  int? _kioskSiteId;
+  String? _kioskSince;
+  final Map<String, _MockBadge> _badges = {};
+  final Map<String, _MockCheckIn> _checkins = {};
+  final Map<String, Map<int, Map<String, String?>>> _checkinWrote = {};
+  final Map<int, _MockFile> _workerPhotos = {};
+  int _checkinId = 5120;
 
   String get today => isoDate(_now().toUtc()); // Africa/Lome is UTC+0.
   String get _ts => isoTimestamp(_now());
@@ -146,6 +180,11 @@ class MockBackend {
   }
 
   void _seed() {
+    // One printed badge per worker; Kodjo Atsu (58) lost his first one.
+    for (final w in [...MockSeed.workers, ...MockSeed.site2Workers]) {
+      _issueBadge(w.id);
+    }
+    revokeBadge(58);
     // Previous days: yesterday approved and paid, older days locked.
     final t = today;
     const onSite = [40, 39, 41, 42, 40, 38];
@@ -265,8 +304,9 @@ class MockBackend {
   Future<Crew> crew(String? token, int siteId, String? date) async {
     await _call(token: token);
     _checkSite(siteId);
-    final workers = _crews[siteId]!.map(MockSeed.crewWorker).toList()
-      ..sort((a, b) => a.lastName.compareTo(b.lastName));
+    final workers = [
+      for (final w in _crews[siteId]!) _withPhoto(MockSeed.crewWorker(w)),
+    ]..sort((a, b) => a.lastName.compareTo(b.lastName));
     return Crew(
       siteId: siteId,
       date: date ?? today,
@@ -796,6 +836,507 @@ class MockBackend {
     {'status': 'not_open'},
   );
 
+  // ---------------------------------------------------------------- checkin
+
+  static const _base32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+  /// The contract's example badge (worker 63, Delali Agbo).
+  static const exampleBadge = 'PW1:K7Q2M4XR5TBN3WCA.D6HZP2LQ4V7NYE3S';
+
+  static String _b32(List<int> bytes) =>
+      bytes.map((b) => _base32[b % 32]).join();
+
+  /// `PW1:<public id>.<signature>`, 37 characters of QR alphanumeric mode.
+  static String _payload(int workerId, int version) {
+    if (workerId == 63 && version == 1) return exampleBadge;
+    final d = sha256
+        .convert(utf8.encode('mock-badge-$workerId-$version'))
+        .bytes;
+    return 'PW1:${_b32(d.sublist(0, 16))}.${_b32(d.sublist(16, 32))}';
+  }
+
+  /// What the server compares: no `PW1:` prefix, no spaces, upper case.
+  static String _normalise(String scanned) {
+    var t = scanned.trim().replaceAll(' ', '').toUpperCase();
+    if (t.startsWith('PW1:')) t = t.substring(4);
+    return t;
+  }
+
+  void _issueBadge(int workerId) {
+    final version =
+        _badges.values.where((b) => b.workerId == workerId).length + 1;
+    final payload = _payload(workerId, version);
+    _badges[_normalise(payload)] = _MockBadge(
+      workerId,
+      payload,
+      isoTimestamp(
+        parseIsoDate(
+          today,
+        ).subtract(Duration(days: 11 - version)).add(const Duration(hours: 9)),
+      ),
+    );
+  }
+
+  /// The QR text of [workerId]'s active badge (what a scan reads).
+  String badgeOf(int workerId) => _badges.values
+      .lastWhere((b) => b.workerId == workerId && !b.revoked)
+      .payload;
+
+  /// The QR text of a revoked badge of [workerId], if any.
+  String? revokedBadgeOf(int workerId) => _badges.values
+      .where((b) => b.workerId == workerId && b.revoked)
+      .firstOrNull
+      ?.payload;
+
+  /// The office reissues a badge (lost, damaged): the old one stops counting.
+  void revokeBadge(int workerId) {
+    for (final b in _badges.values) {
+      if (b.workerId == workerId) b.revoked = true;
+    }
+    _issueBadge(workerId);
+  }
+
+  /// The office switches this phone to kiosk mode for [siteId] (null ends
+  /// it). Kiosk mode belongs to the device: it survives signing in again.
+  void setKiosk(int? siteId) {
+    _kioskSiteId = siteId;
+    _kioskSince = siteId == null ? null : _ts;
+  }
+
+  /// A worker photo behind `files/workers/{id}/photo/` (a new photo, a new
+  /// `ETag`).
+  void setWorkerPhoto(int workerId, List<int> bytes) {
+    final n = (_workerPhotos[workerId]?.version ?? 0) + 1;
+    _workerPhotos[workerId] = _MockFile(
+      bytes,
+      '"w$workerId-$n"',
+      'image/jpeg',
+      n,
+    );
+  }
+
+  CrewWorker _withPhoto(CrewWorker w) => !_workerPhotos.containsKey(w.id)
+      ? w
+      : CrewWorker(
+          id: w.id,
+          number: w.number,
+          firstName: w.firstName,
+          lastName: w.lastName,
+          trade: w.trade,
+          photoUrl: '${publicBaseUrl}files/workers/${w.id}/photo/',
+          payType: w.payType,
+          absentStreak: w.absentStreak,
+        );
+
+  ApiException _validation(Map<String, dynamic> details) =>
+      _err(400, ErrorCodes.validationError, 'Invalid input.', details);
+
+  /// Check-in endpoints of a site: assigned sites only; a kiosk phone only
+  /// its own site.
+  void _checkCheckInSite(int siteId) {
+    final kiosk = _kioskSiteId;
+    if (kiosk != null && kiosk != siteId) {
+      throw _err(
+        403,
+        ErrorCodes.permissionDenied,
+        'This phone is a kiosk for another site.',
+      );
+    }
+    _checkSite(siteId);
+  }
+
+  String _lateAfter(int siteId) => lateAfter[siteId] ?? companyLateAfter;
+
+  Future<CheckInDevice> checkInDevice(String? token) async {
+    await _call(token: token);
+    final site = _kioskSiteId;
+    return CheckInDevice(
+      attendanceMode: attendanceMode,
+      kiosk: site == null
+          ? null
+          : Kiosk(
+              siteId: site,
+              siteName: site == MockSeed.site2.id
+                  ? MockSeed.site2.name
+                  : MockSeed.site.name,
+              since: _kioskSince!,
+            ),
+    );
+  }
+
+  Future<CheckInSetup> checkInSetup(String? token, int siteId) async {
+    await _call(token: token);
+    _checkCheckInSite(siteId);
+    final crew = _crews[siteId]!.map((w) => w.id).toSet();
+    final badges = [
+      for (final b in _badges.values)
+        if (!b.revoked && crew.contains(b.workerId))
+          BadgeHash(
+            workerId: b.workerId,
+            payloadSha256: badgeHash(b.payload),
+            issuedAt: b.issuedAt,
+          ),
+    ]..sort((a, b) => a.workerId.compareTo(b.workerId));
+    return CheckInSetup(
+      siteId: siteId,
+      attendanceMode: attendanceMode,
+      lateAfter: _lateAfter(siteId),
+      kiosk: _kioskSiteId == siteId,
+      geofence: geofences[siteId],
+      badges: badges,
+    );
+  }
+
+  Future<CheckIn> checkIn(
+    String? token,
+    CheckInCreateRequest req, {
+    List<int>? photo,
+    String photoType = 'image/jpeg',
+  }) async {
+    await _call(token: token);
+    // Field checks first (400), like the serializer.
+    final badge = req.badge;
+    if ((badge == null) == (req.workerId == null)) {
+      throw _validation({
+        'non_field_errors': ['Send either badge or worker_id.'],
+      });
+    }
+    if (badge != null && (badge.isEmpty || badge.length > 200)) {
+      throw _validation({
+        'badge': ['Ensure this field has no more than 200 characters.'],
+      });
+    }
+    if ((req.latitude == null) != (req.longitude == null)) {
+      throw _validation({
+        req.latitude == null ? 'latitude' : 'longitude': [
+          'Send latitude and longitude together.',
+        ],
+      });
+    }
+    if (req.latitude != null && req.latitude!.abs() > 90) {
+      throw _validation({
+        'latitude': ['Ensure this value is between -90 and 90.'],
+      });
+    }
+    if (req.longitude != null && req.longitude!.abs() > 180) {
+      throw _validation({
+        'longitude': ['Ensure this value is between -180 and 180.'],
+      });
+    }
+    final accuracy = req.accuracyM;
+    if (accuracy != null && (accuracy < 0 || accuracy > 100000)) {
+      throw _validation({
+        'accuracy_m': ['Ensure this value is between 0 and 100000.'],
+      });
+    }
+    final at = DateTime.tryParse(req.at);
+    if (at == null || !req.at.contains('T')) {
+      throw _validation({
+        'at': ['Datetime has wrong format.'],
+      });
+    }
+    // Then the site (403), the kiosk rule and the replay.
+    _checkCheckInSite(req.siteId);
+    final kiosk = _kioskSiteId != null;
+    if (kiosk && req.workerId != null) {
+      throw _validation({
+        'badge': ['A kiosk only records badge scans.'],
+      });
+    }
+    final seen = _checkins[req.clientUuid];
+    if (seen != null) {
+      final same =
+          seen.checkIn.siteId == req.siteId &&
+          seen.checkIn.direction == req.direction &&
+          DateTime.parse(seen.checkIn.at).isAtSameMomentAs(at) &&
+          (badge != null
+              ? seen.badgeScan
+              : !seen.badgeScan && seen.checkIn.workerId == req.workerId);
+      if (!same) {
+        throw _err(
+          409,
+          ErrorCodes.conflict,
+          'This client_uuid was already used for a different request.',
+          {'client_uuid': req.clientUuid},
+        );
+      }
+      return seen.checkIn.asReplayed(); // 200 + Idempotent-Replayed: true.
+    }
+    final now = _now();
+    if (at.isAfter(now.add(const Duration(minutes: 10)))) {
+      throw _validation({
+        'at': ["This time is in the future. Check the phone's clock."],
+      });
+    }
+    if (at.isBefore(now.subtract(const Duration(days: 31)))) {
+      throw _validation({
+        'at': ['This time is more than 31 days old.'],
+      });
+    }
+    final companyWorkers = {
+      for (final crew in _crews.values) ...crew.map((w) => w.id),
+    };
+    if (req.workerId != null && !companyWorkers.contains(req.workerId)) {
+      throw _validation({
+        'worker_id': ['Unknown worker.'],
+      });
+    }
+
+    final flags = <CheckInFlag>[];
+    int? workerId = req.workerId;
+    if (badge != null) {
+      final b = _badges[_normalise(badge)];
+      if (b == null) {
+        flags.add(CheckInFlag.unknownBadge);
+      } else {
+        workerId = b.workerId;
+        if (b.revoked) flags.add(CheckInFlag.revokedBadge);
+      }
+    }
+    final counted =
+        workerId != null && !flags.contains(CheckInFlag.revokedBadge);
+    final crew = _crews[req.siteId]!.map((w) => w.id).toSet();
+    if (workerId != null && !crew.contains(workerId)) {
+      flags.add(CheckInFlag.notOnCrew);
+    }
+    final fence = geofences[req.siteId];
+    int? distance;
+    bool? inside;
+    if (fence != null && req.latitude != null) {
+      distance = distanceMetres(
+        fence.latitude,
+        fence.longitude,
+        req.latitude!,
+        req.longitude!,
+      ).round();
+      inside = insideGeofence(fence, req.latitude!, req.longitude!, accuracy);
+      if (!inside) flags.add(CheckInFlag.outsideGeofence);
+    }
+    final date = isoDate(at.toUtc()); // Africa/Lome is UTC+0.
+    if (workerId != null &&
+        _checkins.values.any(
+          (c) =>
+              c.checkIn.workerId == workerId &&
+              c.checkIn.siteId == req.siteId &&
+              c.checkIn.direction == req.direction &&
+              !at.isBefore(DateTime.parse(c.checkIn.at)) &&
+              at.difference(DateTime.parse(c.checkIn.at)) <
+                  const Duration(minutes: 5),
+        )) {
+      flags.add(CheckInFlag.duplicate);
+    }
+    final id = ++_checkinId;
+    var checkIn = CheckIn(
+      id: id,
+      clientUuid: req.clientUuid,
+      siteId: req.siteId,
+      workerId: workerId,
+      date: date,
+      direction: req.direction,
+      at: req.at,
+      receivedAt: _ts,
+      source: kiosk
+          ? CheckInSource.kiosk
+          : badge != null
+          ? CheckInSource.foremanScan
+          : CheckInSource.manual,
+      latitude: req.latitude,
+      longitude: req.longitude,
+      accuracyM: accuracy,
+      distanceM: distance,
+      insideGeofence: inside,
+      counted: counted,
+      draftUpdated: false,
+      flags: flags,
+      photoUrl: photo == null
+          ? null
+          : '${publicBaseUrl}files/checkins/$id/photo/',
+    );
+    final stored = _MockCheckIn(
+      checkIn,
+      badge != null,
+      photo == null ? null : _MockFile(photo, '"c$id"', photoType, 1),
+    );
+    _checkins[req.clientUuid] = stored;
+    if (attendanceMode.serverWritesDrafts &&
+        counted &&
+        crew.contains(workerId)) {
+      if (_writeDraft(req.siteId, date, workerId)) {
+        checkIn = CheckIn.fromJson({
+          ...checkIn.toJson(),
+          'draft_updated': true,
+        });
+        stored.checkIn = checkIn;
+      }
+    }
+    return checkIn;
+  }
+
+  /// Counted check-ins of crew workers of a site and day.
+  List<CheckInEvent> _events(int siteId, String date, {int? workerId}) {
+    final crew = _crews[siteId]!.map((w) => w.id).toSet();
+    return [
+      for (final c in _checkins.values)
+        if (c.checkIn.siteId == siteId &&
+            c.checkIn.date == date &&
+            c.checkIn.counted &&
+            crew.contains(c.checkIn.workerId) &&
+            (workerId == null || c.checkIn.workerId == workerId))
+          CheckInEvent(
+            c.checkIn.workerId!,
+            c.checkIn.direction,
+            DateTime.parse(c.checkIn.at),
+          ),
+    ];
+  }
+
+  /// `self_check_in`: the worker's draft record follows the check-ins. A
+  /// field is written when the record is new, the time is empty, or it
+  /// still holds what earlier check-ins suggested (the foreman's hand
+  /// changes win). Never once the day was submitted.
+  bool _writeDraft(int siteId, String date, int workerId) {
+    final summary = _summary(siteId, date);
+    if (!summary.status.editable) return false;
+    final s = suggestFromEvents(
+      _events(siteId, date, workerId: workerId),
+      lateAfter: _lateAfter(siteId),
+      localOf: (t) => t.toUtc(),
+    ).single;
+    final key = _key(siteId, date);
+    final wrote = _checkinWrote.putIfAbsent(key, () => {})[workerId] ??= {};
+    final recs = _records.putIfAbsent(key, () => {});
+    final existing = recs[workerId];
+    if (existing == null && s.status == null) return false;
+    bool mine(String field, String? current) =>
+        existing == null ||
+        current == null ||
+        (wrote.containsKey(field) && wrote[field] == current);
+    var status = existing?.status ?? s.status!;
+    var arrival = existing?.arrival;
+    var departure = existing?.departure;
+    if (s.status != null && mine('status', existing?.status.wire)) {
+      status = s.status!;
+      wrote['status'] = status.wire;
+    }
+    if (s.arrival != null && mine('arrival', existing?.arrival)) {
+      arrival = s.arrival;
+      wrote['arrival'] = arrival;
+    }
+    if (s.departure != null && mine('departure', existing?.departure)) {
+      departure = s.departure;
+      wrote['departure'] = departure;
+    }
+    if (existing != null &&
+        existing.status == status &&
+        existing.arrival == arrival &&
+        existing.departure == departure) {
+      return false;
+    }
+    final dayId = summary.id ?? ++_dayId;
+    final ts = _ts;
+    final newId = existing == null ? ++_recordId : existing.id;
+    recs[workerId] = existing == null
+        ? AttendanceRecord(
+            id: newId,
+            // Made by the server (no phone wrote it): stable for tests.
+            clientUuid:
+                '00000000-0000-4000-9000-${newId.toString().padLeft(12, '0')}',
+            dayId: dayId,
+            siteId: siteId,
+            date: date,
+            workerId: workerId,
+            status: status,
+            arrival: arrival,
+            departure: departure,
+            note: '',
+            corrected: false,
+            updatedAt: ts,
+          )
+        : existing.copyWith(
+            status: status,
+            arrival: () => arrival,
+            departure: () => departure,
+            updatedAt: ts,
+          );
+    _days[key] = summary.copyWith(
+      id: dayId,
+      status: DayStatus.draft,
+      updatedAt: ts,
+      counts: _counts(siteId, date),
+    );
+    return true;
+  }
+
+  Future<CheckInList> siteCheckIns(
+    String? token,
+    int siteId,
+    String date,
+  ) async {
+    await _call(token: token);
+    _checkCheckInSite(siteId);
+    final list = [
+      for (final c in _checkins.values)
+        if (c.checkIn.siteId == siteId && c.checkIn.date == date) c.checkIn,
+    ]..sort((a, b) => DateTime.parse(a.at).compareTo(DateTime.parse(b.at)));
+    return CheckInList(siteId: siteId, date: date, checkins: list);
+  }
+
+  Future<RollCallSuggestions> suggestions(
+    String? token,
+    int siteId,
+    String date,
+  ) async {
+    await _call(token: token);
+    _checkCheckInSite(siteId);
+    return RollCallSuggestions(
+      siteId: siteId,
+      date: date,
+      attendanceMode: attendanceMode,
+      lateAfter: _lateAfter(siteId),
+      dayStatus: _summary(siteId, date).status,
+      suggestions: suggestFromEvents(
+        _events(siteId, date),
+        lateAfter: _lateAfter(siteId),
+        localOf: (t) => t.toUtc(),
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------------ files
+
+  static final _workerPhotoPath = RegExp(r'/files/workers/(\d+)/photo/$');
+  static final _checkinPhotoPath = RegExp(r'/files/checkins/(\d+)/photo/$');
+
+  /// `GET /files/workers/{id}/photo/` and `GET /files/checkins/{id}/photo/`:
+  /// your sites only (`404` otherwise, or without a file), `ETag` and `304`.
+  Future<FileDownload> download(String? token, String url, String? etag) async {
+    await _call(token: token);
+    final path = Uri.parse(url).path;
+    _MockFile? file;
+    final w = _workerPhotoPath.firstMatch(path);
+    final c = _checkinPhotoPath.firstMatch(path);
+    if (w != null) {
+      final id = int.parse(w.group(1)!);
+      final mine = _crews.values.any((crew) => crew.any((x) => x.id == id));
+      if (mine) file = _workerPhotos[id];
+    } else if (c != null) {
+      final id = int.parse(c.group(1)!);
+      file = _checkins.values
+          .where((x) => x.checkIn.id == id)
+          .firstOrNull
+          ?.photo;
+    }
+    if (file == null) throw _err(404, ErrorCodes.notFound, 'Not found.');
+    if (etag != null && etag == file.etag) {
+      return FileDownload.notModified(etag: file.etag);
+    }
+    return FileDownload.ok(
+      file.bytes,
+      etag: file.etag,
+      contentType: file.contentType,
+    );
+  }
+
   // ------------------------------------------------------------------- sync
 
   Future<SyncResponse> sync(String? token, String? since) async {
@@ -825,4 +1366,29 @@ class MockBackend {
       corrections: corrections,
     );
   }
+}
+
+class _MockBadge {
+  _MockBadge(this.workerId, this.payload, this.issuedAt);
+  final int workerId;
+  final String payload;
+  final String issuedAt;
+  bool revoked = false;
+}
+
+class _MockCheckIn {
+  _MockCheckIn(this.checkIn, this.badgeScan, this.photo);
+  CheckIn checkIn;
+
+  /// Sent with `badge` (else `worker_id`): part of the replay check.
+  final bool badgeScan;
+  final _MockFile? photo;
+}
+
+class _MockFile {
+  const _MockFile(this.bytes, this.etag, this.contentType, this.version);
+  final List<int> bytes;
+  final String etag;
+  final String contentType;
+  final int version;
 }

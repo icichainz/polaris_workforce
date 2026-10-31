@@ -10,6 +10,31 @@ String _uuid() => const Uuid().v4();
 /// Default half-day departure (the artboards' "leaves 12:00").
 const halfDayDeparture = '12:00';
 
+/// A mark with its times, as a check-in suggestion gives it.
+class SuggestedMark {
+  const SuggestedMark(this.status, this.arrival, this.departure);
+
+  factory SuggestedMark.fromJson(Map<String, dynamic> json) => SuggestedMark(
+    AttendanceStatus.fromWire(json['status'] as String),
+    json['arrival'] as String?,
+    json['departure'] as String?,
+  );
+
+  final AttendanceStatus status;
+  final String? arrival;
+  final String? departure;
+
+  /// The record still holds exactly these values (not changed by hand).
+  bool matches(LocalRecord r) =>
+      r.status == status && r.arrival == arrival && r.departure == departure;
+
+  Map<String, dynamic> toJson() => {
+    'status': status.wire,
+    'arrival': arrival,
+    'departure': departure,
+  };
+}
+
 /// Submitting with workers left unmarked (the server would answer 409).
 class UnmarkedWorkersException implements Exception {
   const UnmarkedWorkersException(this.workerIds);
@@ -128,6 +153,42 @@ class RollCallService {
           status: m.value,
           arrival: keepTimes ? existing.arrival : times.arrival,
           departure: keepTimes ? existing.departure : times.departure,
+          note: existing?.note ?? '',
+          corrected: existing?.corrected ?? false,
+          updatedAt: existing?.updatedAt,
+        ),
+      );
+    }
+    await store.upsertRecords(records);
+    await _queueRecords(siteId, date, records);
+    onWrite?.call();
+    return records;
+  }
+
+  /// Writes marks with their own times (check-in suggestions): like
+  /// [markMany], but [marks] carry the arrival and departure to keep.
+  Future<List<LocalRecord>> prefill({
+    required int siteId,
+    required String date,
+    required Map<int, SuggestedMark> marks,
+  }) async {
+    if (marks.isEmpty) return const [];
+    final status = await _status(siteId, date);
+    if (!status.editable) throw DayNotEditableException(status);
+    final records = <LocalRecord>[];
+    for (final m in marks.entries) {
+      final existing = await store.loadRecord(siteId, date, m.key);
+      records.add(
+        LocalRecord(
+          siteId: siteId,
+          date: date,
+          workerId: m.key,
+          clientUuid: existing?.clientUuid ?? _newUuid(),
+          serverId: existing?.serverId,
+          dayId: existing?.dayId,
+          status: m.value.status,
+          arrival: m.value.arrival,
+          departure: m.value.departure,
           note: existing?.note ?? '',
           corrected: existing?.corrected ?? false,
           updatedAt: existing?.updatedAt,
