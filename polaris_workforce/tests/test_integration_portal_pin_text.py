@@ -102,7 +102,7 @@ def test_the_text_is_in_the_company_language(crews):  # noqa: F811
 
     [text] = pin_texts()
     assert text.language == "fr"
-    assert f"code PIN du portail : {pin}" in text.text
+    assert f"code PIN de l’espace ouvrier : {pin}" in text.text
     assert messaging.redact_pin(text.text).count("••••") == 1
 
 

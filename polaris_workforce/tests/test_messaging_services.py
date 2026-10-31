@@ -111,7 +111,7 @@ def test_payslip_text_in_english_and_french():
         "Acme: Paid 4 000 XOF for Fri 30 Oct · Riverside & Co · balance owed on advance 2 000"
     )
     assert render_text("payslip", "fr", context) == (
-        "Acme : Payé 4 000 XOF pour ven 30 oct. · Riverside & Co · reste dû sur l'avance 2 000"
+        "Acme : Payé 4 000 XOF pour ven 30 oct. · Riverside & Co · reste dû sur l’avance 2 000"
     )
 
 
@@ -136,8 +136,8 @@ def test_payslip_text_for_several_days_without_advance():
             "missing_roll_call",
             {"site": "A", "due": datetime.time(8, 0)},
             "The roll call for A is not in yet (due 08:00 today). Please send it.",
-            "L'appel de A n'est pas encore envoyé (attendu à 08:00 aujourd'hui). "
-            "Merci de l'envoyer.",
+            "L’appel de A n’est pas encore envoyé (attendu à 08:00 aujourd’hui). "
+            "Merci de l’envoyer.",
         ),
         (
             "awaiting_approval",
@@ -156,7 +156,7 @@ def test_payslip_text_for_several_days_without_advance():
             "advance_limit",
             {"worker": "Ama K", "owed": "9 000 XOF", "limit": "10 000 XOF", "percent": 90},
             "Ama K owes 9 000 XOF on advances, 90% of the limit (10 000 XOF).",
-            "Ama K doit 9 000 XOF sur ses avances, soit 90 % de la limite (10 000 XOF).",
+            "Ama K doit 9 000 XOF sur ses avances, soit 90 % du plafond (10 000 XOF).",
         ),
     ],
 )

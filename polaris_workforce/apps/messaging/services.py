@@ -279,7 +279,9 @@ def queue_payslip(payment) -> Message | None:
 
 # The PIN in a portal PIN text, in each language's template
 # (``templates/messaging/texts/portal_pin.<language>.txt``).
-_PIN_IN_TEXT = re.compile(r"(portal PIN: |code PIN du portail : )\d{4}")
+_PIN_IN_TEXT = re.compile(
+    r"(portal PIN: |code PIN de l’espace ouvrier : |code PIN du portail : )\d{4}"
+)
 PIN_MASK = "••••"
 
 

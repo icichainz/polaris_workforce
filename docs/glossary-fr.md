@@ -104,3 +104,26 @@ from translatable strings (`pgettext` context "attendance status letter (…)" i
   so they never override Django's lowercase "D" abbreviation used in dates.
 - Placeholders (`%(name)s`, `{count}`) and HTML (`<strong>`) are kept as they are.
 - Amounts follow the company number format setting in both languages.
+
+## Wave 4 terms
+
+| English | French |
+| --- | --- |
+| payout / transfer batch | lot de virements |
+| export layout | modèle d’export |
+| bulk-payment file | fichier de paiement groupé |
+| payout account | compte de paiement |
+| piece work | travail à la tâche (pay type: « À la tâche ») |
+| bonus | prime |
+| stoppage / rain day | jour d’arrêt (intempérie) |
+| statutory deduction | retenue légale |
+| employer contribution | cotisation patronale |
+| badge | badge |
+| kiosk phone | borne du chantier |
+| geofence | périmètre du chantier |
+| check-in | pointage |
+| worker portal | espace ouvrier |
+| messages / messaging | messages |
+| opt-out | désinscription |
+| company | entreprise |
+| platform admin | administrateur de la plateforme |
