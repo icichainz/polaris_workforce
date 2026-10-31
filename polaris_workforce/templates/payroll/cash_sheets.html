@@ -1,0 +1,12 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Cash sheets" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% translate "Cash issued, paid and left to pay, per site and day" %}{% endblock %}
+{% block page_title %}{% translate "Cash sheets" %}{% endblock %}
+
+{% block content %}
+  {% translate "This screen is built in Wave 2" as empty_title %}
+  {% translate "Each day's payout per site, with proof of payment and the cash to return." as empty_message %}
+  {% include "components/empty_state.html" with icon="cash" title=empty_title message=empty_message only %}
+{% endblock %}

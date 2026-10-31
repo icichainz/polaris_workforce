@@ -1,0 +1,12 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Workers" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% translate "Everyone on your crews, with rates and history" %}{% endblock %}
+{% block page_title %}{% translate "Workers" %}{% endblock %}
+
+{% block content %}
+  {% translate "This screen is built in Wave 2" as empty_title %}
+  {% translate "Search and filter workers, open a profile, add or import workers." as empty_message %}
+  {% include "components/empty_state.html" with icon="workers" title=empty_title message=empty_message only %}
+{% endblock %}

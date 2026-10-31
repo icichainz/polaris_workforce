@@ -1,16 +1,39 @@
-{% extends "base.html" %}
+{% extends "layouts/auth.html" %}
 {% load i18n %}
 
 {% block title %}{% translate "Sign in" %} · Polaris Workforce{% endblock %}
 
 {% block content %}
-  <h1>{% translate "Sign in" %}</h1>
-  <p>{% translate "For admins, site managers and accountants." %}</p>
-
-  <form method="post">
+  {% get_current_language as LANGUAGE_CODE %}
+  <form action="{% url 'set_language' %}" method="post" class="flex justify-end gap-1" role="group" aria-label="{% translate 'Language' %}">
     {% csrf_token %}
-    {{ form.as_div }}
-    <input type="hidden" name="next" value="{{ next }}">
-    <button type="submit">{% translate "Sign in" %}</button>
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <button type="submit" name="language" value="en" lang="en" aria-pressed="{% if LANGUAGE_CODE == 'en' %}true{% else %}false{% endif %}"
+      class="h-10 min-w-10 rounded-md border px-2.5 text-[13px] font-semibold {% if LANGUAGE_CODE == 'en' %}border-ink bg-ink text-white{% else %}border-line-strong bg-white text-ink hover:bg-ground{% endif %}"><span aria-hidden="true">EN</span><span class="sr-only">English</span></button>
+    <button type="submit" name="language" value="fr" lang="fr" aria-pressed="{% if LANGUAGE_CODE == 'fr' %}true{% else %}false{% endif %}"
+      class="h-10 min-w-10 rounded-md border px-2.5 text-[13px] font-semibold {% if LANGUAGE_CODE == 'fr' %}border-ink bg-ink text-white{% else %}border-line-strong bg-white text-ink hover:bg-ground{% endif %}"><span aria-hidden="true">FR</span><span class="sr-only">Français</span></button>
   </form>
+
+  <div class="flex flex-col gap-1.5">
+    <h1 class="font-display text-[28px] font-bold">{% translate "Sign in" %}</h1>
+    <p class="text-[15px] text-ink-700">{% translate "For admins, site managers and accountants." %}</p>
+  </div>
+
+  {% if form.non_field_errors %}
+    {% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}
+  {% endif %}
+
+  <form method="post" action="{% url 'login' %}" class="flex flex-col gap-4">
+    {% csrf_token %}
+    {% include "components/field.html" with field=form.username size="lg" only %}
+    {% url 'password_reset' as reset_url %}{% translate "Forgot?" as forgot_label %}
+    {% include "components/field.html" with field=form.password size="lg" aside_href=reset_url aside_label=forgot_label only %}
+    <input type="hidden" name="next" value="{{ next }}">
+    {% translate "Sign in" as submit_label %}{% include "components/button.html" with label=submit_label variant="primary" type="submit" full=True only %}
+  </form>
+
+  <div class="flex gap-3 rounded-card border border-line bg-white p-3.5 text-sm leading-normal">
+    <span class="text-blue-700">{% include "components/icon.html" with name="phone" class="size-5" only %}</span>
+    <p><strong>{% translate "Foreman?" %}</strong> {% translate "Use the phone app and sign in with your 4-digit PIN." %}</p>
+  </div>
 {% endblock %}

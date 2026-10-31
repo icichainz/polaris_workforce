@@ -1,0 +1,12 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Pay periods" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% translate "Daily by default · each site can set its own pay frequency" %}{% endblock %}
+{% block page_title %}{% translate "Pay periods" %}{% endblock %}
+
+{% block content %}
+  {% translate "This screen is built in Wave 2" as empty_title %}
+  {% translate "Gross, deductions and net per period, payslips and locking." as empty_message %}
+  {% include "components/empty_state.html" with icon="payroll" title=empty_title message=empty_message only %}
+{% endblock %}

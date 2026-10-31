@@ -1,0 +1,30 @@
+{% comment %}
+Button (Components artboard). Renders <a> when `href` is given, otherwise <button>.
+
+  {% include "components/button.html" with label=_("Approve day") variant="primary" type="submit" %}
+  {% include "components/button.html" with label=_("Export") href=export_url %}
+  {% include "components/button.html" with icon="close" aria_label=_("Close") variant="ghost" %}
+
+Parameters
+  label       visible text (translate it in the caller: label=_("…"))
+  variant     primary | secondary (default) | dark | danger | ghost
+              One amber (primary) button per screen. Dark = irreversible (lock). Danger = reject/remove.
+  size        "" (default, 40px office) | phone (56px, glove-safe)
+  href        render as a link
+  type        button (default) | submit | reset
+  icon        optional icon name (see components/icon.html); icon-only needs aria_label
+  aria_label  accessible name for icon-only buttons
+  full        true → full width
+  disabled    true → disabled
+  name, value, form, id      passed to <button>
+  hx_get, hx_post, hx_target, hx_swap, hx_confirm   htmx attributes
+Use `only` if the page context may already hold variables with these names.
+{% endcomment %}{% if href and not disabled %}<a href="{{ href }}"{% else %}<button type="{{ type|default:'button' }}"{% if name %} name="{{ name }}"{% endif %}{% if value %} value="{{ value }}"{% endif %}{% if form %} form="{{ form }}"{% endif %}{% if disabled %} disabled{% endif %}{% endif %}{% if id %} id="{{ id }}"{% endif %}{% if aria_label %} aria-label="{{ aria_label }}"{% endif %}{% if hx_get %} hx-get="{{ hx_get }}"{% endif %}{% if hx_post %} hx-post="{{ hx_post }}"{% endif %}{% if hx_target %} hx-target="{{ hx_target }}"{% endif %}{% if hx_swap %} hx-swap="{{ hx_swap }}"{% endif %}{% if hx_confirm %} hx-confirm="{{ hx_confirm }}"{% endif %}
+  class="inline-flex items-center justify-center gap-2 whitespace-nowrap no-underline transition-colors disabled:cursor-not-allowed disabled:border-transparent disabled:bg-draft-bg disabled:text-disabled{% if full %} w-full min-w-0{% else %} shrink-0{% endif %}
+  {% if size == 'phone' %}h-14 rounded-xl px-5 text-[17px] font-bold{% if not label %} w-14 px-0{% endif %}{% else %}h-10 rounded-control text-sm font-semibold{% if not label %} w-10 px-0{% elif variant == 'ghost' %} px-3{% else %} px-4{% endif %}{% endif %}
+  {% if variant == 'primary' %}bg-amber-500 text-ink hover:bg-amber-500 hover:text-ink hover:brightness-95
+  {% elif variant == 'dark' %}bg-ink text-white hover:bg-ink-700 hover:text-white
+  {% elif variant == 'danger' %}border border-danger-line bg-white text-absent-fg hover:bg-absent-bg hover:text-absent-fg
+  {% elif variant == 'ghost' %}bg-transparent text-blue-700 hover:bg-ground hover:text-blue-800
+  {% elif size == 'phone' %}border-2 border-ink bg-white text-ink hover:bg-ground hover:text-ink
+  {% else %}border border-line-strong bg-white text-ink hover:bg-ground hover:text-ink{% endif %}">{% if icon %}{% include "components/icon.html" with name=icon class="size-[18px]" only %}{% endif %}{% if label %}<span>{{ label }}</span>{% endif %}{% if href and not disabled %}</a>{% else %}</button>{% endif %}

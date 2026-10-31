@@ -1,0 +1,52 @@
+{% load i18n %}{% comment %}
+Data table — guidance. Tables stay in the page templates (their columns differ too much
+for one include); copy these classes exactly. Including this file renders the reference
+example below (used by the /_components/ gallery).
+
+Wrapper (inside a card, or on its own):
+  <div class="overflow-x-auto rounded-control border border-line bg-white">
+    <table class="w-full border-collapse text-sm">
+Header row and cells:
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">Worker</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">Net to pay</th>
+Body rows and cells:
+      <tbody><tr class="border-t border-line-soft">                  (normal row)
+             <tr class="border-t border-line-soft bg-amber-tint">    (changed after submission)
+             <tr class="border-t border-line-soft bg-late-bg">       (selected row)
+        <td class="px-4 py-3">…</td>
+        <td class="px-4 py-3 text-right font-semibold tabular-nums">4 000 XOF</td>   (money)
+Worker cell: avatar initials + name + meta
+        <span class="flex items-center gap-2.5"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-line text-xs font-bold">YM</span>
+          <span><span class="font-semibold">Yao Mensah</span><br><span class="text-xs text-steel">W-0142 · Mason</span></span></span>
+Give wide tables a min width (e.g. class="w-full min-w-[680px] …") so they scroll on phones.
+Money is right-aligned with tabular figures; the currency suffix comes from settings.
+{% endcomment %}<div class="overflow-x-auto rounded-control border border-line bg-white">
+  <table class="w-full min-w-[640px] border-collapse text-sm">
+    <thead>
+      <tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Status" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "In · Out" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Net to pay" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Payment" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="border-t border-line-soft">
+        <td class="px-4 py-3"><span class="flex items-center gap-2.5"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-line text-xs font-bold" aria-hidden="true">YM</span><span><span class="font-semibold">Yao Mensah</span><br><span class="text-xs text-steel">W-0142 · Mason</span></span></span></td>
+        <td class="px-4 py-3">{% include "components/status_badge.html" with status="present" only %}</td>
+        <td class="px-4 py-3 tabular-nums">07:02 · 17:00</td>
+        <td class="px-4 py-3 text-right font-semibold tabular-nums">4 000 XOF</td>
+        <td class="px-4 py-3">{% translate "Paid · photo" as paid_label %}{% include "components/status_badge.html" with status="paid" label=paid_label only %}</td>
+      </tr>
+      <tr class="border-t border-line-soft bg-amber-tint">
+        <td class="px-4 py-3"><span class="flex items-center gap-2.5"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-line text-xs font-bold" aria-hidden="true">AD</span><span><span class="font-semibold">Afi Dosseh</span><br><span class="text-xs text-steel">W-0177 · Labourer</span></span></span></td>
+        <td class="px-4 py-3">{% include "components/status_badge.html" with status="half_day" only %} <span class="text-xs font-semibold text-amber-text">{% translate "Corrected" %}</span></td>
+        <td class="px-4 py-3 tabular-nums">07:10 · 12:00</td>
+        <td class="px-4 py-3 text-right font-semibold tabular-nums">1 750 XOF</td>
+        <td class="px-4 py-3">{% include "components/status_badge.html" with status="to_pay" only %}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

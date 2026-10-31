@@ -22,6 +22,27 @@ uv run python manage.py runserver        # http://127.0.0.1:8000
 
 Configuration comes from environment variables; see `.env.example`.
 
+## CSS (Tailwind v4)
+
+The compiled stylesheet `static/css/app.css` is committed, so the app runs without
+Tailwind. Rebuild it only after changing templates or `static/src/app.css` (the theme
+tokens from the design foundations live there, in `@theme`).
+
+The build uses the Tailwind v4 **standalone CLI** (no Node.js). Download
+`tailwindcss-macos-arm64` (or the binary for your platform) from the
+[Tailwind releases](https://github.com/tailwindlabs/tailwindcss/releases), make it
+executable and put it at `~/.local/bin/tailwindcss`, on your `PATH`, or point
+`TAILWINDCSS` at it. Never commit the binary.
+
+```sh
+scripts/build_css.sh           # minified build -> static/css/app.css
+scripts/build_css.sh --watch   # rebuild on change while developing
+```
+
+htmx (2.0.4) and Alpine.js (3.14.8) are vendored in `static/vendor/`; Archivo and Inter
+(latin variable subsets) are self-hosted in `static/fonts/`. Shared template partials
+are in `templates/components/`; in DEBUG, `/_components/` shows every one of them.
+
 ## Checks
 
 ```sh

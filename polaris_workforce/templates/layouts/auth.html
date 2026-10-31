@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% comment %}
+Split sign-in layout (Login artboard): ink brand panel on the left, form column on the
+right. Stacks at phone width.
+
+Blocks
+  title    <title>
+  content  the form column (max 400px wide)
+{% endcomment %}
+
+{% block body %}
+<div class="flex min-h-screen flex-wrap bg-ground">
+  <section class="flex flex-[1_1_420px] flex-col gap-8 bg-ink p-8 text-white sm:p-12">
+    <div class="flex items-center gap-3">
+      <span class="flex size-10 items-center justify-center rounded-card bg-amber-500 text-ink">{% include "components/icon.html" with name="logo" class="size-[22px]" stroke_width="2.2" only %}</span>
+      <span class="font-display text-[22px] font-extrabold">Polaris Workforce</span>
+    </div>
+    <div class="flex max-w-[520px] grow flex-col justify-center gap-5">
+      <p class="font-display text-[32px] font-extrabold leading-[1.1] sm:text-[44px]">{% translate "Who was on site. What they’re owed. Paid and proven." %}</p>
+      <p class="text-[17px] leading-relaxed text-rail-text">{% translate "Foremen take the roll call on their phone. Managers approve. Cash goes out with a receipt for every worker." %}</p>
+    </div>
+    <p class="text-[13px] text-rail-muted">{% translate "Office access" %}</p>
+  </section>
+
+  <main id="main" class="flex flex-[1_1_480px] items-center justify-center px-6 py-12">
+    <div class="flex w-full max-w-[400px] flex-col gap-6">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+{% endblock %}

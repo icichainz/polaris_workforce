@@ -1,0 +1,26 @@
+{% comment %}
+Page header markup (the pattern on every office artboard): eyebrow line above an
+Archivo 800 title, optional status badge, optional meta line below.
+
+layouts/app.html already renders this header from its blocks (page_title, page_subtitle,
+page_meta, page_status, page_actions, page_breadcrumb). Use this include only for a
+header inside the content area, e.g. a panel or a page that skips the layout header.
+
+  {% include "components/page_header.html" with title=site.name status="active" meta=site.address %}
+
+Parameters
+  title      heading text (rendered as <h1> unless level=2)
+  subtitle   eyebrow above the title ("3 active · 1 paused")
+  meta       line below the title ("[Street address] · Started 3 March 2026")
+  status     optional status badge next to the title (see status_badge.html)
+  level      1 (default) | 2
+{% endcomment %}<header class="flex flex-wrap items-end justify-between gap-4">
+  <div class="flex min-w-0 flex-col gap-1">
+    {% if subtitle %}<p class="text-[13px] font-semibold text-steel">{{ subtitle }}</p>{% endif %}
+    <div class="flex flex-wrap items-center gap-3">
+      {% if level == 2 or level == "2" %}<h2 class="font-display text-2xl font-bold">{{ title }}</h2>{% else %}<h1 class="font-display text-[28px] font-extrabold leading-tight sm:text-[32px]">{{ title }}</h1>{% endif %}
+      {% if status %}{% include "components/status_badge.html" with status=status size="lg" only %}{% endif %}
+    </div>
+    {% if meta %}<p class="text-sm text-ink-700">{{ meta }}</p>{% endif %}
+  </div>
+</header>

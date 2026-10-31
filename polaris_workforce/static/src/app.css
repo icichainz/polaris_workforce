@@ -1,0 +1,130 @@
+/*
+ * Polaris Workforce — Tailwind v4 source.
+ *
+ * Build with scripts/build_css.sh (writes static/css/app.css, which is committed).
+ * Tokens come from the "Design foundations" artboard (design/project/Main.dc.html).
+ * The default Tailwind palette is switched off: only the colours below exist, so
+ * templates cannot use one-off colours.
+ */
+
+@import "tailwindcss" source(none);
+
+@source "../../templates/**/*.html";
+@source "../../apps/**/*.py";
+
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 500 800;
+  font-display: swap;
+  src: url("../fonts/archivo-latin-var.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("../fonts/inter-latin-var.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+@theme {
+  --color-*: initial;
+
+  /* Core */
+  --color-white: #ffffff;
+  --color-ink: #16191d;
+  --color-ink-700: #3f4650;
+  --color-steel: #5b626e;
+  --color-line: #e3e5e9;
+  --color-line-soft: #eef0f3; /* table row dividers, progress track */
+  --color-line-strong: #c9ced6; /* control borders */
+  --color-ground: #f4f5f7;
+  --color-subtle: #f8f9fa; /* table header, dashed drop zones */
+  --color-segment: #e9ebef; /* segmented-control track */
+  --color-disabled: #6b7280;
+
+  /* Safety amber: primary action fill (with ink text), focus ring */
+  --color-amber-500: #f5b000;
+  --color-amber-text: #8a5a00;
+  --color-amber-tint: #fffbeb; /* row changed after submission */
+
+  /* Action blue: links, selected row, info */
+  --color-blue-700: #1a56c4;
+  --color-blue-800: #123e8f;
+
+  /* Attendance status: always colour + letter + word */
+  --color-present-bg: #dcf2e4;
+  --color-present-fg: #135c33;
+  --color-absent-bg: #fbe1de;
+  --color-absent-fg: #9b1c13;
+  --color-half-bg: #fdebd2;
+  --color-half-fg: #8a4a06;
+  --color-late-bg: #dde8f8;
+  --color-late-fg: #1a4c99;
+  --color-draft-bg: #eef0f3;
+  --color-draft-fg: #3f4650;
+  --color-warning-bg: #fff4db;
+  --color-warning-fg: #6b4600;
+  --color-warning-line: #f5d78a;
+
+  /* Danger (reject / remove / errors) */
+  --color-danger-line: #f0b8b2;
+  --color-danger-strong: #c0392b; /* field error border */
+  --color-danger-text: #7f1710; /* text on absent-bg banners */
+
+  /* Sidebar ("rail") on ink */
+  --color-rail-text: #c9cdd3;
+  --color-rail-muted: #a3a9b2;
+  --color-rail-label: #969da7;
+  --color-rail-line: #2e343c;
+  --color-rail-raised: #1e2227;
+  --color-rail-active: #2a3038;
+
+  /* Type */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Archivo", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Shape */
+  --radius-control: 8px;
+  --radius-card: 10px;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-ground font-sans text-ink antialiased;
+  }
+
+  a {
+    @apply text-blue-700;
+  }
+
+  a:hover {
+    @apply text-blue-800;
+  }
+
+  /* Visible focus ring everywhere (amber, from the design tokens). */
+  :focus-visible {
+    outline: 3px solid var(--color-amber-500);
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  [x-cloak] {
+    display: none !important;
+  }
+}
