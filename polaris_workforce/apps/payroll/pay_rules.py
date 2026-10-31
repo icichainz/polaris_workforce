@@ -473,13 +473,16 @@ class EmployerCost:
         return self.gross + self.employer
 
 
-def employer_costs(sites, start: datetime.date, end: datetime.date) -> EmployerCost:
+def employer_costs(sites, start: datetime.date, end: datetime.date, *, trade=None) -> EmployerCost:
     """Statutory deductions and employer contributions of the pay periods that **end**
     between ``start`` and ``end`` (inclusive) at ``sites`` (a queryset the caller has
-    scoped, e.g. ``scoped_sites(user)``), in total and per rule (in rule order)."""
+    scoped, e.g. ``scoped_sites(user)``), in total and per rule (in rule order).
+    ``trade``: only the workers of that trade (the reports' filter)."""
     lines = PayLine.objects.filter(
         period__site__in=sites, period__end_date__gte=start, period__end_date__lte=end
     )
+    if trade is not None:
+        lines = lines.filter(worker__trade=trade)
     totals = lines.aggregate(
         gross=Sum("gross"),
         employee=Sum("statutory_deductions"),

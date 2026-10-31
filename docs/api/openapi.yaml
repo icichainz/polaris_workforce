@@ -105,8 +105,8 @@ paths:
                       manager:
                         id: 4
                         name: Edem Kpodar
-                      work_start: 07:00
-                      roll_call_due: 08:00
+                      work_start: '07:00'
+                      roll_call_due: '08:00'
                   summary: Signed in
           description: ''
         '400':
@@ -232,7 +232,9 @@ paths:
 
         Attendance mode `self_check_in`: a counted check-in of a crew worker also writes that worker's record on the day's **draft** (`draft_updated: true`), never once the day was submitted. Marks the foreman changed by hand are not overwritten.
 
-        Idempotent: `201` when created; the same `client_uuid` again returns the original check-in with `200` and `Idempotent-Replayed: true` (a photo sent again is ignored). The same `client_uuid` for a different check-in: `409 conflict`. A site you are not on, or a kiosk phone sending for another site: `403`. `at` more than 10 minutes ahead or 31 days old, both or neither of `badge`/`worker_id`, a worker of another company, a bad photo: `400`.
+        Idempotent: `201` when created; the same `client_uuid` again returns the original check-in with `200` and `Idempotent-Replayed: true` (a photo sent again is ignored). The same `client_uuid` for a different check-in: `409 conflict`.
+
+        Errors, in the order they are checked: no or bad token `401`; not a foreman (or a kiosk phone calling another endpoint) `403`; the body (`at` more than 10 minutes ahead or 31 days old, both or neither of `badge`/`worker_id`, coordinates, a bad photo) `400`; the site (one you are not on, or a kiosk phone sending for another site) `403`; `worker_id` not a worker of the company `400`; a kiosk sending `worker_id` `400`; the `client_uuid` used for another check-in `409`.
       summary: Record a check-in or check-out
       tags:
       - checkin
@@ -702,8 +704,8 @@ paths:
                       manager:
                         id: 4
                         name: Edem Kpodar
-                      work_start: 07:00
-                      roll_call_due: 08:00
+                      work_start: '07:00'
+                      roll_call_due: '08:00'
           description: ''
         '401':
           content:
@@ -926,7 +928,7 @@ paths:
                 value:
                   client_uuid: 5e9d0c4b-3a2f-4e1d-9b8c-7a6f5e4d3c21
                   field: arrival
-                  new_value: 07:20
+                  new_value: '07:20'
                   reason: Signed in at the gate at 07:20; marked late by mistake.
                 summary: Correct arrival
           application/x-www-form-urlencoded:
@@ -952,8 +954,8 @@ paths:
                     client_uuid: 5e9d0c4b-3a2f-4e1d-9b8c-7a6f5e4d3c21
                     record_id: 9003
                     field: arrival
-                    old_value: 07:35
-                    new_value: 07:20
+                    old_value: '07:35'
+                    new_value: '07:20'
                     reason: Signed in at the gate at 07:20; marked late by mistake.
                     created_by:
                       id: 7
@@ -967,7 +969,7 @@ paths:
                       date: '2026-10-31'
                       worker_id: 63
                       status: late
-                      arrival: 07:20
+                      arrival: '07:20'
                       departure: null
                       note: ''
                       corrected: true
@@ -985,8 +987,8 @@ paths:
                     client_uuid: 5e9d0c4b-3a2f-4e1d-9b8c-7a6f5e4d3c21
                     record_id: 9003
                     field: arrival
-                    old_value: 07:35
-                    new_value: 07:20
+                    old_value: '07:35'
+                    new_value: '07:20'
                     reason: Signed in at the gate at 07:20; marked late by mistake.
                     created_by:
                       id: 7
@@ -1000,7 +1002,7 @@ paths:
                       date: '2026-10-31'
                       worker_id: 63
                       status: late
-                      arrival: 07:20
+                      arrival: '07:20'
                       departure: null
                       note: ''
                       corrected: true
@@ -1124,7 +1126,7 @@ paths:
                   value:
                     site_id: 3
                     attendance_mode: both
-                    late_after: 07:15
+                    late_after: '07:15'
                     kiosk: false
                     geofence:
                       latitude: 6.131944
@@ -1132,7 +1134,7 @@ paths:
                       radius_m: 150
                     badges:
                     - worker_id: 63
-                      payload_sha256: 3f0c9a5e2b7d41c8a6e9f1b0d4c7a2e5f8b1c4d7e0a3b6c9d2e5f8a1b4c7d0e3
+                      payload_sha256: fec1b7ccaaa29a119b19b2850565412f63b92fc748ef294c78726a3f2358a2aa
                       issued_at: '2026-10-20T09:00:00Z'
           description: ''
         '401':
@@ -1253,6 +1255,24 @@ paths:
                       - unknown_badge
                       - outside_geofence
                       photo_url: null
+                    - id: 5120
+                      client_uuid: 4b6d8f0a-2c4e-4f6a-8b0c-1d2e3f4a5b03
+                      site_id: 3
+                      worker_id: 44
+                      date: '2026-10-31'
+                      direction: in
+                      at: '2026-10-31T07:05:02Z'
+                      received_at: '2026-10-31T07:05:04Z'
+                      source: foreman_scan
+                      latitude: 6.13199
+                      longitude: 1.222801
+                      accuracy_m: 8
+                      distance_m: 6
+                      inside_geofence: true
+                      counted: true
+                      draft_updated: false
+                      flags: []
+                      photo_url: null
                     - id: 5121
                       client_uuid: 9d5e1f7a-3b2c-4e8d-a1f0-6c7b8a9d0e12
                       site_id: 3
@@ -1267,6 +1287,24 @@ paths:
                       accuracy_m: 12
                       distance_m: 32
                       inside_geofence: true
+                      counted: true
+                      draft_updated: false
+                      flags: []
+                      photo_url: null
+                    - id: 5133
+                      client_uuid: 1a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c81
+                      site_id: 3
+                      worker_id: 44
+                      date: '2026-10-31'
+                      direction: out
+                      at: '2026-10-31T11:30:00Z'
+                      received_at: '2026-10-31T11:30:03Z'
+                      source: manual
+                      latitude: null
+                      longitude: null
+                      accuracy_m: null
+                      distance_m: null
+                      inside_geofence: null
                       counted: true
                       draft_updated: false
                       flags: []
@@ -1644,7 +1682,7 @@ paths:
                       date: '2026-10-31'
                       worker_id: 44
                       status: present
-                      arrival: 07:00
+                      arrival: '07:00'
                       departure: null
                       note: ''
                       corrected: false
@@ -1656,7 +1694,7 @@ paths:
                       date: '2026-10-31'
                       worker_id: 51
                       status: half_day
-                      arrival: 07:00
+                      arrival: '07:00'
                       departure: '12:00'
                       note: ''
                       corrected: false
@@ -1668,7 +1706,7 @@ paths:
                       date: '2026-10-31'
                       worker_id: 63
                       status: late
-                      arrival: 07:35
+                      arrival: '07:35'
                       departure: null
                       note: ''
                       corrected: false
@@ -1788,19 +1826,19 @@ paths:
                   - client_uuid: 3f2a7c1e-5b8d-4e0a-9c61-0d4b8e2f7a10
                     worker_id: 44
                     status: present
-                    arrival: 07:00
+                    arrival: '07:00'
                     departure: null
                     note: ''
                   - client_uuid: 8c4d1b2e-7f3a-4a9b-b2c5-6e1f0a3d9b21
                     worker_id: 51
                     status: half_day
-                    arrival: 07:00
+                    arrival: '07:00'
                     departure: '12:00'
                     note: ''
                   - client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
                     worker_id: 63
                     status: late
-                    arrival: 07:35
+                    arrival: '07:35'
                     departure: null
                     note: ''
                   - client_uuid: d7b3e2a1-9c8f-4b5d-a6e0-1f2c3b4a5d43
@@ -1855,7 +1893,7 @@ paths:
                       date: '2026-10-31'
                       worker_id: 44
                       status: present
-                      arrival: 07:00
+                      arrival: '07:00'
                       departure: null
                       note: ''
                       corrected: false
@@ -1867,7 +1905,7 @@ paths:
                       date: '2026-10-31'
                       worker_id: 51
                       status: half_day
-                      arrival: 07:00
+                      arrival: '07:00'
                       departure: '12:00'
                       note: ''
                       corrected: false
@@ -1879,7 +1917,7 @@ paths:
                       date: '2026-10-31'
                       worker_id: 63
                       status: late
-                      arrival: 07:35
+                      arrival: '07:35'
                       departure: null
                       note: ''
                       corrected: false
@@ -2070,7 +2108,7 @@ paths:
                       date: '2026-10-31'
                       worker_id: 44
                       status: present
-                      arrival: 07:00
+                      arrival: '07:00'
                       departure: null
                       note: ''
                       corrected: false
@@ -2082,7 +2120,7 @@ paths:
                       date: '2026-10-31'
                       worker_id: 51
                       status: half_day
-                      arrival: 07:00
+                      arrival: '07:00'
                       departure: '12:00'
                       note: ''
                       corrected: false
@@ -2094,7 +2132,7 @@ paths:
                       date: '2026-10-31'
                       worker_id: 63
                       status: late
-                      arrival: 07:35
+                      arrival: '07:35'
                       departure: null
                       note: ''
                       corrected: false
@@ -2243,26 +2281,26 @@ paths:
                     site_id: 3
                     date: '2026-10-31'
                     attendance_mode: both
-                    late_after: 07:15
+                    late_after: '07:15'
                     day_status: not_started
                     suggestions:
                     - worker_id: 44
                       status: half_day
-                      arrival: 07:05
+                      arrival: '07:05'
                       departure: '11:30'
                       first_in_at: '2026-10-31T07:05:02Z'
                       last_out_at: '2026-10-31T11:30:00Z'
                       checkin_count: 2
                     - worker_id: 51
                       status: present
-                      arrival: 07:02
+                      arrival: '07:02'
                       departure: null
                       first_in_at: '2026-10-31T07:02:40Z'
                       last_out_at: null
                       checkin_count: 1
                     - worker_id: 63
                       status: late
-                      arrival: 07:35
+                      arrival: '07:35'
                       departure: null
                       first_in_at: '2026-10-31T07:35:10Z'
                       last_out_at: null
@@ -2510,7 +2548,7 @@ paths:
                       date: '2026-10-31'
                       worker_id: 63
                       status: late
-                      arrival: 07:20
+                      arrival: '07:20'
                       departure: null
                       note: ''
                       corrected: true
@@ -2520,8 +2558,8 @@ paths:
                       client_uuid: 5e9d0c4b-3a2f-4e1d-9b8c-7a6f5e4d3c21
                       record_id: 9003
                       field: arrival
-                      old_value: 07:35
-                      new_value: 07:20
+                      old_value: '07:35'
+                      new_value: '07:20'
                       reason: Signed in at the gate at 07:20; marked late by mistake.
                       created_by:
                         id: 7
@@ -2535,7 +2573,7 @@ paths:
                         date: '2026-10-31'
                         worker_id: 63
                         status: late
-                        arrival: 07:20
+                        arrival: '07:20'
                         departure: null
                         note: ''
                         corrected: true
@@ -2589,13 +2627,13 @@ components:
         work_start:
           type: string
           pattern: ^([01]\d|2[0-3]):[0-5]\d$
-          example: 07:00
+          example: '07:00'
           description: 'Usual start of the work day: default arrival time.'
           nullable: true
         roll_call_due:
           type: string
           pattern: ^([01]\d|2[0-3]):[0-5]\d$
-          example: 07:00
+          example: '07:00'
           description: Time by which the morning roll call should be submitted.
           nullable: true
       required:
@@ -2788,13 +2826,13 @@ components:
         arrival:
           type: string
           pattern: ^([01]\d|2[0-3]):[0-5]\d$
-          example: 07:00
+          example: '07:00'
           description: Local wall-clock time on the site, 24-hour `HH:MM`.
           nullable: true
         departure:
           type: string
           pattern: ^([01]\d|2[0-3]):[0-5]\d$
-          example: 07:00
+          example: '07:00'
           description: Local wall-clock time on the site, 24-hour `HH:MM`.
           nullable: true
         note:
@@ -3042,7 +3080,7 @@ components:
         late_after:
           type: string
           pattern: ^([01]\d|2[0-3]):[0-5]\d$
-          example: 07:00
+          example: '07:00'
           description: Local wall-clock time on the site, 24-hour `HH:MM`.
         kiosk:
           type: boolean
@@ -3843,13 +3881,13 @@ components:
         arrival:
           type: string
           pattern: ^([01]\d|2[0-3]):[0-5]\d$
-          example: 07:00
+          example: '07:00'
           description: Local wall-clock time on the site, 24-hour `HH:MM`.
           nullable: true
         departure:
           type: string
           pattern: ^([01]\d|2[0-3]):[0-5]\d$
-          example: 07:00
+          example: '07:00'
           description: Local wall-clock time on the site, 24-hour `HH:MM`.
           nullable: true
         note:
@@ -3879,13 +3917,13 @@ components:
         arrival:
           type: string
           pattern: ^([01]\d|2[0-3]):[0-5]\d$
-          example: 07:00
+          example: '07:00'
           description: Local wall-clock time on the site, 24-hour `HH:MM`.
           nullable: true
         departure:
           type: string
           pattern: ^([01]\d|2[0-3]):[0-5]\d$
-          example: 07:00
+          example: '07:00'
           description: Local wall-clock time on the site, 24-hour `HH:MM`.
           nullable: true
         first_in_at:
@@ -3919,7 +3957,7 @@ components:
         late_after:
           type: string
           pattern: ^([01]\d|2[0-3]):[0-5]\d$
-          example: 07:00
+          example: '07:00'
           description: Local wall-clock time on the site, 24-hour `HH:MM`.
         day_status:
           $ref: '#/components/schemas/DayStatusEnum'

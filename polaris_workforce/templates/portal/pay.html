@@ -20,7 +20,10 @@
       </div>
       <dl class="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-[15px]">
         <dt class="text-ink-700">{% translate "Gross" %}</dt><dd class="m-0 text-right tabular-nums">{% money line.gross period %}</dd>
+        {% for piece in row.pieces %}<dt class="pl-3 text-[13px] text-steel">{% translate "Piece work" %} · {{ piece.label }}</dt><dd class="m-0 text-right text-[13px] tabular-nums text-steel">{% money piece.amount period %}</dd>{% endfor %}
+        {% for bonus in row.bonuses %}<dt class="pl-3 text-[13px] text-steel">{% blocktranslate with reason=bonus.reason %}Bonus · {{ reason }}{% endblocktranslate %}</dt><dd class="m-0 text-right text-[13px] tabular-nums text-steel">{% money bonus.amount period %}</dd>{% endfor %}
         {% if row.deductions %}<dt class="text-ink-700">{% translate "Deductions" %}</dt><dd class="m-0 text-right tabular-nums text-amber-text">− {% money row.deductions period %}</dd>{% endif %}
+        {% for item in row.statutory %}<dt class="pl-3 text-[13px] text-steel">{{ item.label }}</dt><dd class="m-0 text-right text-[13px] tabular-nums text-steel">{% money item.amount period %}</dd>{% endfor %}
         {% if line.advance_deduction %}<dt class="pl-3 text-[13px] text-steel">{% translate "Advance repaid" %}</dt><dd class="m-0 text-right text-[13px] tabular-nums text-steel">{% money line.advance_deduction period %}</dd>{% endif %}
         {% if line.other_deductions %}<dt class="pl-3 text-[13px] text-steel">{% translate "Other deductions" %}</dt><dd class="m-0 text-right text-[13px] tabular-nums text-steel">{% money line.other_deductions period %}</dd>{% endif %}
         {% if line.adjustment %}<dt class="text-ink-700">{% translate "Adjustment" %}</dt><dd class="m-0 text-right tabular-nums">{% if line.adjustment < 0 %}−{% else %}+{% endif %} {% money row.adjustment_size period %}</dd>{% endif %}

@@ -10,7 +10,8 @@ Revoking the device (``POST /auth/logout`` or the Users screen) sets ``revoked_a
 the token then gets ``401 not_authenticated``. So does a token unused for
 ``DEVICE_TOKEN_IDLE_DAYS`` days (default 30, measured on ``last_seen_at``), and the token
 of a user whose company is inactive. The token's user then decides the current company
-of the request (``apps.core.tenancy``).
+of the request (``apps.core.tenancy``). A kiosk phone's token only opens the check-in
+endpoints (``apps.checkin.kiosk``); every other endpoint answers ``403``.
 """
 
 import hashlib
@@ -74,7 +75,13 @@ class DeviceTokenAuthentication(BaseAuthentication):
             token = parts[1].decode("ascii")
         except UnicodeError as exc:
             raise exceptions.AuthenticationFailed(_("Invalid device token.")) from exc
-        return self.authenticate_token(token)
+        user, device = self.authenticate_token(token)
+        # A kiosk phone (``apps.checkin.kiosk``) may only call the check-in endpoints:
+        # anything else is 403 permission_denied, whatever the view's own permissions.
+        from apps.checkin.kiosk import enforce_kiosk_scope
+
+        enforce_kiosk_scope(request, device)
+        return user, device
 
     def authenticate_token(self, token: str):
         Device = get_device_model()

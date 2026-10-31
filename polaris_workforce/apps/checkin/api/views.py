@@ -84,9 +84,14 @@ class CheckInCreateView(IdempotentCreateMixin, APIView):
             "Idempotent: `201` when created; the same `client_uuid` again returns the "
             "original check-in with `200` and `Idempotent-Replayed: true` (a photo sent "
             "again is ignored). The same `client_uuid` for a different check-in: "
-            "`409 conflict`. A site you are not on, or a kiosk phone sending for another "
-            "site: `403`. `at` more than 10 minutes ahead or 31 days old, both or neither "
-            "of `badge`/`worker_id`, a worker of another company, a bad photo: `400`."
+            "`409 conflict`.\n\n"
+            "Errors, in the order they are checked: no or bad token `401`; not a foreman "
+            "(or a kiosk phone calling another endpoint) `403`; the body (`at` more than 10 "
+            "minutes ahead or 31 days old, both or neither of `badge`/`worker_id`, "
+            "coordinates, a bad photo) `400`; the site (one you are not on, or a kiosk phone "
+            "sending for another site) `403`; `worker_id` not a worker of the company `400`; "
+            "a kiosk sending `worker_id` `400`; the `client_uuid` used for another check-in "
+            "`409`."
         ),
         request={
             "multipart/form-data": CheckInCreateSerializer,
@@ -190,7 +195,7 @@ class SiteCheckInsView(APIView):
                 value={
                     "site_id": ex.SITE_ID,
                     "date": ex.DATE,
-                    "checkins": [cx.AFI_IN, cx.UNKNOWN, cx.CHECKIN],
+                    "checkins": cx.SITE_CHECKINS,
                 },
             )
         ],

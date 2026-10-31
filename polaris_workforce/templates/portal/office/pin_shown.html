@@ -14,6 +14,7 @@
   <h2 id="pin-title" class="text-[13px] font-semibold uppercase tracking-[0.06em] text-steel">{% translate "PIN" %}</h2>
   <p class="font-display text-[44px] font-extrabold tracking-[0.3em] tabular-nums" data-pin>{{ pin }}</p>
   <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Phone number to sign in with" %}</span><span class="font-semibold tabular-nums">{{ access.phone }}</span></div>
+  {% if texted %}<p class="text-sm text-ink-700" data-texted>{% blocktranslate with phone=texted.to %}The PIN and the sign-in link were also sent by text to {{ phone }}.{% endblocktranslate %}</p>{% endif %}
   <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Address" %}</span><span class="font-semibold">{{ request.get_host }}{% url 'portal:home' %}</span></div>
 </section>
 

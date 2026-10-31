@@ -97,6 +97,17 @@
       <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Paid by" %}</span><span class="text-right font-semibold">{{ payment_method }} <span class="font-normal text-steel">({{ payment_method_source }})</span></span></div>
       <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Pay frequency" %}</span><span class="text-right font-semibold">{{ pay_frequency }} <span class="font-normal text-steel">({{ pay_frequency_source }})</span></span></div>
     </section>
+    {% if connections %}
+    <section aria-labelledby="connections-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+      <h2 id="connections-title" class="font-display text-base font-bold">{% translate "Messages, portal and payouts" %}</h2>
+      {% for c in connections %}
+      <div id="connection-{{ c.key }}" class="flex flex-col gap-1 text-sm">
+        <div class="flex flex-wrap items-center justify-between gap-2"><span class="text-steel">{{ c.title }}</span>{% include "components/status_badge.html" with status=c.status label=c.label only %}</div>
+        {% if c.url or c.print_url %}<div class="flex flex-wrap justify-end gap-3 text-[13px]">{% if c.url %}<a href="{{ c.url }}">{{ c.link_label }}</a>{% endif %}{% if c.print_url %}<a href="{{ c.print_url }}">{% translate "Print badge" %}</a>{% endif %}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
     <section aria-labelledby="emergency-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
       <h2 id="emergency-title" class="font-display text-base font-bold">{% translate "Emergency contact" %}</h2>
       {% if worker.emergency_contact_name or worker.emergency_contact_phone %}

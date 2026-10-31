@@ -83,6 +83,117 @@ Open: a username taken in another company is refused with Django's usual message
 are not secret). Client UUIDs are global: replaying another company's `client_uuid`
 answers `409 conflict` without data, as across sites.
 
+## Wave 4 features (integration pass, branch `feat/integration`)
+
+What each Wave 4 app does to stay safe, and what is left for go-live. Every item is
+backed by the tests named, unless it says "review only".
+
+### Worker portal (`apps/portal`)
+
+- **Session design.** Workers sign in with phone + PIN at `/portal/sign-in/`. The
+  portal never sets `request.user`: it keeps its own keys in the Django session
+  (`portal_worker_id` and `portal_auth_hash`, a `salted_hmac` of the access id, worker id
+  and **PIN hash**). An office sign-in does not open the portal and a portal sign-in does
+  not open the office. A PIN reset by the office, a PIN change or a revoke changes the
+  hash, so every open portal session of that worker ends. Sessions last 7 days
+  (`SESSION_AGE`); pages are `Cache-Control: private, no-store`.
+- **Lockout.** 5 wrong PINs in a row lock the access for 15 minutes (even the right PIN
+  is refused), with an audit entry `portal.pin_locked`; the answer says how many tries
+  are left. Sign-in attempts are also limited to 10 a minute per client IP in the shared
+  cache (so one address cannot try one PIN on many numbers). Same rules as the foremen's
+  phone PIN; weak PINs (1111, 1234) are refused.
+- **Phone rule.** A phone number signs in one worker only: among enabled accesses the
+  normalised phone is unique **across companies** (database constraint), so the sign-in
+  needs no company code and then works inside that worker's company. The office is told
+  when the profile's phone changed since access was given, or is taken.
+- **Shared browser flush.** Signing in **flushes the whole session first** (any office
+  user or other worker using that browser is signed out; new session key and CSRF
+  token); signing out flushes it too. Workers often borrow a phone: "Sign out" is on
+  every page.
+- **Strictly own data.** Every query starts from the signed-in worker; another worker's
+  payslip is a 404. PINs are stored as Django password hashes, shown once to the office
+  (never cached, never in the session) and never written to the audit log.
+- **PIN by text (integration).** When the company has messaging on and the worker has
+  not opted out, giving access or resetting the PIN also queues a text with the sign-in
+  link and the PIN (`portal_pin` template, EN/FR). The PIN is not in the audit log; the
+  outbox row keeps it only until the text is sent (then `••••`), and such a text cannot
+  be resent (set a new PIN). The log provider does write it to the log (see Messaging).
+- Tests: `test_portal_auth.py`, `test_portal_pages.py`, `test_portal_office.py`,
+  `test_portal_isolation.py`, `test_integration_portal_pin_text.py`,
+  `test_integration_portal_pay.py`.
+
+### Check-in and badges (`apps/checkin`)
+
+- **Badge signing.** A badge holds a random public id (Base32, not the worker id or
+  number) and an HMAC of it (`salted_hmac` with `SECRET_KEY`, truncated); the QR text is
+  `PW1:<id>.<sig>`. A forged or another company's code is recorded as `unknown_badge`
+  and never counts; a reissued badge revokes the old one at once (audited). Rotating
+  `SECRET_KEY`: keep the old key in `SECRET_KEY_FALLBACKS` until the badges are
+  reprinted.
+- **Kiosk restriction (integration).** A kiosk phone uses its foreman's device token, so
+  without a limit anyone at the kiosk could submit roll calls or record payments. A
+  kiosk token now opens only the check-in endpoints, `health/`, `me/`, `auth/logout/`,
+  worker photos and (read only) the crew list; every other endpoint answers
+  `403 permission_denied` ("This phone is in kiosk mode…"). It is one check in
+  `DeviceTokenAuthentication` (`apps/checkin/kiosk.py`), so it covers views with their
+  own permission classes, and a new endpoint is refused to kiosks until it is listed.
+  The check-in views also refuse another site (`403`). Office sessions are never kiosks.
+- **Photos protected.** Check-in photos get random names, are validated by magic bytes
+  (jpg/png/webp, ≤ 5 MB) and are only served through `/checkin/photos/<id>/` and
+  `/api/v1/files/checkins/<id>/photo/`, scoped to the viewer's sites and company (404
+  otherwise), like proofs and worker photos.
+- GPS is optional and only flags (`outside_geofence`); a check-in is never refused for
+  where it says it was (spoofable), so the office reviews the flags.
+- Tests: `test_checkin_*.py`, `test_integration_kiosk.py`, isolation tests.
+
+### Worker documents (`apps/workers`)
+
+- Contracts, ID scans and certificates are **protected files**: random names, magic-byte
+  check, never under a public URL; downloaded through `/workers/documents/<id>/file/`
+  (attachment) only by admins, accountants and the site managers of the worker's sites.
+  **Foremen never see them**, not even the list (`can_view_documents`). Upload and
+  delete are audited. Tests: `test_workers_documents.py`, isolation tests.
+- Open (low): ID scans are personal data — decide a retention period with the owner and
+  delete old ones (there is no automatic expiry).
+
+### Payout exports (`apps/payouts`)
+
+- **Formula-injection safety.** Every text cell of a bank / mobile-money file (names,
+  references, account numbers) that starts with `=`, `+`, `-`, `@`, tab or CR gets a
+  leading apostrophe in CSV, and XLSX cells are typed as text. The confirmation file a
+  provider sends back (≤ 2 MB) is read as data only (openpyxl `read_only`, `data_only`:
+  no formula is run) and a row only confirms a line it matches.
+- **Audit with file hash.** Each export writes `payouts.batch.export` with the layout,
+  file name, number of rows, total and the **SHA-256 of the file sent to the browser**,
+  so a file found later can be matched to the batch; every status change, confirmation
+  (with the provider reference) and failure is audited too. Confirming is idempotent (a
+  repeated import records no second payment).
+- **No files stored.** Export files are built in memory and streamed; nothing is kept
+  on disk. Account numbers are shown masked (`•••• 1234`) in lists and on the worker
+  profile; the full number only on the account form for those who may edit the worker.
+- Tests: `test_payouts_*.py`, `test_integration_cash_sheet_payouts.py`.
+
+### Messaging (`apps/messaging`)
+
+- Texts go through an outbox with per-company dedupe keys, opt-in/opt-out per person
+  (audited), quiet hours and retries; nothing is sent while queueing.
+- **The log provider writes phone numbers and message texts to the application log**
+  (logger `polaris.messaging`, JSON per message), and the outbox keeps every text in the
+  database. Texts contain names, amounts and — for a portal PIN — the PIN. Before
+  go-live: keep the log provider only for demos/tests, set a **log retention** (e.g. 30
+  days, rotated, readable by the app user only) and an **outbox clean-up** (e.g. delete
+  sent messages after 90 days); choose a real provider with a data-processing agreement.
+- Tests: `test_messaging_*.py`.
+
+### Imports (`apps/workers/importer.py`)
+
+- Worker imports (XLSX or CSV) are limited to 2 MB per file, 500 rows, 40 columns,
+  20 000 scanned rows and 25 MB uncompressed inside an XLSX (zip bombs refused before
+  opening); formulas in cells and text a spreadsheet would run are refused; a preview is
+  a dry run rolled back; confirm re-checks everything in one transaction and is tied to
+  the preview of that session. Only admins and site managers (on their own sites).
+- Tests: `test_workers_import.py`.
+
 ## What was checked
 
 ### Site scoping — pass

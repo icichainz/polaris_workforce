@@ -20,6 +20,7 @@ from apps.accounts.permissions import (
     can_manage_site,
     company_workers,
     get_site_or_403,
+    has_role,
     is_admin,
     role_required,
     scoped_sites,
@@ -226,6 +227,34 @@ def _pay_settings(site, company):
     ]
 
 
+PAYOUT_BATCHES_SHOWN = 3
+
+
+def _wave4_links(user, site, today) -> dict:
+    """Check-in (geofence, badges) for the site's managers, and the site's latest payout
+    batches for whoever may see payouts. Read only; each page checks its own access."""
+    from apps.checkin.models import Badge, SiteGeofence
+    from apps.payouts import services as payouts
+
+    links = {"checkin": None, "batches": None}
+    if has_role(user, Role.ADMIN, Role.SITE_MANAGER) and can_manage_site(user, site):
+        crew = services.crew_for(site, today).values("pk")
+        with_badge = Badge.objects.filter(worker__in=crew, revoked_at__isnull=True).count()
+        links["checkin"] = {
+            "geofence": SiteGeofence.objects.filter(site=site).first(),
+            "geofence_url": reverse("checkin:geofence", args=[site.pk]),
+            "badges_url": f"{reverse('checkin:badges')}?site={site.pk}",
+            "without_badge": max(services.crew_for(site, today).count() - with_badge, 0),
+        }
+    if payouts.can_view_payouts(user):
+        links["batches"] = list(
+            payouts.batches_for(user)
+            .filter(site=site)
+            .order_by("-pay_date", "-number")[:PAYOUT_BATCHES_SHOWN]
+        )
+    return links
+
+
 @login_required
 def site_detail(request, pk):
     site = get_site_or_403(request.user, pk)
@@ -264,6 +293,7 @@ def site_detail(request, pk):
             "labour_cost": money(labour_cost, currency=False),
             "currency": company.currency,
             "budget": money(site.labour_budget) if site.labour_budget is not None else None,
+            **_wave4_links(request.user, site, today),
         }
     )
     return render(request, "worksites/detail.html", context)

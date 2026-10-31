@@ -20,6 +20,15 @@ from .serializers import CrewQuerySerializer, CrewSerializer
 TAGS = ["worksites"]
 
 
+def _api_pay_type(value: str) -> str:
+    """The contract's pay type: the phone knows ``daily`` and ``hourly`` only (1.2).
+
+    A piece-rate worker is marked like a daily one (present or not); their pay comes from
+    the piece-work entries made in the office.
+    """
+    return "hourly" if value == "hourly" else "daily"
+
+
 class CrewView(APIView):
     @extend_schema(
         tags=TAGS,
@@ -70,7 +79,9 @@ class CrewView(APIView):
                 "last_name": worker.last_name,
                 "trade": gettext(worker.trade.name) if worker.trade else None,
                 "photo_url": files.api_worker_photo_url(request, worker),
-                "pay_type": rates[worker.pk].pay_type if worker.pk in rates else default_pay_type,
+                "pay_type": _api_pay_type(
+                    rates[worker.pk].pay_type if worker.pk in rates else default_pay_type
+                ),
                 "absent_streak": streaks[worker.pk],
             }
             for worker in crew

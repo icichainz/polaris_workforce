@@ -27,6 +27,7 @@ class PayFrequency(models.TextChoices):
 class PayType(models.TextChoices):
     DAILY = "daily", _("Daily rate")
     HOURLY = "hourly", _("Hourly rate")
+    PIECE = "piece", _("Piece work")
 
 
 class PaymentMethod(models.TextChoices):

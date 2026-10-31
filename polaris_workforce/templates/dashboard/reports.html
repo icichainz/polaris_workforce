@@ -88,6 +88,52 @@
   </section>
 </div>
 
+<section id="employer-cost" aria-labelledby="employer-title" class="flex flex-col gap-4 rounded-card border border-line bg-white px-5 py-4">
+  <h2 id="employer-title" class="font-display text-lg font-bold">{% translate "Employer cost and statutory deductions" %}</h2>
+  {% with cost=report.employer_cost %}
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    {% translate "Employer cost" as employer_label %}
+    {% money report.employer_total as employer_value %}
+    {% translate "Labour cost" as labour_label %}{% translate "Employer contributions" as contributions_word %}{% with employer_caption=labour_label|add:" + "|add:contributions_word %}
+    {% include "components/stat_tile.html" with label=employer_label value=employer_value caption=employer_caption only %}{% endwith %}
+    {% translate "Employer contributions" as contributions_label %}
+    {% money cost.employer as contributions_value %}
+    {% include "components/stat_tile.html" with label=contributions_label value=contributions_value only %}
+    {% translate "Deducted from pay" as deducted_label %}
+    {% money cost.employee as deducted_value %}
+    {% translate "Workers' share, withheld from their pay" as deducted_caption %}
+    {% include "components/stat_tile.html" with label=deducted_label value=deducted_value caption=deducted_caption only %}
+  </div>
+  {% if cost.rules %}
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-160 border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Deduction rule" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Deducted from pay" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Employer contributions" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for rule in cost.rules %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3 font-semibold">{{ rule.name }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{% money rule.employee %}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{% money rule.employer %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr class="border-t-2 border-line bg-subtle">
+        <th scope="row" class="px-4 py-3 text-left font-semibold">{% translate "Total" %}</th>
+        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money cost.employee %}</td>
+        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money cost.employer %}</td>
+      </tr></tfoot>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-sm text-steel">{% translate "No statutory deductions in this period." %}</p>
+  {% endif %}
+  {% endwith %}
+</section>
+
 <section aria-labelledby="workers-title" class="rounded-card border border-line bg-white">
   <div class="border-b border-line px-5 py-4"><h2 id="workers-title" class="font-display text-lg font-bold">{% translate "Attendance by worker" %}</h2></div>
   {% if report.workers %}
@@ -101,6 +147,7 @@
         <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel"><abbr title="{% translate 'Absent' %}" class="no-underline">{{ "absent"|status_letter }}</abbr></th>
         <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Rate" %}</th>
         <th scope="col" class="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Earned" %}</th>
+        {% if report.employer_cost.rules %}<th scope="col" class="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Statutory deductions" %}</th>{% endif %}
       </tr></thead>
       <tbody>
         {% for row in report.workers %}
@@ -112,6 +159,7 @@
           <td class="px-4 py-3 text-right tabular-nums {% if row.flag_absences %}font-bold text-absent-fg{% endif %}">{{ row.absent }}</td>
           <td class="px-4 py-3 text-right tabular-nums">{% if row.rate is None %}—{% else %}{{ row.rate }}%{% endif %}</td>
           <td class="px-5 py-3 text-right font-semibold tabular-nums">{% money row.earned %}</td>
+          {% if report.employer_cost.rules %}<td class="px-5 py-3 text-right tabular-nums">{% if row.statutory %}− {% money row.statutory %}{% else %}—{% endif %}</td>{% endif %}
         </tr>
         {% endfor %}
       </tbody>
@@ -124,6 +172,7 @@
         <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ totals.absent }}</td>
         <td class="px-4 py-3 text-right font-semibold tabular-nums">{% if report.attendance_rate is None %}—{% else %}{{ report.attendance_rate }}%{% endif %}</td>
         <td class="px-5 py-3 text-right font-semibold tabular-nums">{% money totals.earned %}</td>
+        {% if report.employer_cost.rules %}<td class="px-5 py-3 text-right font-semibold tabular-nums">{% if totals.statutory %}− {% money totals.statutory %}{% else %}—{% endif %}</td>{% endif %}
       </tr></tfoot>
       {% endwith %}
     </table>

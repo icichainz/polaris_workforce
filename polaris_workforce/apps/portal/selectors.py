@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import calendar
 import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from django.db.models import Q, Sum
 from django.db.models.functions import Coalesce
@@ -213,6 +213,7 @@ def _lines(worker):
     return (
         PayLine.objects.filter(worker=worker)
         .select_related("period__site")
+        .prefetch_related("bonuses")
         .annotate(paid=Coalesce(Sum("payments__amount"), 0))
         .exclude(empty & Q(paid=0))
         .order_by("-period__end_date", "-pk")
@@ -228,6 +229,11 @@ class PayRow:
     adjustment_size: int  # the adjustment without its sign (the template writes + or −)
     state: str  # paid | part_paid | to_pay | in_progress
     state_label: str
+    # Wave 4 pay rules, as on the payslip: piece work and bonuses (in the gross), and the
+    # statutory deductions (employee share, one per rule, in ``deductions``).
+    pieces: list[dict] = field(default_factory=list)  # {label, amount}
+    bonuses: list = field(default_factory=list)  # Bonus rows paid on this line
+    statutory: list[dict] = field(default_factory=list)  # {label, amount}
 
 
 def _state(line: PayLine) -> tuple[str, str]:
@@ -253,10 +259,32 @@ def pay_rows(lines) -> list[PayRow]:
                 line=line,
                 period_label=labels.period_label(line.period),
                 worked=labels.worked_label(line, line.period.currency_decimals),
-                deductions=line.advance_deduction + line.other_deductions,
+                deductions=(
+                    line.advance_deduction + line.other_deductions + line.statutory_deductions
+                ),
                 adjustment_size=abs(line.adjustment),
                 state=state,
                 state_label=state_label,
+                pieces=[
+                    {
+                        "label": labels.piece_label(piece, line.period.currency_decimals),
+                        "amount": int(piece.get("amount") or 0),
+                    }
+                    for piece in line.pieces or []
+                ],
+                bonuses=sorted(line.bonuses.all(), key=lambda b: (b.date, b.pk)),
+                statutory=[
+                    {
+                        "label": _("%(name)s (%(percent)s %%)")
+                        % {
+                            "name": item.get("name", ""),
+                            "percent": labels.number(item.get("employee_percent", "0")),
+                        },
+                        "amount": int(item["employee"]),
+                    }
+                    for item in line.deductions or []
+                    if item.get("employee")
+                ],
             )
         )
     return rows

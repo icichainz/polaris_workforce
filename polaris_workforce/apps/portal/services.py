@@ -143,6 +143,17 @@ def access_of(worker) -> WorkerAccess | None:
     return WorkerAccess.objects.filter(worker=worker).first()
 
 
+def access_status(access: WorkerAccess | None) -> tuple[str, str]:
+    """``(status_badge status, label)`` of an access (or of no access), for the office."""
+    if access is None:
+        return "draft", _("No access")
+    if not access.is_enabled:
+        return "inactive", _("Turned off")
+    if access.is_locked:
+        return "rejected", _("Locked")
+    return "active", _("Can sign in")
+
+
 def give_access(worker, *, actor, pin: str = "") -> tuple[WorkerAccess, str]:
     """Give the worker portal access, or reset their PIN. Returns ``(access, pin)``.
 
@@ -198,6 +209,25 @@ def give_access(worker, *, actor, pin: str = "") -> tuple[WorkerAccess, str]:
             after={"worker_id": worker.pk, "phone": phone, "enabled": True},
         )
     return access, pin
+
+
+def text_pin(worker, pin: str, sign_in_url: str):
+    """Queue a text with the new PIN and the sign-in link (``apps.messaging``), when the
+    company has messaging on and the worker did not opt out. Returns the queued message
+    or ``None``. Never raises: a text must not stop the office giving access. The PIN
+    goes in the text only, never in the audit log."""
+    import logging
+
+    from apps.messaging import services as messaging
+
+    try:
+        with transaction.atomic():
+            return messaging.queue_portal_pin(worker, pin, sign_in_url)
+    except Exception:  # noqa: BLE001
+        logging.getLogger("polaris.portal").exception(
+            "could not queue the portal PIN text for worker %s", worker.pk
+        )
+        return None
 
 
 def revoke_access(worker, *, actor, reason: str = "") -> bool:

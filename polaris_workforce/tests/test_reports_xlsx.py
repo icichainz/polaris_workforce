@@ -38,7 +38,7 @@ def test_one_sheet_per_section_with_the_csv_columns(client, seeded):
         'attachment; filename="polaris-report-2026-10-01-2026-10-31.xlsx"'
     )
     workbook = workbook_of(response)
-    assert workbook.sheetnames == ["By worker", "By site", "By week"]
+    assert workbook.sheetnames == ["By worker", "By site", "By week", "Employer cost"]
     rows = values(workbook["By worker"])
     assert rows[0] == CSV_HEADER
     body, total = rows[1:-1], rows[-1]
@@ -55,10 +55,12 @@ def test_one_sheet_per_section_with_the_csv_columns(client, seeded):
         3,
         1,
         15000,
+        0,
+        0,
         "XOF",
     ]
     assert body[2][4:11] == [1, 1, 0, 1, 1.5, 0.5, 8000]
-    assert total == [None, "Total", None, None, 4, 1, 1, 2, 5.5, 0.69, 29000, "XOF"]
+    assert total == [None, "Total", None, None, 4, 1, 1, 2, 5.5, 0.69, 29000, 0, 0, "XOF"]
 
 
 def test_numbers_are_real_numbers_with_formats(client, seeded):
@@ -109,7 +111,7 @@ def test_two_decimal_currency(client, seeded):
     sheet = workbook_of(client.get(reverse("dashboard:reports_xlsx")))["By worker"]
 
     total = sheet[sheet.max_row]
-    assert (total[10].value, total[11].value) == (290, "EUR")
+    assert (total[10].value, total[13].value) == (290, "EUR")
     assert total[10].number_format == "#,##0.00"
 
 

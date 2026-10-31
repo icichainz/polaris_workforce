@@ -31,6 +31,7 @@ class Kind(models.TextChoices):
     AWAITING_APPROVAL = "awaiting_approval", _("Days waiting for approval")
     UNCLOSED_CASH_SHEET = "unclosed_cash_sheet", _("Cash sheets not closed")
     ADVANCE_LIMIT = "advance_limit", _("Advance near its limit")
+    PORTAL_PIN = "portal_pin", _("Worker portal PIN")
     TEST = "test", _("Test message")
 
 

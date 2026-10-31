@@ -75,6 +75,25 @@
       {% endfor %}
       <a href="{% url 'worksites:settings' site.pk %}" class="text-sm font-semibold">{% if can_manage %}{% translate "Override for this site" %}{% else %}{% translate "See site settings" %}{% endif %}</a>
     </section>
+    {% if checkin %}
+    <section id="site-checkin" aria-labelledby="checkin-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+      <h2 id="checkin-title" class="font-display text-base font-bold">{% translate "Check-in" %}</h2>
+      <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Geofence" %}</span><span class="text-right font-semibold">{% if checkin.geofence %}{% blocktranslate with radius=checkin.geofence.radius_m %}{{ radius }} m around the site{% endblocktranslate %}{% else %}{% translate "Not set" %}{% endif %}</span></div>
+      <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "QR badges" %}</span><span class="text-right font-semibold">{% if checkin.without_badge %}{% blocktranslate count n=checkin.without_badge %}{{ n }} worker without a badge{% plural %}{{ n }} workers without a badge{% endblocktranslate %}{% else %}{% translate "Every worker has one" %}{% endif %}</span></div>
+      <div class="flex flex-wrap gap-3 text-sm font-semibold"><a href="{{ checkin.geofence_url }}">{% if checkin.geofence %}{% translate "Edit geofence" %}{% else %}{% translate "Set geofence" %}{% endif %}</a><a href="{{ checkin.badges_url }}">{% translate "Badges" %}</a></div>
+    </section>
+    {% endif %}
+    {% if batches is not None %}
+    <section id="site-payouts" aria-labelledby="payouts-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+      <h2 id="payouts-title" class="font-display text-base font-bold">{% translate "Transfer batches" %}</h2>
+      {% for batch in batches %}
+      <div class="flex flex-wrap items-center justify-between gap-2 text-sm"><a href="{% url 'payouts:batch' batch.pk %}" class="font-semibold">{{ batch.reference }}</a><span class="text-steel">{{ batch.pay_date|date:_("j M Y") }} · {{ batch.get_method_display }}</span>{% include "payouts/_batch_status.html" with batch=batch only %}</div>
+      {% empty %}
+      <p class="text-sm text-steel">{% translate "No transfer batch for this site yet." %}</p>
+      {% endfor %}
+      <a href="{% url 'payouts:batches' %}" class="text-sm font-semibold">{% translate "All transfer batches" %}</a>
+    </section>
+    {% endif %}
     <section class="flex flex-col gap-1.5 rounded-card border border-ink bg-ink px-5 py-4.5 text-white">
       <span class="text-xs font-semibold uppercase tracking-[0.06em] text-rail-text">{% translate "Labour cost this month" %}</span>
       <span class="font-display text-[28px] font-bold leading-tight tabular-nums">{{ labour_cost }} <span class="text-base text-rail-text">{{ currency }}</span></span>
