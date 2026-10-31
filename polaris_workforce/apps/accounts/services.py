@@ -5,15 +5,19 @@ Views and API views stay thin and call these functions. Every security-relevant 
 ``AuditLog`` entry. PINs and tokens never reach the audit log or the database in clear.
 """
 
+import hashlib
 import re
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import cache
 
+from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
+from django.core.cache import cache as shared_cache
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
+from rest_framework.throttling import BaseThrottle
 
 from apps.api.authentication import generate_device_token
 from apps.core.models import AuditLog
@@ -37,6 +41,7 @@ AUDIT_USER_INVITE = "accounts.user_invite"
 AUDIT_ROLE_CHANGE = "accounts.role_change"
 AUDIT_SITES_CHANGE = "accounts.sites_change"
 AUDIT_ACTIVE_CHANGE = "accounts.active_change"
+AUDIT_LOGIN_LOCKED = "accounts.login_locked"
 
 
 @cache
@@ -113,6 +118,76 @@ def set_pin(user: User, raw_pin: str, *, actor) -> User:
     user.save(update_fields=["pin_hash", "pin_failed_attempts", "pin_locked_until"])
     AuditLog.record(actor=actor, action=action, target=user)
     return user
+
+
+# --- Office sign-in limits ---------------------------------------------------------------
+#
+# /accounts/login/ and /admin/login/ (forms in .forms). After LOGIN_MAX_ATTEMPTS wrong
+# passwords for one (username, client IP) within LOGIN_LOCKOUT_MINUTES, that pair is
+# refused for LOGIN_LOCKOUT_MINUTES, even with the right password. Keyed on the pair so a
+# stranger cannot lock a colleague out from another address. The counters live in the
+# shared cache (CACHES in config/settings.py), never in the database.
+
+
+def login_client_ip(request) -> str:
+    """The client IP, trusting ``X-Forwarded-For`` only as far as ``DJANGO_NUM_PROXIES``
+    (the same rule as the API throttles)."""
+    if request is None:
+        return ""
+    return BaseThrottle().get_ident(request) or ""
+
+
+def _login_key(username: str, ip: str) -> str:
+    digest = hashlib.sha256(f"{username.strip().lower()}\0{ip}".encode()).hexdigest()
+    return f"accounts:login:{digest}"
+
+
+def _lockout_window() -> timedelta:
+    return timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
+
+
+def login_locked_until(username: str, ip: str):
+    """When the lockout of this (username, IP) ends, or ``None`` if it is not locked."""
+    until = shared_cache.get(_login_key(username, ip) + ":locked")
+    if until is not None and until > timezone.now():
+        return until
+    return None
+
+
+def record_failed_login(username: str, ip: str):
+    """Count a wrong password. Returns the end of the lockout if this one started it."""
+    key = _login_key(username, ip)
+    window = int(_lockout_window().total_seconds())
+    shared_cache.add(key, 0, timeout=window)
+    try:
+        failures = shared_cache.incr(key)
+    except ValueError:  # expired between add() and incr()
+        shared_cache.set(key, 1, timeout=window)
+        failures = 1
+    if failures < settings.LOGIN_MAX_ATTEMPTS:
+        return None
+    until = timezone.now() + _lockout_window()
+    shared_cache.set(key + ":locked", until, timeout=window)
+    shared_cache.delete(key)
+    user = User._default_manager.filter(**{User.USERNAME_FIELD: username}).first()
+    # The typed username is kept only when it is a real account (it might be a password
+    # typed into the wrong box).
+    after = {"ip": ip, "locked_until": until.isoformat()}
+    if user is not None:
+        after["username"] = username
+    AuditLog.record(
+        actor=None,
+        action=AUDIT_LOGIN_LOCKED,
+        target=user,
+        after=after,
+        reason=f"{settings.LOGIN_MAX_ATTEMPTS} wrong passwords",
+    )
+    return until
+
+
+def clear_failed_logins(username: str, ip: str) -> None:
+    key = _login_key(username, ip)
+    shared_cache.delete_many([key, key + ":locked"])
 
 
 # --- Sign-in ---------------------------------------------------------------------------

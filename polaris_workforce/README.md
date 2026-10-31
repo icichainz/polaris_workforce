@@ -15,12 +15,24 @@ Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+.
 
 ```sh
 uv sync                                  # install dependencies into .venv
+export DJANGO_DEBUG=true                 # local development (DEBUG is off by default)
 uv run python manage.py migrate          # create db.sqlite3
 uv run python manage.py createsuperuser  # first admin account
 uv run python manage.py runserver        # http://127.0.0.1:8000
 ```
 
-Configuration comes from environment variables; see `.env.example`.
+Configuration comes from environment variables; see `.env.example`. **`DEBUG` is off
+unless `DJANGO_DEBUG=true` is set**, and with `DEBUG` off the app refuses to start without
+`DJANGO_SECRET_KEY`, so every `manage.py` command on your machine needs
+`DJANGO_DEBUG=true` (export it, or `DJANGO_DEBUG=true uv run python manage.py …`). Tests
+don't: pytest uses `tests/settings.py` (production settings with a test secret key and an
+in-memory cache).
+
+Uploaded worker photos and payment proofs are never served from `MEDIA_ROOT`, not even
+in DEBUG: they get random file names and are downloaded through views that check the
+viewer's sites (`apps/core/files.py`). In production, set `PROTECTED_MEDIA_MODE=nginx`
+(or `apache`) so the web server sends the file after Django's check; see the production
+checklist in `docs/security-review.md`.
 
 ## CSS (Tailwind v4)
 
@@ -49,6 +61,7 @@ are in `templates/components/`; in DEBUG, `/_components/` shows every one of the
 uv run pytest
 uv run ruff check .
 uv run ruff format --check .
+DJANGO_DEBUG=true uv run python manage.py makemigrations --check --dry-run
 ```
 
 ## Layout

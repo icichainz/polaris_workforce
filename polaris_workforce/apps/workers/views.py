@@ -18,11 +18,10 @@ from django.utils.translation import gettext as _
 
 from apps.accounts.permissions import Role, has_role, scoped_sites
 from apps.attendance.models import AttendanceRecord
-from apps.core import dates
+from apps.core import dates, files
 from apps.core.choices import LateRule, PayType
 from apps.core.models import CompanySettings
 from apps.core.settings import resolve_setting
-from apps.payroll.models import Payment
 from apps.worksites import services as site_services
 from apps.worksites.models import SiteAssignment
 
@@ -219,17 +218,19 @@ def worker_detail(request, pk):
         worker,
         datetime.datetime.combine(first, datetime.time.min, tzinfo=tz),
         datetime.datetime.combine(month_end, datetime.time.min, tzinfo=tz),
+        user=request.user,
     )
     advances = services.advance_summary(worker)
 
+    # Only payments made on sites the user may see: a worker who moved between sites keeps
+    # the old site's payments, and only that site's people may see their amounts, proofs
+    # and payslips.
     payments = []
     recent = list(
-        Payment.objects.filter(pay_line__worker=worker)
+        services.visible_payments(request.user, worker)
         .select_related("pay_line__period")
         .order_by("-paid_at")[:10]
     )
-    # A payslip only opens on a site the user may see (the worker may have moved sites).
-    visible_sites = set(scoped_sites(request.user).values_list("pk", flat=True) if recent else ())
     for payment in recent:
         line = payment.pay_line
         paid_at = payment.paid_at.astimezone(tz)
@@ -244,10 +245,8 @@ def worker_detail(request, pk):
                 else None,
                 "net": money(payment.amount, currency=False),
                 "proof": payment.get_proof_type_display(),
-                "proof_url": payment.proof_file.url if payment.proof_file else None,
-                "payslip_url": reverse("payroll:payslip", args=[line.pk])
-                if line.period.site_id in visible_sites
-                else None,
+                "proof_url": files.payment_proof_url(payment),
+                "payslip_url": reverse("payroll:payslip", args=[line.pk]),
             }
         )
 

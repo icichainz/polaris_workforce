@@ -13,3 +13,6 @@ db.sqlite3-shm
 
 staticfiles/
 media/
+
+# File-based cache (throttles, sign-in lockouts)
+var/

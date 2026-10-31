@@ -33,7 +33,7 @@
       <tbody>
         {% for row in rows %}
         <tr class="border-t border-line-soft">
-          <td class="px-4 py-3"><span class="flex items-center gap-2.5">{% if row.worker.photo %}<img src="{{ row.worker.photo.url }}" alt="" class="size-8 shrink-0 rounded-full object-cover">{% else %}<span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-line text-xs font-bold">{{ row.initials }}</span>{% endif %}
+          <td class="px-4 py-3"><span class="flex items-center gap-2.5">{% if row.worker.photo %}<img src="{% url 'core:worker_photo' row.worker.pk %}" alt="" class="size-8 shrink-0 rounded-full object-cover">{% else %}<span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-line text-xs font-bold">{{ row.initials }}</span>{% endif %}
             <span><a href="{% url 'workers:detail' row.worker.pk %}" class="font-semibold">{{ row.worker.full_name }}</a><br><span class="text-xs text-steel">{{ row.worker.number }}{% if not row.worker.is_active %} · {% translate "Inactive" %}{% endif %}</span></span></span></td>
           <td class="px-4 py-3">{{ row.worker.trade.name|default:"—" }}</td>
           <td class="px-4 py-3">{{ row.site }}</td>

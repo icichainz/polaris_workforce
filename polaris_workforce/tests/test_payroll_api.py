@@ -179,7 +179,8 @@ def test_payment_with_a_proof_file(site_setup):
     response = client_for(site_setup[2]).post(payments_url(), request, format="multipart")
 
     assert response.status_code == 201
-    assert response.json()["proof_url"].startswith("http://testserver/media/proofs/")
+    payment_id = response.json()["id"]
+    assert response.json()["proof_url"] == f"http://testserver/api/v1/files/proofs/{payment_id}/"
     sheet = client_for(site_setup[2]).get(payout_url(site_setup[0])).json()
     paid = next(x for x in sheet["lines"] if x["pay_line_id"] == line.pk)
     assert paid["payment"]["client_uuid"] == request["client_uuid"]

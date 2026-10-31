@@ -175,18 +175,29 @@ def test_worker_profile_links_payslips_and_advances(client, paid_monday):
     assert "See advances" in html
 
 
-def test_worker_profile_hides_payslips_of_sites_out_of_scope(client, paid_monday):
-    site, _manager, yao = paid_monday
+def test_worker_profile_hides_payments_of_sites_out_of_scope(client, paid_monday):
+    # Security review L6: a worker who moved sites keeps the old site's payments; the new
+    # site's manager sees none of them (rows, amounts, proof links, payslips).
+    site, manager, yao = paid_monday
+    payment = line_of(site, MON, yao).payments.get()
     elsewhere, other_manager, _foreman = setup_site()
     f.SiteAssignmentFactory(worker=yao, site=elsewhere, start_date=TUE)
-    client.force_login(other_manager)
 
+    client.force_login(manager)
+    own = client.get(reverse("workers:detail", args=[yao.pk])).content.decode()
+    assert reverse("core:payment_proof", args=[payment.pk]) in own
+    assert "No payments yet." not in own
+
+    client.force_login(other_manager)
     response = client.get(reverse("workers:detail", args=[yao.pk]))
     html = response.content.decode()
 
     assert response.status_code == 200
-    assert "Recent payments" in html and "No payments yet." not in html
+    assert "No payments yet." in html
     assert reverse("payroll:payslip", args=[line_of(site, MON, yao).pk]) not in html
+    assert reverse("core:payment_proof", args=[payment.pk]) not in html
+    assert "/files/proofs/" not in html and "/media/" not in html
+    assert client.get(reverse("core:payment_proof", args=[payment.pk])).status_code == 404
 
 
 def test_advances_page_filters_by_worker(client, paid_monday):

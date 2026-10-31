@@ -20,5 +20,8 @@ jobs:
       - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
+      # DEBUG is off by default and then needs a secret key; pytest uses tests/settings.py.
       - run: uv run python manage.py makemigrations --check --dry-run
+        env:
+          DJANGO_DEBUG: "true"
       - run: uv run pytest

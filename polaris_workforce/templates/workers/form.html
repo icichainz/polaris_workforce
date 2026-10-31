@@ -16,7 +16,7 @@
 
   <section class="flex flex-col gap-5 rounded-card border border-line bg-white p-5 sm:flex-row sm:p-6" aria-labelledby="identity-title">
     <div class="flex shrink-0 flex-col items-center gap-2.5 sm:w-44">
-      {% if worker.photo %}<img src="{{ worker.photo.url }}" alt="" class="size-28 rounded-full object-cover">{% else %}
+      {% if worker.photo %}<img src="{% url 'core:worker_photo' worker.pk %}" alt="" class="size-28 rounded-full object-cover">{% else %}
       <span class="flex size-28 items-center justify-center rounded-full border-2 border-dashed border-line-strong bg-subtle text-steel">
         <svg class="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path></svg>
       </span>{% endif %}

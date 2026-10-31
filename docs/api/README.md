@@ -31,6 +31,17 @@ For the Flutter developer. Every change adds a field or fixes the documentation,
 | 9 | Unknown URL under `/api/` | Django's HTML 404 page | JSON: `404 {"code": "not_found", "message": "Not found.", "details": {}}`. |
 | 10 | Documentation fixes | — | records `PUT` lists its `409 conflict` (a `client_uuid` of another record); `POST /payments/` says that `amount` must equal what is left to pay on the line, gives the real proof file limit (jpg/jpeg/png/webp/pdf, ≤ 5 MB, not 2 MB) and `400`/`409` examples; submit has `409` examples (`unmarked_worker_ids`, already submitted). The offline section no longer mentions drift (the app uses sqflite). |
 
+### Security changes after 1.1 (Wave 3, H-sec)
+
+The JSON shapes do not change; the contract version stays `1.1.0`.
+
+| # | Where | Before | Now |
+| --- | --- | --- | --- |
+| S1 | `photo_url`, `proof_url` | public `/media/…` URLs (guessable file names) | `/api/v1/files/workers/{id}/photo/` and `/api/v1/files/proofs/{id}/`: **send the `Authorization` header** when loading them; `404` outside your sites. See [Photos and proofs](#photos-and-proofs). |
+| S2 | Device token | never expired | `401 not_authenticated` after 30 days without use; sign in with the PIN again (keep the outbox). |
+| S3 | Proof files | checked by extension | the first bytes must match the extension (`400` on `proof_file`). |
+| S4 | Documentation | "submitted → 423" for records `PUT`; item-error lists "stop at the last error" | a records batch that changes nothing is `200` whatever the day's status; the records `PUT` item-error list is full length. See [Idempotency](#idempotency-client_uuid) and [Errors](#errors). |
+
 ## Endpoints
 
 | Method & path | Purpose | Success | Wave 2 owner |
@@ -48,6 +59,8 @@ For the Flutter developer. Every change adds a field or fixes the documentation,
 | `GET /sync/?since=` | Days, records and corrections changed since | 200 | C |
 | `GET /sites/{site_id}/payouts/{date}/` | Cash sheet for the day | 200 | D |
 | `POST /payments/` | Record a payment with proof | 201 / 200 replay | D |
+| `GET /files/workers/{worker_id}/photo/` | A worker's photo (`photo_url`) | 200 / 304 | H-sec |
+| `GET /files/proofs/{payment_id}/` | A payment's proof file (`proof_url`) | 200 / 304 | H-sec |
 
 Which screen uses what:
 
@@ -75,9 +88,14 @@ Which screen uses what:
    Authorization: Device <token>
    ```
 
-5. `401 not_authenticated` means the token is missing, wrong, or revoked (logout, or an
-   admin revoked the device on the Users screen). Clear the token and show the PIN
-   screen. **Keep the outbox**: send it after the foreman signs in again.
+5. `401 not_authenticated` means the token is missing, wrong, revoked (logout, or an
+   admin revoked the device on the Users screen) or **expired**: a token unused for 30
+   days (the server's `DEVICE_TOKEN_IDLE_DAYS`) stops working. Clear the token and show
+   the PIN screen. **Keep the outbox**: send it after the foreman signs in again.
+6. Worker photos (`photo_url`) and payment proofs (`proof_url`) are protected downloads
+   under `/api/v1/files/`: **send the same `Authorization: Device <token>` header** when
+   you load them (an image widget without the header gets `401`). See
+   [Photos and proofs](#photos-and-proofs).
 
 PIN errors:
 
@@ -148,25 +166,26 @@ Every error response, whatever the status, has this shape:
 | HTTP | `code` | When | `details` |
 | --- | --- | --- | --- |
 | 400 | `validation_error` | Bad body or query string | field → list of messages; a JSON list for list fields (below); `non_field_errors` for the rest |
-| 401 | `not_authenticated` | No token, a wrong token, a revoked token, a wrong PIN | wrong PIN: `attempts_left` |
+| 401 | `not_authenticated` | No token, a wrong, revoked or expired (30 days unused) token, a wrong PIN | wrong PIN: `attempts_left` |
 | 403 | `permission_denied` | Signed in but not allowed, e.g. a site you are not assigned to | — |
 | 404 | `not_found` | No such object, or no such URL under `/api/` | — |
 | 405 | `method_not_allowed` | Wrong HTTP method | — |
 | 409 | `conflict` | The request clashes with the current state (a `client_uuid` reused for another request, submitting with unmarked workers, paying a sheet that is not open) | context, e.g. `unmarked_worker_ids`, `client_uuid` |
 | 415 | `unsupported_media_type` | Wrong `Content-Type` | — |
-| 423 | `locked` | The day or pay period is locked or submitted, or the device is locked after failed PINs | e.g. `status`, `locked_until` |
+| 423 | `locked` | A write that would change a submitted, approved or locked day or a locked pay period, or the device is locked after failed PINs | e.g. `status`, `locked_until` |
 | 429 | `throttled` | Too many requests | `retry_after` (seconds) |
 | 500 | `server_error` | A bug on the server | — |
 | 501 | `not_implemented` | Reserved for an endpoint in the contract that is not built yet (none today) | — |
 
 **Errors on list items** (the records of a batch `PUT`) are always a JSON list, never an
-object keyed by index. The list has one entry per item, in the order sent, up to the
-last item with an error; an item without errors is `{}`; items after the last entry
-had no errors:
+object keyed by index, in the order sent; an item without errors is `{}`. The records
+`PUT` sends the **full-length list**: one entry per item sent, including `{}` entries
+after the last error. Other list errors (serializer checks) may stop at the last item with
+an error. Accept both: an item with no entry, or with `{}`, had no errors.
 
 ```json
 {"code": "validation_error", "message": "Invalid input.",
- "details": {"records": [{}, {"worker_id": ["This worker is not on the crew of this site that day."]}]}}
+ "details": {"records": [{}, {"worker_id": ["This worker is not on the crew of this site that day."]}, {}]}}
 ```
 
 Too many items is an error on the field itself, not on an item:
@@ -187,7 +206,7 @@ times (timeouts, a lost response, a crash). The server applies it only once:
 | Kind | Endpoints | First time | Repeat with the same `client_uuid` |
 | --- | --- | --- | --- |
 | Create | `POST /payments/`, `POST /records/{id}/corrections/` | `201` + the new object | `200` + the **original** object, header `Idempotent-Replayed: true` |
-| Upsert | `PUT /sites/{id}/days/{date}/records/` | `200` + the day | `200` + the day; nothing changes on the server |
+| Upsert | `PUT /sites/{id}/days/{date}/records/` | `200` + the day | `200` + the day while the server still has those values (whatever the day's status); `423` if they changed since (see below) |
 | Action | `POST /sites/{id}/days/{date}/submit/` | `200` + the day | `200` + the day |
 
 Rules for the app:
@@ -202,6 +221,17 @@ Rules for the app:
 - `409 conflict` on a replay means the `client_uuid` was used for a different request.
   That is a bug in the app: don't retry it.
 - Treat both `200` and `201` as success.
+- **Drop a write from the outbox as soon as the server acknowledges it** (`200`/`201`).
+  Resend only writes without an answer (timeout, lost connection, `5xx`). A replay is a
+  safe no-op only while nothing changed on the server since: once a record was
+  corrected (in the office or by a correction from the phone) or its day submitted,
+  resending the **old** records batch answers `423 locked`, because it would undo the
+  correction. The server keeps the right state; the app must not show that `423` as a
+  failure of a write that already succeeded — which it avoids by never replaying an
+  acknowledged write.
+- A records batch that changes nothing (the server already has every value in it)
+  answers `200` with the day whatever the day's status, even `submitted` or `locked`.
+  Only a batch with a change on a `submitted`, `approved` or `locked` day is `423`.
 
 The server side of this is in `polaris_workforce/apps/api/idempotency.py`
 (`run_once`, `apply_changes`, `IdempotentCreateMixin`).
@@ -253,8 +283,9 @@ GET /api/v1/sync/?since=2026-10-31T07:45:00Z
   - `file_required_for`: the types that need a `proof_file` (today `["photo"]`). For a
     signature or thumb mark the file is optional (it may be on the paper sheet). Missing
     file: `400` on `proof_file`.
-  - The file: jpg, jpeg, png, webp or pdf, at most 5 MB. Send `multipart/form-data` when
-    there is one, JSON otherwise.
+  - The file: jpg, jpeg, png, webp or pdf, at most 5 MB, and its first bytes must match
+    the extension (a PNG named `.jpg` is refused: `400` on `proof_file`). Send
+    `multipart/form-data` when there is one, JSON otherwise.
 - `amount` must equal what is left to pay on the line (its `net` when unpaid),
   otherwise `400` on `amount`.
 
@@ -277,6 +308,28 @@ whenever the attendance changes (approval, corrections). The guarantee:
 So: pay from the latest `GET /sites/{id}/payouts/{date}/`. A payment queued for a line
 that no longer exists gets `404 not_found`, and one whose `net` changed gets `400` on
 `amount`: refresh the sheet and show it to the foreman again.
+
+## Photos and proofs
+
+Uploaded files are never public. `photo_url` (crew list, cash sheet) and `proof_url`
+(`POST /payments/`) are absolute URLs of protected downloads:
+
+| URL | What |
+| --- | --- |
+| `GET /api/v1/files/workers/{worker_id}/photo/` | A worker's photo |
+| `GET /api/v1/files/proofs/{payment_id}/` | A payment's proof file |
+
+- **Photos and proofs need the `Authorization: Device <token>` header**, like every
+  other call. With Flutter's `Image.network` / `CachedNetworkImage`, pass it in
+  `headers`.
+- Only for workers and payments of your sites. A worker or payment of another site, one
+  without a file, or a file that is gone: `404 not_found` (JSON). No token or an expired
+  one: `401`.
+- The answer is the file itself (`image/jpeg`, `image/png`, `image/webp`; proofs may be
+  `application/pdf`, sent as an attachment), with an `ETag`. Cache the file and send
+  `If-None-Match: <etag>` next time: `304 Not Modified` costs no download. A new photo
+  of the worker gives a new `ETag` at the same URL.
+- Don't build these URLs yourself; use the ones in the responses.
 
 ## Dates and times
 
@@ -313,7 +366,8 @@ The API uses words. The app shows letters.
   `423`: show them to the foreman. On `401`, sign in again and keep the outbox. On `429`,
   wait `retry_after`.
 - Batch the roll call: one `PUT .../records/` holds up to 200 records.
-- The network can be as slow as ~15 KB/s. Cache the crew list and worker photos (they
+- The network can be as slow as ~15 KB/s. Cache the crew list and worker photos (fetched
+  with the `Authorization` header and revalidated with `If-None-Match`; they
   rarely change). Compress proof photos on the phone (JPEG, longest side ≤ 1280 px; the
   server takes up to 5 MB, but aim for a few hundred KB). Send `paid_at` from the moment
   of payment, and `submitted_at` from the moment the foreman tapped Submit, because an
@@ -332,7 +386,7 @@ the code:
 
 ```sh
 cd polaris_workforce
-uv run python manage.py spectacular --file ../docs/api/openapi.yaml --validate --fail-on-warn
+DJANGO_DEBUG=true uv run python manage.py spectacular --file ../docs/api/openapi.yaml --validate --fail-on-warn
 ```
 
 `tests/test_api_schema.py` regenerates the schema and fails if `openapi.yaml` is out of

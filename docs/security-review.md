@@ -24,6 +24,21 @@ authenticated download path; `DEBUG` defaults to on) and two **money-integrity**
 for the lead (a manager can lock pay periods although the permission table says they
 cannot; a correction after a worker was paid leaves the paid line unchanged).
 
+## Status after H-sec (Wave 3, branch `feat/security-hardening`)
+
+The items of the H-sec brief; the others keep the status below.
+
+| # | Status | Note |
+| --- | --- | --- |
+| H2 | fixed | Random file names (`apps/core/storage.py`, default storage, no migration); no `/media/` route even in DEBUG; scoped downloads `core:worker_photo`/`core:payment_proof` (office) and `/api/v1/files/…` (device token or session), 404 out of scope; `PROTECTED_MEDIA_MODE=nginx\|apache` hands the file to the web server. `tests/test_hardening.py`, `test_e2e_isolation.py`. |
+| M4 | fixed | `DJANGO_DEBUG` defaults to off; pytest uses `tests/settings.py`; `check --deploy` is clean with the production env below. |
+| M5 | fixed | `/accounts/login/` and `/admin/login/` lock a (username, IP) out after `DJANGO_LOGIN_MAX_ATTEMPTS` (5) wrong passwords for `DJANGO_LOGIN_LOCKOUT_MINUTES` (15); audit `accounts.login_locked`. `/admin/` is not moved. |
+| M6 | fixed | `CACHES` is a `FileBasedCache` in `DJANGO_CACHE_DIR` (shared by processes, survives restarts, no extra service or command); tests use locmem. |
+| L3 | fixed | Tokens unused for `DEVICE_TOKEN_IDLE_DAYS` (30) days, measured on `last_seen_at` (else `created_at`), get `401 not_authenticated`. |
+| L4 | fixed | The upload validator also checks magic bytes (JPEG/PNG/WebP/PDF) without Pillow; PDFs download as attachments, images inline with `nosniff`. |
+| L5 | documented | `docs/api/README.md` → Idempotency: drop acknowledged outbox writes; an old batch replayed after a correction can get `423` (state stays right). |
+| L6 | fixed | The worker profile lists, totals and links only payments of sites the viewer sees. |
+
 ## What was checked
 
 ### Site scoping — pass
@@ -141,6 +156,8 @@ that checks `can_view_site` for the payment's/worker's site (accepting session *
 `Device` token auth, since the phone loads photos) and hands the file to the web server
 with `X-Accel-Redirect`/`X-Sendfile`; the web server must not expose `MEDIA_ROOT`
 directly. Keep the `static()` route only for local development.
+**Status: fixed (H-sec)** — random names via the default storage (no migration), no
+`/media/` route at all, scoped office and API download views; see the table above.
 
 ### Medium
 
@@ -168,17 +185,22 @@ API, Swagger UI and public `/media/`. The `SECRET_KEY` guard does not help, beca
 only enforced when `DEBUG` is off. *Fix:* default to off and set `DJANGO_DEBUG=true` in the
 local `.env`/shell (`.env.example` already does), or refuse to start with
 `DEBUG` on when `DJANGO_ALLOWED_HOSTS` contains anything but localhost.
+**Status: fixed (H-sec)** — defaults to off; local commands set `DJANGO_DEBUG=true`.
 
 **M5 — Office sign-in has no rate limit or lockout.** `/accounts/login/` (Django's
 `LoginView`) accepts unlimited password guesses; `/admin/login/` too. *Fix:* throttle by IP
 and username (e.g. `django-axes`, or a small cache-based check in a custom `LoginView`),
 and consider moving `/admin/`.
+**Status: fixed (H-sec)** — cache-based lockout per (username, IP) on both sign-in pages,
+with an audit row; `/admin/` stays where it is.
 
 **M6 — Throttle state is per process.** No `CACHES` setting, so the PIN throttle uses
 `LocMemCache`: each worker process has its own counter, and a restart resets it. Behind a
 proxy, `DJANGO_NUM_PROXIES` must be set (see checklist) or every phone shares the proxy's
 IP and the whole company gets 10 sign-ins a minute. *Fix:* a shared cache in production
 (`django.core.cache.backends.db.DatabaseCache` works with SQLite, or `FileBasedCache`).
+**Status: fixed (H-sec)** — `FileBasedCache` in `DJANGO_CACHE_DIR` (no SQLite write
+contention, no `createcachetable`); `DJANGO_NUM_PROXIES` is still a deployment setting.
 
 ### Low
 
@@ -191,22 +213,25 @@ IP and the whole company gets 10 sign-ins a minute. *Fix:* a shared cache in pro
   (`apps/accounts/api/views.py:199`). Contract decision for K; the throttle limits it.
 - **L3 — Device tokens never expire.** Revocation works (logout, Users screen, disable,
   role change). Consider expiring tokens unused for N days (`last_seen_at` is already
-  stored).
+  stored). **Fixed (H-sec):** `DEVICE_TOKEN_IDLE_DAYS` (default 30) → `401`.
 - **L4 — Upload type is checked by extension only** (`apps/core/validators.py:10`): an HTML
   file named `x.jpg` is accepted (harmless while served with `nosniff` and an image type),
   and PDF is allowed for proofs. Check the magic bytes (JPEG/PNG/WebP/PDF) and, if H2 is
   done with `Content-Disposition: attachment`, the risk goes away. The API doc says proofs
-  are ≤ 2 MB; the server accepts 5 MB (doc mismatch for K).
+  are ≤ 2 MB; the server accepts 5 MB (doc mismatch for K). **Fixed (H-sec):** magic
+  bytes checked; PDFs are served as attachments.
 - **L5 — A stale outbox replay can get 423 for a write the server already applied.** The
   upsert replay is a no-op only while the record is unchanged: if an office/phone
   correction changed it since, resending the original batch answers 423 (the state stays
   right — the server wins). `apps/attendance/services.py:210–212`. The phone must drop a
   write once it was acknowledged (FL2/K: note it in `docs/api/README.md`).
+  **Documented (H-sec)** in the README's Idempotency section.
 - **L6 — A worker who moved between sites shows their last payments from every site on
   the profile**, to the manager of either site (`apps/workers/views.py:225–251`). The
   payslip link is already limited to visible sites, but the amounts and the proof file
   link (`proof_url`) are not. Apply the same `visible_sites` check to `proof_url` (and,
-  if wanted, to the rows).
+  if wanted, to the rows). **Fixed (H-sec):** rows, the month total and proof links only
+  for visible sites (open advances stay per worker: advances have no site).
 - **L7 — Reads with side effects:** opening a cash sheet or `GET /payouts/` refreshes the
   pay periods and writes `payroll.period.*` audit rows with the viewer as actor
   (`apps/payroll/services.py:555`); `lock_sheet` refreshes before checking the role
@@ -227,30 +252,58 @@ IP and the whole company gets 10 sign-ins a minute. *Fix:* a shared cache in pro
 
 ## Production checklist
 
+Updated by H-sec. `tests/test_hardening.py::test_check_deploy_is_clean_with_production_settings`
+runs `check --deploy --fail-level WARNING` with the environment below.
+
 Environment:
 
-- [ ] `DJANGO_DEBUG=false` (and M4: make it the default).
-- [ ] `DJANGO_SECRET_KEY`: 50+ random characters, kept out of the repository.
+- [ ] `DJANGO_DEBUG` unset or `false` (the default since M4). Never `true` on a server:
+      it shows debug pages, the browsable API and Swagger UI.
+- [ ] `DJANGO_SECRET_KEY`: 50+ random characters
+      (`python -c "import secrets; print(secrets.token_urlsafe(60))"`), kept out of the
+      repository. The app refuses to start without it.
 - [ ] `DJANGO_ALLOWED_HOSTS=<your domain>`; `DJANGO_CSRF_TRUSTED_ORIGINS=https://<your domain>`.
 - [ ] `DJANGO_NUM_PROXIES=1` behind one reverse proxy that sets `X-Forwarded-For` (0 if
-      Django faces the internet directly). Never more than the real number of proxies.
-- [ ] `DJANGO_HSTS_SECONDS=31536000` once HTTPS works everywhere; add
-      `SECURE_SSL_REDIRECT = True` (or redirect at the proxy) — the two
-      `check --deploy` warnings.
+      Django faces the internet directly). Never more than the real number of proxies:
+      the PIN throttle and the office sign-in lockout key on this IP.
+- [ ] HTTPS: `DJANGO_SECURE_SSL_REDIRECT` stays on (default); once HTTPS works for the
+      domain and its subdomains, `DJANGO_HSTS_SECONDS=31536000`,
+      `DJANGO_HSTS_INCLUDE_SUBDOMAINS=true`, `DJANGO_HSTS_PRELOAD=true`. Without the HSTS
+      variables, `check --deploy` warns W004 (and W005/W021 with HSTS but without the two
+      flags); nothing else.
+- [ ] `PROTECTED_MEDIA_MODE=nginx` (or `apache`) so the web server sends the files after
+      Django's check; `django` (default) streams them through the app.
+- [ ] `DJANGO_CACHE_DIR` on local disk, writable only by the app user, shared by every
+      worker process (file-based cache for the throttles and lockouts, M6). Clearing it
+      lifts the lockouts.
 - [ ] `SQLITE_PATH` and `MEDIA_ROOT` outside the web root, writable only by the app user;
       back both up together.
-- [ ] A shared cache for the throttle (M6).
+- [ ] Optional: `DJANGO_LOGIN_MAX_ATTEMPTS` (5), `DJANGO_LOGIN_LOCKOUT_MINUTES` (15),
+      `DEVICE_TOKEN_IDLE_DAYS` (30).
 
 Web server / proxy:
 
-- [ ] HTTPS only; the proxy sets `X-Forwarded-Proto` (used by `SECURE_PROXY_SSL_HEADER`)
-      and **overwrites** (not appends to) any client `X-Forwarded-Proto`.
-- [ ] Serve `collectstatic` output for `/static/`; **do not** expose `MEDIA_ROOT` (H2).
+- [ ] HTTPS only; the proxy sets `X-Forwarded-Proto` (used by `SECURE_PROXY_SSL_HEADER`
+      and the HTTPS redirect — without it every request redirects in a loop) and
+      **overwrites** (not appends to) any client `X-Forwarded-Proto`.
+- [ ] Serve `collectstatic` output for `/static/`. **Never** expose `MEDIA_ROOT` as a
+      public location. With `PROTECTED_MEDIA_MODE=nginx`, an internal location only:
+
+      ```nginx
+      location /protected-media/ {   # PROTECTED_MEDIA_INTERNAL_URL
+          internal;
+          alias /srv/polaris/media/; # MEDIA_ROOT, with the trailing slash
+      }
+      ```
+
+      With `apache`: `XSendFile On` and `XSendFilePath /srv/polaris/media`.
 - [ ] Limit request bodies to ~6 MB (proofs are ≤ 5 MB).
-- [ ] Rate-limit `/accounts/login/` and `/admin/` (M5) if not done in Django.
+- [ ] Optional: also rate-limit `/accounts/login/` and `/admin/` at the proxy (Django
+      locks a username + IP out after 5 wrong passwords, M5).
 
 Before go-live:
 
-- [ ] `python manage.py check --deploy` shows no warnings.
-- [ ] H2 (protected media) and M1/M3 decided and done.
-- [ ] Run the full test suite, including `tests/test_e2e_*.py` and `tests/test_security.py`.
+- [ ] `DJANGO_DEBUG=false python manage.py check --deploy` shows no warnings.
+- [ ] M1/M3 decided and done (H2 is done).
+- [ ] Run the full test suite, including `tests/test_e2e_*.py`, `tests/test_security.py`
+      and `tests/test_hardening.py`.

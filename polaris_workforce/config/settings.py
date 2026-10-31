@@ -1,7 +1,9 @@
 """Django settings for Polaris Workforce.
 
 Values that differ between machines come from environment variables
-(see .env.example). Defaults are safe for local development only.
+(see .env.example). The defaults are production-safe: ``DEBUG`` is off unless
+``DJANGO_DEBUG=true`` is set (do that in your local shell or ``.env``). Tests use
+``tests/settings.py``.
 """
 
 import os
@@ -12,20 +14,29 @@ from django.utils.translation import gettext_lazy as _
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def env_str(name: str, default: str = "") -> str:
+    """The variable, or ``default`` when it is unset or empty (``NAME=`` in a .env)."""
+    return os.environ.get(name, "").strip() or str(default)
+
+
 def env_bool(name: str, default: bool = False) -> bool:
-    return os.environ.get(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
+    return env_str(name, str(default)).lower() in {"1", "true", "yes", "on"}
 
 
 def env_list(name: str, default: str = "") -> list[str]:
     return [item.strip() for item in os.environ.get(name, default).split(",") if item.strip()]
 
 
-DEBUG = env_bool("DJANGO_DEBUG", default=True)
+# Off unless asked for: a server started without the variable never shows debug pages.
+DEBUG = env_bool("DJANGO_DEBUG", default=False)
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
 if not SECRET_KEY:
     if not DEBUG:
-        raise RuntimeError("DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is off.")
+        raise RuntimeError(
+            "DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is off. "
+            "For local development, set DJANGO_DEBUG=true (see .env.example)."
+        )
     SECRET_KEY = "dev-only-insecure-key-change-me"
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
@@ -103,7 +114,7 @@ SQLITE_INIT_COMMAND = (
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.environ.get("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
+        "NAME": env_str("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
         "OPTIONS": {
             "init_command": SQLITE_INIT_COMMAND,
             "transaction_mode": "IMMEDIATE",
@@ -140,7 +151,7 @@ LANGUAGES = [
 LOCALE_PATHS = [BASE_DIR / "locale"]
 USE_I18N = True
 
-TIME_ZONE = os.environ.get("DJANGO_TIME_ZONE", "UTC")
+TIME_ZONE = env_str("DJANGO_TIME_ZONE", "UTC")
 USE_TZ = True
 
 
@@ -150,10 +161,54 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Uploaded files: worker photos and payment proofs (photo, signature, thumb mark)
+# Uploaded files: worker photos and payment proofs (photo, signature, thumb mark).
+# Never served directly: files get random names (apps.core.storage) and are downloaded
+# through views that check the viewer may see the file's site (apps.core.files).
+# ``FieldFile.url`` points at the admins-only route under MEDIA_URL (Django admin uses
+# it); screens and the API link to the per-object routes instead.
 
-MEDIA_URL = "media/"
-MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / "media"))
+MEDIA_URL = "files/media/"
+MEDIA_ROOT = Path(env_str("MEDIA_ROOT", BASE_DIR / "media"))
+
+STORAGES = {
+    "default": {"BACKEND": "apps.core.storage.RandomNameStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
+# How a protected file reaches the client once the view has checked access:
+#   django — Django streams it (FileResponse). Fine for a small office.
+#   nginx  — X-Accel-Redirect to PROTECTED_MEDIA_INTERNAL_URL + file name (an
+#            `internal` nginx location aliased to MEDIA_ROOT).
+#   apache — X-Sendfile with the file's absolute path (mod_xsendfile).
+PROTECTED_MEDIA_MODE = env_str("PROTECTED_MEDIA_MODE", "django").strip().lower()
+if PROTECTED_MEDIA_MODE not in {"django", "nginx", "apache"}:
+    raise RuntimeError("PROTECTED_MEDIA_MODE must be django, nginx or apache.")
+PROTECTED_MEDIA_INTERNAL_URL = env_str("PROTECTED_MEDIA_INTERNAL_URL", "/protected-media/")
+
+
+# Cache: the PIN throttle and the office sign-in lockout live here, so it must be shared
+# by every worker process and survive a restart. A file-based cache needs no extra
+# service; keep DJANGO_CACHE_DIR on local disk, writable only by the app user.
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": env_str("DJANGO_CACHE_DIR", str(BASE_DIR / "var" / "cache")),
+        "OPTIONS": {"MAX_ENTRIES": 20000},
+    }
+}
+
+
+# Office sign-in limits (/accounts/login/ and /admin/login/): after LOGIN_MAX_ATTEMPTS
+# wrong passwords for one (username, IP), that pair is locked out for
+# LOGIN_LOCKOUT_MINUTES. The phone PIN has its own lockout (apps.accounts.services).
+
+LOGIN_MAX_ATTEMPTS = int(env_str("DJANGO_LOGIN_MAX_ATTEMPTS", "5"))
+LOGIN_LOCKOUT_MINUTES = int(env_str("DJANGO_LOGIN_LOCKOUT_MINUTES", "15"))
+
+# A phone's device token stops working after this many days without use (measured on
+# ForemanDevice.last_seen_at); the foreman then signs in again with the PIN.
+DEVICE_TOKEN_IDLE_DAYS = int(env_str("DEVICE_TOKEN_IDLE_DAYS", "30"))
 
 
 # Security for production (only active when DEBUG is off)
@@ -162,7 +217,14 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", "0"))
+    # Plain-HTTP requests are redirected to HTTPS. The proxy must set X-Forwarded-Proto
+    # (see SECURE_PROXY_SSL_HEADER), or every request loops; turn it off only when the
+    # proxy itself refuses plain HTTP.
+    SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
+    # HSTS: set once HTTPS works for the domain (and its subdomains, for the two flags).
+    SECURE_HSTS_SECONDS = int(env_str("DJANGO_HSTS_SECONDS", "0"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("DJANGO_HSTS_INCLUDE_SUBDOMAINS")
+    SECURE_HSTS_PRELOAD = env_bool("DJANGO_HSTS_PRELOAD")
 
 
 # Django REST Framework — the foreman phone API (see docs/api/README.md)
@@ -188,7 +250,7 @@ REST_FRAMEWORK = {
     # Throttles key on the client IP. Without NUM_PROXIES, DRF trusts the whole
     # X-Forwarded-For header, which a client can rotate to dodge the PIN throttle.
     # 0: use REMOTE_ADDR. Behind N reverse proxies that set the header, use N.
-    "NUM_PROXIES": int(os.environ.get("DJANGO_NUM_PROXIES", "0")),
+    "NUM_PROXIES": int(env_str("DJANGO_NUM_PROXIES", "0")),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "TIME_FORMAT": "%H:%M",
     "TIME_INPUT_FORMATS": ["%H:%M"],
@@ -227,5 +289,9 @@ SPECTACULAR_SETTINGS = {
         {"name": "worksites", "description": "Crew lists (Wave 2: B)."},
         {"name": "attendance", "description": "Roll call, corrections, sync (Wave 2: C)."},
         {"name": "payroll", "description": "Cash payout and payments (Wave 2: D)."},
+        {
+            "name": "files",
+            "description": "Worker photos and payment proofs; send the Authorization header.",
+        },
     ],
 }

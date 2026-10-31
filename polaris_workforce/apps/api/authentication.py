@@ -7,7 +7,8 @@ server answers with a random device token, stores only its SHA-256 hash on a
     Authorization: Device <token>
 
 Revoking the device (``POST /auth/logout`` or the Users screen) sets ``revoked_at``;
-the token then gets ``401 not_authenticated``.
+the token then gets ``401 not_authenticated``. So does a token unused for
+``DEVICE_TOKEN_IDLE_DAYS`` days (default 30, measured on ``last_seen_at``).
 """
 
 import hashlib
@@ -15,6 +16,7 @@ import secrets
 from datetime import timedelta
 
 from django.apps import apps
+from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
@@ -38,6 +40,19 @@ def generate_device_token() -> tuple[str, str]:
 
 def get_device_model():
     return apps.get_model("accounts", "ForemanDevice")
+
+
+def is_idle_expired(device, now=None) -> bool:
+    """True when the token has not been used for ``DEVICE_TOKEN_IDLE_DAYS`` days.
+
+    Measured on ``last_seen_at`` (set at sign-in and on use), or ``created_at`` for a
+    device that was never seen.
+    """
+    last_used = device.last_seen_at or device.created_at
+    if last_used is None:
+        return False
+    idle = timedelta(days=settings.DEVICE_TOKEN_IDLE_DAYS)
+    return (now or timezone.now()) - last_used > idle
 
 
 class DeviceTokenAuthentication(BaseAuthentication):
@@ -69,6 +84,10 @@ class DeviceTokenAuthentication(BaseAuthentication):
             raise exceptions.AuthenticationFailed(_("Invalid or revoked device token.")) from exc
         if not device.user.is_active:
             raise exceptions.AuthenticationFailed(_("This user account is disabled."))
+        if is_idle_expired(device):
+            raise exceptions.AuthenticationFailed(
+                _("This device token has expired. Sign in again with your PIN.")
+            )
         self.touch(device)
         return device.user, device
 

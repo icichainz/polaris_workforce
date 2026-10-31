@@ -26,6 +26,8 @@ EXPECTED_OPERATIONS = {
     ("get", "/api/v1/sync/"),
     ("get", "/api/v1/sites/{site_id}/payouts/{date}/"),
     ("post", "/api/v1/payments/"),
+    ("get", "/api/v1/files/workers/{worker_id}/photo/"),
+    ("get", "/api/v1/files/proofs/{payment_id}/"),
 }
 
 
