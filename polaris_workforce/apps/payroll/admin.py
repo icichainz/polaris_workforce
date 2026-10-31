@@ -1,1 +1,102 @@
-from django.contrib import admin  # noqa: F401
+from django.contrib import admin
+
+from .models import Advance, AdvanceRepayment, CashIssue, PayLine, Payment, PayPeriod
+
+
+class PayLineInline(admin.TabularInline):
+    model = PayLine
+    extra = 0
+    fields = (
+        "worker",
+        "units",
+        "hours",
+        "overtime_hours",
+        "gross",
+        "advance_deduction",
+        "other_deductions",
+        "net",
+    )
+    autocomplete_fields = ("worker",)
+    show_change_link = True
+
+
+class PaymentInline(admin.TabularInline):
+    model = Payment
+    extra = 0
+    fields = ("method", "amount", "paid_by", "paid_at", "proof_type", "proof_file")
+    autocomplete_fields = ("paid_by",)
+
+
+class AdvanceRepaymentInline(admin.TabularInline):
+    model = AdvanceRepayment
+    extra = 0
+    fields = ("amount", "pay_line", "created_at")
+    readonly_fields = ("created_at",)
+    raw_id_fields = ("pay_line",)
+
+
+@admin.register(PayPeriod)
+class PayPeriodAdmin(admin.ModelAdmin):
+    list_display = ("site", "start_date", "end_date", "frequency", "status", "currency")
+    list_filter = ("status", "frequency", "site")
+    search_fields = ("site__name",)
+    list_select_related = ("site",)
+    autocomplete_fields = ("site",)
+    date_hierarchy = "start_date"
+    readonly_fields = ("locked_at",)
+    inlines = [PayLineInline]
+
+
+@admin.register(PayLine)
+class PayLineAdmin(admin.ModelAdmin):
+    list_display = ("worker", "period", "units", "gross", "advance_deduction", "net")
+    list_filter = ("period__status", "period__site")
+    search_fields = ("worker__number", "worker__first_name", "worker__last_name")
+    list_select_related = ("worker", "period__site")
+    autocomplete_fields = ("worker", "period")
+    inlines = [PaymentInline]
+
+
+@admin.register(Advance)
+class AdvanceAdmin(admin.ModelAdmin):
+    list_display = ("worker", "amount", "deduction_per_pay", "balance", "given_on", "status")
+    list_filter = ("status", "given_on", "proof_type")
+    search_fields = ("worker__number", "worker__first_name", "worker__last_name", "reason")
+    list_select_related = ("worker",)
+    autocomplete_fields = ("worker", "given_by")
+    date_hierarchy = "given_on"
+    inlines = [AdvanceRepaymentInline]
+
+
+@admin.register(AdvanceRepayment)
+class AdvanceRepaymentAdmin(admin.ModelAdmin):
+    list_display = ("advance", "amount", "pay_line", "created_at")
+    list_filter = ("created_at",)
+    search_fields = ("advance__worker__number", "advance__worker__last_name")
+    list_select_related = ("advance__worker", "pay_line")
+    raw_id_fields = ("advance", "pay_line")
+
+
+@admin.register(CashIssue)
+class CashIssueAdmin(admin.ModelAdmin):
+    list_display = ("date", "site", "amount", "issued_by", "received_by")
+    list_filter = ("site", "date")
+    search_fields = ("site__name", "note", "received_by__username", "received_by__last_name")
+    list_select_related = ("site", "issued_by", "received_by")
+    autocomplete_fields = ("site", "issued_by", "received_by")
+    date_hierarchy = "date"
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ("paid_at", "pay_line", "method", "amount", "proof_type", "paid_by")
+    list_filter = ("method", "proof_type", "paid_at")
+    search_fields = (
+        "pay_line__worker__number",
+        "pay_line__worker__last_name",
+        "client_uuid",
+    )
+    list_select_related = ("pay_line__worker", "pay_line__period__site", "paid_by")
+    autocomplete_fields = ("paid_by",)
+    raw_id_fields = ("pay_line",)
+    date_hierarchy = "paid_at"
