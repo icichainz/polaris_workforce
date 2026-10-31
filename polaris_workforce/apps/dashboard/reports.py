@@ -6,7 +6,8 @@ Which data counts:
   counts as ``CompanySettings.half_day_units``.
 - Attendance rate: worker-days ÷ recorded days (one recorded day per worker per
   attendance day, absences included).
-- Labour cost: the gross of the pay lines of pay periods that **end** in the range.
+- Labour cost: the gross of the pay lines of pay periods that **end** in the range, plus
+  their correction adjustments (a recovered overpayment lowers the cost, a top-up raises it).
 - Every query is limited to the sites passed in, which callers take from
   ``scoped_sites(user)``.
 """
@@ -17,7 +18,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from django.utils.translation import gettext as _
 
 from apps.attendance.models import AttendanceDay, AttendanceRecord
@@ -195,7 +196,7 @@ def build_report(
 
     for values in (
         lines.values(*worker_fields, "period__site_id", "period__site__name")
-        .annotate(gross=Sum("gross"))
+        .annotate(gross=Sum(F("gross") + F("adjustment")))
         .order_by()
     ):
         row = row_for(values, values["period__site_id"], values["period__site__name"])
@@ -207,7 +208,7 @@ def build_report(
     costs: dict[int, SiteCost] = {}
     for values in (
         lines.values("period__site_id", "period__site__name", "period__site__labour_budget")
-        .annotate(cost=Sum("gross"))
+        .annotate(cost=Sum(F("gross") + F("adjustment")))
         .order_by()
     ):
         costs[values["period__site_id"]] = SiteCost(

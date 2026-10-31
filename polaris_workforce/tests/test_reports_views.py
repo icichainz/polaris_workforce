@@ -273,3 +273,21 @@ def test_period_dates():
         datetime.date(2026, 9, 30),
     )
     assert period_dates("month", datetime.date(2026, 12, 5))[1] == datetime.date(2026, 12, 31)
+
+
+def test_labour_cost_includes_correction_adjustments(seeded):
+    # A day paid on 6 Oct was corrected to absent: −3 000 recovered on W-0001's 12 Oct pay.
+    from apps.payroll.models import PayLine
+
+    line = PayLine.objects.get(
+        worker__number="W-0001", period__end_date=datetime.date(2026, 10, 12)
+    )
+    line.adjustment = -3_000
+    line.save(update_fields=["adjustment"])
+
+    report = build_report(Site.objects.all(), *OCT)
+
+    assert report.labour_cost == 26_000
+    assert report.by_site[0].cost == 20_000
+    rows = {row.number: row for row in report.workers}
+    assert rows["W-0001"].earned == 12_000
