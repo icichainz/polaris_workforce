@@ -40,6 +40,8 @@ CSV_HEADER = [
     "Worker-days",
     "Attendance rate (%)",
     "Earned",
+    "Statutory deductions",
+    "Employer contributions",
     "Currency",
 ]
 
@@ -243,10 +245,27 @@ def test_csv_export_columns_and_totals(client, seeded):
         "3",
         "100",
         "15000",
+        "0",
+        "0",
         "XOF",
     ]
     assert body[2][4:11] == ["1", "1", "0", "1", "1.5", "50", "8000"]
-    assert total == ["", "Total", "", "", "4", "1", "1", "2", "5.5", "69", "29000", "XOF"]
+    assert total == [
+        "",
+        "Total",
+        "",
+        "",
+        "4",
+        "1",
+        "1",
+        "2",
+        "5.5",
+        "69",
+        "29000",
+        "0",
+        "0",
+        "XOF",
+    ]
     assert sum(int(row[10]) for row in body) == int(total[10])
 
 
@@ -260,7 +279,7 @@ def test_csv_export_with_two_decimals(client, seeded):
         csv.reader(io.StringIO(client.get(reverse("dashboard:reports_csv")).content.decode()))
     )
 
-    assert rows[-1][10:] == ["290.00", "EUR"]
+    assert rows[-1][10:] == ["290.00", "0.00", "0.00", "EUR"]
 
 
 def test_period_dates():

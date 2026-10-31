@@ -7,7 +7,7 @@
 {% block page_meta %}{% if worker %}{{ worker.number }}{% if current_site %} · {{ current_site.name }}{% endif %}{% endif %}{% endblock %}
 
 {% block content %}
-{% translate "Per day" as per_day %}{% translate "Per hour" as per_hour %}
+{% translate "Per day" as per_day %}{% translate "Per hour" as per_hour %}{% translate "Reference day value (advance limit only)" as per_piece_day %}
 {{ inherited|json_script:"inherited-settings" }}
 <form method="post" enctype="multipart/form-data" novalidate class="flex max-w-[860px] flex-col gap-5"
       x-data="{ site: '{{ form.site.value|default_if_none:''|escapejs }}', payType: '{{ form.pay_type.value|default_if_none:''|escapejs }}', inherited: JSON.parse(document.getElementById('inherited-settings').textContent), get hint() { return this.inherited[this.site] || this.inherited[''] } }">
@@ -70,20 +70,16 @@
         {% for option in form.pay_type %}
         <label class="flex min-h-14 cursor-pointer items-start gap-2.5 rounded-control border border-line-strong bg-white p-3 text-sm has-[:checked]:border-2 has-[:checked]:border-ink">
           <input type="radio" name="{{ option.data.name }}" value="{{ option.data.value }}" id="{{ option.id_for_label }}"{% if option.data.selected %} checked{% endif %} x-model="payType" class="mt-0.5 size-[18px] accent-ink">
-          <span><strong>{{ option.choice_label }}</strong><br><span class="text-xs text-steel">{% if option.data.value == "hourly" %}{% translate "Needs arrival & departure" %}{% else %}{% translate "Paid per day present" %}{% endif %}</span></span>
+          <span><strong>{{ option.choice_label }}</strong><br><span class="text-xs text-steel">{% if option.data.value == "hourly" %}{% translate "Needs arrival & departure" %}{% elif option.data.value == "piece" %}{% translate "Pay comes from piece-work entries" %}{% else %}{% translate "Paid per day present" %}{% endif %}</span></span>
         </label>
         {% endfor %}
-        <label class="flex min-h-14 items-start gap-2.5 rounded-control border border-line bg-ground p-3 text-sm text-disabled">
-          <input type="radio" disabled class="mt-0.5 size-[18px]">
-          <span><strong>{% translate "Piece work" %}</strong><br><span class="text-xs">{% translate "Coming later" %}</span></span>
-        </label>
       </div>
       {% if form.pay_type.errors %}<p class="text-[13px] font-medium text-absent-fg">{{ form.pay_type.errors|join:" " }}</p>{% endif %}
     </fieldset>
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div class="flex flex-col gap-1">
         {% include "components/money_field.html" with field=form.rate currency=currency only %}
-        <p class="text-xs text-steel" x-text="payType === 'hourly' ? '{{ per_hour|escapejs }}' : '{{ per_day|escapejs }}'">{% if form.pay_type.value == "hourly" %}{{ per_hour }}{% else %}{{ per_day }}{% endif %}</p>
+        <p class="text-xs text-steel" x-text="payType === 'hourly' ? '{{ per_hour|escapejs }}' : (payType === 'piece' ? '{{ per_piece_day|escapejs }}' : '{{ per_day|escapejs }}')">{% if form.pay_type.value == "hourly" %}{{ per_hour }}{% elif form.pay_type.value == "piece" %}{{ per_piece_day }}{% else %}{{ per_day }}{% endif %}</p>
       </div>
       {% include "components/field.html" with field=form.effective_from %}
     </div>

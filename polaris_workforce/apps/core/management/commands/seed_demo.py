@@ -42,6 +42,8 @@ from apps.workers import services as worker_services
 from apps.workers.models import Trade, Worker
 from apps.worksites.models import Site
 
+from . import _demo_wave4 as wave4
+
 Status = AttendanceRecord.Status
 
 DEMO_PASSWORD = "Polaris-demo-2026"
@@ -158,13 +160,21 @@ class Command(BaseCommand):
         while self.first_day.isoweekday() != 7:
             self.first_day -= datetime.timedelta(days=1)
 
+        # Wave 4 (pay rules, payouts, check-in, portal, messaging): the first company only
+        # (portal phone numbers are unique across companies).
+        self.wave4 = not self.prefix
+        self.demo_holiday = None
         with transaction.atomic():
             self.admin, self.accountant = self._office_users()
             self.sites = self._sites()
             self.crews = self._crews()
             self._advances()
+            if self.wave4:
+                wave4.rules(self)
         self._history()
         self._today()
+        if self.wave4:
+            wave4.after(self)
         self._report()
 
     # --- setup -------------------------------------------------------------------------
@@ -298,7 +308,7 @@ class Command(BaseCommand):
     def _working_days(self):
         day = self.first_day
         while day < self.today:
-            if self.company.is_working_day(day):
+            if self.company.is_working_day(day) or day == self.demo_holiday:
                 yield day
             day += datetime.timedelta(days=1)
 
@@ -306,8 +316,12 @@ class Command(BaseCommand):
         yesterday = self.today - datetime.timedelta(days=1)
         for day in self._working_days():
             for key, info in self.sites.items():
+                if day == self.demo_holiday and key != "bridge":
+                    continue  # a public holiday: only the bridge crew worked (paid × 2)
                 awaiting = key == "riverside" and day == yesterday
                 self._roll_call(info, self.crews[key], day, approve=not awaiting)
+                if self.wave4:
+                    wave4.extras_for_day(self, key, info, day)
                 if awaiting:
                     continue
                 self._pay_day(info, day, partial=key == "market" and day == yesterday)
@@ -469,5 +483,31 @@ class Command(BaseCommand):
         for info in self.sites.values():
             _, first, last, phone, pin = info["foreman_login"]
             out.write(f"    {first} {last}: {phone} → {pin} ({info['name']})")
+        if self.wave4:
+            self._report_wave4()
         for warning in self.warnings:
             out.write(self.style.WARNING(f"  Note: {warning}"))
+
+    def _report_wave4(self):
+        out = self.stdout
+        out.write("  Worker portal (/portal/, phone → PIN):")
+        for worker, phone, pin in getattr(self, "demo_portal", []):
+            out.write(f"    {worker.full_name}: {phone} → {pin}")
+        kiosk = getattr(self, "demo_kiosk", None)
+        if kiosk is not None:
+            bridge = self.sites["bridge"]
+            _, first, last, phone, pin = bridge["foreman_login"]
+            out.write(
+                f"  Kiosk phone: {first} {last} ({phone} → {pin}) signing in with device id "
+                f"{wave4.KIOSK_DEVICE_ID} is the {bridge['name']} kiosk (check-ins only)."
+            )
+        batches = ", ".join(
+            f"{b.reference} ({b.get_status_display().lower()})"
+            for b in getattr(self, "demo_batches", [])
+        )
+        if batches:
+            out.write(f"  Transfer batches (Market Hall): {batches}")
+        out.write(
+            "  Pay rules: Social security 4 % / 16 %, Sunday × 1.5, public holiday × 2, "
+            "piece work and a bonus two days ago; messaging on (log provider)."
+        )

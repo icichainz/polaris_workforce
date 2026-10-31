@@ -3,13 +3,19 @@
 Site 3 (Lomé, UTC+0), foreman Kossi's phone; on 2026-10-31 Delali Agbo (63) scans in at
 07:35 (late: late after 07:15), Afi Dosseh (51) at 07:02 (present) and Yao Mensah (44)
 in at 07:05 and out at 11:30 (half day). The geofence is 150 m around the site gate.
+The site's check-ins (``SITE_CHECKINS``) and the suggestions (``SUGGESTIONS``) tell the
+same story; ``SETUP`` lists the real SHA-256 of Delali's badge text.
 """
+
+import hashlib
 
 from apps.api import examples as ex
 
 DELALI_BADGE = "PW1:K7Q2M4XR5TBN3WCA.D6HZP2LQ4V7NYE3S"
 CHECKIN_UUID = "9d5e1f7a-3b2c-4e8d-a1f0-6c7b8a9d0e12"
 GEOFENCE = {"latitude": 6.131944, "longitude": 1.222778, "radius_m": 150}
+# What the phone compares a scan with: sha256 of the QR text exactly as read.
+DELALI_BADGE_SHA256 = hashlib.sha256(DELALI_BADGE.encode("utf-8")).hexdigest()
 
 CREATE_BADGE = {
     "client_uuid": CHECKIN_UUID,
@@ -75,6 +81,36 @@ UNKNOWN = {
     "flags": ["unknown_badge", "outside_geofence"],
 }
 
+YAO_IN = {
+    **CHECKIN,
+    "id": 5120,
+    "client_uuid": "4b6d8f0a-2c4e-4f6a-8b0c-1d2e3f4a5b03",
+    "worker_id": ex.YAO["id"],
+    "at": f"{ex.DATE}T07:05:02Z",
+    "received_at": f"{ex.DATE}T07:05:04Z",
+    "latitude": 6.131990,
+    "longitude": 1.222801,
+    "accuracy_m": 8,
+    "distance_m": 6,
+}
+YAO_OUT = {
+    **CHECKIN,
+    "id": 5133,
+    "client_uuid": CREATE_MANUAL["client_uuid"],
+    "worker_id": ex.YAO["id"],
+    "direction": "out",
+    "at": f"{ex.DATE}T11:30:00Z",
+    "received_at": f"{ex.DATE}T11:30:03Z",
+    "source": "manual",
+    "latitude": None,
+    "longitude": None,
+    "accuracy_m": None,
+    "distance_m": None,
+    "inside_geofence": None,
+}
+# Oldest first, like the endpoint.
+SITE_CHECKINS = [AFI_IN, UNKNOWN, YAO_IN, CHECKIN, YAO_OUT]
+
 SUGGESTIONS = {
     "site_id": ex.SITE_ID,
     "date": ex.DATE,
@@ -87,8 +123,8 @@ SUGGESTIONS = {
             "status": "half_day",
             "arrival": "07:05",
             "departure": "11:30",
-            "first_in_at": f"{ex.DATE}T07:05:02Z",
-            "last_out_at": f"{ex.DATE}T11:30:00Z",
+            "first_in_at": YAO_IN["at"],
+            "last_out_at": YAO_OUT["at"],
             "checkin_count": 2,
         },
         {
@@ -121,7 +157,7 @@ SETUP = {
     "badges": [
         {
             "worker_id": ex.DELALI["id"],
-            "payload_sha256": "3f0c9a5e2b7d41c8a6e9f1b0d4c7a2e5f8b1c4d7e0a3b6c9d2e5f8a1b4c7d0e3",
+            "payload_sha256": DELALI_BADGE_SHA256,
             "issued_at": "2026-10-20T09:00:00Z",
         },
     ],

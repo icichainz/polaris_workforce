@@ -41,6 +41,25 @@ viewer's sites (`apps/core/files.py`). In production, set `PROTECTED_MEDIA_MODE=
 (or `apache`) so the web server sends the file after Django's check; see the production
 checklist in `docs/security-review.md`.
 
+## Deployment notes
+
+Besides the production checklist in `docs/security-review.md`, two commands must run
+from cron (as the app user, with the production environment) once messaging is on:
+
+```cron
+*/15 * * * *  cd /srv/polaris/polaris_workforce && .venv/bin/python manage.py send_notifications
+*/2 * * * *   cd /srv/polaris/polaris_workforce && .venv/bin/python manage.py send_messages
+```
+
+- `send_notifications` (every 15 minutes) checks each active company's notification
+  rules (missing roll call, days waiting for approval, unclosed cash sheets, advances
+  near their limit) and queues the texts; it also sends what is due.
+- `send_messages` (every 2 minutes) only flushes the outbox: payslip texts, portal PINs
+  and retries (with backoff, outside quiet hours).
+- The default provider (`MESSAGING_PROVIDER=log`) sends nothing: it writes each text and
+  phone number to the `polaris.messaging` log. Set a log retention, or a real provider,
+  before go-live (see the security review).
+
 ## CSS (Tailwind v4)
 
 The compiled stylesheet `static/css/app.css` is committed, so the app runs without

@@ -1,8 +1,10 @@
-{% load i18n payroll_tags %}{% comment %}
+{% load i18n payroll_tags payouts_tags %}{% comment %}
 One worker row of the cash sheet. Context: `row` ({sl, form, errors, payslip_url}), `sheet`,
 `sl.adjustments` (settled on this pay), `sl.raised` (this paid day was corrected),
 `can_pay`, `can_manage`, `proof_choices`, `csrf_token`. With `oob`, also renders the
 reconciliation strip out of band (htmx response after "Mark paid" / "Undo").
+A line paid by bank transfer or mobile money (`apps.payouts`) shows its transfer status
+(batch, failed transfer, "Prepare a transfer batch") instead of the cash "Mark paid" form.
 {% endcomment %}{% with sl=row.sl line=row.sl.line worker=row.sl.worker %}
 <tr id="line-{{ line.pk }}" class="border-t border-line-soft{% if row.errors %} bg-amber-tint{% endif %}">
   <td class="px-4 py-3">
@@ -30,7 +32,7 @@ reconciliation strip out of band (htmx response after "Mark paid" / "Undo").
       {% if sl.payment %}
         {% blocktranslate asvar paid_label with time=sl.payment.paid_at|time:"H:i" %}Paid {{ time }}{% endblocktranslate %}
         {% include "components/status_badge.html" with status="paid" label=paid_label only %}
-        {% if sl.payment.proof_file %}<a href="{% url 'core:payment_proof' sl.payment.pk %}" class="text-[13px]" target="_blank" rel="noopener">{{ sl.payment.get_proof_type_display }}</a>{% else %}<span class="text-[13px] text-steel">{{ sl.payment.get_proof_type_display }}</span>{% endif %}
+        {% if sl.payment.proof_file %}<a href="{% url 'core:payment_proof' sl.payment.pk %}" class="text-[13px]" target="_blank" rel="noopener">{{ sl.payment.get_proof_type_display }}</a>{% elif sl.payment.method != "cash" %}<span class="text-[13px] text-steel">{{ sl.payment.get_method_display }}</span>{% else %}<span class="text-[13px] text-steel">{{ sl.payment.get_proof_type_display }}</span>{% endif %}
         {% if can_manage and not sheet.is_closed %}
         <form method="post" action="{% url 'payroll:payment_undo' sl.payment.pk %}" hx-post="{% url 'payroll:payment_undo' sl.payment.pk %}" hx-target="#line-{{ line.pk }}" hx-swap="outerHTML" hx-confirm="{% translate 'Undo this payment?' %}">
           <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
@@ -40,6 +42,8 @@ reconciliation strip out of band (htmx response after "Mark paid" / "Undo").
       {% else %}
         {% translate "Nothing to hand over" as label %}{% include "components/status_badge.html" with status="paid" label=label only %}
       {% endif %}
+    {% else %}{% transfer_state line company as transfer %}{% if transfer %}
+      {% transfer_cell transfer sheet.date sheet.site %}
     {% elif can_pay %}
       <form method="post" enctype="multipart/form-data" action="{% url 'payroll:cash_sheet_pay' line.pk %}" hx-post="{% url 'payroll:cash_sheet_pay' line.pk %}" hx-encoding="multipart/form-data" hx-target="#line-{{ line.pk }}" hx-swap="outerHTML" class="flex flex-wrap items-center gap-2">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
@@ -55,7 +59,7 @@ reconciliation strip out of band (htmx response after "Mark paid" / "Undo").
       </form>
     {% else %}
       {% translate "To pay" as label %}{% include "components/status_badge.html" with status="to_pay" label=label only %}
-    {% endif %}
+    {% endif %}{% endif %}
       <a href="{{ row.payslip_url }}" class="text-[13px]" target="_blank" rel="noopener">{% translate "Payslip" %}</a>
     </div>
     {% for adjustment in sl.raised %}<p class="mt-1 text-[13px] font-medium text-late-fg">{{ adjustment|raised_note }}</p>{% endfor %}

@@ -106,7 +106,9 @@ COLUMNS = (
         "rate",
         gettext_lazy("Rate"),
         required=True,
-        help=gettext_lazy("Per day or per hour, in the company's currency."),
+        help=gettext_lazy(
+            "Per day or per hour, in the company's currency. Piece work: a reference day value."
+        ),
         width=12,
     ),
     Column("id_document_type", gettext_lazy("ID document type"), width=20),

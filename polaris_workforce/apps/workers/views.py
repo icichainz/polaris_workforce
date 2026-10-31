@@ -17,6 +17,7 @@ from django.db.models.functions import Replace
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import urlencode
 from django.utils.translation import gettext as _
 from django.utils.translation import ngettext
 from django.views.decorators.http import require_POST, require_safe
@@ -222,6 +223,94 @@ def _documents(user, worker, today) -> list[dict]:
     ]
 
 
+def _connections(user, worker, today) -> list[dict]:
+    """The worker's Wave 4 services on the profile, each only for the roles that may open
+    its page: text messages (admins), worker portal access and QR badge (admins, site
+    managers), payout account (who may see payouts or edit the worker; the edit link only
+    for those who may change it). The worker is already in the viewer's scope."""
+    from apps.checkin import services as checkin
+    from apps.messaging import services as messaging
+    from apps.messaging.models import MessagingSettings
+    from apps.payouts import services as payouts
+    from apps.portal import services as portal
+
+    profile_url = reverse("workers:detail", args=[worker.pk])
+    rows = []
+    if has_role(user, Role.ADMIN):
+        settings = MessagingSettings.load(worker.company_id)
+        preference = messaging.preference_for(worker.company_id, worker=worker)
+        if not settings.enabled:
+            status, label = "inactive", _("Messaging is off")
+        elif not worker.phone:
+            status, label = "draft", _("No phone number")
+        elif messaging.may_message(settings, preference):
+            status, label = "active", _("Gets texts")
+        else:
+            status, label = "inactive", _("Opted out")
+        rows.append(
+            {
+                "key": "messages",
+                "title": _("Text messages"),
+                "status": status,
+                "label": label,
+                "url": reverse("messaging:worker", args=[worker.pk]),
+                "link_label": _("Texts and opt-in"),
+            }
+        )
+    managers = has_role(user, Role.ADMIN, Role.SITE_MANAGER)
+    if managers:
+        status, label = portal.access_status(portal.access_of(worker))
+        rows.append(
+            {
+                "key": "portal",
+                "title": _("Worker portal access"),
+                "status": status,
+                "label": label,
+                "url": reverse("portal:office_worker", args=[worker.pk]),
+                "link_label": _("Manage access"),
+            }
+        )
+    if payouts.account_workers(user, today).filter(pk=worker.pk).exists():
+        account = payouts.account_of(worker)
+        can_edit = payouts.can_edit_account(user, worker, today)
+        url = None
+        if can_edit:
+            edit_url = reverse("payouts:account_edit", args=[worker.pk])
+            url = f"{edit_url}?{urlencode({'next': profile_url})}"
+        rows.append(
+            {
+                "key": "payout",
+                "title": _("Payout account"),
+                "status": "active" if account else "draft",
+                "label": (
+                    f"{account.get_method_display()} · {account.masked}"
+                    if account
+                    else _("No payout account")
+                ),
+                "url": url,
+                "link_label": _("Edit") if account else _("Add"),
+            }
+        )
+    if managers:
+        badge = checkin.active_badge(worker)
+        rows.append(
+            {
+                "key": "badge",
+                "title": _("Badge"),
+                "status": "active" if badge else "inactive",
+                "label": _("Active") if badge else _("No badge"),
+                "url": f"{reverse('checkin:badges')}?{urlencode({'q': worker.number})}",
+                "link_label": _("Badges"),
+                "print_url": (
+                    f"{reverse('checkin:badge_sheet')}?{urlencode({'worker': worker.pk})}"
+                    if badge
+                    else None
+                ),
+            }
+        )
+    return rows
+
+
 def _render_detail(request, worker, company, today, *, document_form=None, status=200):
     tz = dates.company_tz(company)
     money = display.Money(company)
@@ -352,6 +441,7 @@ def _render_detail(request, worker, company, today, *, document_form=None, statu
         "pay_frequency_source": _setting_source(worker, site, "pay_frequency"),
         "pay_type": PayType(rate.pay_type).label if rate else None,
     }
+    context["connections"] = _connections(request.user, worker, today)
     can_edit = context["can_edit"]
     documents = _documents(request.user, worker, today)
     context.update(

@@ -17,6 +17,8 @@ from __future__ import annotations
 import datetime
 import logging
 import os
+import re
+import uuid
 from dataclasses import dataclass, field
 
 from django.db import IntegrityError, transaction
@@ -275,6 +277,32 @@ def queue_payslip(payment) -> Message | None:
     )
 
 
+# The PIN in a portal PIN text, in each language's template
+# (``templates/messaging/texts/portal_pin.<language>.txt``).
+_PIN_IN_TEXT = re.compile(r"(portal PIN: |code PIN du portail : )\d{4}")
+PIN_MASK = "••••"
+
+
+def redact_pin(text: str) -> str:
+    """The text with the portal PIN masked: what the outbox keeps once it is sent."""
+    return _PIN_IN_TEXT.sub(lambda m: m.group(1) + PIN_MASK, text)
+
+
+def queue_portal_pin(worker, pin: str, sign_in_url: str) -> Message | None:
+    """Text the worker their new portal PIN and the sign-in link (after the office gave
+    access or reset the PIN). ``None`` when messaging is off for the company, the worker
+    opted out or has no phone. The PIN is never written to the audit log; the outbox
+    keeps it only until the text is sent (``redact_pin``)."""
+    return queue_message(
+        kind=Kind.PORTAL_PIN,
+        # Every new PIN is its own text (a reset sends again).
+        dedupe_key=f"portal_pin:{worker.pk}:{uuid.uuid4().hex}",
+        context={"pin": pin, "link": sign_in_url, "worker": worker.full_name},
+        worker=worker,
+        company=worker.company_id,
+    )
+
+
 def cancel_payslip(company_id: int, payment_id: int) -> None:
     """A payment undone before its text went out: the text is not sent."""
     Message.objects.filter(
@@ -329,7 +357,9 @@ def _skip(message: Message, reason: str) -> None:
     message.status = Message.Status.SKIPPED
     message.error = reason
     message.next_attempt_at = None
-    message.save(update_fields=["status", "error", "next_attempt_at", "updated_at"])
+    if message.kind == Kind.PORTAL_PIN:
+        message.text = redact_pin(message.text)
+    message.save(update_fields=["status", "error", "next_attempt_at", "text", "updated_at"])
 
 
 def _claim(message: Message) -> bool:
@@ -384,8 +414,11 @@ def deliver(
         message.error = result.error or _("The provider refused the message.")
         message.next_attempt_at = now + backoff(message.attempts)
         outcome = "retrying"
+    if message.kind == Kind.PORTAL_PIN and outcome != "retrying":
+        message.text = redact_pin(message.text)  # sent or given up: keep no PIN
     message.save(
         update_fields=[
+            "text",
             "status",
             "sent_at",
             "provider",
@@ -437,8 +470,9 @@ def send_pending(
 
 
 def resend(actor, message: Message) -> bool:
-    """Queue a failed message again (fresh attempts); audited."""
-    if message.status != Message.Status.FAILED:
+    """Queue a failed message again (fresh attempts); audited. A portal PIN text is not
+    resent: its PIN was masked when it failed (set a new PIN instead)."""
+    if message.status != Message.Status.FAILED or message.kind == Kind.PORTAL_PIN:
         return False
     before = {"status": message.status, "attempts": message.attempts, "error": message.error}
     with transaction.atomic():

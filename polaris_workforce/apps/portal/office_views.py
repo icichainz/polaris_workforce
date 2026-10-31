@@ -11,6 +11,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.cache import add_never_cache_headers
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
@@ -49,13 +50,7 @@ def _access(worker):
 
 def _status(access) -> tuple[str, str]:
     """(status_badge status, label) for an access (or no access)."""
-    if access is None:
-        return "draft", _("No access")
-    if not access.is_enabled:
-        return "inactive", _("Turned off")
-    if access.is_locked:
-        return "rejected", _("Locked")
-    return "active", _("Can sign in")
+    return services.access_status(access)
 
 
 @role_required(*MANAGERS)
@@ -132,11 +127,12 @@ def set_pin(request, worker_id):
         )
     except services.AccessError as exc:
         return _worker_page(request, worker, form=form, error=str(exc), status=400)
+    texted = services.text_pin(worker, pin, request.build_absolute_uri(reverse("portal:sign_in")))
     # Shown once: this response only, never cached, never in the session.
     response = render(
         request,
         "portal/office/pin_shown.html",
-        {"worker": worker, "access": access, "pin": pin, "nav_active": NAV},
+        {"worker": worker, "access": access, "pin": pin, "texted": texted, "nav_active": NAV},
     )
     add_never_cache_headers(response)
     return response

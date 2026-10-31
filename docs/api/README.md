@@ -304,9 +304,29 @@ If a day the worker was already paid for is corrected later (for example marked 
 the difference is settled on the worker's **next** pay at that site: deducted when they
 were overpaid, added when they were underpaid. In `GET payouts/` that adjustment is only
 in `net`; `gross` stays what was earned that pay and `advance_deduction` the advance
-repayment. So on those lines `net ≠ gross − advance_deduction`. Always hand over `net`
+repayment. So on those lines `net ≠ gross − advance_deduction` (statutory deductions
+also make them differ: see [Pay rules](#pay-rules-wave-4-gross-and-net-include-more)). Always hand over `net`
 (and send it as `amount`). `net` is never negative; whatever doesn't fit carries to the
 following pay. The office cash sheet and the payslip show the adjustment as its own line.
+
+### Pay rules (Wave 4): `gross` and `net` include more
+
+The JSON shape of `GET payouts/` does not change, but the amounts follow the company's
+pay rules (office: Pay rules, Day extras):
+
+- `gross` = time pay (days or hours, with Sunday / public holiday / night multipliers
+  and stoppage days) **+ piece work** (quantity × unit rate, entered in the office)
+  **+ bonuses** settled on this pay.
+- `net` = `gross` − other deductions − **statutory deductions** (the employee share of
+  each deduction rule, e.g. social security) − `advance_deduction` ± the correction
+  adjustment. So `net` can be below `gross − advance_deduction` even without a
+  correction. Employer contributions are a company cost: never deducted, never on the
+  phone.
+- As before: hand over `net`, send it as `amount`, never recompute it on the phone. The
+  breakdown is on the office cash sheet, the payslip PDF and the worker portal.
+- Piece-rate workers: `GET /sites/{id}/crew/` gives them `pay_type: "daily"` (the 1.2
+  enum is `daily | hourly`); the foreman marks them present or absent as usual and their
+  pay comes from the piece-work entries.
 
 ### Pay line ids
 
@@ -498,6 +518,14 @@ Errors:
 | 403 | `permission_denied` | A site you are not on; a kiosk phone sending for another site (`message`: "This phone is a kiosk for another site."); not a foreman |
 | 409 | `conflict` | The `client_uuid` was used for a different check-in (`details.client_uuid`) |
 
+The server checks in this order and answers the first problem it finds: (1) the token
+(`401`); (2) the role — not a foreman, or a kiosk phone calling an endpoint it may not
+use (`403`); (3) the body: field types, `badge`/`worker_id`, coordinates, `at`, photo
+(`400`); (4) the site — not yours, or a kiosk for another site (`403`); (5) `worker_id`
+not a worker of the company (`400`); (6) a kiosk sending `worker_id` (`400` on
+`badge`); (7) the `client_uuid` already used for a different check-in (`409`). So a bad
+body for another site is a `400`, not a `403`.
+
 Idempotency: `201` the first time, then `200` with the original check-in and
 `Idempotent-Replayed: true` (a photo sent again is ignored). A replay must have the same
 site, direction, `at`, user and worker (or a badge scan); anything else is `409`.
@@ -536,8 +564,27 @@ sign-in, at start-up and with the background sync). On a kiosk phone:
   too.
 - Kiosk mode survives signing in again on the same phone (it belongs to the device row);
   the office ends it with "End kiosk mode" (`kiosk` becomes `null`).
-- The other phone endpoints are not restricted by the server in 1.2 (see the lead's
-  integration notes); the app should not offer them in kiosk mode.
+- **The server refuses everything else.** A kiosk phone's token may call only:
+  `GET /health/`, `GET /me/`, `POST /auth/logout/`, every check-in endpoint
+  (`/checkin/device/`, `/checkins/`, `/sites/{id}/checkin-setup/`,
+  `/sites/{id}/checkins/{date}/`, `/sites/{id}/days/{date}/suggestions/`,
+  `/files/checkins/{id}/photo/`), the worker photos (`/files/workers/{id}/photo/`) and,
+  read only, `GET /sites/{id}/crew/` (the names behind the badge hashes). Every other
+  endpoint — days and records, submit, corrections, `sync`, payouts, payments, payment
+  proofs — answers:
+
+  ```json
+  403 {"code": "permission_denied",
+       "message": "This phone is in kiosk mode: it can only record check-ins. Ask the office to end kiosk mode to use the other screens.",
+       "details": {}}
+  ```
+
+  Don't retry it (drop it from the outbox, like any `403`); call `GET /checkin/device/`
+  to learn the phone's role again. The rule follows the device row (it survives signing
+  in again on that phone) and ends with "End kiosk mode"; the same foreman's other phones
+  and office sessions are never restricted. Server side it is one check in
+  `DeviceTokenAuthentication` (`apps/checkin/kiosk.py`), so a new endpoint is refused to
+  kiosks unless it is added to that list (`tests/test_integration_kiosk.py`).
 
 ### Offline
 

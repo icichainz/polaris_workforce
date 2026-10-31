@@ -91,3 +91,28 @@ DATE = OpenApiParameter(
     OpenApiParameter.PATH,
     description="Work day, ISO 8601 `YYYY-MM-DD`, in the company time zone.",
 )
+
+
+_TIME_TEXT = r"^[0-9]{1,2}:[0-9]{2}(?::[0-9]{2})?$"
+
+
+def quote_times_in_yaml() -> None:
+    """Make ``openapi.yaml`` quote every ``HH:MM`` string (``'07:15'``).
+
+    PyYAML writes ``07:15`` plain, but YAML 1.1 parsers (Dart's among them) read a plain
+    ``07:15`` as a base-60 integer. Declaring that pattern an integer for the dumper makes
+    it quote such strings; it changes nothing that is loaded (the dumper only).
+    """
+    import re
+
+    import yaml
+
+    pattern = re.compile(_TIME_TEXT)
+    # drf-spectacular dumps with CSafeDumper when libyaml is there, else SafeDumper.
+    for dumper in (yaml.SafeDumper, getattr(yaml, "CSafeDumper", None)):
+        if dumper is None:
+            continue
+        resolvers = dumper.__dict__.get("yaml_implicit_resolvers", {})
+        if any(regexp.pattern == _TIME_TEXT for _tag, regexp in resolvers.get("0", [])):
+            continue
+        dumper.add_implicit_resolver("tag:yaml.org,2002:int", pattern, list("0123456789"))

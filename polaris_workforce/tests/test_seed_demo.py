@@ -1,11 +1,29 @@
+import io
+from decimal import Decimal
+
 import pytest
 from django.core.management import CommandError, call_command
 from django.test import Client
 
 from apps.accounts.models import User
 from apps.attendance.models import AttendanceDay
+from apps.checkin.models import Badge, CheckIn, KioskDevice, SiteGeofence
 from apps.core.models import Company
-from apps.payroll.models import Advance, PayAdjustment, Payment, PayPeriod
+from apps.messaging.models import Kind, Message, MessagingSettings
+from apps.payouts.models import PayoutAccount, PayoutBatch
+from apps.payroll.models import (
+    Advance,
+    Bonus,
+    DeductionRule,
+    PayAdjustment,
+    PayLine,
+    Payment,
+    PayPeriod,
+    PayRuleSettings,
+    PieceWorkEntry,
+    StoppageDay,
+)
+from apps.portal.models import WorkerAccess
 from apps.workers.models import Worker
 
 pytestmark = pytest.mark.django_db
@@ -77,3 +95,77 @@ def test_seed_demo_adds_a_second_company_with_keep(settings):
     assert office.get("/").status_code == 200
     with pytest.raises(CommandError):  # the same name twice
         call_command("seed_demo", days=3, company="Other Co", keep=True, verbosity=0)
+    # Wave 4 demo data (portal phones are unique across companies) is the first company's.
+    assert not WorkerAccess.objects.filter(company=other).exists()
+
+
+def test_seed_demo_has_wave4_data_for_every_new_screen(settings):
+    """Pay rules, payouts, check-in, worker portal and messaging (the first company)."""
+    settings.ALLOWED_HOSTS = ["testserver"]
+    out = io.StringIO()
+    call_command("seed_demo", password="demo-pass-123", stdout=out)
+    report = out.getvalue()
+    company = Company.objects.get(name="Polaris Demo Construction")
+
+    rules = PayRuleSettings.load(company)
+    assert (rules.sunday_multiplier, rules.holiday_multiplier) == (Decimal("1.5"), Decimal("2"))
+    rule = DeductionRule.objects.get(company=company)
+    assert (rule.name, rule.employee_percent, rule.employer_percent) == ("Social security", 4, 16)
+    assert rule.base_ceiling
+    assert PayLine.objects.exclude(employer_contributions=0).exists()
+    assert PieceWorkEntry.objects.exists() and PayLine.objects.exclude(piece_amount=0).exists()
+    assert Bonus.objects.filter(applied_to__isnull=False).exists()
+    assert StoppageDay.objects.exists()
+    assert any(
+        day.get("day_kind") == "holiday" for line in PayLine.objects.all() for day in line.days
+    )
+
+    assert PayoutAccount.objects.filter(method="mobile_money").count() >= 3
+    assert PayoutAccount.objects.filter(method="bank_transfer").exists()
+    assert set(PayoutBatch.objects.values_list("status", flat=True)) == {"exported", "confirmed"}
+
+    assert Badge.objects.filter(revoked_at__isnull=True).count() == Worker.objects.count()
+    assert SiteGeofence.objects.count() == 3
+    assert KioskDevice.objects.select_related("site").get().site.name == "Route 4 Bridge"
+    assert CheckIn.objects.exists()
+
+    assert WorkerAccess.objects.filter(is_enabled=True).count() == 3
+    assert MessagingSettings.load(company).enabled
+    assert Message.objects.filter(kind=Kind.PORTAL_PIN, status="sent").count() == 3
+    assert Message.objects.filter(kind=Kind.PAYSLIP).exists()
+    assert not Message.objects.filter(text__contains=": 4071").exists()  # masked once sent
+
+    # The report gives the portal sign-ins and the kiosk, and they work.
+    assert "Worker portal" in report and "4071" in report and "demo-kiosk-bridge" in report
+    first = WorkerAccess.objects.order_by("pk").first()
+    portal = Client()
+    signed = portal.post("/portal/sign-in/", {"phone": first.phone, "pin": "4071"})
+    assert signed.status_code == 302, signed.content
+    assert portal.get("/portal/pay/").status_code == 200
+
+    kiosk_phone = Client()
+    signin = kiosk_phone.post(
+        "/api/v1/auth/pin/",
+        {"phone": "+22898115230", "pin": "7264", "device_id": "demo-kiosk-bridge"},
+        content_type="application/json",
+    )
+    assert signin.status_code == 200
+    token = {"HTTP_AUTHORIZATION": f"Device {signin.json()['token']}"}
+    assert kiosk_phone.get("/api/v1/checkin/device/", **token).json()["kiosk"] is not None
+    assert kiosk_phone.get("/api/v1/sync/", **token).status_code == 403
+
+    office = Client()
+    assert office.login(username="admin", password="demo-pass-123")
+    for path in [
+        "/payouts/",
+        "/payouts/accounts/",
+        "/checkin/",
+        "/checkin/badges/",
+        "/checkin/kiosks/",
+        "/checkin/geofences/",
+        "/portal/office/",
+        "/messages/",
+        "/pay-rules/",
+        "/reports/",
+    ]:
+        assert office.get(path).status_code == 200, path

@@ -8,6 +8,10 @@ Which data counts:
   attendance day, absences included).
 - Labour cost: the gross of the pay lines of pay periods that **end** in the range, plus
   their correction adjustments (a recovered overpayment lowers the cost, a top-up raises it).
+- Statutory deductions (Wave 4 pay rules): per worker, the employee share deducted from
+  their pay and the employer contributions on top; for the company, the employer cost
+  (labour cost + employer contributions) and the split per deduction rule
+  (``apps.payroll.pay_rules.employer_costs``).
 - Every query is limited to the sites passed in, which callers take from
   ``scoped_sites(user)``.
 """
@@ -26,6 +30,7 @@ from apps.attendance.models import AttendanceDay, AttendanceRecord
 from apps.core.models import CompanySettings
 from apps.core.money import from_minor
 from apps.payroll.models import PayLine
+from apps.payroll.pay_rules import EmployerCost, employer_costs
 
 from .services import worker_days
 
@@ -59,6 +64,8 @@ class WorkerRow:
     late: int = 0
     absent: int = 0
     earned: int = 0
+    statutory: int = 0  # deducted from the worker's pay (employee share)
+    employer: int = 0  # employer contributions on top of the pay
     days: Decimal = Decimal(0)
 
     @property
@@ -104,6 +111,12 @@ class Report:
     by_site: list[SiteCost] = field(default_factory=list)
     by_week: list[WeekRate] = field(default_factory=list)
     workers: list[WorkerRow] = field(default_factory=list)
+    employer_cost: EmployerCost = field(default_factory=EmployerCost)
+
+    @property
+    def employer_total(self) -> int:
+        """What the pay costs the company: labour cost + employer contributions."""
+        return self.labour_cost + self.employer_cost.employer
 
     @property
     def attendance_rate(self) -> int | None:
@@ -128,6 +141,8 @@ class Report:
             "late": sum(row.late for row in rows),
             "absent": sum(row.absent for row in rows),
             "earned": sum(row.earned for row in rows),
+            "statutory": sum(row.statutory for row in rows),
+            "employer": sum(row.employer for row in rows),
         }
 
 
@@ -197,11 +212,17 @@ def build_report(
 
     for values in (
         lines.values(*worker_fields, "period__site_id", "period__site__name")
-        .annotate(gross=Sum(F("gross") + F("adjustment")))
+        .annotate(
+            gross=Sum(F("gross") + F("adjustment")),
+            statutory=Sum("statutory_deductions"),
+            employer=Sum("employer_contributions"),
+        )
         .order_by()
     ):
         row = row_for(values, values["period__site_id"], values["period__site__name"])
         row.earned = values["gross"] or 0
+        row.statutory = values["statutory"] or 0
+        row.employer = values["employer"] or 0
 
     workers = sorted(rows.values(), key=lambda row: (row.name.lower(), row.number, row.site_name))
 
@@ -263,6 +284,7 @@ def build_report(
         by_site=by_site,
         by_week=by_week,
         workers=workers,
+        employer_cost=employer_costs(site_ids, start, end, trade=trade),
     )
 
 
@@ -299,6 +321,8 @@ def write_csv(report: Report, out) -> None:
             _("Worker-days"),
             _("Attendance rate (%)"),
             _("Earned"),
+            _("Statutory deductions"),
+            _("Employer contributions"),
             _("Currency"),
         ]
     )
@@ -317,6 +341,8 @@ def write_csv(report: Report, out) -> None:
                 _plain_days(row.days),
                 "" if row.rate is None else row.rate,
                 from_minor(row.earned, decimals),
+                from_minor(row.statutory, decimals),
+                from_minor(row.employer, decimals),
                 report.currency,
             ]
         )
@@ -334,6 +360,8 @@ def write_csv(report: Report, out) -> None:
             _plain_days(report.worker_days),
             "" if report.attendance_rate is None else report.attendance_rate,
             from_minor(totals["earned"], decimals),
+            from_minor(totals["statutory"], decimals),
+            from_minor(totals["employer"], decimals),
             report.currency,
         ]
     )
@@ -405,11 +433,13 @@ def write_xlsx(report: Report) -> bytes:
             _("Worker-days"),
             _("Attendance rate (%)"),
             _("Earned"),
+            _("Statutory deductions"),
+            _("Employer contributions"),
             _("Currency"),
         ],
-        [14, 28, 16, 28, 10, 10, 10, 10, 12, 14, 14, 10],
+        [14, 28, 16, 28, 10, 10, 10, 10, 12, 14, 14, 14, 14, 10],
     )
-    formats = {9: "0.##", 10: "0%", 11: money_format}
+    formats = {9: "0.##", 10: "0%", 11: money_format, 12: money_format, 13: money_format}
     row_number = 1
     for row_number, row in enumerate(report.workers, 2):
         put(
@@ -427,6 +457,8 @@ def write_xlsx(report: Report) -> bytes:
                 row.days,
                 _percent(row.rate),
                 from_minor(row.earned, decimals),
+                from_minor(row.statutory, decimals),
+                from_minor(row.employer, decimals),
                 report.currency,
             ],
             formats,
@@ -447,6 +479,8 @@ def write_xlsx(report: Report) -> bytes:
             report.worker_days,
             _percent(report.attendance_rate),
             from_minor(totals["earned"], decimals),
+            from_minor(totals["statutory"], decimals),
+            from_minor(totals["employer"], decimals),
             report.currency,
         ],
         formats,
@@ -494,6 +528,47 @@ def write_xlsx(report: Report) -> bytes:
         formats,
         total=True,
     )
+
+    # Employer cost: statutory deductions per rule, then the company's total cost.
+    cost = report.employer_cost
+    ws = sheet(
+        _("Employer cost"),
+        [_("Deduction rule"), _("Deducted from pay"), _("Employer contributions"), _("Currency")],
+        [32, 18, 22, 10],
+    )
+    formats = {2: money_format, 3: money_format}
+    row_number = 1
+    for row_number, rule in enumerate(cost.rules, 2):
+        put(
+            ws,
+            row_number,
+            [
+                rule.name,
+                from_minor(rule.employee, decimals),
+                from_minor(rule.employer, decimals),
+                report.currency,
+            ],
+            formats,
+        )
+    row_number += 1
+    put(
+        ws,
+        row_number,
+        [
+            _("Total"),
+            from_minor(cost.employee, decimals),
+            from_minor(cost.employer, decimals),
+            report.currency,
+        ],
+        formats,
+        total=True,
+    )
+    for label, amount in (
+        (_("Labour cost"), report.labour_cost),
+        (_("Employer cost (labour cost + employer contributions)"), report.employer_total),
+    ):
+        row_number += 1
+        put(ws, row_number, [label, from_minor(amount, decimals), None, report.currency], formats)
 
     workbook.remove(workbook.worksheets[0])  # the empty default sheet
     buffer = io.BytesIO()
