@@ -18,7 +18,6 @@ from django.utils.translation import ngettext
 from apps.accounts.permissions import scoped_sites
 from apps.api.enums import CORRECTABLE_FIELDS
 from apps.core.models import CompanySettings
-from apps.payroll.models import PayPeriod
 from apps.worksites.models import SiteAssignment
 
 from .models import AttendanceCorrection, AttendanceDay, AttendanceRecord
@@ -95,34 +94,17 @@ def unmarked_worker_ids(day: AttendanceDay) -> list[int]:
 
 # --- Payout status ---------------------------------------------------------------------
 
-# PayPeriod.Status → the phone's payout_status, once the day is approved.
-_PAYOUT_BY_PERIOD = {
-    "open": "open",
-    "ready": "open",
-    "paying": "open",
-    "paid": "paid",
-    "locked": "closed",
-}
-
 
 def payout_status(day: AttendanceDay | None) -> str:
-    """``not_open`` until the day is approved and a pay period covers it.
-
-    A simple bridge until payroll (agent D) owns cash sheets: the period's status decides.
-    """
+    """``not_open`` until the day is approved; then the cash sheet's state for that pay day."""
     if day is None or day.pk is None:
         return "not_open"
     if day.status not in (AttendanceDay.Status.APPROVED, AttendanceDay.Status.LOCKED):
         return "not_open"
-    period = (
-        PayPeriod.objects.filter(site_id=day.site_id, start_date__lte=day.date)
-        .filter(end_date__gte=day.date)
-        .order_by("-start_date")
-        .first()
-    )
-    if period is None:
-        return "not_open"
-    return _PAYOUT_BY_PERIOD.get(period.status, "not_open")
+    # Imported here: payroll's services import the attendance modules.
+    from apps.payroll.services import sheet_status
+
+    return sheet_status(day.site, day.date)
 
 
 # --- Sync ------------------------------------------------------------------------------

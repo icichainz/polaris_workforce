@@ -17,7 +17,6 @@ from tests.factories import (
     AttendanceRecordFactory,
     CompanySettingsFactory,
     ForemanFactory,
-    PayPeriodFactory,
     SiteAssignmentFactory,
     SiteFactory,
     SiteManagerFactory,
@@ -508,18 +507,21 @@ def test_reject_needs_a_note(crew):
 # --- payout_status ---------------------------------------------------------------------
 
 
-def test_payout_status_follows_the_pay_period(crew):
+def test_payout_status_follows_the_cash_sheet(crew):
+    from apps.payroll import services as payroll_services
+    from apps.payroll.models import PayPeriod
+
     day = submitted_day(crew)
     assert selectors.payout_status(day) == "not_open"
 
+    # Approving refreshes pay: payroll opens the day's period and the phone sees its sheet.
     services.approve_day(day, crew.manager)
-    assert selectors.payout_status(day) == "not_open"
+    assert PayPeriod.objects.filter(site=crew.site, end_date=day.date).exists()
+    status = selectors.payout_status(day)
+    assert status in ("open", "paid")
+    assert status == payroll_services.sheet_status(crew.site, day.date)
 
-    period = PayPeriodFactory(site=crew.site, start_date=crew.today, end_date=crew.today)
-    assert selectors.payout_status(day) == "open"
-    period.status = "paid"
-    period.save()
-    assert selectors.payout_status(day) == "paid"
-    period.status = "locked"
-    period.save()
-    assert selectors.payout_status(day) == "closed"
+    # Back to submitted (e.g. a foreman's correction): the payout closes again.
+    day.status = AttendanceDay.Status.SUBMITTED
+    day.save(update_fields=["status"])
+    assert selectors.payout_status(day) == "not_open"

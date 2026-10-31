@@ -42,6 +42,7 @@ from apps.accounts.permissions import (
 )
 from apps.api.exceptions import Conflict, Locked
 from apps.attendance.models import AttendanceDay, AttendanceRecord
+from apps.attendance.services import lock_day
 from apps.core.choices import PayType, ProofType
 from apps.core.models import AuditLog, CompanySettings
 from apps.core.settings import resolve_setting
@@ -824,21 +825,8 @@ def _check_lockable(user, period: PayPeriod, reason: str, today) -> list[PayLine
 
 
 def _lock_attendance_day(day: AttendanceDay, user) -> None:
-    """Approved → locked, through the attendance service (agent C) when it is installed."""
-    try:
-        from apps.attendance.services import lock_day
-    except ImportError:  # Before agent C's services are merged: same transition by hand.
-        day.status = AttendanceDay.Status.LOCKED
-        day.save(update_fields=["status", "updated_at"])
-        _audit(
-            user,
-            "attendance.day.lock",
-            day,
-            before={"status": AttendanceDay.Status.APPROVED},
-            after={"status": AttendanceDay.Status.LOCKED},
-        )
-    else:
-        lock_day(day, user)
+    """Approved → locked, through the attendance service."""
+    lock_day(day, user)
 
 
 def _lock_checked(user, period: PayPeriod, unpaid: list[PayLine], reason: str) -> PayPeriod:

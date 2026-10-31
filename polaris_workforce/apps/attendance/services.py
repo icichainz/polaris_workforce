@@ -306,6 +306,7 @@ def approve_day(day: AttendanceDay, user) -> AttendanceDay:
             before={"status": old_status},
             after={"status": day.status},
         )
+    _notify_payroll(day, user)
     return day
 
 
@@ -333,6 +334,7 @@ def reject_day(day: AttendanceDay, user, note: str) -> AttendanceDay:
             after={"status": day.status},
             reason=note,
         )
+    _notify_payroll(day, user)
     return day
 
 
@@ -392,12 +394,23 @@ def correct_record(
     replay; the same ``client_uuid`` for another record or field is a ``Conflict``).
     """
     _check_can_write(user, record.day)
-    return run_once(
+    result = run_once(
         AttendanceCorrection.objects,
         client_uuid,
         create=lambda: _create_correction(record, field, new_value, reason, user, client_uuid),
         matches=lambda c: c.record_id == record.pk and c.field == field,
     )
+    if result.created:
+        _notify_payroll(record.day, user)
+    return result
+
+
+def _notify_payroll(day: AttendanceDay, user) -> None:
+    """Pay is computed from approved attendance: let payroll refresh this day's pay lines."""
+    # Imported here: payroll's services import this module.
+    from apps.payroll.services import on_attendance_changed
+
+    on_attendance_changed(day, actor=user)
 
 
 def _create_correction(record, field, new_value, reason, user, client_uuid):
