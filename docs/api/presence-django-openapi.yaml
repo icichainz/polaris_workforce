@@ -1,0 +1,383 @@
+openapi: 3.1.0
+info:
+  title: Polaris Workforce API — presence additions
+  version: 0.1.0
+  summary: Django endpoints for presence tracking (new `presence` app).
+  description: |
+    The Django side of presence tracking. Design: `docs/presence-tracking.md`. The tracker
+    service's own API is in `docs/api/tracker-openapi.yaml`.
+
+    **Status: contract, not implemented.** Brief P2 builds these in `apps/presence/api/`.
+    The API owner merges this file into `docs/api/openapi.yaml` once F3 has landed; until
+    then it lives here so the Wave 1 contract file is not touched.
+
+    Conventions are those of the foreman API (`/api/v1/`, trailing slashes, error shape
+    `{"code", "message", "details"}`, site scoping on every endpoint).
+
+    **Authentication**
+
+    - `deviceToken`: `Authorization: Device <token>`, the foreman phone's token from
+      `POST /auth/pin` (agent A).
+    - `trackerService`: `Authorization: Bearer <jwt>`, a JWT (HS256) minted by the
+      tracker with the shared secret `TRACKER_SHARED_SECRET`: `kind = "service"`,
+      `sub = "service:tracker"`, `aud = "polaris-django"`, `exp` at most 5 minutes ahead.
+  license:
+    name: Proprietary
+servers:
+  - url: http://127.0.0.1:8000/api/v1
+    description: Local development
+tags:
+  - name: Tracking tokens
+  - name: Presence
+
+paths:
+  /tracking/token/:
+    post:
+      tags: [Tracking tokens]
+      operationId: createTrackingToken
+      summary: Get a tracker token for this foreman's phone
+      description: |
+        Issues a `device` JWT for the tracker: `sub = "foreman:<user id>"`,
+        `sites` = the foreman's assigned sites where `tracking_enabled` resolves to true,
+        `aud = "polaris-tracker"`, lifetime 12 hours. The phone calls this after PIN
+        sign-in and again before `expires_at`.
+
+        Returns `403 tracking_disabled` when tracking is off for this foreman (worker-level
+        setting) or for all of their sites, so the app shows no tracking UI.
+
+        Dashboard tokens (`kind = "dashboard"`, 1 hour) are not issued here: Django renders
+        them into the office page for the signed-in user, with that user's scoped sites
+        (`all_sites` for admins).
+      security:
+        - deviceToken: []
+      responses:
+        "200":
+          description: A token for the tracker.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackingToken"
+              example:
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmb3JlbWFuOjUiLCJraW5kIjoiZGV2aWNlIiwic2l0ZXMiOlszXSwiYWxsX3NpdGVzIjpmYWxzZSwiYXVkIjoicG9sYXJpcy10cmFja2VyIiwiZXhwIjoxNzkzNDQ1MjAwfQ.c2lnbmF0dXJl
+                expires_at: "2026-10-31T19:00:00Z"
+                tracker_url: https://tracker.example.com
+                sites: [3]
+                settings:
+                  gps_interval_seconds: 60
+                  tracking_hours:
+                    start: "06:00"
+                    end: "19:00"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          description: Tracking is off for this foreman or all of their sites.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: tracking_disabled
+                message: Tracking is not enabled for you.
+                details: {}
+
+  /presence/events/:
+    post:
+      tags: [Presence]
+      operationId: ingestPresenceEvents
+      summary: Presence events from the tracker
+      description: |
+        Called by the tracker's outbox, in batches of up to 500, oldest first. Stores each
+        event idempotently by `event_id` (unique constraint) and updates
+        `PresenceSession`s: `entered` opens a session, `moved_zone` adds the zone to it,
+        `left` closes it.
+
+        Events for unknown sites or subjects are stored and counted in `ignored` (they
+        must not block the tracker's queue). Any 2xx tells the tracker the batch is
+        delivered; anything else makes it retry the same batch.
+
+        Presence events are not attendance changes and do not write an `AuditLog` entry
+        each (the audit happens when a suggestion is accepted into the roll call).
+      security:
+        - trackerService: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [events]
+              properties:
+                events:
+                  type: array
+                  maxItems: 500
+                  items:
+                    $ref: "#/components/schemas/PresenceEvent"
+            example:
+              events:
+                - event_id: 1b4e28ba-2fa1-41d2-883f-0016d3cca427
+                  site_id: 3
+                  subject: { kind: worker, id: 12 }
+                  type: entered
+                  at: "2026-10-31T07:02:40Z"
+                  zone_id: A
+                  from_zone_id: null
+                  reason: null
+                - event_id: 6fa459ea-ee8a-4ca4-894e-db77e160355e
+                  site_id: 3
+                  subject: { kind: worker, id: 12 }
+                  type: moved_zone
+                  at: "2026-10-31T07:10:05Z"
+                  zone_id: B
+                  from_zone_id: A
+                  reason: null
+                - event_id: 0b8ae8a3-50d6-4d3c-a3f0-5b0d2b8c6c41
+                  site_id: 3
+                  subject: { kind: worker, id: 12 }
+                  type: left
+                  at: "2026-10-31T16:48:21Z"
+                  zone_id: B
+                  from_zone_id: null
+                  reason: timeout
+      responses:
+        "200":
+          description: Batch stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [stored, duplicates, ignored]
+                properties:
+                  stored:
+                    type: integer
+                  duplicates:
+                    type: integer
+                    description: Already stored earlier (same `event_id`).
+                  ignored:
+                    type: integer
+                    description: Stored but not applied (unknown site or subject).
+              example:
+                stored: 3
+                duplicates: 0
+                ignored: 0
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /sites/{site_id}/presence-sessions/:
+    get:
+      tags: [Presence]
+      operationId: listPresenceSessions
+      summary: Presence sessions for a day (roll-call suggestions)
+      description: |
+        For the roll call and the approvals screen: one row per person seen on the site
+        that day, with first and last sighting and the zones visited. Site-scoped like
+        every endpoint. The phone shows "seen 07:02–16:48, zone B" next to each worker;
+        accepting it writes the attendance record through the normal upsert (with its own
+        `client_uuid` and `AuditLog` entry).
+
+        `open` sessions have no `last_seen_at` yet when the person is still on site.
+      security:
+        - deviceToken: []
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: date
+          in: query
+          required: true
+          description: Local date in the site's time zone.
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Sessions for the day.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [site_id, date, sessions]
+                properties:
+                  site_id:
+                    type: integer
+                  date:
+                    type: string
+                    format: date
+                  sessions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PresenceSession"
+              example:
+                site_id: 3
+                date: "2026-10-31"
+                sessions:
+                  - subject: { kind: worker, id: 12 }
+                    first_seen_at: "2026-10-31T07:02:40Z"
+                    last_seen_at: "2026-10-31T16:48:21Z"
+                    open: false
+                    zones: [A, B]
+                    visits: 1
+                  - subject: { kind: worker, id: 31 }
+                    first_seen_at: "2026-10-31T07:31:10Z"
+                    last_seen_at: null
+                    open: true
+                    zones: [A]
+                    visits: 2
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          description: The site is not assigned to this foreman.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: site_not_allowed
+                message: You are not assigned to this site.
+                details: {}
+
+components:
+  securitySchemes:
+    deviceToken:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "`Device <token>` from `POST /auth/pin`."
+    trackerService:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT (HS256), kind=service, aud=polaris-django
+
+  schemas:
+    TrackingToken:
+      type: object
+      required: [token, expires_at, tracker_url, sites, settings]
+      properties:
+        token:
+          type: string
+          description: JWT (HS256) for the tracker, `kind = "device"`.
+        expires_at:
+          type: string
+          format: date-time
+        tracker_url:
+          type: string
+          format: uri
+          description: Base URL of the tracker service.
+        sites:
+          type: array
+          items:
+            type: integer
+          description: Sites the token covers (same as its `sites` claim).
+        settings:
+          type: object
+          description: Resolved settings the phone needs to collect data.
+          required: [gps_interval_seconds, tracking_hours]
+          properties:
+            gps_interval_seconds:
+              type: integer
+              description: Setting `foreman_gps_interval_seconds`.
+            tracking_hours:
+              type: object
+              required: [start, end]
+              properties:
+                start:
+                  type: string
+                  example: "06:00"
+                end:
+                  type: string
+                  example: "19:00"
+
+    Subject:
+      type: object
+      required: [kind, id]
+      properties:
+        kind:
+          type: string
+          enum: [worker, foreman]
+        id:
+          type: integer
+
+    PresenceEvent:
+      description: Same shape as `PresenceEvent` in `tracker-openapi.yaml`.
+      type: object
+      required: [event_id, site_id, subject, type, at, zone_id, from_zone_id, reason]
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        site_id:
+          type: integer
+        subject:
+          $ref: "#/components/schemas/Subject"
+        type:
+          type: string
+          enum: [entered, moved_zone, left]
+        at:
+          type: string
+          format: date-time
+        zone_id:
+          type: [string, "null"]
+        from_zone_id:
+          type: [string, "null"]
+        reason:
+          type: [string, "null"]
+          enum: [timeout, left_geofence, null]
+
+    PresenceSession:
+      type: object
+      required: [subject, first_seen_at, last_seen_at, open, zones, visits]
+      properties:
+        subject:
+          $ref: "#/components/schemas/Subject"
+        first_seen_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: [string, "null"]
+          format: date-time
+        open:
+          type: boolean
+        zones:
+          type: array
+          items:
+            type: string
+          description: Zones visited, in order of first visit.
+        visits:
+          type: integer
+          description: Separate entered/left visits that day.
+
+    Error:
+      type: object
+      required: [code, message, details]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: The body does not match the schema.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: invalid_body
+            message: The body does not match the schema.
+            details: {}
+    Unauthenticated:
+      description: Missing, invalid or expired credentials.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: unauthenticated
+            message: Authentication credentials were not provided.
+            details: {}

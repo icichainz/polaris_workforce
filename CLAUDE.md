@@ -23,6 +23,14 @@ uv run python manage.py makemigrations --check --dry-run
 uv run python manage.py runserver
 ```
 
+Tracker (run inside `polaris_tracker/`, Gleam 1.12; see its README for the version pins):
+
+```sh
+gleam test
+gleam format --check src test
+TRACKER_DEBUG=1 gleam run
+```
+
 The network here is slow (~15 KB/s). Prefer `uv sync --offline` when the lock file has not
 changed, and run any large download in the background.
 

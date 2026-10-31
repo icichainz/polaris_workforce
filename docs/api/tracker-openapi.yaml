@@ -1,0 +1,907 @@
+openapi: 3.1.0
+info:
+  title: Polaris presence tracker API
+  version: 0.1.0
+  summary: Live presence and movement traces for workers and foremen.
+  description: |
+    The tracker (`polaris_tracker/`, Gleam on the BEAM) receives BLE sightings from fixed
+    gateways and GPS fixes / BLE sightings from foremen's phones, turns them into presence
+    events, streams those to the office dashboard and forwards them to Django.
+
+    Design: `docs/presence-tracking.md`. Django's side of the contract (token issuing,
+    event ingest, sessions) is in `docs/api/presence-django-openapi.yaml`.
+
+    **Authentication.** Every endpoint except `/health` takes a JWT (HS256) issued by
+    Django and signed with the secret shared by Django and the tracker
+    (`TRACKER_SHARED_SECRET`). Required claims: `sub`, `kind`, `aud` (`polaris-tracker`)
+    and `exp` (Unix seconds); optional `sites` (site ids) and `all_sites` (admins).
+    The `kind` decides which endpoints a token may call:
+
+    | kind | sub | endpoints |
+    | --- | --- | --- |
+    | `device` | `foreman:<user id>` | `POST /v1/observations`, `GET /v1/sites/{id}/presence` |
+    | `gateway` | `gateway:<gateway id>`, exactly one site in `sites` | `POST /v1/gateways/sightings` |
+    | `dashboard` | `user:<user id>` | presence, live stream, tracks |
+    | `service` | `service:django` | `PUT /internal/sites/{id}/config` |
+
+    **Site scoping.** A token only reaches the sites in its `sites` claim, unless
+    `all_sites` is true. Off-site GPS points (travel between sites) are returned only to
+    `all_sites` tokens.
+
+    **Idempotency.** Every phone observation carries a `client_uuid` and every gateway
+    batch a `batch_id`. Repeating one is acknowledged as a duplicate and changes nothing.
+    Keys are remembered for at least 48 hours.
+
+    **Time.** All timestamps are RFC 3339. The tracker answers in UTC (`Z`).
+
+    **Errors** use the same shape as the Django API: `{"code", "message", "details"}`.
+  license:
+    name: Proprietary
+servers:
+  - url: http://127.0.0.1:4100
+    description: Local development (`TRACKER_DEBUG=1 gleam run`)
+tags:
+  - name: Ingest
+    description: Observations from phones and gateways.
+  - name: Presence
+    description: Who is on site now, live updates and movement traces.
+  - name: Internal
+    description: Called by Django only.
+  - name: Health
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      operationId: health
+      summary: Liveness and number of configured sites
+      description: |
+        No authentication. Django's resync job uses `sites` to notice a tracker restart
+        (it drops to 0) and pushes every site config again.
+      security: []
+      responses:
+        "200":
+          description: The tracker is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, sites]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+                  sites:
+                    type: integer
+                    minimum: 0
+                    description: Number of sites with a pushed config.
+              example:
+                status: ok
+                sites: 4
+
+  /v1/observations:
+    post:
+      tags: [Ingest]
+      operationId: postObservations
+      summary: Batch of GPS fixes and BLE sightings from a foreman's phone
+      description: |
+        Token kind: `device`. GPS fixes belong to the foreman named in the token; BLE
+        sightings belong to the worker whose badge was seen.
+
+        For each **GPS fix**, the tracker checks the geofence of every site in the token
+        where tracking is on: inside the radius (and `accuracy_m` ≤ 100) counts as being on
+        that site; farther than `radius + accuracy_m` counts as outside and closes an open
+        visit early; anything in between is stored in the track only.
+
+        **BLE sightings** must name a site in the token's `sites`, and a badge assigned on
+        that site.
+
+        Observations older than the site's `absence_to_leave_seconds` are accepted but only
+        stored in the track (`late` in the response); they cannot reopen visits that have
+        already closed. A nightly reconciliation corrects sessions from the track.
+
+        Problems with single items do not fail the batch: they are listed in `rejected`
+        and the phone should not resend them. A malformed body fails the whole batch
+        with `400`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [observations]
+              properties:
+                observations:
+                  type: array
+                  maxItems: 500
+                  items:
+                    $ref: "#/components/schemas/Observation"
+            example:
+              observations:
+                - client_uuid: 6c1d2a9e-1f0b-4f6e-9a51-0c7d5b8e2f10
+                  type: gps
+                  at: "2026-10-31T07:12:03Z"
+                  lat: 6.1320
+                  lng: 1.2228
+                  accuracy_m: 12
+                - client_uuid: 0f6b3c2e-8a1d-4b57-a0e4-6f9d2c1b7a33
+                  type: ble
+                  at: "2026-10-31T07:12:05Z"
+                  site_id: 3
+                  badge_id: BDG-00F1
+                  rssi: -71
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          $ref: "#/components/responses/TooLarge"
+
+  /v1/gateways/sightings:
+    post:
+      tags: [Ingest]
+      operationId: postGatewaySightings
+      summary: Batch of BLE sightings from a fixed gateway
+      description: |
+        Token kind: `gateway`, with `sub` = `gateway:<gateway id>` and exactly one site in
+        `sites`. The gateway must be listed in that site's config; removing it from the
+        config revokes it. Site and zone come from the config, not from the payload.
+
+        The whole batch is idempotent on `batch_id`: a repeated batch returns
+        `accepted: 0` and every sighting counted in `duplicates`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [batch_id, sightings]
+              properties:
+                batch_id:
+                  type: string
+                  minLength: 1
+                  description: Unique per gateway, for example a UUID or a counter.
+                sightings:
+                  type: array
+                  maxItems: 1000
+                  items:
+                    $ref: "#/components/schemas/GatewaySighting"
+            example:
+              batch_id: GW-12-000184
+              sightings:
+                - badge_id: BDG-00F1
+                  at: "2026-10-31T07:12:03Z"
+                  rssi: -64
+                - badge_id: BDG-0A22
+                  at: "2026-10-31T07:12:04Z"
+                  rssi: -77
+      responses:
+        "200":
+          $ref: "#/components/responses/IngestResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          description: |
+            Not a gateway token for exactly one site (`forbidden`), or the gateway is not
+            registered on the site (`unknown_gateway`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: unknown_gateway
+                message: The gateway is not registered on the site.
+                details: {}
+        "404":
+          $ref: "#/components/responses/SiteNotConfigured"
+        "413":
+          $ref: "#/components/responses/TooLarge"
+
+  /v1/sites/{site_id}/presence:
+    get:
+      tags: [Presence]
+      operationId: getSitePresence
+      summary: Who is on site now
+      description: |
+        Token kind: `device` or `dashboard`, with the site in scope. Lists people who are
+        `on_site` and people who are `arriving` (seen, not yet confirmed). People who have
+        left are not listed.
+      parameters:
+        - $ref: "#/components/parameters/SiteId"
+      responses:
+        "200":
+          description: Current presence on the site.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresenceSnapshot"
+              example:
+                site_id: 3
+                generated_at: "2026-10-31T09:30:00Z"
+                people:
+                  - subject: { kind: foreman, id: 5 }
+                    state: on_site
+                    zone_id: null
+                    since: "2026-10-31T06:58:12Z"
+                    last_seen: "2026-10-31T09:29:41Z"
+                  - subject: { kind: worker, id: 12 }
+                    state: on_site
+                    zone_id: B
+                    since: "2026-10-31T07:02:40Z"
+                    last_seen: "2026-10-31T09:29:55Z"
+                  - subject: { kind: worker, id: 31 }
+                    state: arriving
+                    zone_id: A
+                    since: "2026-10-31T09:29:50Z"
+                    last_seen: "2026-10-31T09:29:50Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/SiteNotAllowed"
+        "404":
+          $ref: "#/components/responses/SiteNotConfigured"
+
+  /v1/sites/{site_id}/live:
+    get:
+      tags: [Presence]
+      operationId: streamSitePresence
+      summary: Live presence updates (server-sent events)
+      description: |
+        Token kind: `dashboard`. Because a browser `EventSource` cannot set headers, the
+        token may be passed as the `access_token` query parameter instead of the
+        `Authorization` header. Use short-lived tokens; the page gets a fresh one from
+        Django and reconnects before expiry.
+
+        The stream sends:
+
+        - `snapshot` once, first: a `PresenceSnapshot` (same as `GET …/presence`). It also
+          sets `retry: 3000`.
+        - `presence` for each change, with `id` = `event_id`: a `PresenceEvent`.
+        - `ping` every 25 s with data `{}`, so proxies keep the connection open and the
+          tracker notices clients that went away.
+
+        The client subscribes before the snapshot is taken, so an event may also be
+        reflected in the snapshot; apply events idempotently by `event_id`.
+      parameters:
+        - $ref: "#/components/parameters/SiteId"
+        - name: access_token
+          in: query
+          required: false
+          description: The dashboard token, when the `Authorization` header cannot be set.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: An open `text/event-stream`.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              example: |
+                retry: 3000
+                event: snapshot
+                data: {"site_id":3,"generated_at":"2026-10-31T09:30:00Z","people":[]}
+
+                id: 1b4e28ba-2fa1-41d2-883f-0016d3cca427
+                event: presence
+                data: {"event_id":"1b4e28ba-2fa1-41d2-883f-0016d3cca427","site_id":3,"subject":{"kind":"worker","id":12},"type":"entered","at":"2026-10-31T07:02:40Z","zone_id":"B","from_zone_id":null,"reason":null}
+
+                event: ping
+                data: {}
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/SiteNotAllowed"
+        "404":
+          $ref: "#/components/responses/SiteNotConfigured"
+
+  /v1/people/{kind}/{id}/track:
+    get:
+      tags: [Presence]
+      operationId: getTrack
+      summary: Raw track points for one person
+      description: |
+        Token kind: `dashboard`. Returns the points with `from <= at < to`, oldest first,
+        filtered by the token's sites: BLE points and on-site GPS points of the token's
+        sites, plus off-site GPS points (travel) only for `all_sites` tokens. Points are
+        kept for `TRACK_RETENTION_DAYS` (30 by default).
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/PersonKind"
+        - name: id
+          in: path
+          required: true
+          description: Django `Worker` id for workers, Django `User` id for foremen.
+          schema:
+            type: integer
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          description: After `from`, at most 7 days later.
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: The person's track in the range.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Track"
+              example:
+                subject: { kind: foreman, id: 5 }
+                from: "2026-10-31T00:00:00Z"
+                to: "2026-11-01T00:00:00Z"
+                points:
+                  - type: gps
+                    at: "2026-10-31T06:41:10Z"
+                    lat: 6.1402
+                    lng: 1.2311
+                    accuracy_m: 14.0
+                    site_id: null
+                  - type: gps
+                    at: "2026-10-31T06:58:12Z"
+                    lat: 6.1320
+                    lng: 1.2228
+                    accuracy_m: 9.0
+                    site_id: 3
+                  - type: ble
+                    at: "2026-10-31T07:03:00Z"
+                    site_id: 3
+                    zone_id: B
+                    rssi: -64
+                    source: gateway
+        "400":
+          description: "`from`/`to` missing, not RFC 3339, reversed, or more than 7 days apart."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: invalid_range
+                message: "`to` must be after `from`, at most 7 days later."
+                details: {}
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /internal/sites/{site_id}/config:
+    put:
+      tags: [Internal]
+      operationId: putSiteConfig
+      summary: Replace a site's tracking config
+      description: |
+        Token kind: `service` (Django). Django calls this when a site, zone, gateway, badge
+        or tracking setting changes, and periodically for every site (resync after a
+        tracker restart). The body replaces the previous config. Thresholds come from
+        `resolve_setting` (company → site).
+
+        Only badges of workers with `tracking_enabled` are included, so sightings of other
+        workers are rejected as `unknown_badge` and never stored. Setting
+        `tracking_enabled: false` stops all ingest for the site.
+      parameters:
+        - $ref: "#/components/parameters/SiteId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteConfig"
+            example:
+              tracking_enabled: true
+              geofence:
+                lat: 6.1319
+                lng: 1.2228
+                radius_m: 150
+              zones:
+                - id: A
+                  name: Gate
+                - id: B
+                  name: Block B
+              gateways:
+                - id: GW-12
+                  zone_id: A
+                - id: GW-13
+                  zone_id: B
+              badges:
+                - badge_id: BDG-00F1
+                  worker_id: 12
+                - badge_id: BDG-0A22
+                  worker_id: 31
+              rules:
+                sightings_to_enter: 2
+                arrival_window_seconds: 300
+                absence_to_leave_seconds: 900
+      responses:
+        "204":
+          description: Stored. Running site actors use the new config immediately.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    bearerJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT (HS256)
+
+  parameters:
+    SiteId:
+      name: site_id
+      in: path
+      required: true
+      description: Django `Site` id.
+      schema:
+        type: integer
+
+  schemas:
+    Observation:
+      oneOf:
+        - $ref: "#/components/schemas/GpsObservation"
+        - $ref: "#/components/schemas/BleObservation"
+      discriminator:
+        propertyName: type
+        mapping:
+          gps: "#/components/schemas/GpsObservation"
+          ble: "#/components/schemas/BleObservation"
+
+    GpsObservation:
+      type: object
+      required: [client_uuid, type, at, lat, lng, accuracy_m]
+      properties:
+        client_uuid:
+          type: string
+          minLength: 1
+          description: Generated on the phone when the fix is taken; never reused.
+        type:
+          type: string
+          const: gps
+        at:
+          type: string
+          format: date-time
+          description: Device time of the fix. At most 5 minutes in the future.
+        lat:
+          type: number
+          minimum: -90
+          maximum: 90
+        lng:
+          type: number
+          minimum: -180
+          maximum: 180
+        accuracy_m:
+          type: number
+          minimum: 0
+          description: Horizontal accuracy reported by the OS, in metres.
+
+    BleObservation:
+      type: object
+      required: [client_uuid, type, at, site_id, badge_id, rssi]
+      properties:
+        client_uuid:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          const: ble
+        at:
+          type: string
+          format: date-time
+        site_id:
+          type: integer
+          description: The site the foreman is working on; must be in the token.
+        badge_id:
+          type: string
+          minLength: 1
+        rssi:
+          type: integer
+          description: Signal strength in dBm.
+
+    GatewaySighting:
+      type: object
+      required: [badge_id, at, rssi]
+      properties:
+        badge_id:
+          type: string
+          minLength: 1
+        at:
+          type: string
+          format: date-time
+          description: Gateway time of the sighting. Gateways must keep their clock in sync (NTP).
+        rssi:
+          type: integer
+
+    IngestResult:
+      type: object
+      required: [accepted, duplicates, late, rejected]
+      properties:
+        accepted:
+          type: integer
+          description: Stored (and, unless late, applied to live presence).
+        duplicates:
+          type: integer
+          description: Already received earlier; ignored.
+        late:
+          type: integer
+          description: Part of `accepted`; too old to change live presence, stored in the track only.
+        rejected:
+          type: array
+          items:
+            $ref: "#/components/schemas/Rejection"
+
+    Rejection:
+      type: object
+      required: [ref, code, message]
+      properties:
+        ref:
+          type: string
+          description: The `client_uuid` (phones) or `badge_id` (gateways) of the item.
+        code:
+          type: string
+          enum:
+            - future_timestamp
+            - site_not_allowed
+            - site_not_configured
+            - tracking_disabled
+            - unknown_badge
+        message:
+          type: string
+
+    PersonKind:
+      type: string
+      enum: [worker, foreman]
+
+    Subject:
+      type: object
+      required: [kind, id]
+      properties:
+        kind:
+          $ref: "#/components/schemas/PersonKind"
+        id:
+          type: integer
+          description: Django `Worker` id for workers, Django `User` id for foremen.
+
+    PresenceSnapshot:
+      type: object
+      required: [site_id, generated_at, people]
+      properties:
+        site_id:
+          type: integer
+        generated_at:
+          type: string
+          format: date-time
+        people:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonPresence"
+
+    PersonPresence:
+      type: object
+      required: [subject, state, zone_id, since, last_seen]
+      properties:
+        subject:
+          $ref: "#/components/schemas/Subject"
+        state:
+          type: string
+          enum: [arriving, on_site]
+        zone_id:
+          type: [string, "null"]
+          description: Last known zone; null for GPS and phone-BLE presence.
+        since:
+          type: string
+          format: date-time
+          description: First sighting of this visit.
+        last_seen:
+          type: string
+          format: date-time
+
+    PresenceEvent:
+      type: object
+      required: [event_id, site_id, subject, type, at, zone_id, from_zone_id, reason]
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          description: Unique; Django stores events idempotently by this id.
+        site_id:
+          type: integer
+        subject:
+          $ref: "#/components/schemas/Subject"
+        type:
+          type: string
+          enum: [entered, moved_zone, left]
+        at:
+          type: string
+          format: date-time
+          description: |
+            `entered`: the first sighting of the visit. `moved_zone`: the first sighting in
+            the new zone. `left`: the last sighting on site (not the moment the timeout was
+            noticed).
+        zone_id:
+          type: [string, "null"]
+          description: The zone entered or left; the new zone for `moved_zone`.
+        from_zone_id:
+          type: [string, "null"]
+          description: Only for `moved_zone`.
+        reason:
+          type: [string, "null"]
+          enum: [timeout, left_geofence, null]
+          description: Only for `left`.
+
+    Track:
+      type: object
+      required: [subject, from, to, points]
+      properties:
+        subject:
+          $ref: "#/components/schemas/Subject"
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrackPoint"
+
+    TrackPoint:
+      oneOf:
+        - $ref: "#/components/schemas/GpsTrackPoint"
+        - $ref: "#/components/schemas/BleTrackPoint"
+      discriminator:
+        propertyName: type
+        mapping:
+          gps: "#/components/schemas/GpsTrackPoint"
+          ble: "#/components/schemas/BleTrackPoint"
+
+    GpsTrackPoint:
+      type: object
+      required: [type, at, lat, lng, accuracy_m, site_id]
+      properties:
+        type:
+          type: string
+          const: gps
+        at:
+          type: string
+          format: date-time
+        lat:
+          type: number
+        lng:
+          type: number
+        accuracy_m:
+          type: number
+        site_id:
+          type: [integer, "null"]
+          description: The site whose geofence contains the fix; null when off site.
+
+    BleTrackPoint:
+      type: object
+      required: [type, at, site_id, zone_id, rssi, source]
+      properties:
+        type:
+          type: string
+          const: ble
+        at:
+          type: string
+          format: date-time
+        site_id:
+          type: integer
+        zone_id:
+          type: [string, "null"]
+          description: The gateway's zone; null when seen by a phone.
+        rssi:
+          type: integer
+        source:
+          type: string
+          enum: [gateway, phone]
+
+    SiteConfig:
+      type: object
+      required: [tracking_enabled, rules]
+      properties:
+        tracking_enabled:
+          type: boolean
+        geofence:
+          description: Omit or null for sites tracked by gateways only.
+          oneOf:
+            - $ref: "#/components/schemas/Geofence"
+            - type: "null"
+        zones:
+          type: array
+          default: []
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id:
+                type: string
+                minLength: 1
+              name:
+                type: string
+        gateways:
+          type: array
+          default: []
+          items:
+            type: object
+            required: [id]
+            properties:
+              id:
+                type: string
+                minLength: 1
+              zone_id:
+                type: [string, "null"]
+        badges:
+          type: array
+          default: []
+          description: Only workers with tracking enabled.
+          items:
+            type: object
+            required: [badge_id, worker_id]
+            properties:
+              badge_id:
+                type: string
+                minLength: 1
+              worker_id:
+                type: integer
+        rules:
+          type: object
+          required: [sightings_to_enter, arrival_window_seconds, absence_to_leave_seconds]
+          properties:
+            sightings_to_enter:
+              type: integer
+              minimum: 1
+              description: Setting `presence_sightings_to_enter`.
+            arrival_window_seconds:
+              type: integer
+              minimum: 1
+              description: Setting `presence_arrival_window_seconds`.
+            absence_to_leave_seconds:
+              type: integer
+              minimum: 1
+              description: Setting `presence_absence_to_leave_seconds`. Also the age after which observations count as late.
+
+    Geofence:
+      type: object
+      required: [lat, lng, radius_m]
+      properties:
+        lat:
+          type: number
+          minimum: -90
+          maximum: 90
+        lng:
+          type: number
+          minimum: -180
+          maximum: 180
+        radius_m:
+          type: number
+          exclusiveMinimum: 0
+
+    Error:
+      type: object
+      required: [code, message, details]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          description: For `invalid_body`, `errors` lists each problem with `path`, `expected` and `found`.
+
+  responses:
+    IngestResult:
+      description: The batch was processed; see `rejected` for items that were not.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/IngestResult"
+          example:
+            accepted: 2
+            duplicates: 0
+            late: 0
+            rejected:
+              - ref: BDG-0A22
+                code: unknown_badge
+                message: The badge is not assigned on this site.
+    BadRequest:
+      description: The body is not JSON (`invalid_json`) or does not match the schema (`invalid_body`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: invalid_body
+            message: The body does not match the schema.
+            details:
+              errors:
+                - path: $.observations.0.lat
+                  expected: Field
+                  found: Nothing
+    Unauthenticated:
+      description: No bearer token (`unauthenticated`), or an invalid, expired or foreign token (`invalid_token`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: invalid_token
+            message: The token has expired.
+            details: {}
+    Forbidden:
+      description: The token's kind cannot use this endpoint.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: forbidden
+            message: This token cannot use this endpoint.
+            details: {}
+    SiteNotAllowed:
+      description: The site is not in the token's scope.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: site_not_allowed
+            message: This token cannot see the site.
+            details: {}
+    SiteNotConfigured:
+      description: Django has not pushed a config for the site.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: site_not_configured
+            message: The site has no tracking config.
+            details: {}
+    NotFound:
+      description: Unknown path, or a non-numeric id.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: not_found
+            message: No such site.
+            details: {}
+    TooLarge:
+      description: More items than allowed (`batch_too_large`) or a body over 1 MB (`body_too_large`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: batch_too_large
+            message: At most 500 items per request.
+            details: {}
+
+security:
+  - bearerJwt: []

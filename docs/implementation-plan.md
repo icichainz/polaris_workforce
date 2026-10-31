@@ -403,3 +403,14 @@ pay period and payslip all agree.
   `tests/factories.py` for test data.
 - **Network:** ~14 KB/s and connections sometimes reset. Run anything that downloads in
   the background, and keep each command short (long blocking commands stall agents).
+
+---
+
+## 10. After Wave 3 — presence tracking (separate track)
+
+Real-time presence of workers (BLE badges) and foremen (phone GPS), with movement traces.
+Design and briefs P1–P7: `docs/presence-tracking.md`. Contracts:
+`docs/api/tracker-openapi.yaml` (the Gleam tracker service in `polaris_tracker/`, already
+prototyped) and `docs/api/presence-django-openapi.yaml` (the new Django `presence` app;
+merged into `docs/api/openapi.yaml` by the API owner when P2 starts). Nothing in Waves 1–3
+depends on it.
