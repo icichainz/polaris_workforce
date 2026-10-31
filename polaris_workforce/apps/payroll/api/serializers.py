@@ -11,6 +11,8 @@ from apps.api.fields import MoneyField
 from apps.api.idempotency import client_uuid_field
 from apps.api.serializers import CurrencySerializer, PersonRefSerializer
 
+from .. import labels
+
 
 class PayoutWorkerSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -96,3 +98,95 @@ class PaymentSerializer(serializers.Serializer):
     proof_url = serializers.URLField(allow_null=True)
     paid_at = serializers.DateTimeField()
     paid_by = PersonRefSerializer()
+
+
+# --- response data (plain dicts, so the serializers above stay the contract) -------------
+
+
+def _url(request, file_field):
+    if not file_field:
+        return None
+    return request.build_absolute_uri(file_field.url)
+
+
+def _person(user):
+    if user is None:
+        return None
+    return {"id": user.pk, "name": user.get_full_name() or user.get_username()}
+
+
+def _currency(code, decimals):
+    return {"code": code, "decimals": decimals}
+
+
+def _units(line):
+    """Days for daily-rate lines, hours when every day is paid by the hour."""
+    days = line.days or []
+    if days and line.hours is not None and all(d.get("pay_type") == "hourly" for d in days):
+        return line.hours
+    return line.units
+
+
+def payout_data(sheet, request) -> dict:
+    """``PayoutSerializer`` data from a ``services.CashSheet``."""
+    rec = sheet.reconciliation
+    lines = []
+    for sheet_line in sheet.lines:
+        line, worker, payment = sheet_line.line, sheet_line.worker, sheet_line.payment
+        lines.append(
+            {
+                "pay_line_id": line.pk,
+                "worker": {
+                    "id": worker.pk,
+                    "name": worker.full_name,
+                    "trade": worker.trade.name if worker.trade else None,
+                    "photo_url": _url(request, worker.photo),
+                },
+                "worked": labels.worked_label(line, sheet.currency_decimals),
+                "units": _units(line),
+                "gross": line.gross,
+                "advance_deduction": line.advance_deduction,
+                "net": line.net,
+                "payment": None
+                if payment is None
+                else {
+                    "id": payment.pk,
+                    "client_uuid": payment.client_uuid,
+                    "amount": payment.amount,
+                    "proof_type": payment.proof_type,
+                    "paid_at": payment.paid_at,
+                },
+            }
+        )
+    return {
+        "site_id": sheet.site.pk,
+        "date": sheet.date,
+        "status": sheet.status,
+        "day_status": sheet.day_status,
+        "approved_at": sheet.day.approved_at if sheet.day else None,
+        "currency": _currency(sheet.currency, sheet.currency_decimals),
+        "cash_issued": rec.cash_issued,
+        "total_to_pay": rec.total_to_pay,
+        "paid_total": rec.paid_total,
+        "left_to_pay": rec.left_to_pay,
+        "cash_in_hand": rec.cash_in_hand,
+        "line_count": rec.line_count,
+        "paid_count": rec.paid_count,
+        "lines": lines,
+    }
+
+
+def payment_data(payment, request) -> dict:
+    """``PaymentSerializer`` data from a ``Payment``."""
+    period = payment.pay_line.period
+    return {
+        "id": payment.pk,
+        "client_uuid": payment.client_uuid,
+        "pay_line_id": payment.pay_line_id,
+        "amount": payment.amount,
+        "currency": _currency(period.currency, period.currency_decimals),
+        "proof_type": payment.proof_type,
+        "proof_url": _url(request, payment.proof_file),
+        "paid_at": payment.paid_at,
+        "paid_by": _person(payment.paid_by),
+    }

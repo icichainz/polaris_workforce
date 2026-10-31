@@ -1,0 +1,79 @@
+{% extends "layouts/app.html" %}
+{% load i18n payroll_tags %}
+
+{% block title %}{% translate "Cash sheet" %} · {{ sheet.site.name }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'payroll:cash_sheets' %}">{% translate "Cash sheets" %}</a> / {{ sheet.site.name }} · {{ sheet.date|date:"D j M" }}</nav>{% endblock %}
+{% block page_title %}{% translate "Cash sheet" %}{% endblock %}
+{% block page_status %}<span id="sheet-status">{% include "payroll/_sheet_status.html" with sheet=sheet size="lg" only %}</span>{% endblock %}
+{% block page_meta %}{{ sheet.site.name }} · {{ sheet.date|date:"l j F Y" }}{% if sheet.day.approved_at %} · {% blocktranslate with name=sheet.day.approved_by.get_full_name|default:sheet.day.approved_by time=sheet.day.approved_at|time:"H:i" %}Day approved by {{ name }} {{ time }}{% endblocktranslate %}{% endif %}{% for period in sheet.periods %}{% if period.start_date != period.end_date %} · {{ period.get_frequency_display }} {{ period|period_label }}{% endif %}{% endfor %}{% endblock %}
+{% block page_actions %}
+  {% if can_lock %}{% translate "Close & lock sheet" as label %}{% include "components/button.html" with label=label href="#close" variant="dark" only %}{% endif %}
+{% endblock %}
+
+{% block content %}
+  {% if sheet.status == "not_open" and sheet.lines %}
+    {% translate "Preview." as title %}{% translate "The roll call is not approved yet: these figures may change, and payments open once every day of the period is approved." as message %}
+    {% include "components/alert.html" with variant="info" title=title message=message only %}
+  {% endif %}
+
+  {% include "payroll/_reconciliation.html" %}
+
+  {% if can_manage and not sheet.is_closed %}
+  <section aria-labelledby="cash-issue-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4">
+    <h2 id="cash-issue-title" class="font-display text-lg font-bold">{% translate "Cash handed over" %}</h2>
+    {% if sheet.cash_issues %}
+    <ul class="flex flex-col gap-1 text-sm">
+      {% for issue in sheet.cash_issues %}<li class="tabular-nums"><strong>{{ issue.amount|money:sheet }}</strong> · {{ issue.created_at|time:"H:i" }}{% if issue.received_by %} · {% blocktranslate with name=issue.received_by.get_full_name|default:issue.received_by %}to {{ name }}{% endblocktranslate %}{% endif %}{% if issue.note %} · {{ issue.note }}{% endif %}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    <form method="post" action="{% url 'payroll:cash_issue' sheet.site.pk sheet.date|date:'Y-m-d' %}" class="flex flex-wrap items-end gap-3">
+      {% csrf_token %}
+      <div class="w-48">{% include "components/money_field.html" with field=issue_form.amount currency=sheet.currency only %}</div>
+      <div class="w-64">{% include "components/field.html" with field=issue_form.note only %}</div>
+      {% translate "Add cash issue" as label %}{% include "components/button.html" with label=label type="submit" icon="plus" only %}
+    </form>
+  </section>
+  {% endif %}
+
+  <section aria-labelledby="workers-title" class="rounded-card border border-line bg-white">
+    <div class="flex flex-wrap items-center justify-between gap-2.5 border-b border-line px-5 py-3.5">
+      <h2 id="workers-title" class="font-display text-lg font-bold">{% translate "Workers" %}</h2>
+    </div>
+    {% if rows %}
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[980px] border-collapse text-sm">
+        <thead>
+          <tr class="bg-subtle text-left">
+            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worked" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Gross" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Advance" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Net to pay" %}</th>
+            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Payment & proof" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}{% include "payroll/_cash_sheet_row.html" %}{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <p class="px-5 py-6 text-sm text-ink-700">{% translate "Nobody to pay on this sheet yet: it fills in from the roll call." %}</p>
+    {% endif %}
+    <p class="border-t border-line-soft px-5 py-3 text-[13px] text-ink-700">
+      {% if sheet.absent %}{% blocktranslate with names=sheet.absent|join:", " count n=sheet.absent|length %}{{ names }} (absent) is not on this sheet.{% plural %}{{ names }} (absent) are not on this sheet.{% endblocktranslate %} {% endif %}{% translate "Every payment records who paid, when, and the receipt proof." %}
+    </p>
+  </section>
+
+  {% if can_lock %}
+  <section id="close" aria-labelledby="close-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4">
+    <h2 id="close-title" class="font-display text-lg font-bold">{% translate "Close & lock sheet" %}</h2>
+    <p class="text-sm text-ink-700">{% translate "Locking makes this pay and its attendance read-only. Count the cash returned first. Workers left unpaid need a reason; their advance deductions are given back." %}</p>
+    <form method="post" action="{% url 'payroll:cash_sheet_lock' sheet.site.pk sheet.date|date:'Y-m-d' %}" class="flex flex-col gap-3 sm:max-w-xl">
+      {% csrf_token %}
+      {% include "components/field.html" with field=lock_form.reason only %}
+      <div>{% translate "Close & lock sheet" as label %}{% include "components/button.html" with label=label type="submit" variant="dark" only %}</div>
+    </form>
+  </section>
+  {% endif %}
+{% endblock %}

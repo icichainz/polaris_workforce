@@ -1,12 +1,77 @@
 {% extends "layouts/app.html" %}
-{% load i18n %}
+{% load i18n payroll_tags %}
 
 {% block title %}{% translate "Salary advances" %} · Polaris Workforce{% endblock %}
-{% block page_subtitle %}{% translate "What workers owe and how it is repaid" %}{% endblock %}
+{% block page_subtitle %}{% blocktranslate with total=owed_total|money:company count n=owed_workers %}{{ n }} worker owes {{ total }} in total{% plural %}{{ n }} workers owe {{ total }} in total{% endblocktranslate %}{% endblock %}
 {% block page_title %}{% translate "Salary advances" %}{% endblock %}
 
 {% block content %}
-  {% translate "This screen is built in Wave 2" as empty_title %}
-  {% translate "Advances given, repayments per pay and the balance each worker owes." as empty_message %}
-  {% include "components/empty_state.html" with icon="advances" title=empty_title message=empty_message only %}
+  <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <section aria-labelledby="advances-title" class="flex min-w-0 flex-col gap-3">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="advances-title" class="sr-only">{% translate "Advances" %}</h2>
+        <div role="tablist" aria-label="{% translate 'Advances shown' %}" class="flex gap-1 rounded-card bg-segment p-1">
+          <a role="tab" href="?show=open" aria-selected="{% if show != 'all' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show != 'all' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Still owed" %}</a>
+          <a role="tab" href="?show=all" aria-selected="{% if show == 'all' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show == 'all' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "All" %}</a>
+        </div>
+      </div>
+      {% if page.object_list %}
+      <div class="overflow-x-auto rounded-control border border-line bg-white">
+        <table class="w-full min-w-[720px] border-collapse text-sm">
+          <thead>
+            <tr class="bg-subtle text-left">
+              <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+              <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Given" %}</th>
+              <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Amount" %}</th>
+              <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Repaid" %}</th>
+              <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Owed" %}</th>
+              <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Per pay" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for advance in page %}
+            <tr class="border-t border-line-soft">
+              <td class="px-4 py-3"><span class="font-semibold">{{ advance.worker.full_name }}</span><br><span class="text-xs text-steel">{{ advance.worker.number }}{% if advance.site_name %} · {{ advance.site_name }}{% endif %}</span></td>
+              <td class="px-4 py-3">{{ advance.given_on|date:"j M" }}{% if advance.reason %}<br><span class="text-xs text-steel">“{{ advance.reason }}”</span>{% endif %}</td>
+              <td class="px-4 py-3 text-right tabular-nums">{{ advance.amount|amount:company }}</td>
+              <td class="px-4 py-3">
+                <span class="flex items-center gap-2"><span class="block h-1.5 w-20 overflow-hidden rounded-full bg-line-soft" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ advance.repaid_percent }}" aria-label="{% translate 'Repaid' %}"><span class="block h-1.5 bg-present-fg" style="width: {{ advance.repaid_percent }}%"></span></span><span class="text-xs tabular-nums text-ink-700">{{ advance.repaid_percent }}%</span></span>
+              </td>
+              <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ advance.balance|amount:company }}</td>
+              <td class="px-4 py-3 text-right tabular-nums">{{ advance.deduction_per_pay|amount:company }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% include "payroll/_pagination.html" %}
+      {% else %}
+        {% translate "No advances owed" as empty_title %}
+        {% translate "Advances given to workers and their repayments show here." as empty_message %}
+        {% include "components/empty_state.html" with icon="advances" title=empty_title message=empty_message only %}
+      {% endif %}
+    </section>
+
+    <aside aria-labelledby="give-title" class="flex flex-col gap-4 rounded-card border border-line bg-white p-5">
+      <h2 id="give-title" class="font-display text-lg font-bold">{% translate "Give an advance" %}</h2>
+      <form method="post" enctype="multipart/form-data" class="flex flex-col gap-4"
+        hx-get="{% url 'payroll:advance_preview' %}" hx-trigger="change, keyup delay:400ms from:input" hx-target="#advance-preview" hx-swap="innerHTML">
+        {% csrf_token %}
+        {% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}
+        {% include "components/field.html" with field=form.worker only %}
+        {% include "components/money_field.html" with field=form.amount currency=company.currency only %}
+        {% include "components/money_field.html" with field=form.deduction_per_pay currency=company.currency only %}
+        {% include "components/field.html" with field=form.reason only %}
+        {% include "components/field.html" with field=form.proof_type only %}
+        <div class="flex flex-col gap-1.5">
+          <label for="{{ form.proof_file.auto_id }}" class="text-[13px] font-semibold text-ink">{{ form.proof_file.label }}</label>
+          <input type="file" name="{{ form.proof_file.html_name }}" id="{{ form.proof_file.auto_id }}" accept="image/jpeg,image/png,image/webp,application/pdf" class="text-sm text-ink-700 file:mr-2 file:h-9 file:rounded-control file:border file:border-line-strong file:bg-white file:px-3 file:text-[13px] file:font-semibold">
+          {% if form.proof_file.errors %}<p class="text-[13px] font-medium text-absent-fg">{{ form.proof_file.errors|join:" " }}</p>{% else %}<p class="text-xs text-steel">{{ form.proof_file.help_text }}</p>{% endif %}
+        </div>
+        <div id="advance-preview" aria-live="polite">{% include "payroll/_advance_preview.html" %}</div>
+        {% translate "Record advance · paid in cash" as label %}{% include "components/button.html" with label=label type="submit" variant="primary" full=True only %}
+        <span class="text-xs text-steel">{% translate "Needs the worker’s receipt proof, like a pay-out." %}</span>
+      </form>
+    </aside>
+  </div>
 {% endblock %}

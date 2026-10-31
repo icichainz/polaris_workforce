@@ -13,15 +13,8 @@ UUID = "6f1c2b9e-1d1a-4c55-9a52-3f0e8a9d7b10"
 PROTECTED = [
     ("post", "api:accounts:auth-logout", {}, None),
     ("get", "api:accounts:me", {}, None),
-    # Crew and attendance endpoints are implemented: see tests/test_sites_crew_api.py
-    # and tests/test_attendance_api.py.
-    ("get", "api:payroll:payout", {"site_id": 3, "date": DAY}, None),
-    (
-        "post",
-        "api:payroll:payments",
-        {},
-        {"client_uuid": UUID, "pay_line_id": 801, "amount": 4000, "proof_type": "none"},
-    ),
+    # Crew, attendance and payroll endpoints are implemented: see tests/test_sites_crew_api.py,
+    # tests/test_attendance_api.py and tests/test_payroll_api.py.
 ]
 
 # Endpoints built in Wave 2 leave the 501 checks; they keep the 401 checks.
