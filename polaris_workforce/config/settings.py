@@ -162,3 +162,65 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", "0"))
+
+
+# Django REST Framework — the foreman phone API (see docs/api/README.md)
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.api.authentication.DeviceTokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+        *(["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG else []),
+    ],
+    "DEFAULT_PARSER_CLASSES": [
+        "rest_framework.parsers.JSONParser",
+        "rest_framework.parsers.FormParser",
+        "rest_framework.parsers.MultiPartParser",
+    ],
+    "EXCEPTION_HANDLER": "apps.api.exceptions.handler",
+    "DEFAULT_PAGINATION_CLASS": "apps.api.pagination.StandardPagination",
+    "DEFAULT_THROTTLE_RATES": {"pin": "10/minute"},
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "TIME_FORMAT": "%H:%M",
+    "TIME_INPUT_FORMATS": ["%H:%M"],
+    "COERCE_DECIMAL_TO_STRING": True,
+    "TEST_REQUEST_DEFAULT_FORMAT": "json",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Polaris Workforce API",
+    "VERSION": "1.0.0",
+    "DESCRIPTION": (
+        "Foreman phone API: PIN sign-in, crew lists, roll call, corrections, sync and "
+        "cash payouts. Authenticate with `Authorization: Device <token>` from "
+        "`POST /api/v1/auth/pin/`. Errors are `{code, message, details}`. Every phone "
+        "write carries a `client_uuid` and is idempotent. Money is an integer in the "
+        "currency's smallest unit, next to a `currency {code, decimals}` object. Dates "
+        "are ISO 8601, times `HH:MM`. Conventions: docs/api/README.md."
+    ),
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE": False,
+    "ENUM_NAME_OVERRIDES": {
+        "ErrorCodeEnum": "apps.api.enums.ERROR_CODES",
+        "UserRoleEnum": "apps.api.enums.USER_ROLES",
+        "LanguageEnum": "apps.api.enums.LANGUAGES",
+        "PayTypeEnum": "apps.api.enums.PAY_TYPES",
+        "AttendanceStatusEnum": "apps.api.enums.ATTENDANCE_STATUSES",
+        "DayStatusEnum": "apps.api.enums.DAY_STATUSES",
+        "CorrectableFieldEnum": "apps.api.enums.CORRECTABLE_FIELDS",
+        "PayoutStatusEnum": "apps.api.enums.PAYOUT_STATUSES",
+        "ProofTypeEnum": "apps.api.enums.PROOF_TYPES",
+    },
+    "TAGS": [
+        {"name": "system", "description": "Reachability."},
+        {"name": "accounts", "description": "PIN sign-in, sign-out, profile (Wave 2: A)."},
+        {"name": "worksites", "description": "Crew lists (Wave 2: B)."},
+        {"name": "attendance", "description": "Roll call, corrections, sync (Wave 2: C)."},
+        {"name": "payroll", "description": "Cash payout and payments (Wave 2: D)."},
+    ],
+}

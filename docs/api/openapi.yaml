@@ -1,0 +1,2704 @@
+openapi: 3.0.3
+info:
+  title: Polaris Workforce API
+  version: 1.0.0
+  description: 'Foreman phone API: PIN sign-in, crew lists, roll call, corrections,
+    sync and cash payouts. Authenticate with `Authorization: Device <token>` from
+    `POST /api/v1/auth/pin/`. Errors are `{code, message, details}`. Every phone write
+    carries a `client_uuid` and is idempotent. Money is an integer in the currency''s
+    smallest unit, next to a `currency {code, decimals}` object. Dates are ISO 8601,
+    times `HH:MM`. Conventions: docs/api/README.md.'
+paths:
+  /api/v1/auth/logout/:
+    post:
+      operationId: auth_logout
+      description: 'Revokes the device token used for this call (sets `revoked_at`).
+        Later calls with it get `401`. The phone should first drain its outbox: unsent
+        writes cannot be sent after logout.'
+      summary: Sign out this device
+      tags:
+      - accounts
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: Signed out.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+  /api/v1/auth/pin/:
+    post:
+      operationId: auth_pin
+      description: |-
+        Exchanges phone + 4-digit PIN for a **device token**. No authentication; throttled per IP (`pin` scope, 10/minute).
+
+        Signing in again from the same `device_id` revokes that device's previous token. After repeated wrong PINs the device is locked: `423 locked` with `details.locked_until`. A wrong PIN is `401 not_authenticated` with `details.attempts_left`.
+
+        Keep the token in secure storage; it is shown only once.
+      summary: Sign in with phone number and PIN
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinLoginRequest'
+            examples:
+              SignIn:
+                value:
+                  phone: '+22890112233'
+                  pin: '4821'
+                  device_id: 0b6f4c4e-61a2-4d5b-9a50-8f3c0f5d2a11
+                  device_name: Tecno Spark 10
+                summary: Sign in
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PinLoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PinLoginRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PinLoginResponse'
+              examples:
+                SignedIn:
+                  value:
+                    token: q9V3rM2xQk7f0bU8p1sZcW4yL6tN5hJaDgE_oRiK-Yw
+                    device:
+                      id: 12
+                      device_id: 0b6f4c4e-61a2-4d5b-9a50-8f3c0f5d2a11
+                      name: Tecno Spark 10
+                    user:
+                      id: 7
+                      name: Kossi Amegah
+                      role: foreman
+                      phone: '+22890112233'
+                      language: fr
+                    sites:
+                    - id: 3
+                      name: Riverside Apartments
+                      address: Boulevard du Mono, Lomé
+                      manager:
+                        id: 4
+                        name: Edem Kpodar
+                      work_start: 07:00
+                      roll_call_due: 08:00
+                  summary: Signed in
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ValidationError:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      field_name:
+                      - This field is required.
+                  summary: validation_error
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '423':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Locked:
+                  value:
+                    code: locked
+                    message: This resource is locked and cannot be changed.
+                    details:
+                      status: locked
+                  summary: locked
+          description: 'Locked: the day or pay period is locked, or the device is
+            locked after failed PINs.'
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Throttled:
+                  value:
+                    code: throttled
+                    message: Request was throttled. Expected available in 42 seconds.
+                    details:
+                      retry_after: 42
+                  summary: throttled
+          description: Too many requests. Wait `details.retry_after` seconds (also
+            in `Retry-After`).
+  /api/v1/health/:
+    get:
+      operationId: health
+      description: 'Lets the phone check that the server is reachable before syncing.
+        No authentication. Cheap: call it before draining the outbox.'
+      summary: Server reachable
+      tags:
+      - system
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              examples:
+                Ok:
+                  value:
+                    status: ok
+                  summary: ok
+          description: ''
+  /api/v1/me/:
+    get:
+      operationId: me
+      description: Profile, company basics (time zone, currency) and the sites this
+        user is assigned to. Call after sign-in and on every app start when online.
+      summary: Signed-in foreman and assigned sites
+      tags:
+      - accounts
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+              examples:
+                Foreman:
+                  value:
+                    id: 7
+                    name: Kossi Amegah
+                    role: foreman
+                    phone: '+22890112233'
+                    language: fr
+                    company:
+                      country: TG
+                      time_zone: Africa/Lome
+                      currency:
+                        code: XOF
+                        decimals: 0
+                    sites:
+                    - id: 3
+                      name: Riverside Apartments
+                      address: Boulevard du Mono, Lomé
+                      manager:
+                        id: 4
+                        name: Edem Kpodar
+                      work_start: 07:00
+                      roll_call_due: 08:00
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+  /api/v1/payments/:
+    post:
+      operationId: payment_create
+      description: |-
+        Records that a worker received their pay. Send `multipart/form-data` when there is a proof file, JSON otherwise.
+
+        201 when created; repeating the same `client_uuid` returns the original payment with 200 and `Idempotent-Replayed: true` (send the file again on a retry; it is ignored on a replay). The line already paid under another `client_uuid`, or the sheet `not_open`: `409 conflict`. Sheet closed or period locked: `423 locked`.
+      summary: Record a payment with proof
+      tags:
+      - payroll
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PaymentCreateRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentCreateRequest'
+            examples:
+              PayWithPhotoProof:
+                value:
+                  client_uuid: e4b1c9d2-6a3f-4d8e-b7c0-1a2b3c4d5e61
+                  pay_line_id: 801
+                  amount: 4000
+                  proof_type: photo
+                  paid_at: '2026-10-31T16:31:00Z'
+                summary: Pay with photo proof
+        required: true
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+              examples:
+                Paid:
+                  value:
+                    id: 3301
+                    client_uuid: e4b1c9d2-6a3f-4d8e-b7c0-1a2b3c4d5e61
+                    amount: 4000
+                    proof_type: photo
+                    paid_at: '2026-10-31T16:31:00Z'
+                    pay_line_id: 801
+                    currency:
+                      code: XOF
+                      decimals: 0
+                    proof_url: https://polaris.example.com/media/proofs/3301.jpg
+                    paid_by:
+                      id: 7
+                      name: Kossi Amegah
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+              examples:
+                Paid:
+                  value:
+                    id: 3301
+                    client_uuid: e4b1c9d2-6a3f-4d8e-b7c0-1a2b3c4d5e61
+                    amount: 4000
+                    proof_type: photo
+                    paid_at: '2026-10-31T16:31:00Z'
+                    pay_line_id: 801
+                    currency:
+                      code: XOF
+                      decimals: 0
+                    proof_url: https://polaris.example.com/media/proofs/3301.jpg
+                    paid_by:
+                      id: 7
+                      name: Kossi Amegah
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ValidationError:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      field_name:
+                      - This field is required.
+                  summary: validation_error
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotFound:
+                  value:
+                    code: not_found
+                    message: Not found.
+                    details: {}
+                  summary: not_found
+          description: The resource does not exist.
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Conflict:
+                  value:
+                    code: conflict
+                    message: This client_uuid was already used for a different request.
+                    details:
+                      client_uuid: 6f1c2b9e-1d1a-4c55-9a52-3f0e8a9d7b10
+                  summary: conflict
+          description: The request conflicts with the current state.
+        '423':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Locked:
+                  value:
+                    code: locked
+                    message: This resource is locked and cannot be changed.
+                    details:
+                      status: locked
+                  summary: locked
+          description: 'Locked: the day or pay period is locked, or the device is
+            locked after failed PINs.'
+  /api/v1/records/{record_id}/corrections/:
+    post:
+      operationId: record_correction
+      description: |-
+        For days that are `submitted` or `approved`. `reason` is required. Writes an AttendanceCorrection and an AuditLog entry; an approved day goes back to the site manager for review.
+
+        201 when created; repeating the same `client_uuid` returns the original correction with 200 and `Idempotent-Replayed: true`. `client_uuid` reused for another record: `409 conflict`. Day still `draft`/`rejected` (use the batch PUT): `409 conflict`. Locked day: `423 locked`.
+
+        The record id comes from a records/day response; an offline phone sends its corrections only after the outbox has stored the record ids.
+      summary: Correct a record after submission
+      parameters:
+      - in: path
+        name: record_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - attendance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorrectionCreateRequest'
+            examples:
+              CorrectArrival:
+                value:
+                  client_uuid: 5e9d0c4b-3a2f-4e1d-9b8c-7a6f5e4d3c21
+                  field: arrival
+                  new_value: 07:20
+                  reason: Signed in at the gate at 07:20; marked late by mistake.
+                summary: Correct arrival
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CorrectionCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CorrectionCreateRequest'
+        required: true
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Correction'
+              examples:
+                Created:
+                  value:
+                    id: 77
+                    client_uuid: 5e9d0c4b-3a2f-4e1d-9b8c-7a6f5e4d3c21
+                    record_id: 9003
+                    field: arrival
+                    old_value: 07:35
+                    new_value: 07:20
+                    reason: Signed in at the gate at 07:20; marked late by mistake.
+                    created_by:
+                      id: 7
+                      name: Kossi Amegah
+                    created_at: '2026-10-31T09:15:00Z'
+                    record:
+                      id: 9003
+                      client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
+                      day_id: 210
+                      worker_id: 63
+                      status: late
+                      arrival: 07:20
+                      departure: null
+                      note: ''
+                      corrected: true
+                      updated_at: '2026-10-31T07:41:12Z'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Correction'
+              examples:
+                Created:
+                  value:
+                    id: 77
+                    client_uuid: 5e9d0c4b-3a2f-4e1d-9b8c-7a6f5e4d3c21
+                    record_id: 9003
+                    field: arrival
+                    old_value: 07:35
+                    new_value: 07:20
+                    reason: Signed in at the gate at 07:20; marked late by mistake.
+                    created_by:
+                      id: 7
+                      name: Kossi Amegah
+                    created_at: '2026-10-31T09:15:00Z'
+                    record:
+                      id: 9003
+                      client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
+                      day_id: 210
+                      worker_id: 63
+                      status: late
+                      arrival: 07:20
+                      departure: null
+                      note: ''
+                      corrected: true
+                      updated_at: '2026-10-31T07:41:12Z'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ValidationError:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      field_name:
+                      - This field is required.
+                  summary: validation_error
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotFound:
+                  value:
+                    code: not_found
+                    message: Not found.
+                    details: {}
+                  summary: not_found
+          description: The resource does not exist.
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Conflict:
+                  value:
+                    code: conflict
+                    message: This client_uuid was already used for a different request.
+                    details:
+                      client_uuid: 6f1c2b9e-1d1a-4c55-9a52-3f0e8a9d7b10
+                  summary: conflict
+          description: The request conflicts with the current state.
+        '423':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Locked:
+                  value:
+                    code: locked
+                    message: This resource is locked and cannot be changed.
+                    details:
+                      status: locked
+                  summary: locked
+          description: 'Locked: the day or pay period is locked, or the device is
+            locked after failed PINs.'
+  /api/v1/sites/{site_id}/crew/:
+    get:
+      operationId: site_crew
+      description: |-
+        Every active worker assigned to the site on `date` (assignment start ≤ date ≤ end), sorted by last name, with the pay type in effect that day. The whole crew in one response (not paginated): the phone caches it, with the photos, for offline roll calls.
+
+        `403 permission_denied` if the foreman is not assigned to the site.
+      summary: Workers expected on a site that day
+      parameters:
+      - in: query
+        name: date
+        schema:
+          type: string
+          format: date
+        description: 'Work day (YYYY-MM-DD). Default: today in the company time zone.'
+      - in: path
+        name: site_id
+        schema:
+          type: integer
+        description: A site the signed-in foreman is assigned to (from `GET /me/`).
+        required: true
+      tags:
+      - worksites
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Crew'
+              examples:
+                Crew:
+                  value:
+                    site_id: 3
+                    date: '2026-10-31'
+                    count: 3
+                    workers:
+                    - id: 51
+                      number: W-0142
+                      first_name: Komlan
+                      last_name: Agbeko
+                      trade: Carpenter
+                      photo_url: https://polaris.example.com/media/workers/W-0142.jpg
+                      pay_type: daily
+                      absent_streak: 0
+                    - id: 58
+                      number: W-0157
+                      first_name: Kodjo
+                      last_name: Atsu
+                      trade: Labourer
+                      photo_url: https://polaris.example.com/media/workers/W-0157.jpg
+                      pay_type: daily
+                      absent_streak: 2
+                    - id: 44
+                      number: W-0118
+                      first_name: Yao
+                      last_name: Mensah
+                      trade: Mason
+                      photo_url: https://polaris.example.com/media/workers/W-0118.jpg
+                      pay_type: hourly
+                      absent_streak: 0
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ValidationError:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      field_name:
+                      - This field is required.
+                  summary: validation_error
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotFound:
+                  value:
+                    code: not_found
+                    message: Not found.
+                    details: {}
+                  summary: not_found
+          description: The resource does not exist.
+  /api/v1/sites/{site_id}/days/:
+    get:
+      operationId: site_days
+      description: 'One summary per date in `from`…`to` (inclusive, at most 31 days),
+        newest first, including `not_started` days. Feeds the ''This week'' strip
+        on the home screen. Default: the 7 days ending today.'
+      summary: Day summaries for a date range
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+      - in: path
+        name: site_id
+        schema:
+          type: integer
+        description: A site the signed-in foreman is assigned to (from `GET /me/`).
+        required: true
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+      tags:
+      - attendance
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceDayList'
+              examples:
+                ThisWeek:
+                  value:
+                    site_id: 3
+                    days:
+                    - id: 209
+                      site_id: 3
+                      date: '2026-10-30'
+                      status: approved
+                      foreman_note: Concrete delivery late, crew B started 07:30.
+                      submitted_at: '2026-10-31T07:42:05Z'
+                      submitted_by:
+                        id: 7
+                        name: Kossi Amegah
+                      approved_at: '2026-10-30T16:10:00Z'
+                      approved_by:
+                        id: 4
+                        name: Edem Kpodar
+                      rejection_note: ''
+                      counts:
+                        expected: 42
+                        present: 40
+                        absent: 2
+                        half_day: 0
+                        late: 0
+                        unmarked: 0
+                      payout_status: paid
+                      updated_at: '2026-10-31T07:42:05Z'
+                  summary: This week
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ValidationError:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      field_name:
+                      - This field is required.
+                  summary: validation_error
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotFound:
+                  value:
+                    code: not_found
+                    message: Not found.
+                    details: {}
+                  summary: not_found
+          description: The resource does not exist.
+  /api/v1/sites/{site_id}/days/{date}/:
+    get:
+      operationId: site_day
+      description: 'Always 200 for a valid site and date: a day with no row on the
+        server comes back with `id: null`, `status: not_started` and no records.'
+      summary: The attendance day and its records
+      parameters:
+      - in: path
+        name: date
+        schema:
+          type: string
+          format: date
+        description: Work day, ISO 8601 `YYYY-MM-DD`, in the company time zone.
+        required: true
+      - in: path
+        name: site_id
+        schema:
+          type: integer
+        description: A site the signed-in foreman is assigned to (from `GET /me/`).
+        required: true
+      tags:
+      - attendance
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceDay'
+              examples:
+                Draft:
+                  value:
+                    id: 210
+                    site_id: 3
+                    date: '2026-10-31'
+                    status: draft
+                    foreman_note: ''
+                    submitted_at: null
+                    submitted_by: null
+                    approved_at: null
+                    approved_by: null
+                    rejection_note: ''
+                    counts:
+                      expected: 42
+                      present: 35
+                      absent: 4
+                      half_day: 2
+                      late: 1
+                      unmarked: 0
+                    payout_status: not_open
+                    updated_at: '2026-10-31T07:41:12Z'
+                    records:
+                    - id: 9001
+                      client_uuid: 3f2a7c1e-5b8d-4e0a-9c61-0d4b8e2f7a10
+                      day_id: 210
+                      worker_id: 44
+                      status: present
+                      arrival: 07:00
+                      departure: null
+                      note: ''
+                      corrected: false
+                      updated_at: '2026-10-31T07:41:12Z'
+                    - id: 9002
+                      client_uuid: 8c4d1b2e-7f3a-4a9b-b2c5-6e1f0a3d9b21
+                      day_id: 210
+                      worker_id: 51
+                      status: half_day
+                      arrival: 07:00
+                      departure: '12:00'
+                      note: ''
+                      corrected: false
+                      updated_at: '2026-10-31T07:41:12Z'
+                    - id: 9003
+                      client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
+                      day_id: 210
+                      worker_id: 63
+                      status: late
+                      arrival: 07:35
+                      departure: null
+                      note: ''
+                      corrected: false
+                      updated_at: '2026-10-31T07:41:12Z'
+                    - id: 9004
+                      client_uuid: d7b3e2a1-9c8f-4b5d-a6e0-1f2c3b4a5d43
+                      day_id: 210
+                      worker_id: 58
+                      status: absent
+                      arrival: null
+                      departure: null
+                      note: ''
+                      corrected: false
+                      updated_at: '2026-10-31T07:41:12Z'
+                NotStarted:
+                  value:
+                    id: null
+                    site_id: 3
+                    date: '2026-10-31'
+                    status: not_started
+                    foreman_note: ''
+                    submitted_at: null
+                    submitted_by: null
+                    approved_at: null
+                    approved_by: null
+                    rejection_note: ''
+                    counts:
+                      expected: 42
+                      present: 0
+                      absent: 0
+                      half_day: 0
+                      late: 0
+                      unmarked: 42
+                    payout_status: not_open
+                    updated_at: null
+                    records: []
+                  summary: Not started
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotFound:
+                  value:
+                    code: not_found
+                    message: Not found.
+                    details: {}
+                  summary: not_found
+          description: The resource does not exist.
+  /api/v1/sites/{site_id}/days/{date}/records/:
+    put:
+      operationId: site_day_records
+      description: |-
+        Creates the day (status `draft`) if needed and upserts every record in the batch (at most 200). Records not in the batch are left alone.
+
+        **Idempotent per record.** The server finds each record by `client_uuid`, then by `worker_id` (one record per worker per day), and writes only fields that changed; replaying a batch changes nothing. The response carries the server's `client_uuid` per worker: adopt it.
+
+        Allowed while the day is `not_started`, `draft` or `rejected` (a rejected day goes back to `draft`). Once `submitted`, `approved` or `locked`: `423 locked` — use corrections. A worker not on the crew that day: `400 validation_error`.
+      summary: Save roll-call marks (batch upsert)
+      parameters:
+      - in: path
+        name: date
+        schema:
+          type: string
+          format: date
+        description: Work day, ISO 8601 `YYYY-MM-DD`, in the company time zone.
+        required: true
+      - in: path
+        name: site_id
+        schema:
+          type: integer
+        description: A site the signed-in foreman is assigned to (from `GET /me/`).
+        required: true
+      tags:
+      - attendance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordBatchRequest'
+            examples:
+              Marks:
+                value:
+                  records:
+                  - client_uuid: 3f2a7c1e-5b8d-4e0a-9c61-0d4b8e2f7a10
+                    worker_id: 44
+                    status: present
+                    arrival: 07:00
+                    departure: null
+                    note: ''
+                  - client_uuid: 8c4d1b2e-7f3a-4a9b-b2c5-6e1f0a3d9b21
+                    worker_id: 51
+                    status: half_day
+                    arrival: 07:00
+                    departure: '12:00'
+                    note: ''
+                  - client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
+                    worker_id: 63
+                    status: late
+                    arrival: 07:35
+                    departure: null
+                    note: ''
+                  - client_uuid: d7b3e2a1-9c8f-4b5d-a6e0-1f2c3b4a5d43
+                    worker_id: 58
+                    status: absent
+                    arrival: null
+                    departure: null
+                    note: ''
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecordBatchRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecordBatchRequest'
+        required: true
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceDay'
+              examples:
+                Saved:
+                  value:
+                    id: 210
+                    site_id: 3
+                    date: '2026-10-31'
+                    status: draft
+                    foreman_note: ''
+                    submitted_at: null
+                    submitted_by: null
+                    approved_at: null
+                    approved_by: null
+                    rejection_note: ''
+                    counts:
+                      expected: 42
+                      present: 35
+                      absent: 4
+                      half_day: 2
+                      late: 1
+                      unmarked: 0
+                    payout_status: not_open
+                    updated_at: '2026-10-31T07:41:12Z'
+                    records:
+                    - id: 9001
+                      client_uuid: 3f2a7c1e-5b8d-4e0a-9c61-0d4b8e2f7a10
+                      day_id: 210
+                      worker_id: 44
+                      status: present
+                      arrival: 07:00
+                      departure: null
+                      note: ''
+                      corrected: false
+                      updated_at: '2026-10-31T07:41:12Z'
+                    - id: 9002
+                      client_uuid: 8c4d1b2e-7f3a-4a9b-b2c5-6e1f0a3d9b21
+                      day_id: 210
+                      worker_id: 51
+                      status: half_day
+                      arrival: 07:00
+                      departure: '12:00'
+                      note: ''
+                      corrected: false
+                      updated_at: '2026-10-31T07:41:12Z'
+                    - id: 9003
+                      client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
+                      day_id: 210
+                      worker_id: 63
+                      status: late
+                      arrival: 07:35
+                      departure: null
+                      note: ''
+                      corrected: false
+                      updated_at: '2026-10-31T07:41:12Z'
+                    - id: 9004
+                      client_uuid: d7b3e2a1-9c8f-4b5d-a6e0-1f2c3b4a5d43
+                      day_id: 210
+                      worker_id: 58
+                      status: absent
+                      arrival: null
+                      departure: null
+                      note: ''
+                      corrected: false
+                      updated_at: '2026-10-31T07:41:12Z'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ValidationError:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      field_name:
+                      - This field is required.
+                  summary: validation_error
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotFound:
+                  value:
+                    code: not_found
+                    message: Not found.
+                    details: {}
+                  summary: not_found
+          description: The resource does not exist.
+        '423':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Locked:
+                  value:
+                    code: locked
+                    message: This resource is locked and cannot be changed.
+                    details:
+                      status: locked
+                  summary: locked
+          description: 'Locked: the day or pay period is locked, or the device is
+            locked after failed PINs.'
+  /api/v1/sites/{site_id}/days/{date}/submit/:
+    post:
+      operationId: site_day_submit
+      description: |-
+        Moves the day from `draft` to `submitted` and notifies the site manager. After this, changes need a correction with a reason.
+
+        Idempotent: repeating it with the same `client_uuid` returns the day (200). Every crew member must be marked: otherwise `409 conflict` with `details.unmarked_worker_ids`. Already submitted with another `client_uuid`, or approved: `409 conflict`. Locked: `423 locked`.
+      summary: Submit the roll call
+      parameters:
+      - in: path
+        name: date
+        schema:
+          type: string
+          format: date
+        description: Work day, ISO 8601 `YYYY-MM-DD`, in the company time zone.
+        required: true
+      - in: path
+        name: site_id
+        schema:
+          type: integer
+        description: A site the signed-in foreman is assigned to (from `GET /me/`).
+        required: true
+      tags:
+      - attendance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitDayRequest'
+            examples:
+              Submit:
+                value:
+                  client_uuid: c0a8012e-4b7d-4f3e-9a1b-2d3c4e5f6a71
+                  foreman_note: Concrete delivery late, crew B started 07:30.
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubmitDayRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubmitDayRequest'
+        required: true
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceDay'
+              examples:
+                Submitted:
+                  value:
+                    id: 210
+                    site_id: 3
+                    date: '2026-10-31'
+                    status: submitted
+                    foreman_note: Concrete delivery late, crew B started 07:30.
+                    submitted_at: '2026-10-31T07:42:05Z'
+                    submitted_by:
+                      id: 7
+                      name: Kossi Amegah
+                    approved_at: null
+                    approved_by: null
+                    rejection_note: ''
+                    counts:
+                      expected: 42
+                      present: 35
+                      absent: 4
+                      half_day: 2
+                      late: 1
+                      unmarked: 0
+                    payout_status: not_open
+                    updated_at: '2026-10-31T07:42:05Z'
+                    records:
+                    - id: 9001
+                      client_uuid: 3f2a7c1e-5b8d-4e0a-9c61-0d4b8e2f7a10
+                      day_id: 210
+                      worker_id: 44
+                      status: present
+                      arrival: 07:00
+                      departure: null
+                      note: ''
+                      corrected: false
+                      updated_at: '2026-10-31T07:41:12Z'
+                    - id: 9002
+                      client_uuid: 8c4d1b2e-7f3a-4a9b-b2c5-6e1f0a3d9b21
+                      day_id: 210
+                      worker_id: 51
+                      status: half_day
+                      arrival: 07:00
+                      departure: '12:00'
+                      note: ''
+                      corrected: false
+                      updated_at: '2026-10-31T07:41:12Z'
+                    - id: 9003
+                      client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
+                      day_id: 210
+                      worker_id: 63
+                      status: late
+                      arrival: 07:35
+                      departure: null
+                      note: ''
+                      corrected: false
+                      updated_at: '2026-10-31T07:41:12Z'
+                    - id: 9004
+                      client_uuid: d7b3e2a1-9c8f-4b5d-a6e0-1f2c3b4a5d43
+                      day_id: 210
+                      worker_id: 58
+                      status: absent
+                      arrival: null
+                      departure: null
+                      note: ''
+                      corrected: false
+                      updated_at: '2026-10-31T07:41:12Z'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ValidationError:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      field_name:
+                      - This field is required.
+                  summary: validation_error
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotFound:
+                  value:
+                    code: not_found
+                    message: Not found.
+                    details: {}
+                  summary: not_found
+          description: The resource does not exist.
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Conflict:
+                  value:
+                    code: conflict
+                    message: This client_uuid was already used for a different request.
+                    details:
+                      client_uuid: 6f1c2b9e-1d1a-4c55-9a52-3f0e8a9d7b10
+                  summary: conflict
+          description: The request conflicts with the current state.
+        '423':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Locked:
+                  value:
+                    code: locked
+                    message: This resource is locked and cannot be changed.
+                    details:
+                      status: locked
+                  summary: locked
+          description: 'Locked: the day or pay period is locked, or the device is
+            locked after failed PINs.'
+  /api/v1/sites/{site_id}/payouts/{date}/:
+    get:
+      operationId: site_payout
+      description: |-
+        Who to pay and how much, with the cash reconciliation. Before the roll call is approved `status` is `not_open` and the figures are a preview ('Preview tonight's payout'). Every money value is an integer in the smallest unit of `currency`.
+
+        Invariants: `total_to_pay = Σ net`, `left_to_pay = total_to_pay − paid_total`, `cash_in_hand = cash_issued − paid_total`.
+      summary: Cash sheet for the day
+      parameters:
+      - in: path
+        name: date
+        schema:
+          type: string
+          format: date
+        description: Work day, ISO 8601 `YYYY-MM-DD`, in the company time zone.
+        required: true
+      - in: path
+        name: site_id
+        schema:
+          type: integer
+        description: A site the signed-in foreman is assigned to (from `GET /me/`).
+        required: true
+      tags:
+      - payroll
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payout'
+              examples:
+                OpenSheet:
+                  value:
+                    site_id: 3
+                    date: '2026-10-31'
+                    status: open
+                    day_status: approved
+                    approved_at: '2026-10-31T16:10:00Z'
+                    currency:
+                      code: XOF
+                      decimals: 0
+                    cash_issued: 20000
+                    total_to_pay: 13250
+                    paid_total: 4000
+                    left_to_pay: 9250
+                    cash_in_hand: 16000
+                    line_count: 3
+                    paid_count: 1
+                    lines:
+                    - pay_line_id: 801
+                      worker:
+                        id: 44
+                        name: Yao Mensah
+                        trade: Mason
+                        photo_url: https://polaris.example.com/media/workers/44.jpg
+                      worked: 1 day
+                      units: '1.00'
+                      gross: 6000
+                      advance_deduction: 2000
+                      net: 4000
+                      payment:
+                        id: 3301
+                        client_uuid: e4b1c9d2-6a3f-4d8e-b7c0-1a2b3c4d5e61
+                        amount: 4000
+                        proof_type: photo
+                        paid_at: '2026-10-31T16:31:00Z'
+                    - pay_line_id: 802
+                      worker:
+                        id: 51
+                        name: Afi Dosseh
+                        trade: Labourer
+                        photo_url: https://polaris.example.com/media/workers/51.jpg
+                      worked: ½ day
+                      units: '0.50'
+                      gross: 1750
+                      advance_deduction: 0
+                      net: 1750
+                      payment: null
+                    - pay_line_id: 803
+                      worker:
+                        id: 63
+                        name: Delali Agbo
+                        trade: Painter
+                        photo_url: https://polaris.example.com/media/workers/63.jpg
+                      worked: 1 day · late
+                      units: '1.00'
+                      gross: 7500
+                      advance_deduction: 0
+                      net: 7500
+                      payment: null
+                  summary: Open sheet
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotFound:
+                  value:
+                    code: not_found
+                    message: Not found.
+                    details: {}
+                  summary: not_found
+          description: The resource does not exist.
+  /api/v1/sync/:
+    get:
+      operationId: sync
+      description: |-
+        Days (statuses, approvals, rejections, payout status), records and corrections changed after `since`, for every site the user is assigned to. Without `since` (first sync): the last 14 days.
+
+        Store `server_time` and send it as `since` next time. **The server wins**: apply every item as an upsert by id; a record corrected in the office replaces the phone's copy (keep unsent outbox writes and resend them; they get `423`/`409` if no longer allowed, which the app shows to the foreman).
+      summary: Changes since the last sync
+      parameters:
+      - in: query
+        name: since
+        schema:
+          type: string
+          format: date-time
+        description: '`server_time` of the previous sync (ISO 8601 with offset).'
+      tags:
+      - attendance
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sync'
+              examples:
+                Changes:
+                  value:
+                    server_time: '2026-10-31T16:12:30Z'
+                    since: '2026-10-31T07:45:00Z'
+                    days:
+                    - id: 210
+                      site_id: 3
+                      date: '2026-10-31'
+                      status: approved
+                      foreman_note: Concrete delivery late, crew B started 07:30.
+                      submitted_at: '2026-10-31T07:42:05Z'
+                      submitted_by:
+                        id: 7
+                        name: Kossi Amegah
+                      approved_at: '2026-10-31T16:10:00Z'
+                      approved_by:
+                        id: 4
+                        name: Edem Kpodar
+                      rejection_note: ''
+                      counts:
+                        expected: 42
+                        present: 35
+                        absent: 4
+                        half_day: 2
+                        late: 1
+                        unmarked: 0
+                      payout_status: open
+                      updated_at: '2026-10-31T16:10:00Z'
+                    records:
+                    - id: 9003
+                      client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
+                      day_id: 210
+                      worker_id: 63
+                      status: late
+                      arrival: 07:20
+                      departure: null
+                      note: ''
+                      corrected: true
+                      updated_at: '2026-10-31T07:41:12Z'
+                    corrections:
+                    - id: 77
+                      client_uuid: 5e9d0c4b-3a2f-4e1d-9b8c-7a6f5e4d3c21
+                      record_id: 9003
+                      field: arrival
+                      old_value: 07:35
+                      new_value: 07:20
+                      reason: Signed in at the gate at 07:20; marked late by mistake.
+                      created_by:
+                        id: 7
+                        name: Kossi Amegah
+                      created_at: '2026-10-31T09:15:00Z'
+                      record:
+                        id: 9003
+                        client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
+                        day_id: 210
+                        worker_id: 63
+                        status: late
+                        arrival: 07:20
+                        departure: null
+                        note: ''
+                        corrected: true
+                        updated_at: '2026-10-31T07:41:12Z'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ValidationError:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      field_name:
+                      - This field is required.
+                  summary: validation_error
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+components:
+  schemas:
+    AssignedSite:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        address:
+          type: string
+        manager:
+          allOf:
+          - $ref: '#/components/schemas/PersonRef'
+          nullable: true
+          description: Site manager who approves the roll call.
+        work_start:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: 07:00
+          description: 'Usual start of the work day: default arrival time.'
+          nullable: true
+        roll_call_due:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: 07:00
+          description: Time by which the morning roll call should be submitted.
+          nullable: true
+      required:
+      - address
+      - id
+      - manager
+      - name
+      - roll_call_due
+      - work_start
+    AttendanceDay:
+      type: object
+      properties:
+        id:
+          type: integer
+          nullable: true
+          description: Null while the day is `not_started` (no row on the server).
+        site_id:
+          type: integer
+        date:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/DayStatusEnum'
+        foreman_note:
+          type: string
+        submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+        submitted_by:
+          allOf:
+          - $ref: '#/components/schemas/PersonRef'
+          nullable: true
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+        approved_by:
+          allOf:
+          - $ref: '#/components/schemas/PersonRef'
+          nullable: true
+        rejection_note:
+          type: string
+          description: Why the site manager sent the day back (status rejected).
+        counts:
+          $ref: '#/components/schemas/DayCounts'
+        payout_status:
+          allOf:
+          - $ref: '#/components/schemas/PayoutStatusEnum'
+          description: |-
+            State of the day's cash payout.
+
+            * `not_open` - Not open (waiting for approval)
+            * `open` - Open
+            * `paid` - Everyone paid
+            * `closed` - Closed by the office
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceRecord'
+      required:
+      - approved_at
+      - approved_by
+      - counts
+      - date
+      - foreman_note
+      - id
+      - payout_status
+      - records
+      - rejection_note
+      - site_id
+      - status
+      - submitted_at
+      - submitted_by
+      - updated_at
+    AttendanceDayList:
+      type: object
+      properties:
+        site_id:
+          type: integer
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceDaySummary'
+      required:
+      - days
+      - site_id
+    AttendanceDaySummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          nullable: true
+          description: Null while the day is `not_started` (no row on the server).
+        site_id:
+          type: integer
+        date:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/DayStatusEnum'
+        foreman_note:
+          type: string
+        submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+        submitted_by:
+          allOf:
+          - $ref: '#/components/schemas/PersonRef'
+          nullable: true
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+        approved_by:
+          allOf:
+          - $ref: '#/components/schemas/PersonRef'
+          nullable: true
+        rejection_note:
+          type: string
+          description: Why the site manager sent the day back (status rejected).
+        counts:
+          $ref: '#/components/schemas/DayCounts'
+        payout_status:
+          allOf:
+          - $ref: '#/components/schemas/PayoutStatusEnum'
+          description: |-
+            State of the day's cash payout.
+
+            * `not_open` - Not open (waiting for approval)
+            * `open` - Open
+            * `paid` - Everyone paid
+            * `closed` - Closed by the office
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - approved_at
+      - approved_by
+      - counts
+      - date
+      - foreman_note
+      - id
+      - payout_status
+      - rejection_note
+      - site_id
+      - status
+      - submitted_at
+      - submitted_by
+      - updated_at
+    AttendanceRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        client_uuid:
+          type: string
+          format: uuid
+          description: The server's client_uuid for this record. The phone adopts
+            it if it differs from its own (the same worker was marked from two phones).
+        day_id:
+          type: integer
+        worker_id:
+          type: integer
+        status:
+          $ref: '#/components/schemas/AttendanceStatusEnum'
+        arrival:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: 07:00
+          description: Local wall-clock time on the site, 24-hour `HH:MM`.
+          nullable: true
+        departure:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: 07:00
+          description: Local wall-clock time on the site, 24-hour `HH:MM`.
+          nullable: true
+        note:
+          type: string
+        corrected:
+          type: boolean
+          description: True once a correction was applied after submission.
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - arrival
+      - client_uuid
+      - corrected
+      - day_id
+      - departure
+      - id
+      - note
+      - status
+      - updated_at
+      - worker_id
+    AttendanceStatusEnum:
+      enum:
+      - present
+      - absent
+      - half_day
+      - late
+      type: string
+      description: |-
+        * `present` - Present
+        * `absent` - Absent
+        * `half_day` - Half day
+        * `late` - Late
+    Company:
+      type: object
+      properties:
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2, e.g. TG.
+        time_zone:
+          type: string
+          description: IANA time zone, e.g. Africa/Lome. Decides which date is 'today'.
+        currency:
+          $ref: '#/components/schemas/Currency'
+      required:
+      - country
+      - currency
+      - time_zone
+    CorrectableFieldEnum:
+      enum:
+      - status
+      - arrival
+      - departure
+      - note
+      type: string
+      description: |-
+        * `status` - Status
+        * `arrival` - Arrival
+        * `departure` - Departure
+        * `note` - Note
+    Correction:
+      type: object
+      properties:
+        id:
+          type: integer
+        client_uuid:
+          type: string
+          format: uuid
+        record_id:
+          type: integer
+        field:
+          $ref: '#/components/schemas/CorrectableFieldEnum'
+        old_value:
+          type: string
+          nullable: true
+        new_value:
+          type: string
+          nullable: true
+        reason:
+          type: string
+        created_by:
+          $ref: '#/components/schemas/PersonRef'
+        created_at:
+          type: string
+          format: date-time
+        record:
+          allOf:
+          - $ref: '#/components/schemas/AttendanceRecord'
+          description: The record after the correction.
+      required:
+      - client_uuid
+      - created_at
+      - created_by
+      - field
+      - id
+      - new_value
+      - old_value
+      - reason
+      - record
+      - record_id
+    CorrectionCreateRequest:
+      type: object
+      properties:
+        client_uuid:
+          type: string
+          format: uuid
+          description: Made on the phone when the user acts (UUID v4). Sending the
+            same client_uuid again returns the original result instead of applying
+            the write twice.
+        field:
+          $ref: '#/components/schemas/CorrectableFieldEnum'
+        new_value:
+          type: string
+          nullable: true
+          description: 'status: one of present/absent/half_day/late; arrival/departure:
+            ''HH:MM'' or null; note: text.'
+          maxLength: 500
+        reason:
+          type: string
+          minLength: 1
+          description: 'Required: why the record changes after submission.'
+          maxLength: 500
+      required:
+      - client_uuid
+      - field
+      - new_value
+      - reason
+    Crew:
+      type: object
+      properties:
+        site_id:
+          type: integer
+        date:
+          type: string
+          format: date
+        count:
+          type: integer
+          description: Number of workers expected that day.
+        workers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CrewWorker'
+      required:
+      - count
+      - date
+      - site_id
+      - workers
+    CrewWorker:
+      type: object
+      properties:
+        id:
+          type: integer
+        number:
+          type: string
+          description: Worker number, e.g. W-0142.
+        first_name:
+          type: string
+        last_name:
+          type: string
+        trade:
+          type: string
+          nullable: true
+          description: Trade name, translated.
+        photo_url:
+          type: string
+          format: uri
+          nullable: true
+          description: Absolute URL of the photo; cache it on the phone.
+        pay_type:
+          allOf:
+          - $ref: '#/components/schemas/PayTypeEnum'
+          description: |-
+            Pay type of the rate in effect that day.
+
+            * `daily` - Daily
+            * `hourly` - Hourly
+        absent_streak:
+          type: integer
+          minimum: 0
+          description: 'Consecutive working days absent right before this date (review
+            screen: ''Absent · 3rd day in a row'').'
+      required:
+      - absent_streak
+      - first_name
+      - id
+      - last_name
+      - number
+      - pay_type
+      - photo_url
+      - trade
+    Currency:
+      type: object
+      properties:
+        code:
+          type: string
+          description: ISO 4217 code, e.g. XOF.
+        decimals:
+          type: integer
+          maximum: 3
+          minimum: 0
+          description: Decimal places of the smallest unit. Display amount = value
+            / 10**decimals.
+      required:
+      - code
+      - decimals
+    DayCounts:
+      type: object
+      properties:
+        expected:
+          type: integer
+          description: Workers on the crew list that day.
+        present:
+          type: integer
+        absent:
+          type: integer
+        half_day:
+          type: integer
+        late:
+          type: integer
+        unmarked:
+          type: integer
+          description: expected minus marked.
+      required:
+      - absent
+      - expected
+      - half_day
+      - late
+      - present
+      - unmarked
+    DayStatusEnum:
+      enum:
+      - not_started
+      - draft
+      - submitted
+      - approved
+      - rejected
+      - locked
+      type: string
+      description: |-
+        * `not_started` - Not started
+        * `draft` - Draft
+        * `submitted` - Submitted
+        * `approved` - Approved
+        * `rejected` - Rejected
+        * `locked` - Locked
+    Device:
+      type: object
+      properties:
+        id:
+          type: integer
+        device_id:
+          type: string
+        name:
+          type: string
+      required:
+      - device_id
+      - id
+      - name
+    Error:
+      type: object
+      properties:
+        code:
+          allOf:
+          - $ref: '#/components/schemas/ErrorCodeEnum'
+          description: |-
+            Stable machine-readable code. Branch on this.
+
+            * `not_authenticated` - Missing, invalid or revoked credentials.
+            * `permission_denied` - Authenticated, but not allowed (for example another site).
+            * `not_found` - The resource does not exist.
+            * `validation_error` - The request body or query string is invalid.
+            * `throttled` - Too many requests; retry later.
+            * `conflict` - The request conflicts with the current state.
+            * `locked` - The resource is locked (a locked day or pay period, or a locked device).
+            * `not_implemented` - The endpoint is part of the contract but not built yet.
+            * `method_not_allowed` - The HTTP method is not allowed on this path.
+            * `unsupported_media_type` - The request content type is not supported.
+            * `not_acceptable` - The Accept header cannot be satisfied.
+            * `server_error` - Unexpected server error.
+        message:
+          type: string
+          description: Human-readable, translated (Accept-Language).
+        details:
+          type: object
+          additionalProperties: {}
+          description: 'Always an object. validation_error: field → list of messages
+            (nested for lists, e.g. `records[2].status`); throttled: `retry_after`
+            seconds; others: context.'
+      required:
+      - code
+      - details
+      - message
+    ErrorCodeEnum:
+      enum:
+      - not_authenticated
+      - permission_denied
+      - not_found
+      - validation_error
+      - throttled
+      - conflict
+      - locked
+      - not_implemented
+      - method_not_allowed
+      - unsupported_media_type
+      - not_acceptable
+      - server_error
+      type: string
+      description: |-
+        * `not_authenticated` - Missing, invalid or revoked credentials.
+        * `permission_denied` - Authenticated, but not allowed (for example another site).
+        * `not_found` - The resource does not exist.
+        * `validation_error` - The request body or query string is invalid.
+        * `throttled` - Too many requests; retry later.
+        * `conflict` - The request conflicts with the current state.
+        * `locked` - The resource is locked (a locked day or pay period, or a locked device).
+        * `not_implemented` - The endpoint is part of the contract but not built yet.
+        * `method_not_allowed` - The HTTP method is not allowed on this path.
+        * `unsupported_media_type` - The request content type is not supported.
+        * `not_acceptable` - The Accept header cannot be satisfied.
+        * `server_error` - Unexpected server error.
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    LanguageEnum:
+      enum:
+      - en
+      - fr
+      type: string
+      description: |-
+        * `en` - English
+        * `fr` - French
+    Me:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: Full name; the app derives initials from it.
+        role:
+          $ref: '#/components/schemas/UserRoleEnum'
+        phone:
+          type: string
+        language:
+          allOf:
+          - $ref: '#/components/schemas/LanguageEnum'
+          description: |-
+            UI language for this user (falls back to company).
+
+            * `en` - English
+            * `fr` - French
+        company:
+          $ref: '#/components/schemas/Company'
+        sites:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssignedSite'
+      required:
+      - company
+      - id
+      - language
+      - name
+      - phone
+      - role
+      - sites
+    PayTypeEnum:
+      enum:
+      - daily
+      - hourly
+      type: string
+      description: |-
+        * `daily` - Daily
+        * `hourly` - Hourly
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+        client_uuid:
+          type: string
+          format: uuid
+        pay_line_id:
+          type: integer
+        amount:
+          type: integer
+          format: int64
+          description: 'Money: an integer in the currency''s smallest unit (see the
+            `currency` object of the same response). 5000 XOF (0 decimals) is 5000;
+            12.50 EUR is 1250.'
+        currency:
+          $ref: '#/components/schemas/Currency'
+        proof_type:
+          $ref: '#/components/schemas/ProofTypeEnum'
+        proof_url:
+          type: string
+          format: uri
+          nullable: true
+        paid_at:
+          type: string
+          format: date-time
+        paid_by:
+          $ref: '#/components/schemas/PersonRef'
+      required:
+      - amount
+      - client_uuid
+      - currency
+      - id
+      - paid_at
+      - paid_by
+      - pay_line_id
+      - proof_type
+      - proof_url
+    PaymentCreateRequest:
+      type: object
+      properties:
+        client_uuid:
+          type: string
+          format: uuid
+          description: Made on the phone when the user acts (UUID v4). Sending the
+            same client_uuid again returns the original result instead of applying
+            the write twice.
+        pay_line_id:
+          type: integer
+        amount:
+          type: integer
+          format: int64
+          description: Smallest unit. Normally the line's `net`.
+          minimum: 0
+        proof_type:
+          $ref: '#/components/schemas/ProofTypeEnum'
+        proof_file:
+          type: string
+          format: binary
+          nullable: true
+          description: JPEG/PNG of the photo, signature or thumb mark (compress on
+            the phone; ≤ 2 MB). Whether it is required depends on the company's proof
+            setting.
+        paid_at:
+          type: string
+          format: date-time
+          description: 'When the cash was handed over, from the phone clock (offline
+            payments are sent later). Default: the time the server receives it.'
+      required:
+      - amount
+      - client_uuid
+      - pay_line_id
+      - proof_type
+    PaymentSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        client_uuid:
+          type: string
+          format: uuid
+        amount:
+          type: integer
+          format: int64
+          description: 'Money: an integer in the currency''s smallest unit (see the
+            `currency` object of the same response). 5000 XOF (0 decimals) is 5000;
+            12.50 EUR is 1250.'
+        proof_type:
+          $ref: '#/components/schemas/ProofTypeEnum'
+        paid_at:
+          type: string
+          format: date-time
+      required:
+      - amount
+      - client_uuid
+      - id
+      - paid_at
+      - proof_type
+    Payout:
+      type: object
+      properties:
+        site_id:
+          type: integer
+        date:
+          type: string
+          format: date
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PayoutStatusEnum'
+          description: |-
+            `not_open`: the roll call is not approved yet; figures are a preview and payments are refused (409).
+
+            * `not_open` - Not open (waiting for approval)
+            * `open` - Open
+            * `paid` - Everyone paid
+            * `closed` - Closed by the office
+        day_status:
+          $ref: '#/components/schemas/DayStatusEnum'
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+        currency:
+          $ref: '#/components/schemas/Currency'
+        cash_issued:
+          type: integer
+          format: int64
+          description: Cash handed to the foreman for this sheet.
+        total_to_pay:
+          type: integer
+          format: int64
+          description: Sum of `net` over all lines.
+        paid_total:
+          type: integer
+          format: int64
+          description: Sum of payments made.
+        left_to_pay:
+          type: integer
+          format: int64
+          description: total_to_pay − paid_total.
+        cash_in_hand:
+          type: integer
+          format: int64
+          description: 'cash_issued − paid_total: what the foreman should hold now
+            (and return to the office once everyone is paid).'
+        line_count:
+          type: integer
+        paid_count:
+          type: integer
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/PayoutLine'
+      required:
+      - approved_at
+      - cash_in_hand
+      - cash_issued
+      - currency
+      - date
+      - day_status
+      - left_to_pay
+      - line_count
+      - lines
+      - paid_count
+      - paid_total
+      - site_id
+      - status
+      - total_to_pay
+    PayoutLine:
+      type: object
+      properties:
+        pay_line_id:
+          type: integer
+          description: Send this to `POST /payments/`.
+        worker:
+          $ref: '#/components/schemas/PayoutWorker'
+        worked:
+          type: string
+          description: Translated label of what was worked, e.g. '1 day', '½ day',
+            '1 day · late'.
+        units:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          description: Units paid (days or hours, by pay type), as a decimal string.
+        gross:
+          type: integer
+          format: int64
+          description: Earned for the day.
+        advance_deduction:
+          type: integer
+          format: int64
+          description: Advance repayment taken from this pay (0 if none).
+        net:
+          type: integer
+          format: int64
+          description: 'Hand over: gross − advance_deduction.'
+        payment:
+          allOf:
+          - $ref: '#/components/schemas/PaymentSummary'
+          nullable: true
+          description: Null until paid.
+      required:
+      - advance_deduction
+      - gross
+      - net
+      - pay_line_id
+      - payment
+      - units
+      - worked
+      - worker
+    PayoutStatusEnum:
+      enum:
+      - not_open
+      - open
+      - paid
+      - closed
+      type: string
+      description: |-
+        * `not_open` - Not open (waiting for approval)
+        * `open` - Open
+        * `paid` - Everyone paid
+        * `closed` - Closed by the office
+    PayoutWorker:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        trade:
+          type: string
+          nullable: true
+        photo_url:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - id
+      - name
+      - photo_url
+      - trade
+    PersonRef:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+      - id
+      - name
+    PinLoginRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+          minLength: 1
+          description: The foreman's phone number, as entered on the User record.
+          maxLength: 32
+        pin:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: The 4-digit PIN.
+          maxLength: 4
+          pattern: ^\d{4}$
+        device_id:
+          type: string
+          minLength: 1
+          description: Stable install ID made by the app on first launch (UUID). One
+            token per device.
+          maxLength: 128
+        device_name:
+          type: string
+          description: e.g. 'Tecno Spark 10'.
+          maxLength: 100
+      required:
+      - device_id
+      - phone
+      - pin
+    PinLoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: 'Device token. Shown once; keep it in secure storage. Send
+            it as `Authorization: Device <token>`.'
+        device:
+          $ref: '#/components/schemas/Device'
+        user:
+          $ref: '#/components/schemas/UserProfile'
+        sites:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssignedSite'
+      required:
+      - device
+      - sites
+      - token
+      - user
+    ProofTypeEnum:
+      enum:
+      - photo
+      - signature
+      - thumb_mark
+      - none
+      type: string
+      description: |-
+        * `photo` - Photo
+        * `signature` - Signature
+        * `thumb_mark` - Thumb mark
+        * `none` - No proof
+    RecordBatchRequest:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecordUpsertRequest'
+      required:
+      - records
+    RecordUpsertRequest:
+      type: object
+      properties:
+        client_uuid:
+          type: string
+          format: uuid
+          description: One per worker per day, made on the phone the first time the
+            worker is marked; reuse it for every later change of that record.
+        worker_id:
+          type: integer
+        status:
+          $ref: '#/components/schemas/AttendanceStatusEnum'
+        arrival:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: 07:00
+          description: Local wall-clock time on the site, 24-hour `HH:MM`.
+          nullable: true
+        departure:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: 07:00
+          description: Local wall-clock time on the site, 24-hour `HH:MM`.
+          nullable: true
+        note:
+          type: string
+          default: ''
+          maxLength: 500
+      required:
+      - client_uuid
+      - status
+      - worker_id
+    SubmitDayRequest:
+      type: object
+      properties:
+        client_uuid:
+          type: string
+          format: uuid
+          description: Made on the phone when the user acts (UUID v4). Sending the
+            same client_uuid again returns the original result instead of applying
+            the write twice.
+        foreman_note:
+          type: string
+          default: ''
+          description: Optional note for the site manager.
+          maxLength: 1000
+      required:
+      - client_uuid
+    Sync:
+      type: object
+      properties:
+        server_time:
+          type: string
+          format: date-time
+          description: Store it and send it as `since` next time. Taken before reading
+            changes, so nothing is missed (an item may come twice; apply as upserts
+            by id).
+        since:
+          type: string
+          format: date-time
+          nullable: true
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceDaySummary'
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceRecord'
+        corrections:
+          type: array
+          items:
+            $ref: '#/components/schemas/Correction'
+      required:
+      - corrections
+      - days
+      - records
+      - server_time
+      - since
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: Full name; the app derives initials from it.
+        role:
+          $ref: '#/components/schemas/UserRoleEnum'
+        phone:
+          type: string
+        language:
+          allOf:
+          - $ref: '#/components/schemas/LanguageEnum'
+          description: |-
+            UI language for this user (falls back to company).
+
+            * `en` - English
+            * `fr` - French
+      required:
+      - id
+      - language
+      - name
+      - phone
+      - role
+    UserRoleEnum:
+      enum:
+      - admin
+      - site_manager
+      - foreman
+      - accountant
+      type: string
+      description: |-
+        * `admin` - Admin
+        * `site_manager` - Site manager
+        * `foreman` - Foreman
+        * `accountant` - Accountant
+  securitySchemes:
+    DeviceToken:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 'Device token from `POST /api/v1/auth/pin/`, sent as `Authorization:
+        Device <token>`.'
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+tags:
+- name: system
+  description: Reachability.
+- name: accounts
+  description: 'PIN sign-in, sign-out, profile (Wave 2: A).'
+- name: worksites
+  description: 'Crew lists (Wave 2: B).'
+- name: attendance
+  description: 'Roll call, corrections, sync (Wave 2: C).'
+- name: payroll
+  description: 'Cash payout and payments (Wave 2: D).'

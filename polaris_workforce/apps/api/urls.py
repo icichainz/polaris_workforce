@@ -1,9 +1,28 @@
-from django.urls import path
+"""``/api/v1/`` — mounted by ``config/urls.py``.
 
-from . import views
+Each app's routes live in ``apps/<app>/api/urls.py`` and are included here exactly once.
+Wave 2 agents edit only their own app's ``api/`` package, never this file.
+"""
+
+from django.conf import settings
+from django.urls import include, path
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
+# converters registers <isodate:...> before the includes below.
+from . import converters, views  # noqa: F401
 
 app_name = "api"
 
 urlpatterns = [
     path("health/", views.health, name="health"),
+    path("schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("", include("apps.accounts.api.urls")),
+    path("", include("apps.worksites.api.urls")),
+    path("", include("apps.attendance.api.urls")),
+    path("", include("apps.payroll.api.urls")),
 ]
+
+if settings.DEBUG:
+    urlpatterns += [
+        path("docs/", SpectacularSwaggerView.as_view(url_name="api:schema"), name="docs"),
+    ]
