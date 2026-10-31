@@ -104,6 +104,14 @@ class PayLine(TimeStampedModel):
     gross = _money_field(_("gross"), default=0)
     advance_deduction = _money_field(_("advance deduction"), default=0)
     other_deductions = _money_field(_("other deductions"), default=0)
+    adjustment = models.BigIntegerField(
+        _("adjustment"),
+        default=0,
+        help_text=_(
+            "Corrections of days already paid, settled on this pay: positive is added, "
+            "negative is recovered."
+        ),
+    )
     net = models.BigIntegerField(_("net"), default=0)
     days = models.JSONField(
         _("days"),
@@ -299,3 +307,126 @@ class Payment(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.pay_line.worker} · {self.amount} · {self.paid_at:%Y-%m-%d}"
+
+
+class PayAdjustment(TimeStampedModel):
+    """A difference to settle on a later pay: a day was corrected after it was paid.
+
+    ``amount`` is what the corrected attendance is worth minus what was paid (negative:
+    the worker was overpaid and it is recovered; positive: underpaid and it is added).
+    It is settled on the worker's next pays at the site (``PayAdjustmentApplication``);
+    ``applied_amount`` is how much of it is settled so far and ``applied_to`` the last
+    pay line that took part of it.
+    """
+
+    worker = models.ForeignKey(
+        "workers.Worker",
+        verbose_name=_("worker"),
+        on_delete=models.PROTECT,
+        related_name="pay_adjustments",
+    )
+    site = models.ForeignKey(
+        "worksites.Site",
+        verbose_name=_("site"),
+        on_delete=models.PROTECT,
+        related_name="pay_adjustments",
+    )
+    amount = models.BigIntegerField(_("amount"))
+    currency = models.CharField(_("currency"), max_length=3, blank=True)
+    currency_decimals = models.PositiveSmallIntegerField(_("currency decimal places"), default=0)
+    reason = models.TextField(_("reason"), blank=True)
+    dates = models.JSONField(
+        _("corrected days"), default=list, blank=True, help_text=_("ISO dates.")
+    )
+    day = models.ForeignKey(
+        "attendance.AttendanceDay",
+        verbose_name=_("corrected day"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="pay_adjustments",
+    )
+    record = models.ForeignKey(
+        "attendance.AttendanceRecord",
+        verbose_name=_("corrected record"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="pay_adjustments",
+    )
+    source_line = models.ForeignKey(
+        PayLine,
+        verbose_name=_("paid pay line"),
+        on_delete=models.PROTECT,
+        related_name="raised_adjustments",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=_("created by"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="pay_adjustments_created",
+    )
+    applied_to = models.ForeignKey(
+        PayLine,
+        verbose_name=_("applied to"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    applied_amount = models.BigIntegerField(_("applied amount"), default=0)
+
+    class Meta:
+        verbose_name = _("pay adjustment")
+        verbose_name_plural = _("pay adjustments")
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["worker", "site"])]
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(amount=0), name="pay_adjustment_amount_not_zero"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.worker} · {self.amount} ({', '.join(self.dates)})"
+
+    @property
+    def remaining(self) -> int:
+        return self.amount - self.applied_amount
+
+
+class PayAdjustmentApplication(models.Model):
+    """Part of a pay adjustment settled on a pay line."""
+
+    adjustment = models.ForeignKey(
+        PayAdjustment,
+        verbose_name=_("pay adjustment"),
+        on_delete=models.CASCADE,
+        related_name="applications",
+    )
+    pay_line = models.ForeignKey(
+        PayLine,
+        verbose_name=_("pay line"),
+        on_delete=models.CASCADE,
+        related_name="adjustment_applications",
+    )
+    amount = models.BigIntegerField(_("amount"))
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("pay adjustment application")
+        verbose_name_plural = _("pay adjustment applications")
+        ordering = ["created_at", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["adjustment", "pay_line"], name="unique_adjustment_per_pay_line"
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(amount=0), name="pay_adjustment_application_not_zero"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.adjustment} → {self.pay_line} · {self.amount}"

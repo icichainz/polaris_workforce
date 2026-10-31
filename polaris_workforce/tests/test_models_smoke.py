@@ -34,6 +34,8 @@ FACTORIES = [
     f.AdvanceRepaymentFactory,
     f.CashIssueFactory,
     f.PaymentFactory,
+    f.PayAdjustmentFactory,
+    f.PayAdjustmentApplicationFactory,
 ]
 
 

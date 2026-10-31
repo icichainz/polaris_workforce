@@ -17,6 +17,8 @@ from apps.payroll.models import (
     Advance,
     AdvanceRepayment,
     CashIssue,
+    PayAdjustment,
+    PayAdjustmentApplication,
     PayLine,
     Payment,
     PayPeriod,
@@ -282,3 +284,28 @@ class PaymentFactory(factory.django.DjangoModelFactory):
     paid_at = factory.LazyFunction(timezone.now)
     proof_type = ProofType.THUMB_MARK
     client_uuid = factory.LazyFunction(uuid.uuid4)
+
+
+class PayAdjustmentFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = PayAdjustment
+
+    source_line = factory.SubFactory(PayLineFactory)
+    worker = factory.SelfAttribute("source_line.worker")
+    site = factory.SelfAttribute("source_line.period.site")
+    amount = -6_000
+    currency = "XOF"
+    currency_decimals = 0
+    reason = "Went home sick."
+    dates = factory.LazyAttribute(lambda o: [o.source_line.period.end_date.isoformat()])
+
+
+class PayAdjustmentApplicationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = PayAdjustmentApplication
+
+    adjustment = factory.SubFactory(PayAdjustmentFactory)
+    pay_line = factory.SubFactory(
+        PayLineFactory, worker=factory.SelfAttribute("..adjustment.worker")
+    )
+    amount = factory.LazyAttribute(lambda o: o.adjustment.amount)

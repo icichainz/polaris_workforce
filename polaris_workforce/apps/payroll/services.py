@@ -16,23 +16,35 @@ attendance, stores the results and enforces the workflow:
 * **Advances** are repaid by the pay lines: when a line deducts, an ``AdvanceRepayment``
   row is written and the advance's balance goes down (and back up if the line is
   recomputed or closed unpaid).
-* Every write records an ``AuditLog`` entry.
+* **Pay adjustments** (owner decision M3): when a day is corrected after the worker was
+  paid for it, and the period is approved again, the paid line stays as it was paid and
+  the difference (corrected worth − paid gross) becomes a ``PayAdjustment`` on the
+  worker's next pay at the site. It is settled like an advance: each unpaid line applies
+  what it can (``PayAdjustmentApplication``), recomputed with the line. An adjustment
+  is open — a further correction updates it — until part of it is on a paid line or a
+  locked period; after that a further correction raises a new one for the rest.
+* Every write records an ``AuditLog`` entry. Recomputation without a user (a screen or
+  the phone reading the cash sheet) is the system's: ``actor=None`` and an action
+  prefixed ``payroll.auto.``, and nothing is written when nothing changed.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 from collections import defaultdict
 from dataclasses import dataclass, field
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
-from django.db.models import Q, Sum
+from django.db.models import F, Q, Sum
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
 from apps.accounts.permissions import (
+    LOCK_PERIODS,
     Role,
+    can,
     can_manage_site,
     can_view_site,
     has_role,
@@ -40,7 +52,7 @@ from apps.accounts.permissions import (
     scoped_sites,
 )
 from apps.api.exceptions import Conflict, Locked
-from apps.attendance.models import AttendanceDay, AttendanceRecord
+from apps.attendance.models import AttendanceCorrection, AttendanceDay, AttendanceRecord
 from apps.attendance.services import lock_day
 from apps.core.choices import PayType, ProofType
 from apps.core.dates import company_today
@@ -52,7 +64,16 @@ from apps.worksites.models import Site, SiteAssignment
 from apps.worksites.services import crew_ids_by_date
 
 from . import engine
-from .models import Advance, AdvanceRepayment, CashIssue, PayLine, Payment, PayPeriod
+from .models import (
+    Advance,
+    AdvanceRepayment,
+    CashIssue,
+    PayAdjustment,
+    PayAdjustmentApplication,
+    PayLine,
+    Payment,
+    PayPeriod,
+)
 
 PAYABLE_DAY_STATUSES = (AttendanceDay.Status.APPROVED, AttendanceDay.Status.LOCKED)
 
@@ -101,15 +122,25 @@ def period_bounds_for(
     return start, end, frequency
 
 
+def _is_user(actor) -> bool:
+    return bool(getattr(actor, "is_authenticated", False))
+
+
 def _audit(actor, action, target=None, *, before=None, after=None, reason=""):
     return AuditLog.record(
-        actor=actor if getattr(actor, "is_authenticated", False) else None,
+        actor=actor if _is_user(actor) else None,
         action=action,
         target=target,
         before=before,
         after=after,
         reason=reason,
     )
+
+
+def _pay_action(actor, name: str) -> str:
+    """``payroll.<name>`` for a user's write, ``payroll.auto.<name>`` for the system's
+    recomputation (refresh on read: no user to blame)."""
+    return f"payroll.{name}" if _is_user(actor) else f"payroll.auto.{name}"
 
 
 # --- permissions -------------------------------------------------------------------------
@@ -123,10 +154,9 @@ def can_pay(user, site) -> bool:
 
 
 def can_lock(user, site) -> bool:
-    """Close and lock pay: admins, the site's manager, accountants."""
-    if can_manage_site(user, site):
-        return True
-    return has_role(user, Role.ACCOUNTANT) and can_view_site(user, site)
+    """Close and lock pay: the ``LOCK_PERIODS`` permission (admins and accountants
+    everywhere, site managers on their own sites)."""
+    return can(user, LOCK_PERIODS, site)
 
 
 def scoped_workers(user):
@@ -187,19 +217,24 @@ def _line_snapshot(line: PayLine) -> dict:
         "gross": line.gross,
         "advance_deduction": line.advance_deduction,
         "other_deductions": line.other_deductions,
+        "adjustment": line.adjustment,
         "net": line.net,
     }
 
 
 def _period_totals(period: PayPeriod) -> dict:
     totals = period.lines.aggregate(
-        gross=Sum("gross"), advance=Sum("advance_deduction"), net=Sum("net")
+        gross=Sum("gross"),
+        advance=Sum("advance_deduction"),
+        adjustment=Sum("adjustment"),
+        net=Sum("net"),
     )
     return {
         "status": period.status,
         "lines": period.lines.count(),
         "gross": totals["gross"] or 0,
         "advance_deduction": totals["advance"] or 0,
+        "adjustment": totals["adjustment"] or 0,
         "net": totals["net"] or 0,
     }
 
@@ -240,6 +275,299 @@ def _paid_amount(line: PayLine) -> int:
     return line.payments.aggregate(total=Sum("amount"))["total"] or 0
 
 
+# --- pay adjustments (a day corrected after it was paid) ----------------------------------
+
+
+def _adjustment_snapshot(adjustment: PayAdjustment) -> dict:
+    return {
+        "worker_id": adjustment.worker_id,
+        "site_id": adjustment.site_id,
+        "amount": adjustment.amount,
+        "currency": adjustment.currency,
+        "dates": adjustment.dates,
+        "source_line_id": adjustment.source_line_id,
+        "record_id": adjustment.record_id,
+        "applied_amount": adjustment.applied_amount,
+        "applied_to_id": adjustment.applied_to_id,
+    }
+
+
+def _open_adjustments(worker_id: int, period: PayPeriod, line: PayLine | None):
+    """Adjustments this pay may settle: raised by an earlier pay of the worker at the
+    site and not settled yet (or settled by this very line), oldest first."""
+    query = ~Q(applied_amount=F("amount"))
+    if line is not None and line.pk:
+        query |= Q(applications__pay_line=line)
+    return (
+        PayAdjustment.objects.filter(
+            worker_id=worker_id,
+            site_id=period.site_id,
+            source_line__period__end_date__lt=period.end_date,
+        )
+        .filter(query)
+        .distinct()
+        .order_by("created_at", "pk")
+    )
+
+
+def _sync_applied(adjustment: PayAdjustment, actor, line: PayLine) -> None:
+    """Recompute ``applied_amount``/``applied_to`` from the applications; audit a change."""
+    applications = list(
+        adjustment.applications.select_related("pay_line__period").order_by(
+            "pay_line__period__end_date", "pk"
+        )
+    )
+    before = {
+        "applied_amount": adjustment.applied_amount,
+        "applied_to_id": adjustment.applied_to_id,
+    }
+    adjustment.applied_amount = sum(a.amount for a in applications)
+    adjustment.applied_to = applications[-1].pay_line if applications else None
+    after = {"applied_amount": adjustment.applied_amount, "applied_to_id": adjustment.applied_to_id}
+    if after == before:
+        return
+    adjustment.save(update_fields=["applied_amount", "applied_to", "updated_at"])
+    _audit(
+        actor,
+        _pay_action(actor, "adjustment.apply"),
+        adjustment,
+        before=before,
+        after={**after, "pay_line_id": line.pk, "remaining": adjustment.remaining},
+    )
+
+
+def _apply_adjustments(line: PayLine, wanted: tuple[tuple[int, int], ...], actor) -> None:
+    """Make the line's adjustment applications equal ``wanted`` (``(id, signed amount)``)."""
+    current = {a.adjustment_id: a for a in line.adjustment_applications.all()}
+    wanted_by_adjustment = dict(wanted)
+    if {k: a.amount for k, a in current.items()} == wanted_by_adjustment:
+        return
+    for application in current.values():
+        application.delete()
+    for adjustment_id, amount in wanted_by_adjustment.items():
+        PayAdjustmentApplication.objects.create(
+            adjustment_id=adjustment_id, pay_line=line, amount=amount
+        )
+    touched = set(current) | set(wanted_by_adjustment)
+    for adjustment in PayAdjustment.objects.filter(pk__in=touched).order_by("pk"):
+        _sync_applied(adjustment, actor, line)
+
+
+def _release(adjustment: PayAdjustment) -> None:
+    """Take an open adjustment off the (unpaid) lines it was applied to.
+
+    The lines are recomputed by the caller (``_refresh_later``)."""
+    adjustment.applications.all().delete()
+    adjustment.applied_amount = 0
+    adjustment.applied_to = None
+
+
+def _settled_adjustment_ids(adjustments) -> set[int]:
+    """Adjustments partly or fully on a paid line or a locked period: their amount is final."""
+    return set(
+        PayAdjustmentApplication.objects.filter(adjustment__in=adjustments)
+        .filter(
+            Q(pay_line__payments__isnull=False)
+            | Q(pay_line__period__status=PayPeriod.Status.LOCKED)
+        )
+        .values_list("adjustment_id", flat=True)
+    )
+
+
+def _drop_line(line: PayLine, actor) -> None:
+    """Delete an unpaid line that has nothing left to pay, giving back what it took."""
+    _apply_repayments(line, ())
+    _apply_adjustments(line, (), actor)
+    line.delete()
+
+
+def _records_by_worker(
+    period: PayPeriod, company: CompanySettings, worker_ids=None
+) -> dict[int, list[AttendanceRecord]]:
+    """The attendance records paid by this period, per worker (in date order)."""
+    site = period.site
+    records = (
+        AttendanceRecord.objects.filter(
+            day__site=site, day__date__gte=period.start_date, day__date__lte=period.end_date
+        )
+        .select_related("day", "worker")
+        .order_by("day__date", "pk")
+    )
+    if worker_ids is not None:
+        records = records.filter(worker_id__in=worker_ids)
+    by_worker: dict[int, list[AttendanceRecord]] = defaultdict(list)
+    for record in records:
+        start, end, _frequency = period_bounds_for(site, record.worker, record.day.date, company)
+        if (start, end) == (period.start_date, period.end_date):
+            by_worker[record.worker_id].append(record)
+    return by_worker
+
+
+def _late_corrections(period: PayPeriod, lines: list[PayLine]) -> dict[int, list]:
+    """Corrections made after each paid line's first payment, per worker (oldest first)."""
+    first_paid = {
+        line.worker_id: min(p.created_at for p in line.payments.all())
+        for line in lines
+        if line.payments.all()
+    }
+    if not first_paid:
+        return {}
+    corrections = (
+        AttendanceCorrection.objects.filter(
+            record__day__site_id=period.site_id,
+            record__day__date__gte=period.start_date,
+            record__day__date__lte=period.end_date,
+            record__worker_id__in=list(first_paid),
+        )
+        .select_related("record__day")
+        .order_by("created_at", "pk")
+    )
+    late: dict[int, list] = defaultdict(list)
+    for correction in corrections:
+        worker_id = correction.record.worker_id
+        if correction.created_at > first_paid[worker_id]:
+            late[worker_id].append(correction)
+    return late
+
+
+def _paid_difference(line: PayLine, days: list[engine.DayInput], rules: engine.PayRules) -> int:
+    """What the attendance is worth now minus the gross that was paid.
+
+    Days that were paid keep the rate they were paid at, so only the attendance counts.
+    """
+    paid_rates = {d["date"]: (d["pay_type"], d["rate"]) for d in line.days or []}
+    priced = []
+    for day in days:
+        paid = paid_rates.get(day.date.isoformat())
+        if paid is not None:
+            day = dataclasses.replace(day, pay_type=paid[0], rate=paid[1])
+        priced.append(day)
+    return engine.compute_line(priced, rules).gross - line.gross
+
+
+@dataclass
+class PaidCorrection:
+    """A paid line whose corrected attendance is worth a different amount."""
+
+    line: PayLine
+    worth: int  # what the corrected attendance is worth (gross)
+    difference: int  # still to settle: worth − paid − adjustments already settled
+    corrections: list = field(default_factory=list)
+
+
+def _paid_corrections(
+    period: PayPeriod,
+    paid: list[tuple[PayLine, list[engine.DayInput]]],
+    rules: engine.PayRules,
+) -> list[PaidCorrection]:
+    late = _late_corrections(period, [line for line, _days in paid])
+    found = []
+    for line, days in paid:
+        corrections = late.get(line.worker_id)
+        if not corrections:
+            continue
+        target = _paid_difference(line, days, rules)
+        raised = list(line.raised_adjustments.all())
+        settled = _settled_adjustment_ids(raised) if raised else set()
+        difference = target - sum(a.amount for a in raised if a.pk in settled)
+        found.append(PaidCorrection(line, line.gross + target, difference, corrections))
+    return found
+
+
+def _sync_raised(found: PaidCorrection, actor) -> bool:
+    """Make the line's open adjustment hold ``found.difference``; True if it changed."""
+    line = found.line
+    period = line.period
+    raised = sorted(line.raised_adjustments.all(), key=lambda a: a.pk)
+    settled = _settled_adjustment_ids(raised) if raised else set()
+    pending = [a for a in raised if a.pk not in settled]
+    for extra in pending[1:]:  # Never more than one; merge defensively.
+        _cancel_adjustment(extra, actor)
+    current = pending[0] if pending else None
+    # The corrections this adjustment is about: those after the last settled one.
+    corrections = found.corrections
+    if len(pending) < len(raised):
+        since = max(a.created_at for a in raised if a.pk in settled)
+        corrections = [c for c in corrections if c.created_at > since] or corrections
+    latest = corrections[-1]
+    values = {
+        "amount": found.difference,
+        "reason": "; ".join(dict.fromkeys(c.reason for c in corrections if c.reason)),
+        "dates": sorted({c.record.day.date.isoformat() for c in corrections}),
+        "day_id": latest.record.day_id,
+        "record_id": latest.record_id,
+    }
+    if current is None:
+        if not found.difference:
+            return False
+        adjustment = PayAdjustment.objects.create(
+            worker_id=line.worker_id,
+            site_id=period.site_id,
+            currency=period.currency,
+            currency_decimals=period.currency_decimals,
+            source_line=line,
+            created_by=actor if _is_user(actor) else None,
+            **values,
+        )
+        _audit(
+            actor,
+            _pay_action(actor, "adjustment.create"),
+            adjustment,
+            after={**_adjustment_snapshot(adjustment), "worth": found.worth, "paid": line.gross},
+            reason=values["reason"],
+        )
+        return True
+    if not found.difference:
+        _cancel_adjustment(current, actor)
+        return True
+    if all(getattr(current, k) == v for k, v in values.items()):
+        return False
+    before = _adjustment_snapshot(current)
+    if current.amount != found.difference:
+        _release(current)
+    for name, value in values.items():
+        setattr(current, name, value)
+    current.save()
+    _audit(
+        actor,
+        _pay_action(actor, "adjustment.update"),
+        current,
+        before=before,
+        after={**_adjustment_snapshot(current), "worth": found.worth, "paid": line.gross},
+        reason=current.reason,
+    )
+    return True
+
+
+def _cancel_adjustment(adjustment: PayAdjustment, actor) -> None:
+    """Delete an open adjustment (the correction was undone, or the payment)."""
+    before = _adjustment_snapshot(adjustment)
+    _release(adjustment)
+    _audit(actor, _pay_action(actor, "adjustment.cancel"), adjustment, before=before)
+    adjustment.delete()
+
+
+def _refresh_later(period: PayPeriod, worker_ids, **kwargs) -> None:
+    """Recompute the workers' later unpaid pay at the site, after an adjustment changed."""
+    later = (
+        PayPeriod.objects.filter(
+            site_id=period.site_id,
+            end_date__gt=period.end_date,
+            lines__worker_id__in=list(worker_ids),
+            lines__payments__isnull=True,
+        )
+        .exclude(status=PayPeriod.Status.LOCKED)
+        .select_related("site")
+        .distinct()
+        .order_by("end_date", "start_date")
+    )
+    for later_period in later:
+        refresh_period(later_period, **kwargs)
+
+
+# --- refreshing pay -----------------------------------------------------------------------
+
+
 def refresh_period(
     period: PayPeriod,
     *,
@@ -249,47 +577,43 @@ def refresh_period(
 ) -> PayPeriod:
     """Recompute the period's unpaid lines from its attendance, then its status.
 
-    Locked periods are left alone. Lines with a payment are frozen. Writes an AuditLog
-    entry only when something changed, so refreshing twice is a no-op.
+    Locked periods are left alone. Lines with a payment are frozen; once every day of the
+    period is approved again, a correction made after the payment becomes a
+    ``PayAdjustment`` on the worker's next pay (and those later pays are recomputed).
+    Writes AuditLog entries only when something changed, so refreshing twice is a no-op.
+    Without an ``actor`` (refresh on read) the entries are the system's (``payroll.auto.``).
     """
     if period.is_locked:
         return period
     company = company or CompanySettings.load()
+    today = today or company_today(company)
     site = period.site
     rules = pay_rules(site, company)
-
-    records = (
-        AttendanceRecord.objects.filter(
-            day__site=site, day__date__gte=period.start_date, day__date__lte=period.end_date
-        )
-        .select_related("day", "worker")
-        .order_by("day__date", "pk")
-    )
-    by_worker: dict[int, list[AttendanceRecord]] = defaultdict(list)
-    for record in records:
-        start, end, _frequency = period_bounds_for(site, record.worker, record.day.date, company)
-        if (start, end) == (period.start_date, period.end_date):
-            by_worker[record.worker_id].append(record)
+    by_worker = _records_by_worker(period, company)
     rates = _rates_by_worker(list(by_worker), period.end_date)
+    adjusted: set[int] = set()
 
     with transaction.atomic():
         before = _period_totals(period)
         changed: list[int] = []
         lines = {
             line.worker_id: line
-            for line in period.lines.prefetch_related("payments", "advance_repayments")
+            for line in period.lines.select_related("period").prefetch_related(
+                "payments", "advance_repayments", "adjustment_applications", "raised_adjustments"
+            )
         }
         for worker_id, line in lines.items():
             if worker_id not in by_worker and not line.payments.all():
-                _apply_repayments(line, ())
-                line.delete()
+                _drop_line(line, actor)
                 changed.append(worker_id)
 
+        paid: list[tuple[PayLine, list[engine.DayInput]]] = []
         for worker_id, worker_records in by_worker.items():
             line = lines.get(worker_id)
-            if line is not None and line.payments.all():
-                continue  # Paid: frozen.
             days = [_day_input(r, _rate_on(rates[worker_id], r.day.date)) for r in worker_records]
+            if line is not None and line.payments.all():
+                paid.append((line, days))  # Paid: frozen (a correction is adjusted below).
+                continue
             repaid_by_line = (
                 {r.advance_id: r.amount for r in line.advance_repayments.all()} if line else {}
             )
@@ -299,13 +623,24 @@ def refresh_period(
                 )
                 for a in _open_advances(worker_id, period.end_date, line)
             ]
+            applied_by_line = (
+                {a.adjustment_id: a.amount for a in line.adjustment_applications.all()}
+                if line
+                else {}
+            )
+            adjustments = [
+                engine.AdjustmentInput(a.pk, a.remaining + applied_by_line.get(a.pk, 0))
+                for a in _open_adjustments(worker_id, period, line)
+            ]
             other = line.other_deductions if line else 0
-            result = engine.compute_line(days, rules, advances, other_deductions=other)
+            result = engine.compute_line(
+                days, rules, advances, other_deductions=other, adjustments=adjustments
+            )
             worked = any(d.units > 0 or d.amount > 0 for d in result.days)
-            if not worked:
+            topped_up = any(amount > 0 for _id, amount in result.adjustments)
+            if not (worked or topped_up):
                 if line is not None:
-                    _apply_repayments(line, ())
-                    line.delete()
+                    _drop_line(line, actor)
                     changed.append(worker_id)
                 continue
             if line is None:
@@ -317,6 +652,7 @@ def refresh_period(
                 "gross": result.gross,
                 "other_deductions": result.other_deductions,
                 "advance_deduction": result.advance_deduction,
+                "adjustment": result.adjustment,
                 "net": result.net,
                 "days": [d.as_dict() for d in result.days],
             }
@@ -327,17 +663,70 @@ def refresh_period(
                 line.save()
                 changed.append(worker_id)
             _apply_repayments(line, result.repayments)
+            _apply_adjustments(line, result.adjustments, actor)
+
+        # A paid line stays as paid; the difference goes on the next pay, once the
+        # corrected attendance is approved (the period is payable again).
+        if paid and period_is_ready(period, today, company):
+            for found in _paid_corrections(period, paid, rules):
+                if _sync_raised(found, actor):
+                    adjusted.add(found.line.worker_id)
 
         if changed:
             _audit(
                 actor,
-                "payroll.period.refresh",
+                _pay_action(actor, "period.refresh"),
                 period,
                 before=before,
                 after={**_period_totals(period), "workers_changed": sorted(changed)},
             )
         update_period_status(period, actor=actor, today=today, company=company)
+    if adjusted:
+        _refresh_later(period, adjusted, actor=actor, today=today, company=company)
     return period
+
+
+def paid_corrections(day: AttendanceDay) -> dict[int, PaidCorrection]:
+    """Workers already paid for ``day`` whose corrected attendance is worth a different
+    amount, with the difference still to settle (read only: for the Approvals screen)."""
+    company = CompanySettings.load()
+    rules = pay_rules(day.site, company)
+    periods = (
+        PayPeriod.objects.filter(
+            site=day.site,
+            start_date__lte=day.date,
+            end_date__gte=day.date,
+            lines__payments__isnull=False,
+        )
+        .exclude(status=PayPeriod.Status.LOCKED)
+        .select_related("site")
+        .distinct()
+    )
+    found: dict[int, PaidCorrection] = {}
+    for period in periods:
+        lines = list(
+            period.lines.filter(payments__isnull=False)
+            .select_related("period")
+            .prefetch_related("payments", "raised_adjustments")
+            .distinct()
+        )
+        by_worker = _records_by_worker(period, company, [line.worker_id for line in lines])
+        rates = _rates_by_worker(list(by_worker), period.end_date)
+        paid = [
+            (
+                line,
+                [
+                    _day_input(r, _rate_on(rates[line.worker_id], r.day.date))
+                    for r in by_worker.get(line.worker_id, [])
+                ],
+            )
+            for line in lines
+            if line.worker_id in by_worker
+        ]
+        for item in _paid_corrections(period, paid, rules):
+            if item.difference:
+                found[item.line.worker_id] = item
+    return found
 
 
 def _days_with_expected_crew(period: PayPeriod, company: CompanySettings) -> set[datetime.date]:
@@ -399,7 +788,11 @@ def update_period_status(
         period.status = status
         period.save(update_fields=["status", "updated_at"])
         _audit(
-            actor, "payroll.period.status", period, before={"status": old}, after={"status": status}
+            actor,
+            _pay_action(actor, "period.status"),
+            period,
+            before={"status": old},
+            after={"status": status},
         )
     return status
 
@@ -473,6 +866,10 @@ class SheetLine:
     line: PayLine
     payment: Payment | None
     paid: int
+    # Adjustments settled on this pay: (adjustment, signed amount applied here).
+    adjustments: list[tuple[PayAdjustment, int]] = field(default_factory=list)
+    # Adjustments this (paid) line raised: its day was corrected after the payment.
+    raised: list[PayAdjustment] = field(default_factory=list)
 
     @property
     def worker(self) -> Worker:
@@ -546,18 +943,25 @@ def cash_sheet(
     day: datetime.date,
     *,
     refresh: bool = True,
-    actor=None,
     today: datetime.date | None = None,
 ) -> CashSheet:
-    """The cash sheet of a site for a pay day, with the reconciliation."""
+    """The cash sheet of a site for a pay day, with the reconciliation.
+
+    Reading it brings the pay up to date first (``refresh``); that recomputation is the
+    system's (no viewer in the audit log, nothing written when nothing changed).
+    """
     company = CompanySettings.load()
     if refresh:
-        sync_sheet(site, day, actor=actor, today=today, company=company)
+        sync_sheet(site, day, today=today, company=company)
     periods = list(PayPeriod.objects.filter(site=site, end_date=day).order_by("start_date"))
     pay_lines = (
         PayLine.objects.filter(period__in=periods)
         .select_related("worker__trade", "period")
-        .prefetch_related("payments__paid_by")
+        .prefetch_related(
+            "payments__paid_by",
+            "adjustment_applications__adjustment__source_line__period",
+            "raised_adjustments",
+        )
         .order_by("worker__last_name", "worker__first_name", "worker__number")
     )
     lines = []
@@ -568,6 +972,8 @@ def cash_sheet(
                 line=line,
                 payment=payments[0] if payments else None,
                 paid=sum(p.amount for p in payments),
+                adjustments=[(a.adjustment, a.amount) for a in line.adjustment_applications.all()],
+                raised=list(line.raised_adjustments.all()),
             )
         )
     issues = list(CashIssue.objects.filter(site=site, date=day).select_related("received_by"))
@@ -782,22 +1188,42 @@ def _record_payment(
 
 
 def undo_payment(user, payment: Payment, reason: str = "") -> None:
-    """Remove a payment recorded by mistake (office only, before the period is locked)."""
-    period = payment.pay_line.period
+    """Remove a payment recorded by mistake (office only, before the period is locked).
+
+    A pay corrected after the payment raised an adjustment on a later pay: while that
+    adjustment is open it is cancelled with the payment (the line is recomputed from the
+    corrected attendance instead); once it is settled on a paid line the payment can no
+    longer be undone (``Conflict``).
+    """
+    line = payment.pay_line
+    period = line.period
     if not can_manage_site(user, period.site):
         raise PermissionDenied
     if period.is_locked:
         raise Locked(_("This pay period is locked."), details={"status": "locked"})
+    raised = list(line.raised_adjustments.all())
+    if raised and _settled_adjustment_ids(raised):
+        raise Conflict(
+            _(
+                "This pay was corrected after it was paid and the difference is already "
+                "settled on a later pay: the payment cannot be undone."
+            ),
+            details={"pay_line_id": line.pk},
+        )
     with transaction.atomic():
         _audit(
             user,
             "payroll.payment.undo",
-            payment.pay_line,
+            line,
             before=_payment_snapshot(payment),
             reason=reason,
         )
         payment.delete()
+        for adjustment in raised:
+            _cancel_adjustment(adjustment, user)
         update_period_status(period, actor=user)
+    if raised:
+        _refresh_later(period, {line.worker_id}, actor=user)
 
 
 # --- locking -----------------------------------------------------------------------------
@@ -836,12 +1262,15 @@ def _lock_attendance_day(day: AttendanceDay, user) -> None:
 
 def _lock_checked(user, period: PayPeriod, unpaid: list[PayLine], reason: str) -> PayPeriod:
     for line in unpaid:
-        # The worker did not receive this pay, so no advance was repaid from it.
+        # The worker did not receive this pay, so no advance was repaid from it and no
+        # adjustment was settled on it (they wait for a later pay).
         before = _line_snapshot(line)
         _apply_repayments(line, ())
+        _apply_adjustments(line, (), user)
         line.advance_deduction = 0
+        line.adjustment = 0
         line.net = line.gross - line.other_deductions
-        line.save(update_fields=["advance_deduction", "net", "updated_at"])
+        line.save(update_fields=["advance_deduction", "adjustment", "net", "updated_at"])
         _audit(
             user,
             "payroll.line.closed_unpaid",
@@ -880,7 +1309,9 @@ def lock_period(user, period: PayPeriod, reason: str = "", *, today=None) -> Pay
     The period must be ready (every day approved). Workers left unpaid need a reason;
     their advance deductions are given back.
     """
-    refresh_period(period, actor=user, today=today)
+    if not can_lock(user, period.site):
+        raise PermissionDenied
+    refresh_period(period, today=today)
     with transaction.atomic():
         unpaid = _check_lockable(user, period, reason, today)
         return _lock_checked(user, period, unpaid, reason)
@@ -888,7 +1319,9 @@ def lock_period(user, period: PayPeriod, reason: str = "", *, today=None) -> Pay
 
 def lock_sheet(user, site: Site, day: datetime.date, reason: str = "", *, today=None):
     """Close and lock every period paid on this cash sheet."""
-    periods = sync_sheet(site, day, actor=user, today=today)
+    if not can_lock(user, site):
+        raise PermissionDenied
+    periods = sync_sheet(site, day, today=today)
     if not periods:
         raise Conflict(_("There is nothing to pay on this sheet."), details={})
     with transaction.atomic():

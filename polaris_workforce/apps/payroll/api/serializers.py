@@ -158,6 +158,10 @@ def payout_data(sheet, request) -> dict:
                 "units": _units(line),
                 "gross": line.gross,
                 "advance_deduction": line.advance_deduction,
+                # Pay adjustments (a day corrected after it was paid) are only in `net`:
+                # `gross` stays what was earned and `advance_deduction` the advance
+                # repayment, as the contract says. So `net` = gross − advance_deduction
+                # + line.adjustment (adjustment is 0 on almost every line).
                 "net": line.net,
                 "payment": None
                 if payment is None

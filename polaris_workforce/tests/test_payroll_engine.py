@@ -21,6 +21,7 @@ from apps.payroll.engine import (
     HOURLY,
     LATE,
     PRESENT,
+    AdjustmentInput,
     AdvanceInput,
     DayInput,
     PayRules,
@@ -345,7 +346,86 @@ def test_repeated_deductions_repay_the_advance_to_exactly_zero():
     assert balance == 0
 
 
-# --- input validation ---------------------------------------------------------------------
+# --- pay adjustments (a day corrected after it was paid) ---------------------------------
+
+ADJUSTMENT_CASES = [
+    # gross, advances [(id, balance, per pay)], adjustments [(id, left)],
+    # expected applied, advance deduction, adjustment, net
+    (6000, [], [(1, -6000)], ((1, -6000),), 0, -6000, 0),  # paid a day not worked
+    (6000, [], [(1, -2500)], ((1, -2500),), 0, -2500, 3500),
+    (3000, [], [(1, -6000)], ((1, -3000),), 0, -3000, 0),  # the rest waits: net ≥ 0
+    (6000, [], [(1, 3000)], ((1, 3000),), 0, 3000, 9000),  # underpaid: added
+    (0, [], [(1, 3000)], ((1, 3000),), 0, 3000, 3000),  # added even on a day off
+    (0, [], [(1, -3000)], (), 0, 0, 0),  # nothing to recover from
+    # Recovered after the advance deduction.
+    (6000, [(7, 10000, 2000)], [(1, -6000)], ((1, -4000),), 2000, -4000, 0),
+    (6000, [(7, 10000, 2000)], [(1, -1000)], ((1, -1000),), 2000, -1000, 3000),
+    # A positive adjustment counts for the advance deduction too.
+    (0, [(7, 10000, 2000)], [(1, 3000)], ((1, 3000),), 2000, 3000, 1000),
+    # Oldest first; a positive one makes room for a negative one.
+    (2000, [], [(1, -1500), (2, -1500)], ((1, -1500), (2, -500)), 0, -2000, 0),
+    (2000, [], [(1, -3000), (2, 2000)], ((1, -3000), (2, 2000)), 0, -1000, 1000),
+    (6000, [], [(1, 0), (2, -1000)], ((2, -1000),), 0, -1000, 5000),  # settled one skipped
+    (6000, [], [], (), 0, 0, 6000),
+]
+
+
+@pytest.mark.parametrize(
+    ("gross", "advances", "adjustments", "applied", "advance", "adjustment", "net"),
+    ADJUSTMENT_CASES,
+)
+def test_adjustments(gross, advances, adjustments, applied, advance, adjustment, net):
+    line = engine.compute_line(
+        [day(PRESENT, gross)] if gross else [day(ABSENT, 6000)],
+        PayRules(),
+        [AdvanceInput(*a) for a in advances],
+        adjustments=[AdjustmentInput(*a) for a in adjustments],
+    )
+
+    assert line.gross == gross  # earned only: adjustments are apart
+    assert line.adjustments == applied
+    assert line.advance_deduction == advance
+    assert line.adjustment == adjustment == sum(amount for _id, amount in applied)
+    assert line.net == net
+    assert line.gross - line.other_deductions - line.advance_deduction + line.adjustment == net
+
+
+@pytest.mark.parametrize(
+    ("capacity", "adjustments", "expected"),
+    [
+        (5000, [(1, -6000)], ((1, -5000),)),
+        (-2000, [(1, 3000), (2, -5000)], ((1, 3000), (2, -1000))),  # advance used 2000
+        (0, [(1, -1), (2, 1)], ((1, -1), (2, 1))),
+        (100, [], ()),
+    ],
+)
+def test_settle_adjustments(capacity, adjustments, expected):
+    assert (
+        engine.settle_adjustments([AdjustmentInput(*a) for a in adjustments], capacity) == expected
+    )
+
+
+def test_a_large_recovery_is_spread_over_the_next_pays():
+    left = -15000
+    taken = []
+    for gross in (6000, 3000, 0, 6000, 6000):
+        line = engine.compute_line(
+            [day(PRESENT, gross)] if gross else [],
+            PayRules(),
+            adjustments=[AdjustmentInput(1, left)],
+        )
+        taken.append(line.net)
+        left -= line.adjustment
+
+    assert taken == [0, 0, 0, 0, 6000]
+    assert left == 0
+
+
+def test_adjustment_amounts_must_be_minor_units():
+    with pytest.raises(TypeError):
+        AdjustmentInput(1, -6000.0)
+    with pytest.raises(TypeError):
+        AdjustmentInput(1, True)
 
 
 @pytest.mark.parametrize(
@@ -732,3 +812,47 @@ def test_property_more_attendance_never_pays_less(seed):
 
         assert gross(PRESENT) >= gross(LATE) >= 0
         assert gross(PRESENT) >= gross(HALF_DAY) >= gross(ABSENT) == 0
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_property_adjustments_settle_exactly_and_net_stays_positive(seed):
+    """Over enough pays, what is applied of each adjustment adds up to it exactly; no pay
+    goes below zero and positive adjustments are always paid in full."""
+    rng = random.Random(seed)
+    rules = _random_rules(rng)
+    adjustments = {i: rng.choice([-1, 1]) * rng.randint(1, 60000) for i in range(rng.randint(1, 4))}
+    left = dict(adjustments)
+    applied_total = dict.fromkeys(adjustments, 0)
+    advance_balance = rng.choice([0, 20000])
+    for pay in range(200):
+        days = [_random_day(rng, i) for i in range(rng.randint(0, 3))]
+        if pay > 100:  # a worker who keeps working settles everything eventually
+            days.append(DayInput(D, PRESENT, DAILY, 6000))
+        line = engine.compute_line(
+            days,
+            rules,
+            [AdvanceInput(9, advance_balance, 2000)],
+            adjustments=[AdjustmentInput(i, amount) for i, amount in left.items()],
+        )
+
+        assert line.net >= 0
+        assert line.adjustment == sum(amount for _id, amount in line.adjustments)
+        assert (
+            line.gross - line.other_deductions - line.advance_deduction + line.adjustment
+            == line.net
+        )
+        for adjustment_id, amount in line.adjustments:
+            remaining = left[adjustment_id]
+            assert amount != 0
+            assert (amount > 0) == (remaining > 0)  # never crosses zero
+            assert abs(amount) <= abs(remaining)
+            if remaining > 0:
+                assert amount == remaining  # positive: in full
+            left[adjustment_id] -= amount
+            applied_total[adjustment_id] += amount
+        advance_balance -= line.advance_deduction
+        if not any(left.values()):
+            break
+
+    assert applied_total == adjustments
+    assert not any(left.values())

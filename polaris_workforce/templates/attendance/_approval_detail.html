@@ -2,7 +2,8 @@
 Approvals detail panel for one day (included by attendance/approvals.html).
 
 Context
-  detail   dict from apps.attendance.selectors.approval_detail, plus
+  detail   dict from apps.attendance.selectors.approval_detail (rows carry paid_note when
+           the worker was already paid for this day), plus
            can_decide (bool) and form (DecisionForm)
 {% endcomment %}{% with day=detail.day %}
 <section id="approval-detail" aria-labelledby="approval-detail-title" class="flex min-w-0 flex-[3_1_600px] flex-col rounded-card border border-line bg-white">
@@ -25,6 +26,12 @@ Context
       {% with flag_title=detail.flags|join:" · " %}
         {% include "components/alert.html" with variant="warning" title=flag_title|add:"." message=flag_message only %}
       {% endwith %}
+    {% endif %}
+
+    {% if detail.paid_count %}
+      {% translate "Already paid." as paid_title %}
+      {% blocktranslate count n=detail.paid_count asvar paid_message %}{{ n }} worker was paid for this day before the correction: approving moves the difference to their next pay (see the row below).{% plural %}{{ n }} workers were paid for this day before the correction: approving moves the differences to their next pay (see the rows below).{% endblocktranslate %}
+      {% include "components/alert.html" with variant="warning" title=paid_title message=paid_message only %}
     {% endif %}
 
     {% if day.foreman_note %}
@@ -69,6 +76,7 @@ Context
               <span class="block">{% if row.record.corrected %}<span class="sr-only">{% translate "Changed after submission:" %} </span>{% endif %}{% blocktranslate with field=change.field old=change.old new=change.new %}{{ field }} was {{ old }} → {{ new }}.{% endblocktranslate %} “{{ change.reason }}” <span class="text-steel">{{ change.at }}</span></span>
             {% endfor %}
             {% if row.record.note %}<span class="block">{{ row.record.note }}</span>{% endif %}
+            {% if row.paid_note %}<span class="block font-semibold text-late-fg">{{ row.paid_note }}</span>{% endif %}
           </td>
         </tr>
         {% empty %}

@@ -1,6 +1,15 @@
 from django.contrib import admin
 
-from .models import Advance, AdvanceRepayment, CashIssue, PayLine, Payment, PayPeriod
+from .models import (
+    Advance,
+    AdvanceRepayment,
+    CashIssue,
+    PayAdjustment,
+    PayAdjustmentApplication,
+    PayLine,
+    Payment,
+    PayPeriod,
+)
 
 
 class PayLineInline(admin.TabularInline):
@@ -14,6 +23,7 @@ class PayLineInline(admin.TabularInline):
         "gross",
         "advance_deduction",
         "other_deductions",
+        "adjustment",
         "net",
     )
     autocomplete_fields = ("worker",)
@@ -49,7 +59,7 @@ class PayPeriodAdmin(admin.ModelAdmin):
 
 @admin.register(PayLine)
 class PayLineAdmin(admin.ModelAdmin):
-    list_display = ("worker", "period", "units", "gross", "advance_deduction", "net")
+    list_display = ("worker", "period", "units", "gross", "advance_deduction", "adjustment", "net")
     list_filter = ("period__status", "period__site")
     search_fields = ("worker__number", "worker__first_name", "worker__last_name")
     list_select_related = ("worker", "period__site")
@@ -100,3 +110,29 @@ class PaymentAdmin(admin.ModelAdmin):
     autocomplete_fields = ("paid_by",)
     raw_id_fields = ("pay_line",)
     date_hierarchy = "paid_at"
+
+
+class PayAdjustmentApplicationInline(admin.TabularInline):
+    model = PayAdjustmentApplication
+    extra = 0
+    fields = ("amount", "pay_line", "created_at")
+    readonly_fields = ("created_at",)
+    raw_id_fields = ("pay_line",)
+
+
+@admin.register(PayAdjustment)
+class PayAdjustmentAdmin(admin.ModelAdmin):
+    list_display = ("worker", "site", "amount", "applied_amount", "currency", "created_at")
+    list_filter = ("site", "created_at")
+    search_fields = ("worker__number", "worker__first_name", "worker__last_name", "reason")
+    list_select_related = ("worker", "site")
+    raw_id_fields = ("worker", "site", "source_line", "applied_to", "day", "record")
+    autocomplete_fields = ("created_by",)
+    inlines = [PayAdjustmentApplicationInline]
+
+
+@admin.register(PayAdjustmentApplication)
+class PayAdjustmentApplicationAdmin(admin.ModelAdmin):
+    list_display = ("adjustment", "pay_line", "amount", "created_at")
+    list_select_related = ("adjustment__worker", "pay_line__period__site")
+    raw_id_fields = ("adjustment", "pay_line")

@@ -47,15 +47,16 @@ def _site_filter(request, sites):
     return None
 
 
-def _sync_recent(sites, today, actor):
-    """Bring the last week's pay up to date (the attendance services also trigger this)."""
+def _sync_recent(sites, today):
+    """Bring the last week's pay up to date (the attendance services also trigger this).
+
+    Reading is not a write: the recomputation is the system's, not the viewer's."""
     company = CompanySettings.load()
     for site in sites.filter(status=Site.Status.ACTIVE):
         services.sync_site(
             site,
             today - datetime.timedelta(days=RECENT_DAYS - 1),
             today,
-            actor=actor,
             today=today,
             company=company,
         )
@@ -88,7 +89,7 @@ def periods(request):
     sites = scoped_sites(request.user).order_by("name")
     site = _site_filter(request, sites)
     shown_sites = sites.filter(pk=site.pk) if site else sites
-    _sync_recent(shown_sites, today, request.user)
+    _sync_recent(shown_sites, today)
 
     tab = request.GET.get("status", "open")
     if tab not in ("open", "locked", "all"):
@@ -105,7 +106,10 @@ def periods(request):
         .annotate(
             workers=Count("lines", distinct=True),
             gross=Sum("lines__gross"),
-            deductions=Sum("lines__advance_deduction") + Sum("lines__other_deductions"),
+            # Advances and other deductions, less pay adjustments (gross − this = net).
+            deductions=Sum("lines__advance_deduction")
+            + Sum("lines__other_deductions")
+            - Sum("lines__adjustment"),
             net=Sum("lines__net"),
         )
         .order_by("-end_date", "site__name")
@@ -129,6 +133,7 @@ def periods(request):
                 "workers": workers,
                 "paid": paid,
                 "progress": round(100 * paid / workers) if workers else 0,
+                "deductions": -(period.deductions or 0),  # signed, as the table shows it
                 "has_figures": period.status != PayPeriod.Status.OPEN or bool(period.gross),
                 "sheet_url": reverse(
                     "payroll:cash_sheet", args=[period.site_id, period.end_date.isoformat()]
@@ -192,7 +197,7 @@ def cash_sheets(request):
     site = _site_filter(request, sites)
     shown_sites = sites.filter(pk=site.pk) if site else sites
     for active in shown_sites.filter(status=Site.Status.ACTIVE):
-        services.sync_sheet(active, today, actor=request.user, today=today, company=company)
+        services.sync_sheet(active, today, today=today, company=company)
 
     groups = (
         PayPeriod.objects.filter(site__in=shown_sites)
@@ -244,7 +249,7 @@ def _row(request, sheet, sheet_line, company, form=None, errors=None):
 @require_GET
 def cash_sheet(request, site_id, date):
     site = get_site_or_403(request.user, site_id)
-    sheet = services.cash_sheet(site, date, actor=request.user)
+    sheet = services.cash_sheet(site, date)
     return render(request, "payroll/cash_sheet.html", _sheet_context(request, sheet))
 
 
