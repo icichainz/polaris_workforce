@@ -1,0 +1,53 @@
+{% extends "worksites/_detail_base.html" %}
+{% load i18n %}
+
+{% block tab_content %}
+<div class="flex flex-wrap items-start gap-6">
+  <form method="post" novalidate class="flex min-w-0 flex-[2_1_520px] flex-col gap-5 rounded-card border border-line bg-white p-5 sm:p-6">
+    {% csrf_token %}
+    <div class="flex flex-col gap-1">
+      <h2 class="font-display text-lg font-bold">{% translate "Site settings" %}</h2>
+      <p class="text-sm text-ink-700">{% translate "Leave a field blank to use the company value. Workers can still override payment method and pay frequency." %}</p>
+    </div>
+    {% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}
+    {% if not can_manage %}{% translate "Only an admin or this site’s manager can change these settings." as ro_message %}{% include "components/alert.html" with variant="info" message=ro_message only %}{% endif %}
+
+    <fieldset class="flex flex-col gap-4">
+      <legend class="mb-3 text-[13px] font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Pay" %}</legend>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {% include "components/field.html" with field=form.pay_frequency %}
+        {% include "components/field.html" with field=form.pay_every_n_days %}
+        {% include "components/field.html" with field=form.payment_method %}
+      </div>
+    </fieldset>
+    <fieldset class="flex flex-col gap-4">
+      <legend class="mb-3 text-[13px] font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Hours and roll call" %}</legend>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {% include "components/field.html" with field=form.work_start %}
+        {% include "components/field.html" with field=form.work_end %}
+        {% include "components/field.html" with field=form.late_after %}
+        {% include "components/field.html" with field=form.roll_call_due %}
+      </div>
+    </fieldset>
+    <fieldset class="flex flex-col gap-4">
+      <legend class="mb-3 text-[13px] font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Overtime" %}</legend>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {% include "components/field.html" with field=form.overtime_after_hours %}
+        {% include "components/field.html" with field=form.overtime_multiplier %}
+      </div>
+    </fieldset>
+    {% if can_manage %}
+    <div class="flex flex-wrap justify-end gap-2.5 border-t border-line-soft pt-4">
+      {% translate "Save site settings" as save_label %}{% include "components/button.html" with label=save_label type="submit" variant="primary" only %}
+    </div>
+    {% endif %}
+  </form>
+
+  <aside class="flex min-w-0 flex-[1_1_300px] flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5" aria-labelledby="effective-title">
+    <h2 id="effective-title" class="font-display text-base font-bold">{% translate "In effect now" %}</h2>
+    {% for s in pay_settings %}
+    <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{{ s.label }}</span><span class="text-right"><span class="font-semibold">{{ s.value }}</span><br><span class="text-xs text-steel">{{ s.source }}</span></span></div>
+    {% endfor %}
+  </aside>
+</div>
+{% endblock %}

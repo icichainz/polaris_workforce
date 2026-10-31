@@ -1,0 +1,29 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+{% comment %}
+Site detail shell: breadcrumb, header, actions and the section tabs.
+Context: site, tab (overview | crew | attendance | pay | settings), crew_count,
+can_manage, is_admin. Pages fill {% block tab_content %}.
+{% endcomment %}
+
+{% block title %}{{ site.name }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'worksites:list' %}">{% translate "Sites" %}</a> / {{ site.name }}</nav>{% endblock %}
+{% block page_title %}{{ site.name }}{% endblock %}
+{% block page_status %}{% include "components/status_badge.html" with status=site.status size="lg" only %}{% endblock %}
+{% block page_meta %}{{ site.address|default:"" }}{% if site.address and site.started_on %} · {% endif %}{% if site.started_on %}{% blocktranslate with date=site.started_on|date:"j F Y" %}Started {{ date }}{% endblocktranslate %}{% endif %}{% endblock %}
+{% block page_actions %}
+  {% if is_admin %}{% translate "Edit site" as edit_label %}{% url "worksites:edit" site.pk as edit_url %}{% include "components/button.html" with label=edit_label href=edit_url variant="ghost" only %}{% endif %}
+  {% if can_manage %}{% translate "Assign workers" as assign_label %}{% url "worksites:assign" site.pk as assign_url %}{% include "components/button.html" with label=assign_label href=assign_url only %}{% endif %}
+  {% translate "Review today’s roll call" as review_label %}{% url "attendance:approvals" as review_url %}{% include "components/button.html" with label=review_label href=review_url variant="primary" only %}
+{% endblock %}
+
+{% block content %}
+<nav aria-label="{% translate 'Site sections' %}" class="flex gap-6 overflow-x-auto border-b border-line">
+  <a href="{% url 'worksites:detail' site.pk %}"{% if tab == "overview" %} aria-current="true"{% endif %} class="inline-flex h-11 shrink-0 items-center border-b-[3px] text-sm no-underline {% if tab == 'overview' %}border-amber-500 font-bold text-ink hover:text-ink{% else %}border-transparent font-semibold text-ink-700 hover:text-ink{% endif %}">{% translate "Overview" %}</a>
+  <a href="{% url 'worksites:crew' site.pk %}"{% if tab == "crew" %} aria-current="true"{% endif %} class="inline-flex h-11 shrink-0 items-center border-b-[3px] text-sm no-underline {% if tab == 'crew' %}border-amber-500 font-bold text-ink hover:text-ink{% else %}border-transparent font-semibold text-ink-700 hover:text-ink{% endif %}">{% translate "Crew" %} · {{ crew_count }}</a>
+  <a href="{% url 'worksites:attendance' site.pk %}"{% if tab == "attendance" %} aria-current="true"{% endif %} class="inline-flex h-11 shrink-0 items-center border-b-[3px] text-sm no-underline {% if tab == 'attendance' %}border-amber-500 font-bold text-ink hover:text-ink{% else %}border-transparent font-semibold text-ink-700 hover:text-ink{% endif %}">{% translate "Attendance history" %}</a>
+  <a href="{% url 'worksites:pay' site.pk %}"{% if tab == "pay" %} aria-current="true"{% endif %} class="inline-flex h-11 shrink-0 items-center border-b-[3px] text-sm no-underline {% if tab == 'pay' %}border-amber-500 font-bold text-ink hover:text-ink{% else %}border-transparent font-semibold text-ink-700 hover:text-ink{% endif %}">{% translate "Pay & cash" %}</a>
+  <a href="{% url 'worksites:settings' site.pk %}"{% if tab == "settings" %} aria-current="true"{% endif %} class="inline-flex h-11 shrink-0 items-center border-b-[3px] text-sm no-underline {% if tab == 'settings' %}border-amber-500 font-bold text-ink hover:text-ink{% else %}border-transparent font-semibold text-ink-700 hover:text-ink{% endif %}">{% translate "Site settings" %}</a>
+</nav>
+{% block tab_content %}{% endblock %}
+{% endblock %}

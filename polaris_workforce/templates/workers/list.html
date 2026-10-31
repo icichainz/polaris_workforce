@@ -2,11 +2,62 @@
 {% load i18n %}
 
 {% block title %}{% translate "Workers" %} · Polaris Workforce{% endblock %}
-{% block page_subtitle %}{% translate "Everyone on your crews, with rates and history" %}{% endblock %}
+{% block page_subtitle %}{% blocktranslate with active=active_count inactive=inactive_count %}{{ active }} active · {{ inactive }} inactive{% endblocktranslate %}{% endblock %}
 {% block page_title %}{% translate "Workers" %}{% endblock %}
+{% block page_actions %}
+  {% if can_create %}{% translate "Add worker" as add_label %}{% url "workers:create" as add_url %}{% include "components/button.html" with label=add_label href=add_url variant="primary" icon="plus" only %}{% endif %}
+{% endblock %}
 
 {% block content %}
-  {% translate "This screen is built in Wave 2" as empty_title %}
-  {% translate "Search and filter workers, open a profile, add or import workers." as empty_message %}
-  {% include "components/empty_state.html" with icon="workers" title=empty_title message=empty_message only %}
+<form method="get" role="search" class="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto]">
+  {% include "components/field.html" with field=form.q %}
+  {% include "components/field.html" with field=form.site %}
+  {% include "components/field.html" with field=form.trade %}
+  {% include "components/field.html" with field=form.status %}
+  {% translate "Filter" as filter_label %}{% include "components/button.html" with label=filter_label type="submit" only %}
+</form>
+
+<section aria-label="{% translate 'Workers' %}" class="flex flex-col">
+  {% if rows %}
+  <div class="overflow-x-auto rounded-t-control border border-line bg-white">
+    <table class="w-full min-w-[880px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Trade" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Phone" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Rate" %} ({{ currency }})</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Today" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Owes (advance)" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3"><span class="flex items-center gap-2.5">{% if row.worker.photo %}<img src="{{ row.worker.photo.url }}" alt="" class="size-8 shrink-0 rounded-full object-cover">{% else %}<span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-line text-xs font-bold">{{ row.initials }}</span>{% endif %}
+            <span><a href="{% url 'workers:detail' row.worker.pk %}" class="font-semibold">{{ row.worker.full_name }}</a><br><span class="text-xs text-steel">{{ row.worker.number }}{% if not row.worker.is_active %} · {% translate "Inactive" %}{% endif %}</span></span></span></td>
+          <td class="px-4 py-3">{{ row.worker.trade.name|default:"—" }}</td>
+          <td class="px-4 py-3">{{ row.site }}</td>
+          <td class="px-4 py-3 whitespace-nowrap tabular-nums">{{ row.worker.phone|default:"—" }}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap"><span class="font-semibold tabular-nums">{{ row.rate }}</span>{% if row.unit %} <span class="text-xs text-steel">/ {{ row.unit }}</span>{% endif %}</td>
+          <td class="px-4 py-3">{% include "components/status_badge.html" with status=row.status only %}</td>
+          <td class="px-4 py-3 text-right font-semibold tabular-nums {% if row.owes %}text-half-fg{% else %}text-steel{% endif %}">{{ row.owes|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="flex flex-wrap items-center justify-between gap-3 rounded-b-control border border-t-0 border-line bg-white px-4 py-3 text-[13px] text-ink-700">
+    <span>{% blocktranslate with start=page.start_index end=page.end_index total=page.paginator.count %}Showing {{ start }}–{{ end }} of {{ total }}{% endblocktranslate %}</span>
+    <nav aria-label="{% translate 'Pages' %}" class="flex gap-2">
+      {% translate "Previous" as prev_label %}{% translate "Next" as next_label %}
+      {% if page.has_previous %}{% querystring page=page.previous_page_number as prev_url %}{% include "components/button.html" with label=prev_label href=prev_url only %}{% else %}{% include "components/button.html" with label=prev_label disabled=True only %}{% endif %}
+      {% if page.has_next %}{% querystring page=page.next_page_number as next_url %}{% include "components/button.html" with label=next_label href=next_url only %}{% else %}{% include "components/button.html" with label=next_label disabled=True only %}{% endif %}
+    </nav>
+  </div>
+  {% else %}
+    {% translate "No workers found" as empty_title %}{% translate "Change the filters, or add a worker." as empty_message %}
+    {% if can_create %}{% translate "Add worker" as empty_action %}{% url "workers:create" as empty_href %}{% endif %}
+    {% include "components/empty_state.html" with icon="workers" title=empty_title message=empty_message action_label=empty_action action_href=empty_href only %}
+  {% endif %}
+</section>
 {% endblock %}

@@ -13,7 +13,6 @@ UUID = "6f1c2b9e-1d1a-4c55-9a52-3f0e8a9d7b10"
 PROTECTED = [
     ("post", "api:accounts:auth-logout", {}, None),
     ("get", "api:accounts:me", {}, None),
-    ("get", "api:worksites:crew", {"site_id": 3}, None),
     ("get", "api:attendance:days", {"site_id": 3}, None),
     ("get", "api:attendance:day", {"site_id": 3, "date": DAY}, None),
     (

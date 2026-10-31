@@ -1,0 +1,101 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% if worker %}{% translate "Edit worker" %}{% else %}{% translate "Add a worker" %}{% endif %} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'workers:list' %}">{% translate "Workers" %}</a> / {% if worker %}<a href="{% url 'workers:detail' worker.pk %}">{{ worker.full_name }}</a> / {% translate "Edit" %}{% else %}{% translate "New worker" %}{% endif %}</nav>{% endblock %}
+{% block page_title %}{% if worker %}{% blocktranslate with name=worker.full_name %}Edit {{ name }}{% endblocktranslate %}{% else %}{% translate "Add a worker" %}{% endif %}{% endblock %}
+{% block page_meta %}{% if worker %}{{ worker.number }}{% if current_site %} · {{ current_site.name }}{% endif %}{% endif %}{% endblock %}
+
+{% block content %}
+{% translate "Per day" as per_day %}{% translate "Per hour" as per_hour %}
+{{ inherited|json_script:"inherited-settings" }}
+<form method="post" enctype="multipart/form-data" novalidate class="flex max-w-[860px] flex-col gap-5"
+      x-data="{ site: '{{ form.site.value|default_if_none:''|escapejs }}', payType: '{{ form.pay_type.value|default_if_none:''|escapejs }}', inherited: JSON.parse(document.getElementById('inherited-settings').textContent), get hint() { return this.inherited[this.site] || this.inherited[''] } }">
+  {% csrf_token %}
+  {% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}
+
+  <section class="flex flex-col gap-5 rounded-card border border-line bg-white p-5 sm:flex-row sm:p-6" aria-labelledby="identity-title">
+    <div class="flex shrink-0 flex-col items-center gap-2.5 sm:w-44">
+      {% if worker.photo %}<img src="{{ worker.photo.url }}" alt="" class="size-28 rounded-full object-cover">{% else %}
+      <span class="flex size-28 items-center justify-center rounded-full border-2 border-dashed border-line-strong bg-subtle text-steel">
+        <svg class="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path></svg>
+      </span>{% endif %}
+      <div class="flex w-full flex-col gap-1.5">
+        <label for="{{ form.photo.auto_id }}" class="text-center text-[13px] font-semibold">{% if worker.photo %}{% translate "Change photo" %}{% else %}{% translate "Add photo" %}{% endif %}</label>
+        <input type="file" name="{{ form.photo.html_name }}" id="{{ form.photo.auto_id }}" accept="image/jpeg,image/png,image/webp" aria-describedby="{{ form.photo.auto_id }}_help" class="w-full text-xs file:mr-2 file:h-10 file:rounded-control file:border file:border-line-strong file:bg-white file:px-3 file:text-[13px] file:font-semibold">
+        {% if worker.photo %}<label class="flex items-center justify-center gap-2 text-xs"><input type="checkbox" name="{{ form.photo.html_name }}-clear" id="{{ form.photo.auto_id }}-clear_id" class="size-4 accent-ink"> {% translate "Remove photo" %}</label>{% endif %}
+        {% if form.photo.errors %}<p class="text-center text-[13px] font-medium text-absent-fg">{{ form.photo.errors|join:" " }}</p>{% else %}<p id="{{ form.photo.auto_id }}_help" class="text-center text-xs text-steel">{{ form.photo.help_text }}</p>{% endif %}
+      </div>
+    </div>
+    <div class="grid min-w-0 grow grid-cols-1 content-start gap-4 sm:grid-cols-2">
+      <h2 id="identity-title" class="font-display text-lg font-bold sm:col-span-2">{% translate "Identity" %}</h2>
+      {% include "components/field.html" with field=form.first_name %}
+      {% include "components/field.html" with field=form.last_name %}
+      {% include "components/field.html" with field=form.phone %}
+      {% include "components/field.html" with field=form.trade %}
+      {% include "components/field.html" with field=form.new_trade %}
+      <span class="hidden sm:block" aria-hidden="true"></span>
+      {% include "components/field.html" with field=form.id_document_type %}
+      {% include "components/field.html" with field=form.id_document_number %}
+      {% if form.is_active %}<div class="sm:col-span-2">{% include "components/field.html" with field=form.is_active %}</div>{% endif %}
+    </div>
+  </section>
+
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-5 sm:p-6" aria-labelledby="site-title">
+    <h2 id="site-title" class="font-display text-lg font-bold">{% translate "Site" %}</h2>
+    {% if worker and current_site %}<p class="text-sm text-ink-700">{% blocktranslate with site=current_site.name %}Now on {{ site }}.{% endblocktranslate %}</p>{% endif %}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2" @change="if ($event.target.name === '{{ form.site.html_name }}') site = $event.target.value">
+      {% include "components/field.html" with field=form.site %}
+      {% include "components/field.html" with field=form.start_date %}
+    </div>
+  </section>
+
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-5 sm:p-6" aria-labelledby="pay-title">
+    <h2 id="pay-title" class="font-display text-lg font-bold">{% translate "Pay" %}</h2>
+    <fieldset class="flex flex-col gap-2">
+      <legend class="mb-1.5 text-[13px] font-semibold">{{ form.pay_type.label }}</legend>
+      <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+        {% for option in form.pay_type %}
+        <label class="flex min-h-14 cursor-pointer items-start gap-2.5 rounded-control border border-line-strong bg-white p-3 text-sm has-[:checked]:border-2 has-[:checked]:border-ink">
+          <input type="radio" name="{{ option.data.name }}" value="{{ option.data.value }}" id="{{ option.id_for_label }}"{% if option.data.selected %} checked{% endif %} x-model="payType" class="mt-0.5 size-[18px] accent-ink">
+          <span><strong>{{ option.choice_label }}</strong><br><span class="text-xs text-steel">{% if option.data.value == "hourly" %}{% translate "Needs arrival & departure" %}{% else %}{% translate "Paid per day present" %}{% endif %}</span></span>
+        </label>
+        {% endfor %}
+        <label class="flex min-h-14 items-start gap-2.5 rounded-control border border-line bg-ground p-3 text-sm text-disabled">
+          <input type="radio" disabled class="mt-0.5 size-[18px]">
+          <span><strong>{% translate "Piece work" %}</strong><br><span class="text-xs">{% translate "Coming later" %}</span></span>
+        </label>
+      </div>
+      {% if form.pay_type.errors %}<p class="text-[13px] font-medium text-absent-fg">{{ form.pay_type.errors|join:" " }}</p>{% endif %}
+    </fieldset>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="flex flex-col gap-1">
+        {% include "components/money_field.html" with field=form.rate currency=currency only %}
+        <p class="text-xs text-steel" x-text="payType === 'hourly' ? '{{ per_hour|escapejs }}' : '{{ per_day|escapejs }}'">{% if form.pay_type.value == "hourly" %}{{ per_hour }}{% else %}{{ per_day }}{% endif %}</p>
+      </div>
+      {% include "components/field.html" with field=form.effective_from %}
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <h3 class="text-[13px] font-semibold">{% translate "Inherited settings" %}</h3>
+      <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-control border border-dashed border-line-strong px-3 py-1.5 text-sm">
+        <span class="grow">{% translate "Payment method" %}: <strong class="font-semibold" x-text="hint.payment_method">{{ hint.payment_method }}</strong></span>
+        <span class="text-xs text-steel" x-text="hint.payment_method_source">{{ hint.payment_method_source }}</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-control border border-dashed border-line-strong px-3 py-1.5 text-sm">
+        <span class="grow">{% translate "Pay frequency" %}: <strong class="font-semibold" x-text="hint.pay_frequency">{{ hint.pay_frequency }}</strong></span>
+        <span class="text-xs text-steel" x-text="hint.pay_frequency_source">{{ hint.pay_frequency_source }}</span>
+      </div>
+      <div class="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2">
+        {% translate "Override payment method" as pm_label %}{% include "components/field.html" with field=form.payment_method label=pm_label %}
+        {% translate "Override pay frequency" as pf_label %}{% include "components/field.html" with field=form.pay_frequency label=pf_label %}
+      </div>
+    </div>
+  </section>
+
+  <div class="flex flex-wrap justify-end gap-2.5">
+    {% translate "Cancel" as cancel_label %}{% if worker %}{% url "workers:detail" worker.pk as cancel_url %}{% else %}{% url "workers:list" as cancel_url %}{% endif %}{% include "components/button.html" with label=cancel_label href=cancel_url variant="ghost" only %}
+    {% translate "Save worker" as save_label %}{% include "components/button.html" with label=save_label type="submit" variant="primary" only %}
+  </div>
+</form>
+{% endblock %}
