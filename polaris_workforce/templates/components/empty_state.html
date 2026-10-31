@@ -1,0 +1,17 @@
+{% comment %}
+Empty state: a card with an icon, a title, a line of text and an optional action.
+
+  {% include "components/empty_state.html" with icon="workers" title=_("No workers yet") message=_("Add your first worker to start the roll call.") action_label=_("Add worker") action_href=url %}
+
+Parameters
+  title          heading (required)
+  message        optional line under the title
+  icon           optional icon name (see components/icon.html)
+  action_label   optional button text, with…
+  action_href    …the link it goes to (rendered as a primary button)
+{% endcomment %}<div class="flex flex-col items-center gap-3 rounded-card border border-line bg-white px-6 py-12 text-center">
+  {% if icon %}<span class="flex size-12 items-center justify-center rounded-card bg-ground text-steel">{% include "components/icon.html" with name=icon class="size-6" only %}</span>{% endif %}
+  <h2 class="font-display text-lg font-bold">{{ title }}</h2>
+  {% if message %}<p class="max-w-md text-sm text-ink-700">{{ message }}</p>{% endif %}
+  {% if action_label and action_href %}<div class="pt-1">{% include "components/button.html" with label=action_label href=action_href variant="primary" only %}</div>{% endif %}
+</div>

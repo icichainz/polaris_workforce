@@ -1,0 +1,55 @@
+{% comment %}
+Form field from a Django BoundField: label + input / select / textarea / checkbox, help
+text and error state (red border + message). Widget attributes (maxlength, autocomplete,
+required, autofocus…) are kept; widget "class" attributes are replaced by these styles.
+
+  {% include "components/field.html" with field=form.full_name %}
+  {% include "components/field.html" with field=form.reason placeholder=_("e.g. Bus breakdown, arrived 07:20") %}
+  {% include "components/field.html" with field=form.password size="lg" aside_href=reset_url aside_label=_("Forgot?") %}
+
+Parameters
+  field        the BoundField (required)
+  label        optional label override (default field.label)
+  help         optional help text override (default field.help_text)
+  placeholder  optional placeholder (default: the widget's own placeholder attr)
+  size         "" (40px office) | lg (44px, sign-in) | phone (56px)
+  aside_href, aside_label   optional link at the right of the label row
+File inputs and other unusual widgets fall back to Django's own rendering.
+{% endcomment %}{% with wt=field.widget_type %}<div class="flex flex-col gap-1.5">
+  {% if wt == 'checkbox' %}
+    {% with w=field.subwidgets.0.data %}
+    <label for="{{ field.auto_id }}" class="flex min-h-10 items-center gap-2 text-sm">
+      <input type="checkbox" name="{{ field.html_name }}"{% for k, v in w.attrs.items %}{% if k != 'class' %}{% if v is True %} {{ k }}{% elif v is not False and v is not None %} {{ k }}="{{ v }}"{% endif %}{% endif %}{% endfor %}{% if field.help_text or help %} aria-describedby="{{ field.auto_id }}_help"{% endif %} class="size-[18px] rounded accent-ink">
+      <span>{{ label|default:field.label }}</span>
+    </label>
+    {% endwith %}
+  {% else %}
+    <span class="flex items-baseline justify-between gap-2">
+      <label for="{{ field.auto_id }}" class="text-[13px] font-semibold text-ink">{{ label|default:field.label }}</label>
+      {% if aside_href %}<a href="{{ aside_href }}" class="text-[13px] font-medium">{{ aside_label }}</a>{% endif %}
+    </span>
+    {% if wt == 'select' or wt == 'selectmultiple' or wt == 'nullbooleanselect' %}
+      <select name="{{ field.html_name }}" id="{{ field.auto_id }}"{% if wt == 'selectmultiple' %} multiple{% endif %}{% if field.field.required %} required{% endif %}{% if field.field.disabled %} disabled{% endif %}{% for k, v in field.field.widget.attrs.items %}{% if k != 'class' %}{% if v is True %} {{ k }}{% elif v is not False and v is not None %} {{ k }}="{{ v }}"{% endif %}{% endif %}{% endfor %}{% if field.errors %} aria-invalid="true" aria-describedby="{{ field.auto_id }}_error"{% elif field.help_text or help %} aria-describedby="{{ field.auto_id }}_help"{% endif %}
+        class="w-full rounded-control bg-white px-2.5 text-ink disabled:bg-ground disabled:text-disabled {% if wt == 'selectmultiple' %}min-h-24 py-2{% elif size == 'phone' %}h-14{% elif size == 'lg' %}h-11{% else %}h-10{% endif %} {% if size == 'phone' %}text-[17px]{% elif size == 'lg' %}text-[15px]{% else %}text-sm{% endif %} {% if field.errors %}border-2 border-danger-strong{% else %}border border-line-strong{% endif %}">
+        {% for opt in field.subwidgets %}<option value="{{ opt.data.value|stringformat:'s' }}"{% if opt.data.selected %} selected{% endif %}>{{ opt.choice_label }}</option>{% endfor %}
+      </select>
+    {% elif wt == 'textarea' %}
+      {% with w=field.subwidgets.0.data %}
+      <textarea name="{{ field.html_name }}"{% for k, v in w.attrs.items %}{% if k != 'class' and k != 'placeholder' %}{% if v is True %} {{ k }}{% elif v is not False and v is not None %} {{ k }}="{{ v }}"{% endif %}{% endif %}{% endfor %}{% if placeholder or w.attrs.placeholder %} placeholder="{{ placeholder|default:w.attrs.placeholder }}"{% endif %}{% if field.errors %} aria-invalid="true" aria-describedby="{{ field.auto_id }}_error"{% elif field.help_text or help %} aria-describedby="{{ field.auto_id }}_help"{% endif %}
+        class="min-h-24 w-full rounded-control bg-white px-3 py-2 text-ink placeholder:text-steel disabled:bg-ground disabled:text-disabled {% if size == 'phone' %}text-[17px]{% elif size == 'lg' %}text-[15px]{% else %}text-sm{% endif %} {% if field.errors %}border-2 border-danger-strong{% else %}border border-line-strong{% endif %}">{{ w.value|default_if_none:'' }}</textarea>
+      {% endwith %}
+    {% elif wt == 'clearablefile' or wt == 'file' or wt == 'radioselect' or wt == 'checkboxselectmultiple' or wt == 'splitdatetime' %}
+      <div class="text-sm">{{ field }}</div>
+    {% else %}
+      {% with w=field.subwidgets.0.data %}
+      <input type="{{ w.type|default:'text' }}" name="{{ field.html_name }}"{% if w.value is not None %} value="{{ w.value|stringformat:'s' }}"{% endif %}{% for k, v in w.attrs.items %}{% if k != 'class' and k != 'placeholder' %}{% if v is True %} {{ k }}{% elif v is not False and v is not None %} {{ k }}="{{ v }}"{% endif %}{% endif %}{% endfor %}{% if placeholder or w.attrs.placeholder %} placeholder="{{ placeholder|default:w.attrs.placeholder }}"{% endif %}{% if field.errors %} aria-invalid="true" aria-describedby="{{ field.auto_id }}_error"{% elif field.help_text or help %} aria-describedby="{{ field.auto_id }}_help"{% endif %}
+        class="w-full rounded-control bg-white px-3 text-ink placeholder:text-steel disabled:bg-ground disabled:text-disabled {% if size == 'phone' %}h-14 text-[17px]{% elif size == 'lg' %}h-11 text-[15px]{% else %}h-10 text-sm{% endif %} {% if field.errors %}border-2 border-danger-strong{% else %}border border-line-strong{% endif %}">
+      {% endwith %}
+    {% endif %}
+  {% endif %}
+  {% if field.errors %}
+    <p id="{{ field.auto_id }}_error" class="text-[13px] font-medium text-absent-fg">{% for error in field.errors %}{{ error }}{% if not forloop.last %} {% endif %}{% endfor %}</p>
+  {% elif help or field.help_text %}
+    <p id="{{ field.auto_id }}_help" class="text-xs text-steel">{{ help|default:field.help_text }}</p>
+  {% endif %}
+</div>{% endwith %}

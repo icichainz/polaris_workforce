@@ -1,0 +1,12 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Salary advances" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% translate "What workers owe and how it is repaid" %}{% endblock %}
+{% block page_title %}{% translate "Salary advances" %}{% endblock %}
+
+{% block content %}
+  {% translate "This screen is built in Wave 2" as empty_title %}
+  {% translate "Advances given, repayments per pay and the balance each worker owes." as empty_message %}
+  {% include "components/empty_state.html" with icon="advances" title=empty_title message=empty_message only %}
+{% endblock %}

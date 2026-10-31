@@ -1,0 +1,39 @@
+{% load i18n %}{% comment %}
+Day workflow stepper (Components artboard): Draft → Submitted → Approve → Locked.
+
+  {% include "components/stepper.html" with status=day.status submitted_note="07:42 · synced 07:45" %}
+
+Parameters
+  status          the attendance day status: draft | submitted | approved | rejected | locked
+                  draft/rejected → step 1 current; submitted → step 3 (Approve) current;
+                  approved → step 4 current; locked → all done
+  draft_note, submitted_note, approve_note, locked_note
+                  optional small line under each step ("Foreman 07:05")
+                  defaults: Approve → "Waiting for you" when current; Locked → "After payout";
+                  Draft → "Sent back" when rejected
+{% endcomment %}<ol class="m-0 grid list-none grid-cols-2 gap-2 p-0 sm:grid-cols-4" aria-label="{% translate 'Day workflow' %}">
+  {# Step 1: Draft #}
+  <li class="flex flex-col gap-1.5"{% if status == 'draft' or status == 'rejected' or not status %} aria-current="step"{% endif %}>
+    <span class="h-1.5 rounded-full {% if status == 'draft' or not status %}bg-amber-500{% elif status == 'rejected' %}bg-absent-fg{% else %}bg-present-fg{% endif %}" aria-hidden="true"></span>
+    <span class="text-[13px] {% if status == 'draft' or status == 'rejected' or not status %}font-bold{% else %}font-semibold{% endif %}">1 · {% translate "Draft" %}{% if status == 'submitted' or status == 'approved' or status == 'locked' %}<span class="sr-only"> ({% translate "done" %})</span>{% endif %}</span>
+    {% if status == 'rejected' %}<span class="text-xs font-semibold text-absent-fg">{{ draft_note|default:_("Sent back") }}</span>{% elif draft_note %}<span class="text-xs text-steel">{{ draft_note }}</span>{% endif %}
+  </li>
+  {# Step 2: Submitted #}
+  <li class="flex flex-col gap-1.5">
+    <span class="h-1.5 rounded-full {% if status == 'submitted' or status == 'approved' or status == 'locked' %}bg-present-fg{% else %}bg-line{% endif %}" aria-hidden="true"></span>
+    <span class="text-[13px] font-semibold {% if status == 'submitted' or status == 'approved' or status == 'locked' %}text-ink{% else %}text-steel{% endif %}">2 · {% translate "Submitted" %}{% if status == 'submitted' or status == 'approved' or status == 'locked' %}<span class="sr-only"> ({% translate "done" %})</span>{% endif %}</span>
+    {% if submitted_note %}<span class="text-xs text-steel">{{ submitted_note }}</span>{% endif %}
+  </li>
+  {# Step 3: Approve #}
+  <li class="flex flex-col gap-1.5"{% if status == 'submitted' %} aria-current="step"{% endif %}>
+    <span class="h-1.5 rounded-full {% if status == 'submitted' %}bg-amber-500{% elif status == 'approved' or status == 'locked' %}bg-present-fg{% else %}bg-line{% endif %}" aria-hidden="true"></span>
+    <span class="text-[13px] {% if status == 'submitted' %}font-bold text-ink{% elif status == 'approved' or status == 'locked' %}font-semibold text-ink{% else %}font-semibold text-steel{% endif %}">3 · {% translate "Approve" %}{% if status == 'approved' or status == 'locked' %}<span class="sr-only"> ({% translate "done" %})</span>{% endif %}</span>
+    {% if status == 'submitted' %}<span class="text-xs font-semibold text-amber-text">{{ approve_note|default:_("Waiting for you") }}</span>{% elif approve_note %}<span class="text-xs text-steel">{{ approve_note }}</span>{% endif %}
+  </li>
+  {# Step 4: Locked #}
+  <li class="flex flex-col gap-1.5"{% if status == 'approved' %} aria-current="step"{% endif %}>
+    <span class="h-1.5 rounded-full {% if status == 'approved' %}bg-amber-500{% elif status == 'locked' %}bg-present-fg{% else %}bg-line{% endif %}" aria-hidden="true"></span>
+    <span class="text-[13px] {% if status == 'approved' %}font-bold text-ink{% elif status == 'locked' %}font-semibold text-ink{% else %}font-semibold text-steel{% endif %}">4 · {% translate "Locked" %}{% if status == 'locked' %}<span class="sr-only"> ({% translate "done" %})</span>{% endif %}</span>
+    <span class="text-xs {% if status == 'approved' %}font-semibold text-amber-text{% else %}text-steel{% endif %}">{{ locked_note|default:_("After payout") }}</span>
+  </li>
+</ol>

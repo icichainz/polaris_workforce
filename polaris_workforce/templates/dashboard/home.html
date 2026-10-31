@@ -1,14 +1,12 @@
-{% extends "base.html" %}
+{% extends "layouts/app.html" %}
 {% load i18n %}
 
 {% block title %}{% translate "Today" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% now "l j F Y · H:i" %}{% endblock %}
+{% block page_title %}{% translate "Today across sites" %}{% endblock %}
 
 {% block content %}
-  <h1>Polaris Workforce</h1>
-  <p>{% blocktranslate with name=user.get_full_name|default:user.username %}Signed in as {{ name }}.{% endblocktranslate %}</p>
-
-  <form method="post" action="{% url 'logout' %}">
-    {% csrf_token %}
-    <button type="submit">{% translate "Sign out" %}</button>
-  </form>
+  {% translate "Welcome to Polaris Workforce" as empty_title %}
+  {% translate "This screen is built in Wave 2: stat tiles, the sites-today table and what needs attention." as empty_message %}
+  {% include "components/empty_state.html" with icon="dashboard" title=empty_title message=empty_message only %}
 {% endblock %}

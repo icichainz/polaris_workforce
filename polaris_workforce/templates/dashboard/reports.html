@@ -1,0 +1,12 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Reports" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% translate "Labour cost, attendance rate and exports" %}{% endblock %}
+{% block page_title %}{% translate "Reports" %}{% endblock %}
+
+{% block content %}
+  {% translate "This screen is built in Wave 2" as empty_title %}
+  {% translate "Labour cost by site, attendance by week and by worker, with CSV and Excel downloads." as empty_message %}
+  {% include "components/empty_state.html" with icon="reports" title=empty_title message=empty_message only %}
+{% endblock %}

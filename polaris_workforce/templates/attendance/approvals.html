@@ -1,0 +1,12 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Approvals" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% translate "Roll calls submitted by foremen" %}{% endblock %}
+{% block page_title %}{% translate "Approvals" %}{% endblock %}
+
+{% block content %}
+  {% translate "This screen is built in Wave 2" as empty_title %}
+  {% translate "Submitted days waiting for approval, with changed rows highlighted." as empty_message %}
+  {% include "components/empty_state.html" with icon="approvals" title=empty_title message=empty_message only %}
+{% endblock %}

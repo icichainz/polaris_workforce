@@ -1,0 +1,12 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Settings" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% translate "Company defaults — each site can override pay and attendance rules" %}{% endblock %}
+{% block page_title %}{% translate "Settings" %}{% endblock %}
+
+{% block content %}
+  {% translate "This screen is built in Wave 2" as empty_title %}
+  {% translate "Company and region, attendance, pay rules, payments and advances, working days and holidays." as empty_message %}
+  {% include "components/empty_state.html" with icon="settings" title=empty_title message=empty_message only %}
+{% endblock %}

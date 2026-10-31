@@ -1,0 +1,12 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Users & roles" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% translate "People who use the app — workers are managed in Workers" %}{% endblock %}
+{% block page_title %}{% translate "Users & roles" %}{% endblock %}
+
+{% block content %}
+  {% translate "This screen is built in Wave 2" as empty_title %}
+  {% translate "Invite users, set their role and sites, and manage foreman phones." as empty_message %}
+  {% include "components/empty_state.html" with icon="users" title=empty_title message=empty_message only %}
+{% endblock %}

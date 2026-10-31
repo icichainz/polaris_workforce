@@ -1,0 +1,21 @@
+{% load i18n %}{% comment %}
+Inherited setting row (Components artboard): a dashed row that shows a value coming from
+a higher level (company → site → worker), with an Override action. When the value is
+overridden at this level, pass overridden=True: the row turns solid and the action
+becomes "Use default".
+
+  {% include "components/inherited_setting.html" with label=_("Pay frequency") value=_("Daily") source=_("From company default") override_href=url %}
+
+Parameters
+  label          setting name ("Pay frequency")
+  value          resolved value ("Daily"), from apps.core.settings.resolve_setting
+  source         where it comes from ("From company default", "From site: Riverside")
+  overridden     true → value set at this level
+  action_label   optional button text (default "Override" / "Use default")
+  override_href  link for the action, or…
+  hx_get, hx_target, hx_swap   …htmx attributes for an inline editor
+{% endcomment %}<div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-control px-3 py-1.5 text-sm {% if overridden %}border border-line-strong bg-white{% else %}border border-dashed border-line-strong{% endif %}">
+  <span class="grow">{{ label }}: <strong class="font-semibold">{{ value }}</strong></span>
+  <span class="text-xs text-steel">{{ source }}</span>
+  {% if override_href %}<a href="{{ override_href }}" class="inline-flex h-10 items-center rounded-md border border-line-strong bg-white px-2.5 text-[13px] font-semibold text-ink hover:bg-ground hover:text-ink">{% if action_label %}{{ action_label }}{% elif overridden %}{% translate "Use default" %}{% else %}{% translate "Override" %}{% endif %}</a>{% else %}<button type="button"{% if hx_get %} hx-get="{{ hx_get }}"{% endif %}{% if hx_target %} hx-target="{{ hx_target }}"{% endif %}{% if hx_swap %} hx-swap="{{ hx_swap }}"{% endif %} class="inline-flex h-10 items-center rounded-md border border-line-strong bg-white px-2.5 text-[13px] font-semibold text-ink hover:bg-ground">{% if action_label %}{{ action_label }}{% elif overridden %}{% translate "Use default" %}{% else %}{% translate "Override" %}{% endif %}</button>{% endif %}
+</div>
