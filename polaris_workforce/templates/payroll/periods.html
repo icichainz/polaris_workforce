@@ -59,7 +59,7 @@
           <td class="px-4 py-3 text-right tabular-nums">{{ row.workers }}</td>
           {% if row.has_figures %}
           <td class="px-4 py-3 text-right tabular-nums">{{ row.period.gross|amount:row.period }}</td>
-          <td class="px-4 py-3 text-right tabular-nums text-half-fg">{% if row.period.deductions %}− {{ row.period.deductions|amount:row.period }}{% else %}—{% endif %}</td>
+          <td class="px-4 py-3 text-right tabular-nums text-half-fg">{% if row.deductions %}{{ row.deductions|signed:row.period }}{% else %}—{% endif %}</td>
           <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ row.period.net|amount:row.period }}</td>
           {% else %}
           <td class="px-4 py-3 text-right text-steel">—</td>

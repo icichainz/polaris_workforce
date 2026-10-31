@@ -144,7 +144,10 @@ directly. Keep the `static()` route only for local development.
 
 ### Medium
 
-**M1 — A site manager can close and lock pay periods, but the permission table says they
+**M1 — Fixed** (owner decision: site managers lock their own sites; `LOCK_PERIODS` gives
+them `OWN` and payroll's `can_lock` now calls `permissions.can(user, LOCK_PERIODS, site)`;
+tests in `tests/test_payroll_adjustments.py` and `tests/test_accounts_permissions.py`).
+*Was:* **A site manager can close and lock pay periods, but the permission table says they
 cannot.** `apps/accounts/permissions.py:113` gives `LOCK_PERIODS` to admins and
 accountants only (that is the matrix on the Users screen), while
 `apps/payroll/services.py:125` (`can_lock`) also allows the site's manager, and the cash
@@ -152,7 +155,11 @@ sheet shows the lock button to managers. *Fix:* decide which one is right; then 
 `can_lock` call `permissions.can(user, LOCK_PERIODS, site)` (or change the table), so the
 screen and the rule cannot drift again.
 
-**M3 — A correction after the worker was paid leaves the pay unchanged, silently.**
+**M3 — Fixed** (the paid line stays as paid; once the corrected day is approved, the
+difference becomes a `PayAdjustment` settled on the worker's next pay at the site — shown
+on Approvals, the cash sheet and the payslip, folded into `net` in the API; tests in
+`tests/test_payroll_adjustments.py`, `tests/test_e2e_corrections.py`).
+*Was:* **A correction after the worker was paid leaves the pay unchanged, silently.**
 `apps/payroll/services.py:291` freezes a pay line once it has a payment. Probed: Ama is
 paid 6000 for a present day, the foreman corrects her to absent (with a reason), the
 manager re-approves; the line, payslip and cash sheet still say 1 day / 6000 and
@@ -207,8 +214,10 @@ IP and the whole company gets 10 sign-ins a minute. *Fix:* a shared cache in pro
   payslip link is already limited to visible sites, but the amounts and the proof file
   link (`proof_url`) are not. Apply the same `visible_sites` check to `proof_url` (and,
   if wanted, to the rows).
-- **L7 — Reads with side effects:** opening a cash sheet or `GET /payouts/` refreshes the
-  pay periods and writes `payroll.period.*` audit rows with the viewer as actor
+- **L7 — Fixed** (refresh on read is the system's: `actor=None`, actions
+  `payroll.auto.*`, nothing written when nothing changed; `lock_sheet`/`lock_period` check
+  the role first). *Was:* **Reads with side effects:** opening a cash sheet or
+  `GET /payouts/` refreshes the pay periods and writes `payroll.period.*` audit rows with the viewer as actor
   (`apps/payroll/services.py:555`); `lock_sheet` refreshes before checking the role
   (`apps/payroll/services.py:891`). Not exploitable (same result for everyone), but the
   audit log shows read-only users as actors.

@@ -41,8 +41,10 @@ EXPECTED = {
     (perms.PAY_OUT, "foreman"): (True, False),
     (perms.GIVE_ADVANCES, "foreman"): (False, False),
     (perms.EDIT_WORKERS, "manager"): (True, False),
+    (perms.LOCK_PERIODS, "admin"): (True, True),
     (perms.LOCK_PERIODS, "accountant"): (True, True),
-    (perms.LOCK_PERIODS, "manager"): (False, False),
+    (perms.LOCK_PERIODS, "manager"): (True, False),  # owner decision M1: own sites
+    (perms.LOCK_PERIODS, "foreman"): (False, False),
     (perms.VIEW_REPORTS, "accountant"): (True, True),
     (perms.VIEW_REPORTS, "manager"): (True, False),
     (perms.VIEW_REPORTS, "foreman"): (False, False),
@@ -87,8 +89,10 @@ def test_unknown_action_raises(world):
 
 
 def test_shortcuts(world):
-    assert perms.can_lock_periods(world["accountant"])
-    assert not perms.can_lock_periods(world["manager"])
+    assert perms.can_lock_periods(world["accountant"], world["other"])
+    assert perms.can_lock_periods(world["manager"], world["mine"])
+    assert not perms.can_lock_periods(world["manager"], world["other"])
+    assert not perms.can_lock_periods(world["foreman"], world["mine"])
     assert perms.can_view_reports(world["manager"], world["mine"])
     assert not perms.can_view_reports(world["manager"], world["other"])
     assert perms.can_manage_users(world["admin"])
@@ -101,7 +105,7 @@ def test_matrix_rows_follow_the_table():
     assert [row["action"] for row in matrix] == list(perms.PERMISSIONS)
     lock = next(row for row in matrix if row["action"] == perms.LOCK_PERIODS)
     # Admin, Site manager, Foreman, Accountant
-    assert lock["cells"] == [perms.ALL, None, None, perms.ALL]
+    assert lock["cells"] == [perms.ALL, perms.OWN, None, perms.ALL]
     roll_call = matrix[0]
     assert roll_call["cells"] == [perms.ALL, perms.OWN, perms.OWN, None]
 

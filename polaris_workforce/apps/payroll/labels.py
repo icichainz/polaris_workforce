@@ -63,3 +63,45 @@ def period_label(period: PayPeriod) -> str:
     start = formats.date_format(period.start_date, "j M")
     end = formats.date_format(period.end_date, "j M Y")
     return f"{start} – {end}"
+
+
+def signed_money(amount: int, currency: str, decimals: int) -> str:
+    """ "+ 3 000 XOF", "− 6 000 XOF" (the payslip and the cash sheet write deductions so)."""
+    sign = "+ " if amount > 0 else "− " if amount < 0 else ""
+    return sign + format_money(abs(int(amount)), currency, decimals)
+
+
+def adjustment_label(adjustment) -> str:
+    """ "Correction of 30 Oct" (the days whose correction raised the adjustment)."""
+    dates = [datetime.date.fromisoformat(d) for d in adjustment.dates or []]
+    if not dates:
+        dates = [adjustment.source_line.period.end_date]
+    days = ", ".join(formats.date_format(d, "j M") for d in dates)
+    return _("Correction of %(days)s") % {"days": days}
+
+
+def paid_difference_note(difference: int, currency: str, decimals: int) -> str:
+    """The warning when a day already paid for is corrected (Approvals, cash sheet)."""
+    amount = format_money(abs(int(difference)), currency, decimals)
+    if difference < 0:
+        return _(
+            "Already paid for this day: the difference of %(amount)s will be recovered "
+            "on the next pay."
+        ) % {"amount": amount}
+    return _(
+        "Already paid for this day: the difference of %(amount)s will be added to the next pay."
+    ) % {"amount": amount}
+
+
+def raised_note(adjustment) -> str:
+    """On the paid line whose day was corrected: where the difference goes."""
+    currency, decimals = adjustment.currency, adjustment.currency_decimals
+    if adjustment.remaining == 0 and adjustment.applied_to is not None:
+        return _(
+            "Corrected after payment: the difference of %(amount)s is settled on the pay "
+            "of %(date)s."
+        ) % {
+            "amount": signed_money(adjustment.amount, currency, decimals),
+            "date": short_date(adjustment.applied_to.period.end_date),
+        }
+    return paid_difference_note(adjustment.remaining, currency, decimals)

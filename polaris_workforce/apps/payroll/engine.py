@@ -33,6 +33,15 @@ both times are recorded, at ``daily rate / scheduled hours`` per hour.
 Advances (``compute_line``): one deduction per pay, from the oldest open advance first:
 its ``deduction_per_pay``, capped at its balance and at ``gross − other deductions``, so
 net is never negative. The next advance starts when the previous one is repaid.
+
+Pay adjustments (``compute_line``, ``settle_adjustments``): a day corrected after it was
+paid leaves a difference to settle on the worker's next pay. A positive one (underpaid)
+is added in full next to the gross, before the advance deduction is worked out. Negative
+ones (overpaid) are recovered after the advance deduction, oldest first, from what is
+left, so net is never negative; whatever does not fit stays on the adjustment and is
+recovered from the following pays.
+
+    net = gross − other deductions − advance deduction + adjustment
 """
 
 from __future__ import annotations
@@ -210,6 +219,22 @@ class AdvanceInput:
 
 
 @dataclass(frozen=True)
+class AdjustmentInput:
+    """A pay adjustment still to settle, oldest first.
+
+    ``amount`` is what is left of it: positive is owed to the worker, negative is to be
+    recovered from them.
+    """
+
+    adjustment_id: int
+    amount: int
+
+    def __post_init__(self):
+        if isinstance(self.amount, bool) or not isinstance(self.amount, int):
+            raise TypeError("amount must be an int in minor units")
+
+
+@dataclass(frozen=True)
 class LineResult:
     days: tuple[DayResult, ...]
     units: Decimal
@@ -220,6 +245,8 @@ class LineResult:
     advance_deduction: int
     repayments: tuple[tuple[int, int], ...]  # (advance_id, amount)
     net: int
+    adjustment: int = 0  # signed: added − recovered
+    adjustments: tuple[tuple[int, int], ...] = ()  # (adjustment_id, signed amount applied)
 
 
 # --- per day -----------------------------------------------------------------------------
@@ -327,19 +354,47 @@ def advance_deductions(
     return ()
 
 
+def settle_adjustments(
+    adjustments: Sequence[AdjustmentInput], capacity: int
+) -> tuple[tuple[int, int], ...]:
+    """What to apply of each adjustment on one pay, in the given (oldest first) order.
+
+    ``capacity`` is what is left of the pay without the adjustments: gross − other
+    deductions − advance deduction (negative when the advance deduction used part of a
+    positive adjustment). Positive adjustments are applied in full and add to it;
+    negative ones are recovered from it, oldest first, until it is used up, so the pay
+    never goes below zero. Adjustments with nothing left are skipped.
+    """
+    room = max(0, capacity + sum(a.amount for a in adjustments if a.amount > 0))
+    applied = []
+    for adjustment in adjustments:
+        if adjustment.amount > 0:
+            applied.append((adjustment.adjustment_id, adjustment.amount))
+        elif adjustment.amount < 0:
+            take = min(-adjustment.amount, room)
+            if take > 0:
+                applied.append((adjustment.adjustment_id, -take))
+                room -= take
+    return tuple(applied)
+
+
 def compute_line(
     days: Iterable[DayInput],
     rules: PayRules,
     advances: Sequence[AdvanceInput] = (),
     other_deductions: int = 0,
+    adjustments: Sequence[AdjustmentInput] = (),
 ) -> LineResult:
-    """One worker's pay for a period: gross, deductions and net (never negative)."""
+    """One worker's pay for a period: gross, deductions, adjustments and net (never negative)."""
     _check_money(other_deductions, "other_deductions")
     results = tuple(compute_day(day, rules) for day in days)
     gross = round_half_up(sum((r.amount for r in results), Fraction(0)))
     other = min(other_deductions, gross)
-    repayments = advance_deductions(advances, gross - other)
+    added = sum(a.amount for a in adjustments if a.amount > 0)
+    repayments = advance_deductions(advances, gross + added - other)
     advance = sum(amount for _id, amount in repayments)
+    applied = settle_adjustments(adjustments, gross - other - advance)
+    adjustment = sum(amount for _id, amount in applied)
     hourly = [r.hours for r in results if r.pay_type == HOURLY and r.hours is not None]
     return LineResult(
         days=results,
@@ -350,7 +405,9 @@ def compute_line(
         other_deductions=other,
         advance_deduction=advance,
         repayments=repayments,
-        net=gross - other - advance,
+        net=gross - other - advance + adjustment,
+        adjustment=adjustment,
+        adjustments=applied,
     )
 
 

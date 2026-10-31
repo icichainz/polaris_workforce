@@ -64,6 +64,10 @@ def render_payslip(line: PayLine, *, printed_at: datetime.datetime | None = None
     )
     days = line.days or []
     last_day = days[-1] if days else {}
+    applications = list(
+        line.adjustment_applications.select_related("adjustment__source_line__period")
+    )
+    raised = list(line.raised_adjustments.select_related("applied_to__period"))
 
     doc = Document(
         title=_("Pay statement") + f" {payslip_number(line)}", author=company.company_name
@@ -174,6 +178,16 @@ def render_payslip(line: PayLine, *, printed_at: datetime.datetime | None = None
             ADVANCE,
         )
     )
+    # Corrections of days paid earlier, settled on this pay: "Correction of 30 Oct".
+    for application in applications:
+        totals.append(
+            (
+                labels.adjustment_label(application.adjustment),
+                labels.signed_money(application.amount, code, decimals),
+                False,
+                ADVANCE if application.amount < 0 else INK,
+            )
+        )
     totals.append(((_("Total paid") if payment else _("Net to pay")), money(line.net), True, INK))
     totals.append((_("Advance still owed"), money(still_owed), False, STEEL))
     height = 20 * len(totals) + 12
@@ -199,7 +213,13 @@ def render_payslip(line: PayLine, *, printed_at: datetime.datetime | None = None
         receipt = _("Not paid yet.")
     doc.text(LEFT, y + 20, _("Receipt").upper(), size=7.5, bold=True, color=STEEL)
     doc.text(LEFT, y + 34, receipt, size=9.5)
-    y += max(height, 50) + 70
+    # This pay was corrected after it was paid: say where the difference went (under
+    # the totals box, full width).
+    note_y = y + max(height, 50) + 18
+    for adjustment in raised:
+        doc.text(LEFT, note_y, labels.raised_note(adjustment), size=8.5, color=ADVANCE)
+        note_y += 14
+    y = note_y + 52
 
     # Signatures.
     half = (RIGHT - LEFT - 40) / 2

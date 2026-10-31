@@ -7,7 +7,7 @@ the other areas import from it.
 Rules:
 - Admins (and superusers) see every site and may do everything.
 - Accountants see every site, read-only, plus pay-period locking and reports.
-- Site managers see the sites they manage.
+- Site managers see the sites they manage (and may lock their pay periods).
 - Foremen see the sites they are a foreman on.
 
 What each role may do is the ``PERMISSIONS`` table below (the matrix shown on the Users
@@ -110,7 +110,10 @@ PERMISSIONS: dict[str, tuple] = {
     ),
     GIVE_ADVANCES: (_("Give advances"), {Role.ADMIN: ALL, Role.SITE_MANAGER: OWN}),
     EDIT_WORKERS: (_("Edit workers & pay rates"), {Role.ADMIN: ALL, Role.SITE_MANAGER: OWN}),
-    LOCK_PERIODS: (_("Close & lock pay periods"), {Role.ADMIN: ALL, Role.ACCOUNTANT: ALL}),
+    LOCK_PERIODS: (
+        _("Close & lock pay periods"),
+        {Role.ADMIN: ALL, Role.SITE_MANAGER: OWN, Role.ACCOUNTANT: ALL},
+    ),
     VIEW_REPORTS: (
         _("Reports & exports"),
         {Role.ADMIN: ALL, Role.SITE_MANAGER: OWN, Role.ACCOUNTANT: ALL},
@@ -152,9 +155,10 @@ def permission_matrix() -> list[dict]:
     ]
 
 
-def can_lock_periods(user) -> bool:
-    """Close and lock pay periods: admins and accountants."""
-    return can(user, LOCK_PERIODS)
+def can_lock_periods(user, site=None) -> bool:
+    """Close and lock pay periods: admins and accountants everywhere, site managers on
+    their own sites. Payroll checks it with the period's site."""
+    return can(user, LOCK_PERIODS, site)
 
 
 def can_view_reports(user, site=None) -> bool:

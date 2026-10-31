@@ -1,5 +1,6 @@
 {% load i18n payroll_tags %}{% comment %}
 One worker row of the cash sheet. Context: `row` ({sl, form, errors, payslip_url}), `sheet`,
+`sl.adjustments` (settled on this pay), `sl.raised` (this paid day was corrected),
 `can_pay`, `can_manage`, `proof_choices`, `csrf_token`. With `oob`, also renders the
 reconciliation strip out of band (htmx response after "Mark paid" / "Undo").
 {% endcomment %}{% with sl=row.sl line=row.sl.line worker=row.sl.worker %}
@@ -11,6 +12,12 @@ reconciliation strip out of band (htmx response after "Mark paid" / "Undo").
   <td class="px-4 py-3 tabular-nums">{{ line|worked:sheet }}</td>
   <td class="px-4 py-3 text-right tabular-nums">{{ line.gross|amount:sheet }}</td>
   <td class="px-4 py-3 text-right tabular-nums text-half-fg">{% if line.advance_deduction %}− {{ line.advance_deduction|amount:sheet }}{% else %}—{% endif %}</td>
+  <td class="px-4 py-3 text-right tabular-nums">
+    {% if sl.adjustments %}
+      <span class="font-semibold{% if line.adjustment < 0 %} text-absent-fg{% elif line.adjustment > 0 %} text-present-fg{% endif %}">{{ line.adjustment|signed:sheet }}</span>
+      {% for adjustment, applied in sl.adjustments %}<span class="block text-xs text-steel">{{ adjustment|adjustment_label }}{% if sl.adjustments|length > 1 %} · {{ applied|signed:sheet }}{% endif %}</span>{% endfor %}
+    {% else %}—{% endif %}
+  </td>
   <td class="px-4 py-3 text-right font-bold tabular-nums">{{ line.net|money:sheet }}</td>
   <td class="px-4 py-2">
     <div class="flex flex-wrap items-center gap-2">
@@ -46,6 +53,7 @@ reconciliation strip out of band (htmx response after "Mark paid" / "Undo").
     {% endif %}
       <a href="{{ row.payslip_url }}" class="text-[13px]" target="_blank" rel="noopener">{% translate "Payslip" %}</a>
     </div>
+    {% for adjustment in sl.raised %}<p class="mt-1 text-[13px] font-medium text-late-fg">{{ adjustment|raised_note }}</p>{% endfor %}
     {% if row.errors %}<p class="mt-1 text-[13px] font-medium text-absent-fg" role="alert">{% for error in row.errors %}{{ error }}{% if not forloop.last %} {% endif %}{% endfor %}</p>{% endif %}
   </td>
 </tr>

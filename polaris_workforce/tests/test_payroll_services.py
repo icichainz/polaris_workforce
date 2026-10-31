@@ -139,8 +139,12 @@ def test_refresh_and_status_changes_are_audited(company):
 
     sheet_for(site, MON)
 
-    actions = set(AuditLog.objects.values_list("action", flat=True))
-    assert {"payroll.period.refresh", "payroll.period.status"} <= actions
+    # Refresh on read is the system's work, not the viewer's (security review L7).
+    entries = AuditLog.objects.filter(action__startswith="payroll.")
+    assert {"payroll.auto.period.refresh", "payroll.auto.period.status"} <= {
+        e.action for e in entries
+    }
+    assert all(e.actor is None for e in entries)
 
 
 def test_correction_updates_an_unpaid_line(company):

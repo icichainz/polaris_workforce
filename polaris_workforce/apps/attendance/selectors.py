@@ -200,8 +200,27 @@ def _value_label(field_name: str, value: str) -> str:
     return value or "—"
 
 
+def paid_notes(day: AttendanceDay) -> dict[int, str]:
+    """Worker id → "Already paid for this day: the difference of … will be recovered on
+    the next pay", for workers paid for ``day`` whose corrected attendance is worth a
+    different amount (owner decision M3: the difference goes on their next pay)."""
+    if day.status not in (AttendanceDay.Status.SUBMITTED, AttendanceDay.Status.APPROVED):
+        return {}
+    # Imported here: payroll's services import the attendance services, which import us.
+    from apps.payroll import labels
+    from apps.payroll.services import paid_corrections
+
+    return {
+        worker_id: labels.paid_difference_note(
+            found.difference, found.line.period.currency, found.line.period.currency_decimals
+        )
+        for worker_id, found in paid_corrections(day).items()
+    }
+
+
 def approval_detail(day: AttendanceDay, tz) -> dict:
     """Everything the Approvals detail panel shows for one day."""
+    paid = paid_notes(day)
     records = list(
         day.records.select_related("worker", "worker__trade")
         .prefetch_related("corrections")
@@ -229,6 +248,7 @@ def approval_detail(day: AttendanceDay, tz) -> dict:
                 "meta": " · ".join(part for part in (worker.number, trade) if part),
                 "times": f"{_clock(record.arrival)} · {_clock(record.departure)}",
                 "changes": changes,
+                "paid_note": paid.get(record.worker_id, ""),
             }
         )
     sent, synced = _times(day, tz)
@@ -240,4 +260,5 @@ def approval_detail(day: AttendanceDay, tz) -> dict:
         "counts": day_counts(expected_worker_ids(day.site, day.date), records),
         "flags": approval_flags(day, sum(1 for record in records if record.corrected)),
         "rows": rows,
+        "paid_count": len(paid),
     }

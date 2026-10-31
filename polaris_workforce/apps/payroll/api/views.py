@@ -60,7 +60,7 @@ class PayoutView(APIView):
     )
     def get(self, request, site_id, date):
         site = get_site_or_403(request.user, site_id)
-        sheet = services.cash_sheet(site, date, actor=request.user)
+        sheet = services.cash_sheet(site, date)
         return Response(PayoutSerializer(payout_data(sheet, request)).data)
 
 
