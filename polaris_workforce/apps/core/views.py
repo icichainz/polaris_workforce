@@ -1,16 +1,19 @@
-"""Office views: company settings and the audit log viewer (admins only)."""
+"""Office views: company settings and the audit log viewer (admins only), and the
+protected downloads of uploaded files (signed-in users, scoped by site)."""
 
 import datetime
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.utils.translation import gettext as _
+from django.views.decorators.http import require_safe
 
 from apps.accounts.permissions import Role, role_required
 
-from . import services
+from . import files, services
 from .forms import CURRENCY_SUGGESTIONS, AuditLogFilterForm, CompanySettingsForm
 from .models import AuditLog, CompanySettings
 
@@ -90,3 +93,25 @@ def audit_log_view(request):
 
 def _day_start(date: datetime.date) -> datetime.datetime:
     return timezone.make_aware(datetime.datetime.combine(date, datetime.time.min))
+
+
+# --- protected file downloads (rules in apps.core.files) -----------------------------------
+
+
+@login_required
+@require_safe
+def worker_photo(request, pk):
+    return files.file_response(request, files.worker_photo_or_404(request.user, pk))
+
+
+@login_required
+@require_safe
+def payment_proof(request, pk):
+    return files.file_response(request, files.payment_proof_or_404(request.user, pk))
+
+
+@role_required(Role.ADMIN)
+@require_safe
+def media_file(request, name):
+    """``FieldFile.url`` (Django admin's file links): admins only, like the admin."""
+    return files.file_response(request, files.media_name_or_404(request.user, name))

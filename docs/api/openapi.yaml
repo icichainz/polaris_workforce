@@ -174,6 +174,147 @@ paths:
                   summary: throttled
           description: Too many requests. Wait `details.retry_after` seconds (also
             in `Retry-After`).
+  /api/v1/files/proofs/{payment_id}/:
+    get:
+      operationId: file_payment_proof
+      description: The URL comes as `proof_url` in `POST /payments/`. Send the `Authorization`
+        header. `404` if the payment has no file or is not on one of your sites.
+      summary: A payment's proof file
+      parameters:
+      - in: header
+        name: If-None-Match
+        schema:
+          type: string
+        description: The `ETag` of the copy the phone already has.
+      - in: path
+        name: payment_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - files
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: 'The file, with an `ETag`: send it back in `If-None-Match`
+            to get `304 Not Modified` instead of the bytes.'
+        '304':
+          description: 'Not modified: the cached copy is current.'
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotFound:
+                  value:
+                    code: not_found
+                    message: Not found.
+                    details: {}
+                  summary: not_found
+          description: The resource does not exist.
+  /api/v1/files/workers/{worker_id}/photo/:
+    get:
+      operationId: file_worker_photo
+      description: The URL comes as `photo_url` in the crew list and the cash sheet.
+        Send the `Authorization` header. `404` if the worker has no photo or is not
+        on one of your sites.
+      summary: A worker's photo
+      parameters:
+      - in: header
+        name: If-None-Match
+        schema:
+          type: string
+        description: The `ETag` of the copy the phone already has.
+      - in: path
+        name: worker_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - files
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+          description: 'The file, with an `ETag`: send it back in `If-None-Match`
+            to get `304 Not Modified` instead of the bytes.'
+        '304':
+          description: 'Not modified: the cached copy is current.'
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotFound:
+                  value:
+                    code: not_found
+                    message: Not found.
+                    details: {}
+                  summary: not_found
+          description: The resource does not exist.
   /api/v1/health/:
     get:
       operationId: health
@@ -1076,7 +1217,7 @@ paths:
 
         **Idempotent per record.** The server finds each record by `client_uuid`, then by `worker_id` (one record per worker per day), and writes only fields that changed; replaying a batch changes nothing. The response carries the server's `client_uuid` per worker: adopt it.
 
-        Allowed while the day is `not_started`, `draft` or `rejected` (a rejected day goes back to `draft`). Once `submitted`, `approved` or `locked`: `423 locked` — use corrections. A worker not on the crew that day: `400 validation_error`, with one entry per batch item in `details.records` (`{}` for items without errors). A `client_uuid` already used for another worker or day: `409 conflict`.
+        Changes are allowed while the day is `not_started`, `draft` or `rejected` (a rejected day goes back to `draft`). Once `submitted`, `approved` or `locked`, a batch that would change a record gets `423 locked` — use corrections; a batch that changes nothing (the server already has those values) answers `200` with the day, whatever its status. A worker not on the crew that day: `400 validation_error`, with one entry per batch item in `details.records` (`{}` for items without errors, also after the last error). A `client_uuid` already used for another worker or day: `409 conflict`.
       summary: Save roll-call marks (batch upsert)
       parameters:
       - in: path
@@ -2172,7 +2313,8 @@ components:
           type: string
           format: uri
           nullable: true
-          description: Absolute URL of the photo; cache it on the phone.
+          description: Absolute URL of the photo (`GET /files/workers/{id}/photo/`).
+            Send the `Authorization` header; cache it on the phone.
         pay_type:
           allOf:
           - $ref: '#/components/schemas/PayTypeEnum'
@@ -2884,3 +3026,5 @@ tags:
   description: 'Roll call, corrections, sync (Wave 2: C).'
 - name: payroll
   description: 'Cash payout and payments (Wave 2: D).'
+- name: files
+  description: Worker photos and payment proofs; send the Authorization header.

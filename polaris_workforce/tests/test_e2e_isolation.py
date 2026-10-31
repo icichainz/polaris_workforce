@@ -13,6 +13,8 @@ import datetime
 
 import pytest
 from django.core.cache import cache
+from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import URLPattern, URLResolver, get_resolver, reverse
 from rest_framework.test import APIClient
 
@@ -44,6 +46,9 @@ OFFICE = {
     "dashboard:components": "debug",
     "core:settings": "admin",
     "core:audit_log": "admin",
+    "core:worker_photo": "b_get",
+    "core:payment_proof": "b_get",
+    "core:media_file": "admin",
     "attendance:approvals": "list",
     "attendance:decide": "b_post",
     "payroll:cash_sheets": "list",
@@ -102,7 +107,10 @@ API = {
     "api:attendance:sync": "list",
     "api:payroll:payout": "b_get",
     "api:payroll:payments": "b_post",
+    "api:file-worker-photo": "b_get (404)",
+    "api:file-payment-proof": "b_get (404)",
 }
+JPEG = b"\xff\xd8\xff\xe0" + b"0" * 64
 
 
 def _url_names(patterns=None, namespace=""):
@@ -141,6 +149,7 @@ def world(db):
     b.manager.last_name = f"{SECRET}manager"
     b.manager.save()
     zeb = hire(b, "Zebulon", 6000, last_name=f"{SECRET}worker")
+    zeb.photo.save("zeb.jpg", ContentFile(JPEG))
 
     # Site B: yesterday approved, paid, with cash issued; today submitted and corrected.
     phone_b = Phone(b.phone_number, PIN)
@@ -150,7 +159,9 @@ def world(db):
     office_b.approve(AttendanceDay.objects.get(site=b.site, date=yesterday).pk)
     office_b.issue_cash(b.site.pk, yesterday, "10000")
     line = lines_by_worker(phone_b.payout(b.site.pk, yesterday).json())[zeb.pk]
-    assert phone_b.pay(line["pay_line_id"], line["net"], new_uuid()).status_code == 201
+    proof = SimpleUploadedFile("receipt.jpg", JPEG, content_type="image/jpeg")
+    paid = phone_b.pay(line["pay_line_id"], line["net"], new_uuid(), "photo", proof)
+    assert paid.status_code == 201
     put = phone_b.put_records(b.site.pk, today, [mark(zeb, "late", "07:40")])
     assert phone_b.submit(b.site.pk, today, new_uuid()).status_code == 200
     record_id = put.json()["records"][0]["id"]
@@ -215,6 +226,8 @@ def _office_b_get_urls(ids):
         "worksites:pay": reverse("worksites:pay", args=[site]),
         "worksites:settings": reverse("worksites:settings", args=[site]),
         "attendance:approvals?day": reverse("attendance:approvals") + f"?day={ids['pending_day']}",
+        "core:worker_photo": reverse("core:worker_photo", args=[ids["worker"]]),
+        "core:payment_proof": reverse("core:payment_proof", args=[ids["payment"]]),
     }
 
 
@@ -285,6 +298,7 @@ def _admin_urls(ids):
     return {
         "core:settings": reverse("core:settings"),
         "core:audit_log": reverse("core:audit_log"),
+        "core:media_file": Payment.objects.get(pk=ids["payment"]).proof_file.url,
         "worksites:create": reverse("worksites:create"),
         "accounts:users": reverse("accounts:users"),
         "accounts:user_create": reverse("accounts:user_create"),
@@ -422,6 +436,24 @@ def test_site_a_manager_session_on_the_api_cannot_reach_site_b(world):
         response = getattr(client, method)(url, data, format="json")
         assert response.status_code == 403, (method, url, response.status_code)
     assert _b_state(b) == before
+
+
+def test_site_b_files_are_404_for_site_a_on_the_api(world):
+    a, b, ids = world
+    urls = [
+        reverse("api:file-worker-photo", args=[ids["worker"]]),
+        reverse("api:file-payment-proof", args=[ids["payment"]]),
+    ]
+    own = Phone(b.phone_number, PIN)
+    for url in urls:
+        assert own.client.get(url).status_code == 200, url  # positive control
+    session = APIClient()
+    session.force_login(a.manager)
+    for client in (Phone(a.phone_number, PIN).client, session):
+        for url in urls:
+            response = client.get(url)
+            assert response.status_code == 404, (url, response.status_code)
+            assert response.json()["code"] == "not_found"
 
 
 def test_site_b_phone_is_not_signed_out_by_site_a(world):

@@ -18,7 +18,9 @@ class CrewWorkerSerializer(serializers.Serializer):
     last_name = serializers.CharField()
     trade = serializers.CharField(allow_null=True, help_text="Trade name, translated.")
     photo_url = serializers.URLField(
-        allow_null=True, help_text="Absolute URL of the photo; cache it on the phone."
+        allow_null=True,
+        help_text="Absolute URL of the photo (`GET /files/workers/{id}/photo/`). Send the "
+        "`Authorization` header; cache it on the phone.",
     )
     pay_type = serializers.ChoiceField(
         choices=enums.PAY_TYPES, help_text="Pay type of the rate in effect that day."

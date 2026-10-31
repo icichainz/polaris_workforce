@@ -9,13 +9,24 @@ from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 # converters registers <isodate:...> before the includes below.
-from . import converters, views  # noqa: F401
+from . import converters, files, views  # noqa: F401
 
 app_name = "api"
 
 urlpatterns = [
     path("health/", views.health, name="health"),
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
+    # Uploaded files behind the device token (rules in apps.core.files).
+    path(
+        "files/workers/<int:worker_id>/photo/",
+        files.WorkerPhotoView.as_view(),
+        name="file-worker-photo",
+    ),
+    path(
+        "files/proofs/<int:payment_id>/",
+        files.PaymentProofView.as_view(),
+        name="file-payment-proof",
+    ),
     path("", include("apps.accounts.api.urls")),
     path("", include("apps.worksites.api.urls")),
     path("", include("apps.attendance.api.urls")),

@@ -8,7 +8,7 @@
   <nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'workers:list' %}">{% translate "Workers" %}</a> / {{ worker.full_name }}</nav>
   <header class="flex flex-wrap items-end justify-between gap-4">
     <div class="flex min-w-0 items-center gap-4">
-      {% if worker.photo %}<img src="{{ worker.photo.url }}" alt="" class="size-16 shrink-0 rounded-full object-cover">{% else %}<span class="flex size-16 shrink-0 items-center justify-center rounded-full bg-line font-display text-xl font-extrabold">{{ initials }}</span>{% endif %}
+      {% if worker.photo %}<img src="{% url 'core:worker_photo' worker.pk %}" alt="" class="size-16 shrink-0 rounded-full object-cover">{% else %}<span class="flex size-16 shrink-0 items-center justify-center rounded-full bg-line font-display text-xl font-extrabold">{{ initials }}</span>{% endif %}
       <div class="flex min-w-0 flex-col gap-1">
         <div class="flex flex-wrap items-center gap-3">
           <h1 class="font-display text-[28px] font-extrabold leading-tight sm:text-[32px]">{{ worker.full_name }}</h1>

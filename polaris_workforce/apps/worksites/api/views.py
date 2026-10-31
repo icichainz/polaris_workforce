@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from apps.accounts.permissions import get_site_or_403
 from apps.api import examples as ex
 from apps.api.schema import SITE_ID, error_responses
+from apps.core import files
 from apps.core.models import CompanySettings
 from apps.core.settings import resolve_setting
 from apps.workers import services as worker_services
@@ -68,7 +69,7 @@ class CrewView(APIView):
                 "first_name": worker.first_name,
                 "last_name": worker.last_name,
                 "trade": gettext(worker.trade.name) if worker.trade else None,
-                "photo_url": request.build_absolute_uri(worker.photo.url) if worker.photo else None,
+                "photo_url": files.api_worker_photo_url(request, worker),
                 "pay_type": rates[worker.pk].pay_type if worker.pk in rates else default_pay_type,
                 "absent_streak": streaks[worker.pk],
             }

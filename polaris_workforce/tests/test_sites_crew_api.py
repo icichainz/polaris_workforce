@@ -119,10 +119,15 @@ def test_crew_defaults_to_today_in_the_company_time_zone(client, site):
 def test_crew_photo_url_is_absolute(client, site, settings, tmp_path):
     settings.MEDIA_ROOT = tmp_path
     worker = SiteAssignmentFactory(site=site).worker
-    worker.photo.save("yao.jpg", ContentFile(b"jpeg"), save=True)
+    worker.photo.save("yao.jpg", ContentFile(b"\xff\xd8\xffjpeg"), save=True)
 
     body = client.get(_url(site.pk), {"date": "2026-10-31"}).json()
-    assert body["workers"][0]["photo_url"].startswith("http://testserver/media/workers/")
+    # The protected API download (H2), not a public /media/ path.
+    expected = f"http://testserver/api/v1/files/workers/{worker.pk}/photo/"
+    assert body["workers"][0]["photo_url"] == expected
+    photo = client.get(expected)
+    assert photo.status_code == 200
+    assert b"".join(photo.streaming_content) == b"\xff\xd8\xffjpeg"
 
 
 def test_crew_outside_scope_is_403(client):

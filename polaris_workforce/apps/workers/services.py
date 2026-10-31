@@ -367,9 +367,28 @@ def working_days_between(first: datetime.date, last: datetime.date, working_days
     )
 
 
-def payments_between(worker: Worker, start: datetime.datetime, end: datetime.datetime) -> dict:
-    """Total, count and receipt coverage of payments made to the worker in [start, end)."""
-    payments = Payment.objects.filter(pay_line__worker=worker, paid_at__gte=start, paid_at__lt=end)
+def visible_payments(user, worker: Worker):
+    """The worker's payments made on sites ``user`` may see.
+
+    A worker who moved between sites keeps payments from the old site; the manager of the
+    new site must not see their amounts or proofs (and the reverse).
+    """
+    return Payment.objects.filter(
+        pay_line__worker=worker, pay_line__period__site__in=scoped_sites(user)
+    )
+
+
+def payments_between(
+    worker: Worker, start: datetime.datetime, end: datetime.datetime, *, user=None
+) -> dict:
+    """Total, count and receipt coverage of payments made to the worker in [start, end).
+
+    With ``user``, only payments on the sites that user may see count.
+    """
+    payments = Payment.objects.filter(pay_line__worker=worker)
+    if user is not None:
+        payments = visible_payments(user, worker)
+    payments = payments.filter(paid_at__gte=start, paid_at__lt=end)
     count = payments.count()
     return {
         "total": payments.aggregate(total=Sum("amount"))["total"] or 0,

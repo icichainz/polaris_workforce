@@ -1,7 +1,13 @@
-"""Forms for the Users & roles screen."""
+"""Forms for the Users & roles screen, and the office sign-in forms."""
+
+import math
 
 from django import forms
+from django.contrib.admin.forms import AdminAuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import ngettext
 
 from apps.core.choices import Language
 from apps.worksites.models import Site
@@ -156,3 +162,50 @@ class PinForm(forms.Form):
         if cleaned.get("pin") and cleaned.get("pin") != cleaned.get("pin_confirm"):
             self.add_error("pin_confirm", _("The two PINs are different."))
         return cleaned
+
+
+# --- Office sign-in with a lockout (/accounts/login/ and /admin/login/) -------------------
+
+
+class SignInLimitMixin:
+    """Refuses a (username, IP) after too many wrong passwords (see
+    ``services.record_failed_login``). Mixed into Django's sign-in forms."""
+
+    def clean(self):
+        username = self.cleaned_data.get("username") or ""
+        ip = services.login_client_ip(self.request)
+        locked_until = services.login_locked_until(username, ip)
+        if locked_until is not None:
+            raise self._locked_error(locked_until)
+        try:
+            cleaned = super().clean()
+        except forms.ValidationError:
+            # Only a wrong username/password counts (not "inactive" or "not staff").
+            if username and self.cleaned_data.get("password") and self.user_cache is None:
+                locked_until = services.record_failed_login(username, ip)
+                if locked_until is not None:
+                    raise self._locked_error(locked_until) from None
+            raise
+        services.clear_failed_logins(username, ip)
+        return cleaned
+
+    @staticmethod
+    def _locked_error(locked_until) -> forms.ValidationError:
+        minutes = max(1, math.ceil((locked_until - timezone.now()).total_seconds() / 60))
+        return forms.ValidationError(
+            ngettext(
+                "Too many failed sign-in attempts. Try again in %(minutes)d minute.",
+                "Too many failed sign-in attempts. Try again in %(minutes)d minutes.",
+                minutes,
+            ),
+            code="locked",
+            params={"minutes": minutes},
+        )
+
+
+class SignInForm(SignInLimitMixin, AuthenticationForm):
+    """``/accounts/login/``."""
+
+
+class AdminSignInForm(SignInLimitMixin, AdminAuthenticationForm):
+    """``/admin/login/``."""

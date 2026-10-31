@@ -10,6 +10,7 @@ from apps.api import enums
 from apps.api.fields import MoneyField
 from apps.api.idempotency import client_uuid_field
 from apps.api.serializers import CurrencySerializer, PersonRefSerializer
+from apps.core import files
 
 from .. import labels
 
@@ -115,12 +116,6 @@ class PaymentSerializer(serializers.Serializer):
 # --- response data (plain dicts, so the serializers above stay the contract) -------------
 
 
-def _url(request, file_field):
-    if not file_field:
-        return None
-    return request.build_absolute_uri(file_field.url)
-
-
 def _person(user):
     if user is None:
         return None
@@ -152,7 +147,7 @@ def payout_data(sheet, request) -> dict:
                     "id": worker.pk,
                     "name": worker.full_name,
                     "trade": worker.trade.name if worker.trade else None,
-                    "photo_url": _url(request, worker.photo),
+                    "photo_url": files.api_worker_photo_url(request, worker),
                 },
                 "worked": labels.worked_label(line, sheet.currency_decimals),
                 "units": _units(line),
@@ -202,7 +197,7 @@ def payment_data(payment, request) -> dict:
         "amount": payment.amount,
         "currency": _currency(period.currency, period.currency_decimals),
         "proof_type": payment.proof_type,
-        "proof_url": _url(request, payment.proof_file),
+        "proof_url": files.api_payment_proof_url(request, payment),
         "paid_at": payment.paid_at,
         "paid_by": _person(payment.paid_by),
     }

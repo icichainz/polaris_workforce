@@ -169,12 +169,15 @@ class RecordBatchView(APIView):
             "then by `worker_id` (one record per worker per day), and writes only fields "
             "that changed; replaying a batch changes nothing. The response carries the "
             "server's `client_uuid` per worker: adopt it.\n\n"
-            "Allowed while the day is `not_started`, `draft` or `rejected` (a rejected "
-            "day goes back to `draft`). Once `submitted`, `approved` or `locked`: "
-            "`423 locked` — use corrections. A worker not on the crew that day: "
-            "`400 validation_error`, with one entry per batch item in "
-            "`details.records` (`{}` for items without errors). A `client_uuid` already "
-            "used for another worker or day: `409 conflict`."
+            "Changes are allowed while the day is `not_started`, `draft` or `rejected` (a "
+            "rejected day goes back to `draft`). Once `submitted`, `approved` or "
+            "`locked`, a batch that would change a record gets `423 locked` — use "
+            "corrections; a batch that changes nothing (the server already has those "
+            "values) answers `200` with the day, whatever its status. A worker not on the "
+            "crew that day: `400 validation_error`, with one entry per batch item in "
+            "`details.records` (`{}` for items without errors, also after the last "
+            "error). A `client_uuid` already used for another worker or day: "
+            "`409 conflict`."
         ),
         parameters=[SITE_ID, DATE],
         request=RecordBatchSerializer,
