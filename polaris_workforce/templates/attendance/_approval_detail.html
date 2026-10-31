@@ -1,0 +1,92 @@
+{% load i18n %}{% comment %}
+Approvals detail panel for one day (included by attendance/approvals.html).
+
+Context
+  detail   dict from apps.attendance.selectors.approval_detail, plus
+           can_decide (bool) and form (DecisionForm)
+{% endcomment %}{% with day=detail.day %}
+<section id="approval-detail" aria-labelledby="approval-detail-title" class="flex min-w-0 flex-[3_1_600px] flex-col rounded-card border border-line bg-white">
+  <div class="flex flex-col gap-4 border-b border-line p-5">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="flex flex-col gap-1">
+        <h2 id="approval-detail-title" class="font-display text-[22px] font-bold">{{ day.site.name }} · {{ day.date|date:"D j M" }}</h2>
+        {% if day.submitted_at %}
+        <p class="text-sm text-ink-700">{% if detail.sent != detail.synced %}{% blocktranslate with foreman=detail.foreman|default:"—" sent=detail.sent synced=detail.synced %}Submitted by {{ foreman }} at {{ sent }} · synced {{ synced }}{% endblocktranslate %}{% else %}{% blocktranslate with foreman=detail.foreman|default:"—" sent=detail.sent %}Submitted by {{ foreman }} at {{ sent }}{% endblocktranslate %}{% endif %}</p>
+        {% endif %}
+      </div>
+      {% include "components/status_badge.html" with status=day.status size="lg" only %}
+    </div>
+
+    {% if detail.sent != detail.synced %}{% blocktranslate with sent=detail.sent synced=detail.synced asvar submitted_note %}{{ sent }} · synced {{ synced }}{% endblocktranslate %}{% else %}{% firstof detail.sent "" as submitted_note %}{% endif %}
+    {% include "components/stepper.html" with status=day.status submitted_note=submitted_note only %}
+
+    {% if detail.flags %}
+      {% translate "Highlighted rows below show the original value and the reason." as flag_message %}
+      {% with flag_title=detail.flags|join:" · " %}
+        {% include "components/alert.html" with variant="warning" title=flag_title|add:"." message=flag_message only %}
+      {% endwith %}
+    {% endif %}
+
+    {% if day.foreman_note %}
+      <p class="text-sm text-ink-700"><span class="font-semibold text-ink">{% translate "Foreman’s note:" %}</span> {{ day.foreman_note }}</p>
+    {% endif %}
+    {% if day.status == "rejected" and day.rejection_note %}
+      {% translate "Sent back:" as rejected_title %}
+      {% include "components/alert.html" with variant="danger" title=rejected_title message=day.rejection_note only %}
+    {% endif %}
+
+    <p class="flex flex-wrap gap-x-2.5 gap-y-1 text-[13px] font-semibold tabular-nums">
+      <span class="text-ink-700">{% blocktranslate with n=detail.counts.expected %}{{ n }} on the crew{% endblocktranslate %}</span>
+      <span class="text-present-fg">P {{ detail.counts.present }}</span>
+      <span class="text-half-fg">½ {{ detail.counts.half_day }}</span>
+      <span class="text-late-fg">L {{ detail.counts.late }}</span>
+      <span class="text-absent-fg">A {{ detail.counts.absent }}</span>
+      {% if detail.counts.unmarked %}<span class="text-steel">{% blocktranslate with n=detail.counts.unmarked %}{{ n }} not marked{% endblocktranslate %}</span>{% endif %}
+    </p>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-[640px] border-collapse text-sm">
+      <thead>
+        <tr class="bg-subtle text-left">
+          <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Status" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "In · Out" %}</th>
+          <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Note" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in detail.rows %}
+        <tr class="border-t border-line-soft{% if row.record.corrected %} bg-amber-tint{% endif %}">
+          <td class="px-5 py-3">
+            <span class="flex items-center gap-2.5"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-line text-xs font-bold" aria-hidden="true">{{ row.initials }}</span>
+            <span><span class="font-semibold">{{ row.name }}</span><br><span class="text-xs text-steel">{{ row.meta }}</span></span></span>
+          </td>
+          <td class="px-4 py-3">{% include "components/status_badge.html" with status=row.record.status only %}</td>
+          <td class="px-4 py-3 tabular-nums">{{ row.times }}</td>
+          <td class="px-5 py-3 text-[13px] text-ink-700">
+            {% for change in row.changes %}
+              <span class="block">{% if row.record.corrected %}<span class="sr-only">{% translate "Changed after submission:" %} </span>{% endif %}{% blocktranslate with field=change.field old=change.old new=change.new %}{{ field }} was {{ old }} → {{ new }}.{% endblocktranslate %} “{{ change.reason }}” <span class="text-steel">{{ change.at }}</span></span>
+            {% endfor %}
+            {% if row.record.note %}<span class="block">{{ row.record.note }}</span>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr class="border-t border-line-soft"><td colspan="4" class="px-5 py-6 text-center text-ink-700">{% translate "No workers were marked on this day." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if detail.can_decide %}
+  <form method="post" action="{% url 'attendance:decide' day.pk %}"
+        hx-post="{% url 'attendance:decide' day.pk %}" hx-select="#approvals-board" hx-target="#approvals-board" hx-swap="outerHTML"
+        class="flex flex-wrap items-end gap-3 border-t border-line px-5 py-4">
+    {% csrf_token %}
+    <div class="min-w-0 flex-[1_1_260px]">{% include "components/field.html" with field=detail.form.note only %}</div>
+    {% translate "Send back" as reject_label %}{% include "components/button.html" with label=reject_label variant="danger" type="submit" name="action" value="reject" only %}
+    {% translate "Approve day" as approve_label %}{% include "components/button.html" with label=approve_label variant="primary" type="submit" name="action" value="approve" only %}
+  </form>
+  {% endif %}
+</section>
+{% endwith %}

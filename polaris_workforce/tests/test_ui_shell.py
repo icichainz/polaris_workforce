@@ -27,7 +27,7 @@ def signed_in_client(client, db):
         password="s3cret-pass",
         first_name="Edem",
         last_name="Kpodar",
-        role="admin",  # some office pages are admin-only (e.g. Users & roles)
+        role="admin",  # office pages are role-checked (Wave 2)
     )
     client.force_login(user)
     return client

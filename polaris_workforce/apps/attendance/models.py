@@ -39,6 +39,20 @@ class AttendanceDay(TimeStampedModel):
         _("status"), max_length=20, choices=Status.choices, default=Status.DRAFT
     )
     submitted_at = models.DateTimeField(_("submitted at"), null=True, blank=True)
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=_("submitted by"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="submitted_attendance_days",
+    )
+    client_submitted_at = models.DateTimeField(
+        _("submitted on the phone at"),
+        null=True,
+        blank=True,
+        help_text=_("When the foreman tapped Submit, if the phone said so (it may sync later)."),
+    )
     approved_at = models.DateTimeField(_("approved at"), null=True, blank=True)
     approved_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -59,7 +73,10 @@ class AttendanceDay(TimeStampedModel):
         constraints = [
             models.UniqueConstraint(fields=["site", "date"], name="unique_attendance_day_per_site"),
         ]
-        indexes = [models.Index(fields=["status", "date"])]
+        indexes = [
+            models.Index(fields=["status", "date"]),
+            models.Index(fields=["updated_at"]),
+        ]
 
     def __str__(self) -> str:
         return f"{self.site} · {self.date}"
@@ -97,6 +114,9 @@ class AttendanceRecord(TimeStampedModel):
     departure = models.TimeField(_("departure"), null=True, blank=True)
     note = models.TextField(_("note"), blank=True)
     client_uuid = models.UUIDField(_("client UUID"), unique=True, default=uuid.uuid4)
+    corrected = models.BooleanField(
+        _("corrected"), default=False, help_text=_("Changed by a correction after submission.")
+    )
     recorded_at = models.DateTimeField(_("recorded at"), default=timezone.now)
 
     class Meta:
@@ -108,6 +128,7 @@ class AttendanceRecord(TimeStampedModel):
                 fields=["day", "worker"], name="unique_record_per_worker_per_day"
             ),
         ]
+        indexes = [models.Index(fields=["updated_at"])]
 
     def __str__(self) -> str:
         return f"{self.worker} · {self.day.date} · {self.get_status_display()}"
@@ -132,12 +153,14 @@ class AttendanceCorrection(models.Model):
         on_delete=models.PROTECT,
         related_name="attendance_corrections",
     )
+    client_uuid = models.UUIDField(_("client UUID"), unique=True, null=True, blank=True)
     created_at = models.DateTimeField(_("created at"), auto_now_add=True)
 
     class Meta:
         verbose_name = _("attendance correction")
         verbose_name_plural = _("attendance corrections")
         ordering = ["-created_at"]
+        indexes = [models.Index(fields=["created_at"])]
         constraints = [
             models.CheckConstraint(
                 condition=~models.Q(reason=""), name="correction_reason_required"
