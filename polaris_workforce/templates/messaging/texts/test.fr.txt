@@ -1,0 +1,1 @@
+{% comment %}SMS / WhatsApp text, rendered by apps.messaging.rendering in the recipient's language (one line; whitespace is collapsed).{% endcomment %}{% autoescape off %}{{ company }} : Message de test de Polaris Workforce. Les messages vers ce numéro fonctionnent.{% endautoescape %}

@@ -1,0 +1,97 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Recipients" %} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'messaging:messages' %}">{% translate "Messages" %}</a> / {% translate "Recipients" %}</p>{% endblock %}
+{% block page_subtitle %}{% if messaging.require_opt_in %}{% translate "Only people who opted in get texts" %}{% else %}{% translate "Everyone with a phone number gets texts unless they opted out" %}{% endif %}{% endblock %}
+{% block page_title %}{% translate "Recipients" %}{% endblock %}
+
+{% block content %}
+{% include "messaging/_tabs.html" %}
+
+<section class="overflow-x-auto rounded-card border border-line bg-white" aria-labelledby="users-heading">
+  <h2 id="users-heading" class="px-5 pt-4 pb-2 font-display text-lg font-bold">{% translate "Users" %}</h2>
+  <table class="w-full min-w-[640px] border-collapse text-sm">
+    <thead>
+      <tr class="bg-subtle text-left">
+        <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "User" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Phone" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Gets texts" %}</th>
+        <th scope="col" class="px-5 py-2.5"><span class="sr-only">{% translate "Actions" %}</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in user_rows %}
+      <tr class="border-t border-line-soft">
+        <td class="px-5 py-3"><span class="font-semibold">{{ row.person }}</span><br><span class="text-xs text-steel">{{ row.person.get_role_display }}</span></td>
+        <td class="px-4 py-3 tabular-nums">{% include "messaging/_phone.html" with row=row only %}</td>
+        <td class="px-4 py-3">{% include "messaging/_opt_badge.html" with row=row only %}</td>
+        <td class="px-5 py-3 text-right">
+          <form method="post" action="{% url 'messaging:recipients' %}">
+            {% csrf_token %}
+            <input type="hidden" name="user" value="{{ row.person.pk }}">
+            <input type="hidden" name="query" value="{{ query }}">
+            {% if row.opted_in %}<input type="hidden" name="opted_in" value="0">{% translate "Opt out" as toggle_label %}{% else %}<input type="hidden" name="opted_in" value="1">{% translate "Opt in" as toggle_label %}{% endif %}
+            {% include "components/button.html" with label=toggle_label type="submit" only %}
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="flex flex-col gap-3" aria-labelledby="workers-heading">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <h2 id="workers-heading" class="font-display text-lg font-bold">{% translate "Workers" %}</h2>
+    <form method="get" class="flex items-end gap-2" role="search">
+      <label for="worker-search" class="sr-only">{% translate "Search workers" %}</label>
+      <input id="worker-search" type="search" name="q" value="{{ search }}" placeholder="{% translate 'Name, number or phone' %}" class="h-10 w-56 rounded-control border border-line-strong bg-white px-3 text-sm">
+      {% translate "Search" as search_label %}
+      {% include "components/button.html" with label=search_label type="submit" only %}
+    </form>
+  </div>
+  {% if worker_rows %}
+  <div class="overflow-x-auto rounded-card border border-line bg-white">
+    <table class="w-full min-w-[640px] border-collapse text-sm">
+      <thead>
+        <tr class="bg-subtle text-left">
+          <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Phone" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Gets texts" %}</th>
+          <th scope="col" class="px-5 py-2.5"><span class="sr-only">{% translate "Actions" %}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in worker_rows %}
+        <tr class="border-t border-line-soft">
+          <td class="px-5 py-3"><a href="{% url 'messaging:worker' row.person.pk %}" class="font-semibold">{{ row.person.full_name }}</a><br><span class="text-xs text-steel">{{ row.person.number }}</span></td>
+          <td class="px-4 py-3 tabular-nums">{% include "messaging/_phone.html" with row=row only %}</td>
+          <td class="px-4 py-3">{% include "messaging/_opt_badge.html" with row=row only %}</td>
+          <td class="px-5 py-3 text-right">
+            <form method="post" action="{% url 'messaging:recipients' %}">
+              {% csrf_token %}
+              <input type="hidden" name="worker" value="{{ row.person.pk }}">
+              <input type="hidden" name="query" value="{{ query }}">
+              {% if row.opted_in %}<input type="hidden" name="opted_in" value="0">{% translate "Opt out" as toggle_label %}{% else %}<input type="hidden" name="opted_in" value="1">{% translate "Opt in" as toggle_label %}{% endif %}
+              {% include "components/button.html" with label=toggle_label type="submit" only %}
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page.has_other_pages %}
+  <nav aria-label="{% translate 'Pages' %}" class="flex items-center justify-between gap-3 text-sm">
+    {% if page.has_previous %}<a href="?{% if search %}q={{ search|urlencode }}&amp;{% endif %}page={{ page.previous_page_number }}">{% translate "Previous" %}</a>{% else %}<span></span>{% endif %}
+    <span class="text-steel">{% blocktranslate with number=page.number total=page.paginator.num_pages %}Page {{ number }} of {{ total }}{% endblocktranslate %}</span>
+    {% if page.has_next %}<a href="?{% if search %}q={{ search|urlencode }}&amp;{% endif %}page={{ page.next_page_number }}">{% translate "Next" %}</a>{% else %}<span></span>{% endif %}
+  </nav>
+  {% endif %}
+  {% else %}
+    {% translate "No workers found" as empty_title %}
+    {% include "components/empty_state.html" with icon="workers" title=empty_title only %}
+  {% endif %}
+</section>
+{% endblock %}

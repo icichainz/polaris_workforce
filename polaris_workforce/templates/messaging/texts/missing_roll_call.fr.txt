@@ -1,0 +1,1 @@
+{% comment %}SMS / WhatsApp text, rendered by apps.messaging.rendering in the recipient's language (one line; whitespace is collapsed).{% endcomment %}{% autoescape off %}{{ company }} : L'appel de {{ site }} n'est pas encore envoyé (attendu à {{ due|time:"H:i" }} aujourd'hui). Merci de l'envoyer.{% endautoescape %}

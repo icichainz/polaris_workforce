@@ -1,0 +1,1 @@
+{% comment %}SMS / WhatsApp text, rendered by apps.messaging.rendering in the recipient's language (one line; whitespace is collapsed).{% endcomment %}{% autoescape off %}{{ company }}: {{ count }} roll call{{ count|pluralize }} waiting for your approval, the oldest {{ oldest_date|date:"D j M" }} · {{ oldest_site }}.{% endautoescape %}

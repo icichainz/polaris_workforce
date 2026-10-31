@@ -63,6 +63,7 @@ Menu button (Alpine).
         {% if user.is_superuser or user.role == "admin" %}
         {% translate "Users & roles" as nav_label %}{% include "components/nav_link.html" with url_name="accounts:users" label=nav_label icon="users" current=current only %}
         {% translate "Settings" as nav_label %}{% include "components/nav_link.html" with url_name="core:settings" label=nav_label icon="settings" current=current only %}
+        {% translate "Messages" as nav_label %}{% include "components/nav_link.html" with url_name="messaging:messages" label=nav_label icon="phone" current=current only %}
         {% endif %}
         {% if company_switcher.is_platform_admin %}
         {% translate "Companies" as nav_label %}{% include "components/nav_link.html" with url_name="core:companies" label=nav_label icon="sites" current=current only %}

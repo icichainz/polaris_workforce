@@ -202,7 +202,13 @@ def test_company_a_people_cannot_reach_company_b_in_the_office(worlds, who):
         if who == "admin" and name in ("core:settings", "core:audit_log", "worksites:create"):
             assert response.status_code == 200, name  # A's own screens…
             assert "Bravo" not in _text(response), name  # …without B in them
-        elif who == "admin" and name in ("accounts:users", "accounts:user_create"):
+        elif who == "admin" and name in (
+            "accounts:users",
+            "accounts:user_create",
+            "messaging:messages",
+            "messaging:settings",
+            "messaging:recipients",
+        ):
             assert response.status_code == 200, name
             assert "Bravo" not in _text(response), name
         else:

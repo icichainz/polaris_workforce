@@ -1,0 +1,38 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{{ worker.full_name }} · {% translate "Texts" %} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'messaging:recipients' %}">{% translate "Recipients" %}</a> / {{ worker.full_name }}</p>{% endblock %}
+{% block page_subtitle %}{{ worker.number }}{% endblock %}
+{% block page_title %}{{ worker.full_name }}{% endblock %}
+{% block page_meta %}{% include "messaging/_phone.html" with row=row only %}{% endblock %}
+
+{% block content %}
+<form method="post" class="flex flex-col gap-4 rounded-card border border-line bg-white p-6 sm:max-w-xl">
+  {% csrf_token %}
+  <h2 class="font-display text-lg font-bold">{% translate "Text messages" %}</h2>
+  {% include "components/field.html" with field=form.opted_in %}
+  {% include "components/field.html" with field=form.channel %}
+  <p class="text-[13px] text-steel">{% translate "Workers get their payslip summary after each payment, in the company language." %}</p>
+  <div>
+    {% translate "Save" as save_label %}
+    {% include "components/button.html" with label=save_label type="submit" variant="primary" only %}
+  </div>
+</form>
+
+<section class="flex flex-col gap-3" aria-labelledby="sent-heading">
+  <h2 id="sent-heading" class="font-display text-lg font-bold">{% translate "Recent texts" %}</h2>
+  {% if sent %}
+  <ul class="flex flex-col gap-2">
+    {% for message in sent %}
+    <li class="rounded-card border border-line bg-white px-4 py-3 text-sm">
+      <span class="text-xs text-steel tabular-nums">{{ message.created_at|date:_("j M Y · H:i") }} · {{ message.get_kind_display }} · {{ message.get_status_display }}</span><br>
+      {{ message.text }}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-sm text-steel">{% translate "No texts yet." %}</p>
+  {% endif %}
+</section>
+{% endblock %}
