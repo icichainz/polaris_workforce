@@ -12,3 +12,9 @@ def _english_by_default():
     translation.activate("en")
     yield
     translation.deactivate()
+
+
+@pytest.fixture(autouse=True)
+def _fast_password_hashing(settings):
+    """Passwords and PINs use deliberately slow hashers; tests don't need that."""
+    settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

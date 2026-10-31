@@ -49,8 +49,10 @@ Menu button (Alpine).
       <div class="flex flex-col gap-0.5">
         <p class="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-rail-label">{% translate "Insight & admin" %}</p>
         {% translate "Reports" as nav_label %}{% include "components/nav_link.html" with url_name="dashboard:reports" label=nav_label icon="reports" current=current only %}
+        {% if user.is_superuser or user.role == "admin" %}
         {% translate "Users & roles" as nav_label %}{% include "components/nav_link.html" with url_name="accounts:users" label=nav_label icon="users" current=current only %}
         {% translate "Settings" as nav_label %}{% include "components/nav_link.html" with url_name="core:settings" label=nav_label icon="settings" current=current only %}
+        {% endif %}
       </div>
     </nav>
 
