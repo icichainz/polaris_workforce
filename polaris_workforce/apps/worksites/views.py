@@ -24,6 +24,7 @@ from apps.accounts.permissions import (
     scoped_sites,
 )
 from apps.attendance.models import AttendanceDay, AttendanceRecord
+from apps.core import dates
 from apps.core.models import CompanySettings
 from apps.core.money import format_money
 from apps.payroll.models import CashIssue, PayLine, PayPeriod
@@ -44,7 +45,7 @@ CREW_PREVIEW = 10
 @login_required
 def site_list(request):
     company = CompanySettings.load()
-    today = services.company_today(company)
+    today = dates.company_today(company)
     sites = scoped_sites(request.user)
     counts = services.status_counts(sites)
 
@@ -229,14 +230,14 @@ def _pay_settings(site, company):
 def site_detail(request, pk):
     site = get_site_or_403(request.user, pk)
     company = CompanySettings.load()
-    today = services.company_today(company)
+    today = dates.company_today(company)
     money = display.Money(company)
 
     week = services.week_strip(site, today, company)
     day = AttendanceDay.objects.filter(site=site, date=today).select_related("foreman").first()
     counts = _day_counts(day)
     submitted_at = (
-        day.submitted_at.astimezone(services.company_tz(company)).strftime("%H:%M")
+        day.submitted_at.astimezone(dates.company_tz(company)).strftime("%H:%M")
         if day and day.submitted_at
         else None
     )
@@ -279,7 +280,7 @@ def _parse_date(value, default):
 def site_crew(request, pk):
     site = get_site_or_403(request.user, pk)
     company = CompanySettings.load()
-    today = services.company_today(company)
+    today = dates.company_today(company)
     date = _parse_date(request.GET.get("date"), today)
     rows = _crew_rows(site, date, company)
     assignments = {
@@ -299,7 +300,7 @@ def site_crew(request, pk):
 def site_attendance(request, pk):
     site = get_site_or_403(request.user, pk)
     company = CompanySettings.load()
-    today = services.company_today(company)
+    today = dates.company_today(company)
     days = (
         AttendanceDay.objects.filter(site=site)
         .select_related("foreman")
@@ -319,7 +320,7 @@ def site_attendance(request, pk):
 def site_pay(request, pk):
     site = get_site_or_403(request.user, pk)
     company = CompanySettings.load()
-    today = services.company_today(company)
+    today = dates.company_today(company)
     money = display.Money(company)
     periods = (
         PayPeriod.objects.filter(site=site)
@@ -350,7 +351,7 @@ def format_period_money(period, amount):
 def site_settings(request, pk):
     site = get_site_or_403(request.user, pk)
     company = CompanySettings.load()
-    today = services.company_today(company)
+    today = dates.company_today(company)
     can_manage = can_manage_site(request.user, site)
     if request.method == "POST" and not can_manage:
         raise PermissionDenied
@@ -385,7 +386,7 @@ def site_assign(request, pk):
     if not can_manage_site(request.user, site):
         raise PermissionDenied
     company = CompanySettings.load()
-    today = services.company_today(company)
+    today = dates.company_today(company)
     on_site = services.crew_for(site, today).values("pk")
     candidates = (
         Worker.objects.filter(is_active=True)
@@ -424,7 +425,7 @@ def end_assignment(request, pk, assignment_id):
         raise PermissionDenied
     assignment = get_object_or_404(SiteAssignment, pk=assignment_id, site=site)
     company = CompanySettings.load()
-    today = services.company_today(company)
+    today = dates.company_today(company)
     end = _parse_date(request.POST.get("end_date"), today)
     try:
         services.end_assignment(assignment, max(end, assignment.start_date), actor=request.user)

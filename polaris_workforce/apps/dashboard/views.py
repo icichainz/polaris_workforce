@@ -2,7 +2,6 @@
 
 import io
 from urllib.parse import urlencode
-from zoneinfo import ZoneInfo
 
 from django import forms
 from django.conf import settings
@@ -13,11 +12,12 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from apps.accounts.permissions import Role, has_role, role_required, scoped_sites
+from apps.core.dates import company_now, company_tz
 from apps.core.models import CompanySettings
 
 from .forms import ReportFilterForm
 from .reports import build_report, write_csv
-from .services import company_now, today_overview
+from .services import today_overview
 
 REPORT_ROLES = (Role.ADMIN, Role.ACCOUNTANT, Role.SITE_MANAGER)
 
@@ -33,10 +33,8 @@ def home(request):
         "can_export": has_role(request.user, *REPORT_ROLES),
         "export_query": "?" + urlencode({"period": "custom", "start": today, "end": today}),
     }
-    if overview.awaiting:
-        context["nav_badges"] = {"approvals": len(overview.awaiting)}
     # Dates and times on the page are shown in the company time zone.
-    with timezone.override(ZoneInfo(company.time_zone)):
+    with timezone.override(company_tz(company)):
         return render(request, "dashboard/home.html", context)
 
 

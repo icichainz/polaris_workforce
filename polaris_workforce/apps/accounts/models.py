@@ -65,11 +65,8 @@ class ForemanDevice(models.Model):
     """A phone a foreman has signed in on.
 
     The raw device token is only ever shown to the phone; the database keeps its sha256
-    hex digest (``token_hash``).
-
-    ``pin_hash``, ``failed_attempts`` and ``locked_until`` are unused: the PIN and its
-    lockout live on ``User`` (a device row only exists after the first sign-in). They
-    are kept to avoid a destructive migration and may be dropped later.
+    hex digest (``token_hash``). The PIN and its lockout live on ``User`` (a device row
+    only exists after the first sign-in).
     """
 
     user = models.ForeignKey(
@@ -78,9 +75,6 @@ class ForemanDevice(models.Model):
     device_id = models.CharField(_("device ID"), max_length=128)
     name = models.CharField(_("device name"), max_length=100, blank=True)
     token_hash = models.CharField(_("token hash"), max_length=64, unique=True)
-    pin_hash = models.CharField(_("PIN hash"), max_length=128, blank=True)
-    failed_attempts = models.PositiveSmallIntegerField(_("failed attempts"), default=0)
-    locked_until = models.DateTimeField(_("locked until"), null=True, blank=True)
     last_seen_at = models.DateTimeField(_("last seen at"), null=True, blank=True)
     revoked_at = models.DateTimeField(_("revoked at"), null=True, blank=True)
     created_at = models.DateTimeField(_("created at"), auto_now_add=True)
@@ -100,11 +94,6 @@ class ForemanDevice(models.Model):
     def is_active(self) -> bool:
         """A device is active until it is revoked."""
         return self.revoked_at is None
-
-    @property
-    def is_locked(self) -> bool:
-        """True while a PIN lockout is in effect."""
-        return self.locked_until is not None and self.locked_until > timezone.now()
 
     @staticmethod
     def hash_token(raw_token: str) -> str:

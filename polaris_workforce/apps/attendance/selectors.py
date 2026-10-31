@@ -9,64 +9,32 @@ from __future__ import annotations
 import datetime
 from collections import Counter
 from dataclasses import dataclass, field
-from zoneinfo import ZoneInfo
 
-from django.db.models import Q
 from django.utils import timezone
 from django.utils.translation import ngettext
 
 from apps.accounts.permissions import scoped_sites
 from apps.api.enums import CORRECTABLE_FIELDS
-from apps.core.models import CompanySettings
-from apps.worksites.models import SiteAssignment
+from apps.core.dates import company_today
+from apps.worksites.services import crew_ids, crew_ids_by_date
 
 from .models import AttendanceCorrection, AttendanceDay, AttendanceRecord
 
 NOT_STARTED = "not_started"
 SYNC_DEFAULT_DAYS = 14
 
-# --- Company time zone -----------------------------------------------------------------
-
-
-def company_tz(company: CompanySettings | None = None) -> ZoneInfo:
-    company = company or CompanySettings.load()
-    return ZoneInfo(company.time_zone or "UTC")
-
-
-def company_today(company: CompanySettings | None = None) -> datetime.date:
-    """Today's work day in the company time zone (not the server's, not the phone's)."""
-    return timezone.now().astimezone(company_tz(company)).date()
-
-
 # --- Crew expected on a day ------------------------------------------------------------
-
-
-def _assignments(site, start: datetime.date, end: datetime.date):
-    return (
-        SiteAssignment.objects.filter(site=site, worker__is_active=True, start_date__lte=end)
-        .filter(Q(end_date__isnull=True) | Q(end_date__gte=start))
-        .values_list("worker_id", "start_date", "end_date")
-    )
+# The crew rule itself lives in ``apps.worksites.services`` (single source of truth).
 
 
 def expected_worker_ids(site, date: datetime.date) -> set[int]:
     """Active workers assigned to ``site`` on ``date`` (assignment dates inclusive)."""
-    return {worker_id for worker_id, _start, _end in _assignments(site, date, date)}
+    return crew_ids(site, date)
 
 
 def expected_by_date(site, start: datetime.date, end: datetime.date) -> dict:
     """``{date: {worker_id, …}}`` for every date from ``start`` to ``end`` inclusive."""
-    rows = list(_assignments(site, start, end))
-    result = {}
-    day = start
-    while day <= end:
-        result[day] = {
-            worker_id
-            for worker_id, first, last in rows
-            if first <= day and (last is None or last >= day)
-        }
-        day += datetime.timedelta(days=1)
-    return result
+    return crew_ids_by_date(site, start, end)
 
 
 # --- Counts ----------------------------------------------------------------------------

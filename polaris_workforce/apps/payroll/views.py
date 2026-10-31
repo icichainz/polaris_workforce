@@ -20,6 +20,7 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.accounts.permissions import can_manage_site, get_site_or_403, scoped_sites
 from apps.api.exceptions import PolarisAPIException
 from apps.api.idempotency import run_once
+from apps.core import dates
 from apps.core.choices import PayFrequency
 from apps.core.models import CompanySettings
 from apps.worksites.models import Site
@@ -83,7 +84,7 @@ def _period_badge(period: PayPeriod, today: datetime.date):
 @require_GET
 def periods(request):
     company = CompanySettings.load()
-    today = services.company_today(company)
+    today = dates.company_today(company)
     sites = scoped_sites(request.user).order_by("name")
     site = _site_filter(request, sites)
     shown_sites = sites.filter(pk=site.pk) if site else sites
@@ -186,7 +187,7 @@ def _frequency_note(company, sites) -> str:
 @require_GET
 def cash_sheets(request):
     company = CompanySettings.load()
-    today = services.company_today(company)
+    today = dates.company_today(company)
     sites = scoped_sites(request.user).order_by("name")
     site = _site_filter(request, sites)
     shown_sites = sites.filter(pk=site.pk) if site else sites
@@ -373,13 +374,23 @@ def _advance_rows(user):
 @login_required
 def advances(request):
     company = CompanySettings.load()
-    today = services.company_today(company)
+    today = dates.company_today(company)
     workers = (
         services.scoped_workers(request.user)
         .filter(is_active=True)
         .order_by("last_name", "first_name")
     )
-    form = AdvanceForm(company=company, workers=workers)
+    # ?worker=<id> (from a worker profile): only that worker's advances, and the form
+    # starts with them selected.
+    worker_id = request.GET.get("worker", "")
+    worker = (
+        services.scoped_workers(request.user).filter(pk=int(worker_id)).first()
+        if worker_id.isdigit()
+        else None
+    )
+    form = AdvanceForm(
+        company=company, workers=workers, initial={"worker": worker.pk} if worker else None
+    )
     if request.method == "POST":
         form = AdvanceForm(request.POST, request.FILES, company=company, workers=workers)
         if form.is_valid():
@@ -407,6 +418,8 @@ def advances(request):
 
     show = request.GET.get("show", "open")
     rows = _advance_rows(request.user)
+    if worker is not None:
+        rows = rows.filter(worker=worker)
     owed = rows.filter(balance__gt=0)
     if show != "all":
         rows = owed
@@ -420,6 +433,7 @@ def advances(request):
         "form": form,
         "page": page,
         "show": show,
+        "worker": worker,
         "owed_workers": owed.values("worker").distinct().count(),
         "owed_total": owed.aggregate(total=Sum("balance"))["total"] or 0,
         "preview": _preview_context(form, company) if form.is_bound else None,

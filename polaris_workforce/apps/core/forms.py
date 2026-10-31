@@ -46,6 +46,7 @@ PROOF_CHOICES = [
     (ProofType.PHOTO, _("Photo of worker with cash")),
     (ProofType.SIGNATURE, _("Signature on phone")),
     (ProofType.THUMB_MARK, _("Thumb mark on paper sheet (photo)")),
+    (ProofType.NONE, _("No proof needed")),
 ]
 
 TIME_FORMAT = "%H:%M"
@@ -130,6 +131,10 @@ class CompanySettingsForm(forms.ModelForm):
         choices=PROOF_CHOICES,
         widget=forms.CheckboxSelectMultiple,
         required=False,
+        help_text=_(
+            "“No proof needed” lets a payment be recorded without any proof of receipt. "
+            "Untick it to require one of the other ticked proofs."
+        ),
     )
     public_holidays = forms.CharField(
         label=_("Public holidays"),

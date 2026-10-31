@@ -78,8 +78,12 @@ class Site(TimeStampedModel):
 class SiteAssignmentQuerySet(models.QuerySet):
     def active_on(self, date):
         """Assignments that cover ``date`` (end date inclusive)."""
-        return self.filter(start_date__lte=date).filter(
-            models.Q(end_date__isnull=True) | models.Q(end_date__gte=date)
+        return self.overlapping(date, date)
+
+    def overlapping(self, start, end):
+        """Assignments that cover at least one day from ``start`` to ``end`` (inclusive)."""
+        return self.filter(start_date__lte=end).filter(
+            models.Q(end_date__isnull=True) | models.Q(end_date__gte=start)
         )
 
 

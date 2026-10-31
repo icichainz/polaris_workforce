@@ -19,7 +19,7 @@
     </div>
     <div class="flex flex-wrap gap-2.5">
       {% if can_edit %}{% translate "Edit" as edit_label %}{% url "workers:edit" worker.pk as edit_url %}{% include "components/button.html" with label=edit_label href=edit_url only %}{% endif %}
-      {% if can_give_advance %}{% translate "Give advance" as advance_label %}{% url "payroll:advances" as advance_url %}{% include "components/button.html" with label=advance_label href=advance_url variant="primary" only %}{% endif %}
+      {% if can_give_advance %}{% translate "Give advance" as advance_label %}{% include "components/button.html" with label=advance_label href=advances_url variant="primary" only %}{% endif %}
     </div>
   </header>
 </div>
@@ -40,7 +40,8 @@
 
   {% translate "Advance owed" as owed_label %}
   {% if deduction %}{% blocktranslate with amount=deduction asvar owed_caption %}{{ amount }} deducted per pay{% endblocktranslate %}{% else %}{% translate "Nothing owed" as owed_caption %}{% endif %}
-  {% include "components/stat_tile.html" with label=owed_label value=owed caption=owed_caption only %}
+  {% translate "See advances" as owed_link %}
+  {% include "components/stat_tile.html" with label=owed_label value=owed caption=owed_caption href=advances_url link_label=owed_link only %}
 </section>
 
 <div class="flex flex-wrap items-start gap-6">
@@ -116,7 +117,7 @@
       <tbody>
         {% for p in payments %}
         <tr class="border-t border-line-soft">
-          <td class="px-4 py-3 font-semibold">{{ p.date|date:"D j M" }}</td>
+          <td class="px-4 py-3 font-semibold">{% if p.payslip_url %}<a href="{{ p.payslip_url }}">{{ p.date|date:"D j M" }}<span class="sr-only"> · {% translate "payslip (PDF)" %}</span></a>{% else %}{{ p.date|date:"D j M" }}{% endif %}</td>
           <td class="px-4 py-3 text-right tabular-nums">{{ p.units }}</td>
           <td class="px-4 py-3 text-right tabular-nums">{{ p.gross }}</td>
           <td class="px-4 py-3 text-right tabular-nums">{% if p.advance %}− {{ p.advance }}{% else %}—{% endif %}</td>

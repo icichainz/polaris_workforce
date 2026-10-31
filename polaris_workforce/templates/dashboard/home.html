@@ -123,19 +123,19 @@
         {% if alert.kind == "missing_roll_call" %}
           <span class="font-semibold">{% blocktranslate with site=alert.site_name %}{{ site }} — no roll call yet{% endblocktranslate %}</span>
           <span class="text-ink-700">{% if alert.person %}{% blocktranslate with name=alert.person time=alert.due|time:"H:i" %}{{ name }} has not submitted. Due by {{ time }}.{% endblocktranslate %}{% else %}{% blocktranslate with time=alert.due|time:"H:i" %}No foreman has submitted. Due by {{ time }}.{% endblocktranslate %}{% endif %}</span>
-          <a href="{% url 'worksites:list' %}" class="text-[13px] font-semibold">{% translate "View sites" %}</a>
+          <a href="{% url 'worksites:detail' alert.site_id %}" class="text-[13px] font-semibold">{% translate "Open site" %}</a>
         {% elif alert.kind == "corrections" %}
           <span class="font-semibold">{% blocktranslate count counter=alert.count %}{{ counter }} correction after submission{% plural %}{{ counter }} corrections after submission{% endblocktranslate %}</span>
           <span class="text-ink-700">{% blocktranslate with site=alert.site_name date=alert.date|date:"D j M" %}{{ site }}, {{ date }} — check the reasons before approving.{% endblocktranslate %}</span>
-          <a href="{% url 'attendance:approvals' %}" class="text-[13px] font-semibold">{% translate "Review" %}</a>
+          <a href="{% url 'attendance:approvals' %}?day={{ alert.day_id }}" class="text-[13px] font-semibold">{% translate "Review" %}</a>
         {% elif alert.kind == "absent_streak" %}
           <span class="font-semibold">{% blocktranslate with name=alert.person days=alert.count %}{{ name }} absent {{ days }} days in a row{% endblocktranslate %}</span>
           <span class="text-ink-700">{{ alert.detail }}</span>
-          <a href="{% url 'workers:list' %}" class="text-[13px] font-semibold">{% translate "Open workers" %}</a>
+          <a href="{% url 'workers:detail' alert.worker_id %}" class="text-[13px] font-semibold">{% translate "Open profile" %}</a>
         {% elif alert.kind == "unclosed_period" %}
           <span class="font-semibold">{% translate "Cash sheet not closed" %}</span>
           <span class="text-ink-700">{% blocktranslate with site=alert.site_name date=alert.date|date:"D j M" count counter=alert.count %}{{ site }}, {{ date }} — {{ counter }} worker unpaid.{% plural %}{{ site }}, {{ date }} — {{ counter }} workers unpaid.{% endblocktranslate %}</span>
-          <a href="{% url 'payroll:cash_sheets' %}" class="text-[13px] font-semibold">{% translate "Open cash sheets" %}</a>
+          <a href="{% url 'payroll:cash_sheet' alert.site_id alert.date %}" class="text-[13px] font-semibold">{% translate "Open cash sheet" %}</a>
         {% endif %}
       </span>
     </div>

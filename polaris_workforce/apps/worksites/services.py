@@ -5,7 +5,6 @@ Every write to an assignment or to a site's pay settings writes an ``AuditLog`` 
 """
 
 import datetime
-import zoneinfo
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -13,10 +12,10 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Exists, OuterRef, Q, Subquery
 from django.db.models.functions import Coalesce
-from django.utils import timezone
 from django.utils.translation import gettext as _
 
 from apps.attendance.models import AttendanceDay, AttendanceRecord
+from apps.core.dates import company_today  # noqa: F401 (re-exported for the crew API)
 from apps.core.models import AuditLog, CompanySettings
 from apps.core.settings import SITE_OVERRIDABLE, resolve_setting
 from apps.workers.models import Worker
@@ -31,20 +30,6 @@ PRESENT_STATUSES = (
 )
 
 ONE_DAY = datetime.timedelta(days=1)
-
-
-def company_tz(company: CompanySettings) -> datetime.tzinfo:
-    """The company time zone (``CompanySettings.time_zone``)."""
-    try:
-        return zoneinfo.ZoneInfo(company.time_zone)
-    except (zoneinfo.ZoneInfoNotFoundError, ValueError):
-        return datetime.UTC
-
-
-def company_today(company: CompanySettings | None = None) -> datetime.date:
-    """Today's date in the company time zone."""
-    company = company or CompanySettings.load()
-    return timezone.now().astimezone(company_tz(company)).date()
 
 
 def _jsonable(value):
@@ -65,6 +50,10 @@ def _assignment_snapshot(assignment: SiteAssignment) -> dict:
 
 
 # --- crew -------------------------------------------------------------------------------
+#
+# The one definition of a site's crew (the workers "expected" on a roll call): active
+# workers whose assignment covers the date, start and end dates inclusive. Attendance and
+# payroll call these functions instead of querying assignments themselves.
 
 
 def active_assignments(date: datetime.date):
@@ -81,6 +70,32 @@ def crew_for(site: Site, date: datetime.date):
         .select_related("trade")
         .order_by("last_name", "first_name", "number")
     )
+
+
+def crew_ids(site: Site, date: datetime.date) -> set[int]:
+    """Ids of the workers on ``site``'s crew on ``date`` (see ``crew_for``)."""
+    return set(active_assignments(date).filter(site=site).values_list("worker_id", flat=True))
+
+
+def crew_ids_by_date(
+    site: Site, start: datetime.date, end: datetime.date
+) -> dict[datetime.date, set[int]]:
+    """``{date: crew_ids(site, date)}`` for every date from ``start`` to ``end``, in one query."""
+    rows = list(
+        SiteAssignment.objects.overlapping(start, end)
+        .filter(site=site, worker__is_active=True)
+        .values_list("worker_id", "start_date", "end_date")
+    )
+    result = {}
+    day = start
+    while day <= end:
+        result[day] = {
+            worker_id
+            for worker_id, first, last in rows
+            if first <= day and (last is None or last >= day)
+        }
+        day += ONE_DAY
+    return result
 
 
 def assignment_on(worker: Worker, date: datetime.date) -> SiteAssignment | None:

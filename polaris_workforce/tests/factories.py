@@ -73,7 +73,6 @@ class ForemanDeviceFactory(factory.django.DjangoModelFactory):
     user = factory.SubFactory(ForemanFactory)
     device_id = factory.Sequence(lambda n: f"android-{n:06d}")
     token_hash = factory.LazyAttribute(lambda o: ForemanDevice.hash_token(o.raw_token))
-    pin_hash = ""
 
 
 # --- core -------------------------------------------------------------------------------
