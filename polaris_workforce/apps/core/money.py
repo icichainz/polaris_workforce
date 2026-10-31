@@ -10,6 +10,19 @@ from decimal import Decimal, InvalidOperation
 
 SYMBOL_POSITIONS = ("prefix", "suffix")
 
+# CompanySettings.number_format → format_money keyword arguments.
+NUMBER_FORMATS: dict[str, dict[str, str]] = {
+    "space": {"thousands_sep": " ", "decimal_sep": ".", "symbol_position": "suffix"},
+    "comma": {"thousands_sep": ",", "decimal_sep": ".", "symbol_position": "suffix"},
+    "dot": {"thousands_sep": ".", "decimal_sep": ",", "symbol_position": "prefix"},
+}
+DEFAULT_NUMBER_FORMAT = "space"
+
+
+def number_format_options(code: str | None) -> dict[str, str]:
+    """The separators and currency position for a number-format code (unknown → default)."""
+    return NUMBER_FORMATS.get(code or DEFAULT_NUMBER_FORMAT, NUMBER_FORMATS[DEFAULT_NUMBER_FORMAT])
+
 
 def _check_decimals(decimals: int) -> None:
     if isinstance(decimals, bool) or not isinstance(decimals, int) or decimals < 0:
