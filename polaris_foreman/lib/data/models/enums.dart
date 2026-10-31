@@ -1,4 +1,7 @@
-/// Enums use words on the wire (`present`, `half_day`…). The app shows letters.
+/// Enums use words on the wire (`present`, `half_day`…). The app shows a letter and a
+/// word for each attendance status; both are translated (`statusLetter` and
+/// `statusWord` in ui/widgets.dart), since the letter follows the word: L for Late,
+/// R for Retard.
 library;
 
 T _parse<T extends Enum>(List<T> values, String wire, String Function(T) w) {
@@ -9,14 +12,13 @@ T _parse<T extends Enum>(List<T> values, String wire, String Function(T) w) {
 }
 
 enum AttendanceStatus {
-  present('present', 'P'),
-  absent('absent', 'A'),
-  halfDay('half_day', '½'),
-  late('late', 'L');
+  present('present'),
+  absent('absent'),
+  halfDay('half_day'),
+  late('late');
 
-  const AttendanceStatus(this.wire, this.letter);
+  const AttendanceStatus(this.wire);
   final String wire;
-  final String letter;
 
   static AttendanceStatus fromWire(String v) =>
       _parse(values, v, (e) => e.wire);

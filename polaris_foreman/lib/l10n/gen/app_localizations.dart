@@ -146,6 +146,30 @@ abstract class AppLocalizations {
   /// **'Late'**
   String get statusLate;
 
+  /// Letter shown with the word Present.
+  ///
+  /// In en, this message translates to:
+  /// **'P'**
+  String get statusLetterPresent;
+
+  /// Letter shown with the word Absent.
+  ///
+  /// In en, this message translates to:
+  /// **'A'**
+  String get statusLetterAbsent;
+
+  /// Letter shown with the words Half day.
+  ///
+  /// In en, this message translates to:
+  /// **'½'**
+  String get statusLetterHalfDay;
+
+  /// Letter shown with the word Late. Follows the translated word (French: R for Retard).
+  ///
+  /// In en, this message translates to:
+  /// **'L'**
+  String get statusLetterLate;
+
   /// No description provided for @phoneTitle.
   ///
   /// In en, this message translates to:
