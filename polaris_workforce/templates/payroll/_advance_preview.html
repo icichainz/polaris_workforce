@@ -1,0 +1,17 @@
+{% load i18n payroll_tags %}{% comment %}
+Live limit explanation under "Give an advance" (Advances artboard).
+Context: `preview` ({worker, check: engine.AdvanceCheck}) or None, `company`.
+{% endcomment %}{% if preview %}{% with check=preview.check worker=preview.worker %}
+<div class="rounded-control px-3.5 py-3 text-[13px] {% if check.allowed %}border border-warning-line bg-warning-bg text-warning-fg{% else %}bg-absent-bg text-danger-text{% endif %}">
+  {% if check.expected_weekly_pay %}
+    {% if check.owed %}{% blocktranslate with name=worker.first_name owed=check.owed|amount:company %}{{ name }} already owes <strong>{{ owed }}</strong>.{% endblocktranslate %} {% endif %}
+    {% blocktranslate with total=check.new_total|amount:company percent=check.percent_of_weekly_pay limit=check.limit_percent %}New total <strong>{{ total }}</strong> = {{ percent }}% of the expected weekly pay (limit {{ limit }}%, set in Settings).{% endblocktranslate %}
+    {% if check.allowed %}{% if check.pays_to_repay %} {% blocktranslate count pays=check.pays_to_repay %}Fully repaid in about <strong>{{ pays }} pay</strong>.{% plural %}Fully repaid in about <strong>{{ pays }} pays</strong>.{% endblocktranslate %}{% endif %}
+    {% else %} <strong>{% blocktranslate with most=check.limit_amount|money:company %}Over the limit: at most {{ most }} may be owed.{% endblocktranslate %}</strong>{% endif %}
+  {% else %}
+    {% translate "This worker has no pay rate yet, so no advance can be given." %}
+  {% endif %}
+</div>
+{% endwith %}{% else %}
+<div class="rounded-control border border-line bg-subtle px-3.5 py-3 text-[13px] text-ink-700">{% blocktranslate with limit=company.advance_limit_percent %}Choose a worker and an amount. A worker may owe at most {{ limit }}% of a normal week's pay (set in Settings).{% endblocktranslate %}</div>
+{% endif %}

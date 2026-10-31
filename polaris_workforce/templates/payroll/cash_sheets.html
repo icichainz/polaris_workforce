@@ -1,12 +1,54 @@
 {% extends "layouts/app.html" %}
-{% load i18n %}
+{% load i18n payroll_tags %}
 
 {% block title %}{% translate "Cash sheets" %} · Polaris Workforce{% endblock %}
-{% block page_subtitle %}{% translate "Cash issued, paid and left to pay, per site and day" %}{% endblock %}
+{% block page_subtitle %}{% translate "Cash issued, paid and left to pay, per site and pay day" %}{% endblock %}
 {% block page_title %}{% translate "Cash sheets" %}{% endblock %}
 
 {% block content %}
-  {% translate "This screen is built in Wave 2" as empty_title %}
-  {% translate "Each day's payout per site, with proof of payment and the cash to return." as empty_message %}
-  {% include "components/empty_state.html" with icon="cash" title=empty_title message=empty_message only %}
+  <form method="get" class="flex flex-wrap items-center justify-end gap-3">
+    <label class="flex items-center gap-2 text-[13px] font-semibold">{% translate "Site" %}
+      <select name="site" onchange="this.form.submit()" class="h-10 rounded-control border border-line-strong bg-white px-2.5 text-sm font-normal text-ink">
+        <option value="">{% translate "All sites" %}</option>
+        {% for s in sites %}<option value="{{ s.pk }}"{% if site and site.pk == s.pk %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <noscript>{% translate "Filter" as label %}{% include "components/button.html" with label=label type="submit" only %}</noscript>
+  </form>
+
+  {% if sheets %}
+  <div class="overflow-x-auto rounded-control border border-line bg-white">
+    <table class="w-full min-w-[880px] border-collapse text-sm">
+      <thead>
+        <tr class="bg-subtle text-left">
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Pay day" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Cash issued" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Total to pay" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Paid so far" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Left to pay" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Status" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sheet in sheets %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3"><a href="{% url 'payroll:cash_sheet' sheet.site.pk sheet.date|date:'Y-m-d' %}" class="font-semibold">{{ sheet.date|date:"D j M Y" }}</a><br><span class="text-xs text-steel">{% blocktranslate count n=sheet.reconciliation.line_count %}{{ n }} worker{% plural %}{{ n }} workers{% endblocktranslate %}</span></td>
+          <td class="px-4 py-3">{{ sheet.site.name }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ sheet.reconciliation.cash_issued|amount:sheet }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ sheet.reconciliation.total_to_pay|amount:sheet }}</td>
+          <td class="px-4 py-3 text-right tabular-nums text-present-fg">{{ sheet.reconciliation.paid_total|amount:sheet }}</td>
+          <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ sheet.reconciliation.left_to_pay|money:sheet }}</td>
+          <td class="px-4 py-3">{% include "payroll/_sheet_status.html" with sheet=sheet only %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "payroll/_pagination.html" %}
+  {% else %}
+    {% translate "No cash sheets yet" as empty_title %}
+    {% translate "A site's cash sheet appears once its roll call is saved for a pay day." as empty_message %}
+    {% include "components/empty_state.html" with icon="cash" title=empty_title message=empty_message only %}
+  {% endif %}
 {% endblock %}

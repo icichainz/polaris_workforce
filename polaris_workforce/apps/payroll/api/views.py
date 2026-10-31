@@ -1,13 +1,28 @@
-"""Cash payout over the API. Stubs: Wave 2 agent D replaces the bodies (engine + services)."""
+"""Cash payout over the API: the day's cash sheet and payments with proof.
 
+Thin views: the figures come from ``apps.payroll.services`` (and its engine); site
+scoping goes through ``apps.accounts.permissions.get_site_or_403``.
+"""
+
+from django.http import Http404
 from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.api.exceptions import NotImplementedYet
+from apps.accounts.permissions import get_site_or_403
+from apps.api.idempotency import IdempotentCreateMixin, run_once
 from apps.api.schema import DATE, SITE_ID, error_responses
 
-from .serializers import PaymentCreateSerializer, PaymentSerializer, PayoutSerializer
+from .. import services
+from ..models import PayLine, Payment
+from .serializers import (
+    PaymentCreateSerializer,
+    PaymentSerializer,
+    PayoutSerializer,
+    payment_data,
+    payout_data,
+)
 
 TAGS = ["payroll"]
 
@@ -84,10 +99,12 @@ class PayoutView(APIView):
         ],
     )
     def get(self, request, site_id, date):
-        raise NotImplementedYet()
+        site = get_site_or_403(request.user, site_id)
+        sheet = services.cash_sheet(site, date, actor=request.user)
+        return Response(PayoutSerializer(payout_data(sheet, request)).data)
 
 
-class PaymentCreateView(APIView):
+class PaymentCreateView(IdempotentCreateMixin, APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     @extend_schema(
@@ -139,4 +156,27 @@ class PaymentCreateView(APIView):
         ],
     )
     def post(self, request):
-        raise NotImplementedYet()
+        serializer = PaymentCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        line = PayLine.objects.select_related("period").filter(pk=data["pay_line_id"]).first()
+        if line is None:
+            raise Http404
+        get_site_or_403(request.user, line.period.site_id)
+        result = run_once(
+            Payment.objects,
+            data["client_uuid"],
+            create=lambda: services.record_payment(
+                request.user,
+                line,
+                amount=data["amount"],
+                proof_type=data["proof_type"],
+                proof_file=data.get("proof_file"),
+                paid_at=data.get("paid_at"),
+                client_uuid=data["client_uuid"],
+            ),
+            matches=lambda p: p.pay_line_id == line.pk and p.paid_by_id == request.user.pk,
+        )
+        return self.idempotent_response(
+            result, PaymentSerializer(payment_data(result.instance, request)).data
+        )

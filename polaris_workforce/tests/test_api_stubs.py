@@ -35,13 +35,7 @@ PROTECTED = [
         {"client_uuid": UUID, "field": "arrival", "new_value": "07:20", "reason": "Gate log"},
     ),
     ("get", "api:attendance:sync", {}, None),
-    ("get", "api:payroll:payout", {"site_id": 3, "date": DAY}, None),
-    (
-        "post",
-        "api:payroll:payments",
-        {},
-        {"client_uuid": UUID, "pay_line_id": 801, "amount": 4000, "proof_type": "none"},
-    ),
+    # Payroll (payout, payments) is implemented: see tests/test_payroll_api.py.
 ]
 
 PIN_BODY = {"phone": "+22890112233", "pin": "4821", "device_id": "abc", "device_name": "Tecno"}

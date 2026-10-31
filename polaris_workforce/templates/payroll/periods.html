@@ -1,12 +1,87 @@
 {% extends "layouts/app.html" %}
-{% load i18n %}
+{% load i18n payroll_tags %}
 
 {% block title %}{% translate "Pay periods" %} · Polaris Workforce{% endblock %}
-{% block page_subtitle %}{% translate "Daily by default · each site can set its own pay frequency" %}{% endblock %}
+{% block page_subtitle %}{{ frequency_note }}{% endblock %}
 {% block page_title %}{% translate "Pay periods" %}{% endblock %}
+{% block page_actions %}
+  {% translate "Cash sheets" as label %}{% url "payroll:cash_sheets" as sheets_url %}
+  {% include "components/button.html" with label=label href=sheets_url icon="cash" only %}
+{% endblock %}
 
 {% block content %}
-  {% translate "This screen is built in Wave 2" as empty_title %}
-  {% translate "Gross, deductions and net per period, payslips and locking." as empty_message %}
-  {% include "components/empty_state.html" with icon="payroll" title=empty_title message=empty_message only %}
+  <section aria-label="{% translate 'This week' %}" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    {% translate "Gross this week" as label %}{% include "components/stat_tile.html" with label=label value=week.gross|amount:company suffix=company.currency only %}
+    {% translate "Advances deducted" as label %}{% include "components/stat_tile.html" with label=label value=week.advances|amount:company suffix=company.currency only %}
+    {% translate "Paid out" as label %}{% include "components/stat_tile.html" with label=label value=week.paid|amount:company suffix=company.currency only %}
+    {% translate "Still to pay" as label %}{% include "components/stat_tile.html" with label=label value=week.left|amount:company suffix=company.currency dark=True only %}
+  </section>
+
+  <form method="get" class="flex flex-wrap items-center justify-between gap-3">
+    <div role="tablist" aria-label="{% translate 'Period status' %}" class="flex gap-1 rounded-card bg-segment p-1">
+      <a role="tab" href="?status=open{% if site %}&amp;site={{ site.pk }}{% endif %}" aria-selected="{% if tab == 'open' %}true{% else %}false{% endif %}"
+        class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if tab == 'open' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% blocktranslate with count=open_count %}Open · {{ count }}{% endblocktranslate %}</a>
+      <a role="tab" href="?status=locked{% if site %}&amp;site={{ site.pk }}{% endif %}" aria-selected="{% if tab == 'locked' %}true{% else %}false{% endif %}"
+        class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if tab == 'locked' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Locked" %}</a>
+      <a role="tab" href="?status=all{% if site %}&amp;site={{ site.pk }}{% endif %}" aria-selected="{% if tab == 'all' %}true{% else %}false{% endif %}"
+        class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if tab == 'all' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "All" %}</a>
+    </div>
+    <input type="hidden" name="status" value="{{ tab }}">
+    <label class="flex items-center gap-2 text-[13px] font-semibold">{% translate "Site" %}
+      <select name="site" onchange="this.form.submit()" class="h-10 rounded-control border border-line-strong bg-white px-2.5 text-sm font-normal text-ink">
+        <option value="">{% translate "All sites" %}</option>
+        {% for s in sites %}<option value="{{ s.pk }}"{% if site and site.pk == s.pk %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <noscript>{% translate "Filter" as label %}{% include "components/button.html" with label=label type="submit" only %}</noscript>
+  </form>
+
+  {% if rows %}
+  <div class="overflow-x-auto rounded-control border border-line bg-white">
+    <table class="w-full min-w-[920px] border-collapse text-sm">
+      <thead>
+        <tr class="bg-subtle text-left">
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Period" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Workers" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Gross" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Deductions" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Net" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Paid" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Status" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3"><a href="{{ row.sheet_url }}" class="font-semibold">{{ row.period|period_label }}</a><br><span class="text-xs text-steel">{{ row.period.get_frequency_display }}</span></td>
+          <td class="px-4 py-3">{{ row.period.site.name }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.workers }}</td>
+          {% if row.has_figures %}
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.period.gross|amount:row.period }}</td>
+          <td class="px-4 py-3 text-right tabular-nums text-half-fg">{% if row.period.deductions %}− {{ row.period.deductions|amount:row.period }}{% else %}—{% endif %}</td>
+          <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ row.period.net|amount:row.period }}</td>
+          {% else %}
+          <td class="px-4 py-3 text-right text-steel">—</td>
+          <td class="px-4 py-3 text-right text-steel">—</td>
+          <td class="px-4 py-3 text-right text-steel">—</td>
+          {% endif %}
+          <td class="px-4 py-3">
+            <span class="flex items-center gap-2"><span class="tabular-nums">{{ row.paid }} / {{ row.workers }}</span>
+              <span class="block h-1.5 w-16 overflow-hidden rounded-full bg-line-soft" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ row.progress }}" aria-label="{% translate 'Paid' %}"><span class="block h-1.5 bg-present-fg" style="width: {{ row.progress }}%"></span></span>
+            </span>
+          </td>
+          <td class="px-4 py-3">{% include "components/status_badge.html" with status=row.badge label=row.badge_label only %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "payroll/_pagination.html" %}
+  {% else %}
+    {% translate "No pay periods yet" as empty_title %}
+    {% translate "Periods appear as soon as a roll call is saved for a site." as empty_message %}
+    {% include "components/empty_state.html" with icon="payroll" title=empty_title message=empty_message only %}
+  {% endif %}
+  <p class="text-[13px] text-ink-700">{% translate "A period is ready to pay once every day in it is approved. It locks when the cash sheet is closed; workers left unpaid need a reason." %}</p>
 {% endblock %}

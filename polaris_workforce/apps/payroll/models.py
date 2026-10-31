@@ -105,6 +105,12 @@ class PayLine(TimeStampedModel):
     advance_deduction = _money_field(_("advance deduction"), default=0)
     other_deductions = _money_field(_("other deductions"), default=0)
     net = models.BigIntegerField(_("net"), default=0)
+    days = models.JSONField(
+        _("days"),
+        default=list,
+        blank=True,
+        help_text=_("What the pay engine computed for each day (kept for the payslip)."),
+    )
 
     class Meta:
         verbose_name = _("pay line")
