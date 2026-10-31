@@ -1,0 +1,22 @@
+{% load i18n polaris %}{% comment %}
+A row (or grid) of day cells: the day number, the status letter, and the status word for
+screen readers and in the title. Status is never shown by colour alone.
+
+  {% include "portal/_week.html" with cells=week show_weekday=True only %}
+
+Parameters
+  cells         list of cells from apps.portal.selectors (None = outside the month)
+  show_weekday  true → weekday abbreviation above the day number (week strip)
+{% endcomment %}<ol class="m-0 grid list-none grid-cols-7 gap-1.5 p-0">
+  {% for cell in cells %}
+    {% if cell %}
+    <li title="{{ cell.date|date:_("j M") }}{% if cell.title %} · {{ cell.title }}{% endif %}" class="flex min-h-14 flex-col items-center justify-between rounded-md border-2 px-0.5 py-1 {% if cell.is_today %}border-ink{% elif cell.kind == 'present' %}border-present-bg{% elif cell.kind == 'absent' %}border-absent-bg{% elif cell.kind == 'half_day' %}border-half-bg{% elif cell.kind == 'late' %}border-late-bg{% else %}border-line-soft{% endif %} {% if cell.kind == 'present' %}bg-present-bg text-present-fg{% elif cell.kind == 'absent' %}bg-absent-bg text-absent-fg{% elif cell.kind == 'half_day' %}bg-half-bg text-half-fg{% elif cell.kind == 'late' %}bg-late-bg text-late-fg{% elif cell.kind == 'off' %}bg-subtle text-disabled{% else %}bg-white text-steel{% endif %}">
+      <span class="text-xs font-semibold tabular-nums">{% if show_weekday %}{{ cell.date|date:"D" }} {% endif %}{{ cell.date.day }}</span>
+      <span class="font-display text-lg font-extrabold" aria-hidden="true">{% if cell.kind == 'present' or cell.kind == 'absent' or cell.kind == 'half_day' or cell.kind == 'late' %}{{ cell.kind|status_letter }}{% elif cell.kind == 'off' %}–{% endif %}{% if cell.waiting %}*{% endif %}</span>
+      <span class="sr-only">{{ cell.title }}{% if cell.waiting %} · {% translate "waiting for approval" %}{% endif %}</span>
+    </li>
+    {% else %}
+    <li aria-hidden="true"></li>
+    {% endif %}
+  {% endfor %}
+</ol>

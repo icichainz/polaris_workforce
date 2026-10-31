@@ -1,0 +1,24 @@
+{% load i18n static %}<!doctype html>
+{% get_current_language as LANGUAGE_CODE %}
+<html lang="{{ LANGUAGE_CODE }}">
+{% comment %}
+Worker portal page shell. Mobile-first and light for cheap Android phones on slow
+networks: the shared stylesheet only, no JavaScript, no font preloads (the CSS falls back
+to system fonts until the web fonts arrive).
+
+Blocks
+  title    <title> text
+  body     the page
+{% endcomment %}
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="same-origin">
+  <title>{% block title %}{% translate "Worker portal" %}{% endblock %} · Polaris</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="min-h-screen bg-ground font-sans text-ink antialiased">
+  {% block body %}{% endblock %}
+</body>
+</html>

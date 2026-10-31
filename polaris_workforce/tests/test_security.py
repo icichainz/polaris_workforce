@@ -97,6 +97,13 @@ GET_ONLY = {
     "password_change_done",
     "password_reset_done",
     "password_reset_complete",
+    "portal:home",
+    "portal:days",
+    "portal:pay",
+    "portal:payslip",
+    "portal:advances",
+    "portal:office_access",
+    "portal:office_worker",
 }
 
 
@@ -140,6 +147,11 @@ def _state_changing_urls(crew):
         "login": reverse("login"),
         "password_reset": reverse("password_reset"),
         "password_reset_confirm": reverse("password_reset_confirm", args=["MQ", "set-password"]),
+        "portal:sign_in": reverse("portal:sign_in"),
+        "portal:sign_out": reverse("portal:sign_out"),
+        "portal:change_pin": reverse("portal:change_pin"),
+        "portal:office_set_pin": reverse("portal:office_set_pin", args=[worker]),
+        "portal:office_revoke": reverse("portal:office_revoke", args=[worker]),
     }
 
 

@@ -1,0 +1,82 @@
+{% extends "portal/layout.html" %}
+{% load i18n polaris %}
+
+{% block title %}{% translate "My pay" %}{% endblock %}
+{% block heading %}{% translate "My pay" %}{% endblock %}
+
+{% block content %}
+<section aria-labelledby="periods-title" class="flex flex-col gap-3">
+  <h2 id="periods-title" class="font-display text-lg font-bold">{% translate "Pay periods" %}</h2>
+  {% if rows %}
+  <ul class="m-0 flex list-none flex-col gap-3 p-0">
+    {% for row in rows %}{% with line=row.line period=row.line.period %}
+    <li class="flex flex-col gap-3 rounded-card border border-line bg-white p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex min-w-0 flex-col">
+          <span class="font-semibold">{{ row.period_label }}</span>
+          <span class="text-[15px] text-ink-700">{{ period.site.name }} · {{ row.worked }}</span>
+        </div>
+        {% if row.state == 'paid' %}{% include "components/status_badge.html" with status="paid" label=row.state_label only %}{% elif row.state == 'in_progress' %}{% include "components/status_badge.html" with status="draft" label=row.state_label only %}{% else %}{% include "components/status_badge.html" with status="to_pay" label=row.state_label only %}{% endif %}
+      </div>
+      <dl class="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-[15px]">
+        <dt class="text-ink-700">{% translate "Gross" %}</dt><dd class="m-0 text-right tabular-nums">{% money line.gross period %}</dd>
+        {% if row.deductions %}<dt class="text-ink-700">{% translate "Deductions" %}</dt><dd class="m-0 text-right tabular-nums text-amber-text">− {% money row.deductions period %}</dd>{% endif %}
+        {% if line.advance_deduction %}<dt class="pl-3 text-[13px] text-steel">{% translate "Advance repaid" %}</dt><dd class="m-0 text-right text-[13px] tabular-nums text-steel">{% money line.advance_deduction period %}</dd>{% endif %}
+        {% if line.other_deductions %}<dt class="pl-3 text-[13px] text-steel">{% translate "Other deductions" %}</dt><dd class="m-0 text-right text-[13px] tabular-nums text-steel">{% money line.other_deductions period %}</dd>{% endif %}
+        {% if line.adjustment %}<dt class="text-ink-700">{% translate "Adjustment" %}</dt><dd class="m-0 text-right tabular-nums">{% if line.adjustment < 0 %}−{% else %}+{% endif %} {% money row.adjustment_size period %}</dd>{% endif %}
+        <dt class="border-t border-line-soft pt-1.5 font-semibold">{% translate "Net to pay" %}</dt><dd class="m-0 border-t border-line-soft pt-1.5 text-right font-display text-lg font-bold tabular-nums">{% money line.net period %}</dd>
+        {% if line.paid %}<dt class="text-ink-700">{% translate "Paid" %}</dt><dd class="m-0 text-right tabular-nums text-present-fg">{% money line.paid period %}</dd>{% endif %}
+      </dl>
+      {% url 'portal:payslip' line.pk as payslip_url %}{% translate "Download payslip (PDF)" as payslip_label %}
+      {% include "components/button.html" with label=payslip_label href=payslip_url icon="payroll" size="phone" full=True only %}
+    </li>
+    {% endwith %}{% endfor %}
+  </ul>
+  {% if page.has_other_pages %}
+  <nav aria-label="{% translate 'Pages' %}" class="flex items-center justify-between gap-3">
+    {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}" class="flex h-12 items-center rounded-control border border-line-strong bg-white px-4 font-semibold text-ink no-underline">‹ {% translate "Newer" %}</a>{% else %}<span></span>{% endif %}
+    <span class="text-[15px] text-steel">{% blocktranslate with number=page.number total=page.paginator.num_pages %}Page {{ number }} of {{ total }}{% endblocktranslate %}</span>
+    {% if page.has_next %}<a href="?page={{ page.next_page_number }}" class="flex h-12 items-center rounded-control border border-line-strong bg-white px-4 font-semibold text-ink no-underline">{% translate "Older" %} ›</a>{% else %}<span></span>{% endif %}
+  </nav>
+  {% endif %}
+  {% else %}
+    {% translate "No pay yet" as empty_title %}{% translate "Your pay appears here once your days are approved." as empty_message %}
+    {% include "components/empty_state.html" with icon="payroll" title=empty_title message=empty_message only %}
+  {% endif %}
+</section>
+
+{% if payments %}
+<section aria-labelledby="payments-title" class="flex flex-col gap-3">
+  <h2 id="payments-title" class="font-display text-lg font-bold">{% translate "Payments received" %}</h2>
+  <ul class="m-0 flex list-none flex-col divide-y divide-line-soft rounded-card border border-line bg-white p-0">
+    {% for row in payments %}
+    <li class="flex items-center justify-between gap-3 px-4 py-3">
+      <span class="flex min-w-0 flex-col">
+        <span class="font-semibold">{{ row.paid_at|date:_("j M Y") }} · {{ row.paid_at|time:"H:i" }}</span>
+        <span class="text-[13px] text-ink-700">{{ row.site }} · {{ row.payment.get_method_display }} · {{ row.payment.get_proof_type_display }}</span>
+      </span>
+      <span class="shrink-0 font-semibold tabular-nums">{% money row.payment.amount row.period %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if adjustments %}
+<section aria-labelledby="corrections-title" class="flex flex-col gap-3">
+  <h2 id="corrections-title" class="font-display text-lg font-bold">{% translate "Corrections of days already paid" %}</h2>
+  <ul class="m-0 flex list-none flex-col gap-2 p-0">
+    {% for row in adjustments %}
+    <li class="flex flex-col gap-1.5 rounded-card border border-line bg-white p-4">
+      <div class="flex items-center justify-between gap-3">
+        <span class="font-semibold">{{ row.label }}</span>
+        <span class="shrink-0 font-semibold tabular-nums {% if row.added %}text-present-fg{% else %}text-amber-text{% endif %}">{% if row.added %}+{% else %}−{% endif %} {% money row.magnitude row.source %}</span>
+      </div>
+      <p class="text-[15px] text-ink-700">{{ row.site }}{% if row.adjustment.reason %} · {{ row.adjustment.reason }}{% endif %}</p>
+      <p class="text-[13px] text-steel">{% if row.added %}{% translate "Added to your pay." %}{% else %}{% translate "Taken back from your pay." %}{% endif %} {{ row.state_label }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

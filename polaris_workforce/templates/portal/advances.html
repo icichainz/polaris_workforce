@@ -1,0 +1,51 @@
+{% extends "portal/layout.html" %}
+{% load i18n polaris %}
+
+{% block title %}{% translate "Advances" %}{% endblock %}
+{% block heading %}{% translate "My advances" %}{% endblock %}
+
+{% block content %}
+<section aria-label="{% translate 'Balance' %}" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+  {% translate "Advance owed" as owed_label %}{% money summary.owed as owed_value %}
+  {% if summary.owed %}{% money summary.deduction as deduction_value %}{% blocktranslate with amount=deduction_value asvar owed_caption %}{{ amount }} deducted per pay{% endblocktranslate %}{% else %}{% translate "Nothing owed" as owed_caption %}{% endif %}
+  {% include "components/stat_tile.html" with label=owed_label value=owed_value caption=owed_caption dark=True only %}
+</section>
+
+<section aria-labelledby="advances-title" class="flex flex-col gap-3">
+  <h2 id="advances-title" class="font-display text-lg font-bold">{% translate "Advances received" %}</h2>
+  {% if items %}
+  <ul class="m-0 flex list-none flex-col gap-3 p-0">
+    {% for item in items %}{% with advance=item.advance %}
+    <li class="flex flex-col gap-3 rounded-card border border-line bg-white p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex min-w-0 flex-col">
+          <span class="font-semibold">{{ advance.given_on|date:_("j M Y") }}</span>
+          {% if advance.reason %}<span class="text-[15px] text-ink-700">{{ advance.reason }}</span>{% endif %}
+        </div>
+        {% if advance.status == 'repaid' %}{% translate "Repaid" as repaid_label %}{% include "components/status_badge.html" with status="paid" label=repaid_label only %}{% else %}{% translate "Being repaid" as open_label %}{% include "components/status_badge.html" with status="to_pay" label=open_label only %}{% endif %}
+      </div>
+      <dl class="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-[15px]">
+        <dt class="text-ink-700">{% translate "Amount" %}</dt><dd class="m-0 text-right tabular-nums">{% money advance.amount %}</dd>
+        <dt class="text-ink-700">{% translate "Repaid so far" %}</dt><dd class="m-0 text-right tabular-nums">{% money item.repaid %}</dd>
+        {% if advance.balance %}<dt class="text-ink-700">{% translate "Deducted per pay" %}</dt><dd class="m-0 text-right tabular-nums">{% money advance.deduction_per_pay %}</dd>{% endif %}
+        <dt class="border-t border-line-soft pt-1.5 font-semibold">{% translate "Still owed" %}</dt><dd class="m-0 border-t border-line-soft pt-1.5 text-right font-display text-lg font-bold tabular-nums">{% money advance.balance %}</dd>
+      </dl>
+      {% if item.repayments %}
+      <details class="text-[15px]">
+        <summary class="flex h-12 cursor-pointer items-center font-semibold text-blue-700">{% translate "Repayments" %} ({{ item.repayments|length }})</summary>
+        <ul class="m-0 flex list-none flex-col divide-y divide-line-soft p-0">
+          {% for row in item.repayments %}
+          <li class="flex justify-between gap-3 py-2"><span>{% if row.label %}{{ row.label }}{% else %}{{ row.repayment.created_at|date:_("j M Y") }}{% endif %}</span><span class="tabular-nums">{% money row.repayment.amount %}</span></li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% endif %}
+    </li>
+    {% endwith %}{% endfor %}
+  </ul>
+  {% else %}
+    {% translate "No advances" as empty_title %}{% translate "Money given to you ahead of pay shows here, with what is left to repay." as empty_message %}
+    {% include "components/empty_state.html" with icon="advances" title=empty_title message=empty_message only %}
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Worker portal access" %} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'portal:office_access' %}">{% translate "Worker portal access" %}</a> / {{ worker.full_name }}</p>{% endblock %}
+{% block page_title %}{% translate "PIN ready" %}{% endblock %}
+
+{% block content %}
+{% blocktranslate with name=worker.full_name asvar shown_title %}Tell {{ name }} this PIN now.{% endblocktranslate %}
+{% translate "It is shown only once and is not stored in clear. If it is lost, set a new one." as shown_message %}
+{% include "components/alert.html" with variant="warning" title=shown_title message=shown_message only %}
+
+<section aria-labelledby="pin-title" class="flex max-w-md flex-col gap-4 rounded-card border border-line bg-white px-5 py-5">
+  <h2 id="pin-title" class="text-[13px] font-semibold uppercase tracking-[0.06em] text-steel">{% translate "PIN" %}</h2>
+  <p class="font-display text-[44px] font-extrabold tracking-[0.3em] tabular-nums" data-pin>{{ pin }}</p>
+  <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Phone number to sign in with" %}</span><span class="font-semibold tabular-nums">{{ access.phone }}</span></div>
+  <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Address" %}</span><span class="font-semibold">{{ request.get_host }}{% url 'portal:home' %}</span></div>
+</section>
+
+<div>{% url 'portal:office_worker' worker.pk as back_url %}{% translate "Done" as done_label %}{% include "components/button.html" with label=done_label href=back_url variant="primary" only %}</div>
+{% endblock %}

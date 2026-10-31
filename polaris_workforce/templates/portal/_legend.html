@@ -1,0 +1,15 @@
+{% load i18n polaris %}{% comment %}
+What the letters mean (P, ½, L or R, A), with optional counts.
+
+  {% include "portal/_legend.html" with counts=counts waiting=True only %}
+
+Parameters
+  counts   optional {status: count}
+  waiting  true → explain the * mark (roll call waiting for approval)
+{% endcomment %}<ul class="m-0 flex list-none flex-wrap gap-x-4 gap-y-1.5 p-0 text-[15px] text-ink-700">
+  <li><strong class="font-display font-extrabold text-present-fg">{{ "present"|status_letter }}</strong> {% translate "Present" %}{% if counts %} · <span class="tabular-nums">{{ counts.present }}</span>{% endif %}</li>
+  <li><strong class="font-display font-extrabold text-half-fg">{{ "half_day"|status_letter }}</strong> {% translate "Half day" %}{% if counts %} · <span class="tabular-nums">{{ counts.half_day }}</span>{% endif %}</li>
+  <li><strong class="font-display font-extrabold text-late-fg">{{ "late"|status_letter }}</strong> {% translate "Late" %}{% if counts %} · <span class="tabular-nums">{{ counts.late }}</span>{% endif %}</li>
+  <li><strong class="font-display font-extrabold text-absent-fg">{{ "absent"|status_letter }}</strong> {% translate "Absent" %}{% if counts %} · <span class="tabular-nums">{{ counts.absent }}</span>{% endif %}</li>
+  {% if waiting %}<li><strong class="font-display font-extrabold">*</strong> {% translate "Waiting for approval" %}</li>{% endif %}
+</ul>

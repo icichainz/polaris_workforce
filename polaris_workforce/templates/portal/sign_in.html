@@ -1,0 +1,35 @@
+{% extends "portal/base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Sign in" %}{% endblock %}
+
+{% block body %}
+<main id="main" class="mx-auto flex min-h-screen w-full max-w-md flex-col gap-6 px-4 py-6">
+  <div class="flex items-center justify-between gap-3">
+    <span class="flex items-center gap-2.5">
+      <span class="flex size-10 items-center justify-center rounded-card bg-amber-500 text-ink">{% include "components/icon.html" with name="logo" class="size-[22px]" stroke_width="2.2" only %}</span>
+      <span class="font-display text-[20px] font-extrabold">Polaris</span>
+    </span>
+    {% include "portal/_language_switch.html" %}
+  </div>
+
+  <div class="flex flex-col gap-1.5">
+    <h1 class="font-display text-[28px] font-extrabold leading-tight">{% translate "My days and pay" %}</h1>
+    <p class="text-[17px] text-ink-700">{% translate "Sign in with your phone number and the 4-digit PIN the office gave you." %}</p>
+  </div>
+
+  {% if error %}{% include "components/alert.html" with variant="danger" message=error only %}{% endif %}
+
+  <form method="post" action="{% url 'portal:sign_in' %}" class="flex flex-col gap-5" novalidate>
+    {% csrf_token %}
+    {% include "components/field.html" with field=form.phone size="phone" only %}
+    {% include "components/field.html" with field=form.pin size="phone" only %}
+    {% translate "Sign in" as submit_label %}{% include "components/button.html" with label=submit_label variant="primary" size="phone" type="submit" full=True only %}
+  </form>
+
+  <div class="flex gap-3 rounded-card border border-line bg-white p-4 text-[15px] leading-normal">
+    <span class="text-blue-700">{% include "components/icon.html" with name="info" class="size-5" only %}</span>
+    <p>{% translate "No PIN, or forgot it? Ask your site manager or the office for a new one." %}</p>
+  </div>
+</main>
+{% endblock %}
