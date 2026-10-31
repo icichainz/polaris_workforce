@@ -1,0 +1,4 @@
+{% load i18n %}{% comment %}
+A person's phone on the messaging pages: the normalised number, or why it can't be used.
+Context: row (see apps.messaging.views._row).
+{% endcomment %}{% if row.usable %}{{ row.usable }}{% elif row.phone %}{{ row.phone }}<br><span class="text-xs text-absent-fg">{% translate "Cannot be used: add the country code" %}</span>{% else %}<span class="text-steel">{% translate "No phone" %}</span>{% endif %}

@@ -1,0 +1,1 @@
+{% comment %}SMS / WhatsApp text, rendered by apps.messaging.rendering in the recipient's language (one line; whitespace is collapsed).{% endcomment %}{% autoescape off %}{{ company }}: {{ worker }} owes {{ owed }} on advances, {{ percent }}% of the limit ({{ limit }}).{% endautoescape %}

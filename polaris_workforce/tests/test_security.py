@@ -130,6 +130,10 @@ def _state_changing_urls(crew):
         "accounts:device_revoke": reverse(
             "accounts:device_revoke", args=[crew.foreman.pk, device.pk]
         ),
+        "messaging:messages": reverse("messaging:messages"),
+        "messaging:settings": reverse("messaging:settings"),
+        "messaging:recipients": reverse("messaging:recipients"),
+        "messaging:worker": reverse("messaging:worker", args=[worker]),
         "logout": reverse("logout"),
         "password_change": reverse("password_change"),
         "set_language": reverse("set_language"),

@@ -83,6 +83,10 @@ OFFICE = {
     "accounts:user_edit": "admin",
     "accounts:user_set_pin": "admin",
     "accounts:device_revoke": "admin",
+    "messaging:messages": "admin",
+    "messaging:settings": "admin",
+    "messaging:recipients": "admin",
+    "messaging:worker": "admin",  # site B's worker: admins only
     "login": "public",
     "logout": "public",
     "password_change": "public",
@@ -310,6 +314,10 @@ def _admin_urls(ids):
         "accounts:device_revoke": reverse(
             "accounts:device_revoke", args=[ids["foreman_b"], ids["device_b"]]
         ),
+        "messaging:messages": reverse("messaging:messages"),
+        "messaging:settings": reverse("messaging:settings"),
+        "messaging:recipients": reverse("messaging:recipients"),
+        "messaging:worker": reverse("messaging:worker", args=[ids["worker"]]),
     }
 
 

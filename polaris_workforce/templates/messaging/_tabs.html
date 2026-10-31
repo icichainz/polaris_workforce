@@ -1,0 +1,7 @@
+{% load i18n %}{% comment %}
+Tabs of the messaging pages. Context: tab = messages | recipients | settings.
+{% endcomment %}<nav aria-label="{% translate 'Messaging' %}" class="flex flex-wrap gap-1 border-b border-line">
+  <a href="{% url 'messaging:messages' %}"{% if tab == "messages" %} aria-current="page"{% endif %} class="-mb-px flex h-10 items-center border-b-2 px-3 text-sm font-semibold no-underline {% if tab == 'messages' %}border-ink text-ink hover:text-ink{% else %}border-transparent text-steel hover:text-ink{% endif %}">{% translate "Messages" %}</a>
+  <a href="{% url 'messaging:recipients' %}"{% if tab == "recipients" %} aria-current="page"{% endif %} class="-mb-px flex h-10 items-center border-b-2 px-3 text-sm font-semibold no-underline {% if tab == 'recipients' %}border-ink text-ink hover:text-ink{% else %}border-transparent text-steel hover:text-ink{% endif %}">{% translate "Recipients" %}</a>
+  <a href="{% url 'messaging:settings' %}"{% if tab == "settings" %} aria-current="page"{% endif %} class="-mb-px flex h-10 items-center border-b-2 px-3 text-sm font-semibold no-underline {% if tab == 'settings' %}border-ink text-ink hover:text-ink{% else %}border-transparent text-steel hover:text-ink{% endif %}">{% translate "Settings" %}</a>
+</nav>

@@ -1,0 +1,56 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Messaging settings" %} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'messaging:messages' %}">{% translate "Messages" %}</a> / {% translate "Settings" %}</p>{% endblock %}
+{% block page_subtitle %}{% blocktranslate with provider=provider %}Who gets which text, and when · provider: {{ provider }}{% endblocktranslate %}{% endblock %}
+{% block page_title %}{% translate "Messaging settings" %}{% endblock %}
+{% block page_actions %}
+  <form method="post" action="{% url 'messaging:settings' %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="test">
+    {% translate "Send me a test message" as test_label %}
+    {% include "components/button.html" with label=test_label type="submit" only %}
+  </form>
+{% endblock %}
+
+{% block content %}
+{% include "messaging/_tabs.html" %}
+
+{% if form.non_field_errors %}
+  {% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}
+{% endif %}
+
+<form method="post" class="flex flex-col gap-6">
+  {% csrf_token %}
+  <section aria-labelledby="channels-title" class="grid grid-cols-1 gap-4 rounded-card border border-line bg-white p-6 sm:grid-cols-2">
+    <h2 id="channels-title" class="font-display text-lg font-bold sm:col-span-2">{% translate "Channels" %}</h2>
+    <div class="sm:col-span-2">{% include "components/field.html" with field=form.enabled %}</div>
+    {% include "components/field.html" with field=form.sms_enabled %}
+    {% include "components/field.html" with field=form.whatsapp_enabled %}
+    {% include "components/field.html" with field=form.default_channel %}
+    {% include "components/field.html" with field=form.default_country_code %}
+    <div class="sm:col-span-2">{% include "components/field.html" with field=form.require_opt_in %}</div>
+    {% include "components/field.html" with field=form.quiet_hours_start %}
+    {% include "components/field.html" with field=form.quiet_hours_end %}
+    <p class="text-[13px] text-steel sm:col-span-2">{% translate "During quiet hours (company time) texts wait in the outbox and go out when they end." %}</p>
+  </section>
+
+  <section aria-labelledby="notifications-title" class="grid grid-cols-1 gap-4 rounded-card border border-line bg-white p-6 sm:grid-cols-2">
+    <h2 id="notifications-title" class="font-display text-lg font-bold sm:col-span-2">{% translate "Notifications" %}</h2>
+    <div class="sm:col-span-2">{% include "components/field.html" with field=form.notify_payslip %}</div>
+    <div class="sm:col-span-2">{% include "components/field.html" with field=form.notify_missing_roll_call %}</div>
+    {% include "components/field.html" with field=form.notify_awaiting_approval %}
+    {% include "components/field.html" with field=form.approval_reminder_hours %}
+    <div class="sm:col-span-2">{% include "components/field.html" with field=form.notify_unclosed_cash_sheet %}</div>
+    {% include "components/field.html" with field=form.notify_advance_limit %}
+    {% include "components/field.html" with field=form.advance_limit_warn_percent %}
+    <p class="text-[13px] text-steel sm:col-span-2">{% translate "Each person gets at most one text per notification, subject and day." %}</p>
+  </section>
+
+  <div class="flex justify-end gap-2.5">
+    {% translate "Save settings" as save_label %}
+    {% include "components/button.html" with label=save_label type="submit" variant="primary" only %}
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,1 @@
+{% comment %}SMS / WhatsApp text, rendered by apps.messaging.rendering in the recipient's language (one line; whitespace is collapsed).{% endcomment %}{% autoescape off %}{{ company }} : {{ count }} appel{{ count|pluralize }} en attente de votre validation, le plus ancien {{ oldest_date|date:"D j N" }} · {{ oldest_site }}.{% endautoescape %}

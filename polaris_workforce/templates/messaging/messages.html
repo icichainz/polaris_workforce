@@ -1,0 +1,102 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Messages" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% blocktranslate with provider=provider %}SMS and WhatsApp texts · provider: {{ provider }}{% endblocktranslate %}{% endblock %}
+{% block page_title %}{% translate "Messages" %}{% endblock %}
+{% block page_actions %}
+  {% if queued %}
+  <form method="post" action="{% url 'messaging:messages' %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="send">
+    <input type="hidden" name="query" value="{{ full_query }}">
+    {% blocktranslate count n=queued asvar send_label %}Send {{ n }} queued now{% plural %}Send {{ n }} queued now{% endblocktranslate %}
+    {% include "components/button.html" with label=send_label type="submit" variant="primary" only %}
+  </form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+{% include "messaging/_tabs.html" %}
+
+{% if not messaging.enabled %}
+  {% translate "Messaging is off." as off_title %}{% translate "Nothing is queued or sent until an admin turns it on in Settings." as off_message %}
+  {% include "components/alert.html" with variant="warning" title=off_title message=off_message only %}
+{% endif %}
+
+<form method="get" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-white px-4 py-3.5">
+  <div class="w-full sm:w-44">{% include "components/field.html" with field=form.status %}</div>
+  <div class="w-full sm:w-56">{% include "components/field.html" with field=form.kind %}</div>
+  <div class="w-full sm:w-40">{% include "components/field.html" with field=form.date_from %}</div>
+  <div class="w-full sm:w-40">{% include "components/field.html" with field=form.date_to %}</div>
+  <div class="flex gap-2">
+    {% translate "Filter" as filter_label %}
+    {% include "components/button.html" with label=filter_label type="submit" only %}
+    {% if form.is_bound %}{% url "messaging:messages" as clear_url %}{% translate "Clear" as clear_label %}{% include "components/button.html" with label=clear_label href=clear_url variant="ghost" only %}{% endif %}
+  </div>
+</form>
+
+{% if page.object_list %}
+<section class="overflow-x-auto rounded-card border border-line bg-white" aria-labelledby="messages-heading">
+  <h2 id="messages-heading" class="sr-only">{% translate "Messages" %}</h2>
+  <table class="w-full min-w-[860px] border-collapse text-sm">
+    <thead>
+      <tr class="bg-subtle text-left">
+        <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "When" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "To" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Message" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Status" %}</th>
+        <th scope="col" class="px-5 py-2.5"><span class="sr-only">{% translate "Actions" %}</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for message in page %}
+      <tr class="border-t border-line-soft align-top">
+        <td class="px-5 py-3 whitespace-nowrap text-ink-700 tabular-nums"><time datetime="{{ message.created_at|date:'c' }}">{{ message.created_at|date:_("j M Y · H:i") }}</time></td>
+        <td class="px-4 py-3">
+          <span class="font-semibold">{{ message.recipient_name|default:message.to }}</span><br>
+          <span class="text-xs text-steel tabular-nums">{{ message.to }} · {{ message.get_channel_display }}</span>
+        </td>
+        <td class="px-4 py-3">
+          <span class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">{{ message.get_kind_display }} · {{ message.language|upper }}</span><br>
+          <span class="break-words">{{ message.text }}</span>
+          {% if message.error %}<br><span class="text-xs text-absent-fg">{{ message.error }}</span>{% endif %}
+        </td>
+        <td class="px-4 py-3 whitespace-nowrap">
+          {% if message.status == "sent" %}{% include "components/status_badge.html" with status="approved" label=message.get_status_display only %}
+          {% elif message.status == "failed" %}{% include "components/status_badge.html" with status="rejected" label=message.get_status_display only %}
+          {% elif message.status == "queued" %}{% include "components/status_badge.html" with status="submitted" label=message.get_status_display only %}
+          {% else %}{% include "components/status_badge.html" with status="draft" label=message.get_status_display only %}{% endif %}
+          {% if message.attempts %}<br><span class="text-xs text-steel">{% blocktranslate count n=message.attempts %}{{ n }} attempt{% plural %}{{ n }} attempts{% endblocktranslate %}</span>{% endif %}
+        </td>
+        <td class="px-5 py-3 text-right">
+          {% if message.status == "failed" %}
+          <form method="post" action="{% url 'messaging:messages' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="resend">
+            <input type="hidden" name="message" value="{{ message.pk }}">
+            <input type="hidden" name="query" value="{{ full_query }}">
+            {% translate "Resend" as resend_label %}
+            {% include "components/button.html" with label=resend_label type="submit" only %}
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if page.has_other_pages %}
+<nav aria-label="{% translate 'Pages' %}" class="flex items-center justify-between gap-3 text-sm">
+  {% if page.has_previous %}<a href="?{% if query %}{{ query }}&amp;{% endif %}page={{ page.previous_page_number }}">{% translate "Newer" %}</a>{% else %}<span></span>{% endif %}
+  <span class="text-steel">{% blocktranslate with number=page.number total=page.paginator.num_pages %}Page {{ number }} of {{ total }}{% endblocktranslate %}</span>
+  {% if page.has_next %}<a href="?{% if query %}{{ query }}&amp;{% endif %}page={{ page.next_page_number }}">{% translate "Older" %}</a>{% else %}<span></span>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+  {% translate "No messages" as empty_title %}
+  {% translate "Payslip texts and notifications appear here once they are queued." as empty_message %}
+  {% include "components/empty_state.html" with icon="phone" title=empty_title message=empty_message only %}
+{% endif %}
+{% endblock %}
