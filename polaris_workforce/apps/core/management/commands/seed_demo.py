@@ -450,13 +450,21 @@ class Command(BaseCommand):
             info = self.sites[key]
             day = self._roll_call(info, self.crews[key], self.today, approve=False)
             if key == "riverside":
-                record = day.records.filter(status=Status.LATE).first() or day.records.first()
+                # A late arrival excused after submission (or, if nobody was late, a
+                # present worker who actually arrived late).
+                record = day.records.filter(status=Status.LATE).first()
+                new_status, reason = Status.PRESENT, "Bus breakdown, called ahead."
+                if record is None:
+                    record = day.records.filter(status=Status.PRESENT).first()
+                    new_status, reason = Status.LATE, "Arrived at 07:40, gate log."
+                if record is None:
+                    return
                 try:
                     attendance.correct_record(
                         record,
                         "status",
-                        Status.PRESENT,
-                        "Bus breakdown, called ahead.",
+                        new_status,
+                        reason,
                         info["foreman"],
                         uuid.uuid4(),
                     )
