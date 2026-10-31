@@ -1,4 +1,4 @@
-"""Shared building blocks: money, company settings, audit log."""
+"""Shared building blocks: companies, company settings, audit log."""
 
 import datetime
 from decimal import Decimal
@@ -9,6 +9,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 
 from .choices import (
@@ -21,6 +22,7 @@ from .choices import (
     PayType,
     ProofType,
 )
+from .tenancy import current_company, current_company_id
 from .validators import validate_time_zone
 
 
@@ -34,9 +36,65 @@ class TimeStampedModel(models.Model):
         abstract = True
 
 
+class Company(models.Model):
+    """A company using the installation. Every record belongs to exactly one company
+    (see ``apps.core.tenancy``); its rules are its ``CompanySettings`` row."""
+
+    name = models.CharField(_("name"), max_length=200)
+    slug = models.SlugField(_("short name"), max_length=60, unique=True)
+    is_active = models.BooleanField(
+        _("active"),
+        default=True,
+        help_text=_("Users of an inactive company cannot sign in, in the office or on the phone."),
+    )
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("company")
+        verbose_name_plural = _("companies")
+        ordering = ["name", "pk"]
+
+    def __str__(self) -> str:
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = unique_company_slug(self.name)
+        super().save(*args, **kwargs)
+
+
+def unique_company_slug(name: str) -> str:
+    """``"Polaris Demo"`` → ``"polaris-demo"`` (``-2``, ``-3``… when taken)."""
+    base = slugify(name)[:50] or "company"
+    slug, n = base, 1
+    while Company.objects.filter(slug=slug).exists():
+        n += 1
+        slug = f"{base}-{n}"
+    return slug
+
+
+def company_field(**kwargs):
+    """The ``company`` foreign key of a top-level record; new rows default to the current
+    company (``apps.core.tenancy``)."""
+    options = {
+        "verbose_name": _("company"),
+        "on_delete": models.PROTECT,
+        "default": current_company_id,
+        "related_name": "+",
+    }
+    options.update(kwargs)
+    return models.ForeignKey(Company, **options)
+
+
 class AuditLog(models.Model):
     """Who changed what, when, and why. Written for every change to attendance or pay."""
 
+    company = company_field(
+        null=True,
+        blank=True,
+        related_name="audit_logs",
+        help_text=_("Empty for platform events (e.g. a sign-in lockout of an unknown name)."),
+    )
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=_("actor"),
@@ -64,15 +122,34 @@ class AuditLog(models.Model):
         verbose_name = _("audit log entry")
         verbose_name_plural = _("audit log")
         ordering = ["-created_at", "-id"]
-        indexes = [models.Index(fields=["content_type", "object_id"])]
+        indexes = [
+            models.Index(fields=["content_type", "object_id"]),
+            models.Index(fields=["company", "created_at"]),
+        ]
 
     def __str__(self) -> str:
         return f"{self.action} · {self.content_type} {self.object_id}".strip()
 
     @classmethod
-    def record(cls, *, actor, action: str, target=None, before=None, after=None, reason=""):
-        """Create an entry. ``before``/``after`` must be JSON-serialisable."""
-        entry = cls(actor=actor, action=action, before=before, after=after, reason=reason)
+    def record(
+        cls, *, actor, action: str, target=None, before=None, after=None, reason="", company=None
+    ):
+        """Create an entry. ``before``/``after`` must be JSON-serialisable.
+
+        The entry belongs to ``company``, else the current company, else the actor's or
+        the target's company (sign-in lockouts run before any company is current).
+        """
+        company_id = getattr(company, "pk", company) or current_company_id()
+        if company_id is None:
+            company_id = getattr(actor, "company_id", None) or getattr(target, "company_id", None)
+        entry = cls(
+            company_id=company_id,
+            actor=actor,
+            action=action,
+            before=before,
+            after=after,
+            reason=reason,
+        )
         if target is not None:
             entry.content_type = ContentType.objects.get_for_model(target)
             entry.object_id = str(target.pk)
@@ -90,13 +167,15 @@ def default_accepted_proofs() -> list[str]:
 
 
 class CompanySettings(TimeStampedModel):
-    """Company-wide defaults. A singleton: there is only ever the row with ``pk=1``.
+    """Company-wide defaults: one row per ``Company``, read with ``CompanySettings.load()``.
 
     Sites and workers can override some of these values; read them through
     ``apps.core.settings.resolve_setting``.
     """
 
-    SINGLETON_PK = 1
+    company = models.OneToOneField(
+        Company, verbose_name=_("company"), on_delete=models.CASCADE, related_name="settings"
+    )
 
     # Company
     company_name = models.CharField(_("company name"), max_length=200, blank=True)
@@ -205,24 +284,9 @@ class CompanySettings(TimeStampedModel):
     class Meta:
         verbose_name = _("company settings")
         verbose_name_plural = _("company settings")
-        constraints = [
-            models.CheckConstraint(condition=models.Q(pk=1), name="company_settings_singleton"),
-        ]
 
     def __str__(self) -> str:
         return str(self.company_name or _("Company settings"))
-
-    def save(self, *args, **kwargs):
-        self.pk = self.SINGLETON_PK
-        if self._state.adding and self.created_at is None:
-            # A fresh instance replaces the existing row: keep its creation time.
-            self.created_at = (
-                type(self)
-                .objects.filter(pk=self.SINGLETON_PK)
-                .values_list("created_at", flat=True)
-                .first()
-            )
-        super().save(*args, **kwargs)
 
     def clean(self):
         super().clean()
@@ -246,9 +310,18 @@ class CompanySettings(TimeStampedModel):
             raise ValidationError(errors)
 
     @classmethod
-    def load(cls) -> "CompanySettings":
-        """Return the settings row, creating it with the defaults if needed."""
-        obj, _created = cls.objects.get_or_create(pk=cls.SINGLETON_PK)
+    def load(cls, company=None) -> "CompanySettings":
+        """The settings of ``company`` (a ``Company`` or its id), else of the current
+        company; created with the defaults if needed. Raises ``NoCurrentCompany`` when
+        there is no company to read."""
+        if company is None:
+            company = current_company()
+        if isinstance(company, Company):
+            obj, _created = cls.objects.get_or_create(
+                company=company, defaults={"company_name": company.name}
+            )
+            return obj
+        obj, _created = cls.objects.get_or_create(company_id=company)
         return obj
 
     def holiday_dates(self) -> set[datetime.date]:

@@ -6,7 +6,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from apps.core.choices import PayFrequency, PaymentMethod
-from apps.core.models import TimeStampedModel
+from apps.core.models import TimeStampedModel, company_field
 
 
 class Site(TimeStampedModel):
@@ -17,6 +17,7 @@ class Site(TimeStampedModel):
         PAUSED = "paused", _("Paused")
         COMPLETED = "completed", _("Completed")
 
+    company = company_field(related_name="sites")
     name = models.CharField(_("name"), max_length=200)
     address = models.CharField(_("address"), max_length=255, blank=True)
     status = models.CharField(

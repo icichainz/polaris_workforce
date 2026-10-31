@@ -122,6 +122,8 @@ def _state_changing_urls(crew):
         "worksites:end_assignment": reverse("worksites:end_assignment", args=[site, assignment]),
         "worksites:settings": reverse("worksites:settings", args=[site]),
         "core:settings": reverse("core:settings"),
+        "core:companies": reverse("core:companies"),
+        "core:company_switch": reverse("core:company_switch"),
         "accounts:user_create": reverse("accounts:user_create"),
         "accounts:user_edit": reverse("accounts:user_edit", args=[crew.foreman.pk]),
         "accounts:user_set_pin": reverse("accounts:user_set_pin", args=[crew.foreman.pk]),

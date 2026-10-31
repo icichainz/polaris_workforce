@@ -119,8 +119,10 @@ def test_save_writes_audit_log_with_before_and_after(admin_client):
     assert entry.action == "settings.update"
     assert entry.actor == admin_client.user
     assert entry.target == company
+    assert entry.company == company.company
+    assert company.company.name == "Polaris BTP"  # the switcher name follows
     assert entry.before == {
-        "company_name": "",
+        "company_name": "Polaris Construction",  # a new row starts with the company name
         "overtime_multiplier": "1.5",
         "late_after": "07:15",
         "working_days": [1, 2, 3, 4, 5, 6],

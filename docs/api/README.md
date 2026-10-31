@@ -82,6 +82,13 @@ Which screen uses what:
 3. The server answers `{"token", "device", "user", "sites"}`. The token is shown only
    once: keep it in `flutter_secure_storage`. Signing in again from the same device ID
    replaces the old token.
+
+   **Several companies:** one server can host several companies, each with separate data.
+   The phone needs no company code: a phone number belongs to one user across the whole
+   server (the Users screen refuses a number another user already has, in any company),
+   so the number finds the user and the user's company. Everything the token then reads
+   or writes (`/me/` company settings, sites, crews, days, payouts) is that company's.
+   Users of a company that was made inactive get `401` (sign-in and token).
 4. Every other call sends:
 
    ```
@@ -107,7 +114,8 @@ PIN errors:
   {"code": "not_authenticated", "message": "Wrong PIN.", "details": {"attempts_left": 2}}
   ```
 
-- An unknown phone number, a user without a PIN, a disabled user, or a role that cannot
+- An unknown phone number, a user without a PIN, a disabled user, a user of an inactive
+  company or without a company (platform admin), or a role that cannot
   sign in on the phone (site manager, accountant): the **same plain** `401
   not_authenticated`, `"message": "Wrong phone number or PIN."`, `"details": {}`. The
   answer does not say which of these it was, so show one message ("Wrong phone number

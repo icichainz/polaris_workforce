@@ -21,6 +21,17 @@ Menu button (Alpine).
   </div>
 
   <div id="sidebar-nav" class="flex grow flex-col gap-5 max-lg:hidden" :class="{ 'max-lg:hidden': !open }">
+    {% if company_switcher.is_platform_admin %}
+    <form method="post" action="{% url 'core:company_switch' %}" class="flex flex-col gap-1.5">
+      {% csrf_token %}
+      <label for="company-switcher" class="px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-rail-label">{% translate "Company" %}</label>
+      <select id="company-switcher" name="company" x-on:change="$el.form.submit()" class="h-11 rounded-control border border-rail-line bg-rail-raised px-3 text-sm font-medium text-white">
+        {% if not company_switcher.current %}<option value="">{% translate "No company yet" %}</option>{% endif %}
+        {% for company in company_switcher.companies %}<option value="{{ company.pk }}"{% if company_switcher.current.pk == company.pk %} selected{% endif %}>{{ company.name }}</option>{% endfor %}
+      </select>
+      <noscript>{% translate "View" as view_label %}{% include "components/button.html" with label=view_label type="submit" only %}</noscript>
+    </form>
+    {% endif %}
     <button type="button" class="flex h-11 items-center gap-2.5 rounded-control border border-rail-line bg-rail-raised px-3 text-left text-sm font-medium text-white">
       <span class="flex grow flex-col leading-tight"><span class="text-[11px] text-rail-muted">{% translate "Viewing" %}</span>{% translate "All sites" %}</span>
       <span class="text-rail-text">{% include "components/icon.html" with name="chevron_down" class="size-4" only %}</span>
@@ -52,6 +63,9 @@ Menu button (Alpine).
         {% if user.is_superuser or user.role == "admin" %}
         {% translate "Users & roles" as nav_label %}{% include "components/nav_link.html" with url_name="accounts:users" label=nav_label icon="users" current=current only %}
         {% translate "Settings" as nav_label %}{% include "components/nav_link.html" with url_name="core:settings" label=nav_label icon="settings" current=current only %}
+        {% endif %}
+        {% if company_switcher.is_platform_admin %}
+        {% translate "Companies" as nav_label %}{% include "components/nav_link.html" with url_name="core:companies" label=nav_label icon="sites" current=current only %}
         {% endif %}
       </div>
     </nav>

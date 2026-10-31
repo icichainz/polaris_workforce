@@ -1,4 +1,5 @@
-"""Office views for users and roles (admins only). Logic is in ``services.py``."""
+"""Office views for users and roles (admins only, within their company). Logic is in
+``services.py``."""
 
 from django.contrib import messages
 from django.db.models import Prefetch
@@ -11,14 +12,15 @@ from apps.worksites.models import Site
 from . import services
 from .forms import PinForm, UserForm
 from .models import ForemanDevice, User
-from .permissions import MATRIX_ROLES, Role, permission_matrix, role_required
+from .permissions import MATRIX_ROLES, Role, company_users, permission_matrix, role_required
 
 admin_only = role_required(Role.ADMIN)
 NAV_ACTIVE = "accounts:users"  # sub-pages keep "Users & roles" highlighted
 
 
-def _user_rows():
-    users = User.objects.order_by("first_name", "last_name", "username").prefetch_related(
+def _user_rows(viewer):
+    users = company_users(viewer).order_by("first_name", "last_name", "username")
+    users = users.prefetch_related(
         Prefetch("managed_sites", queryset=Site.objects.order_by("name")),
         Prefetch("foreman_sites", queryset=Site.objects.order_by("name")),
         "devices",
@@ -51,7 +53,7 @@ def users(request):
         request,
         "accounts/users.html",
         {
-            "rows": _user_rows(),
+            "rows": _user_rows(request.user),
             "matrix": permission_matrix(),
             "matrix_roles": [Role(role).label for role in MATRIX_ROLES],
         },
@@ -74,7 +76,7 @@ def user_create(request):
 
 @admin_only
 def user_edit(request, pk):
-    user = get_object_or_404(User, pk=pk)
+    user = get_object_or_404(company_users(request.user), pk=pk)
     form = UserForm(request.POST or None, instance=user, actor=request.user)
     if request.method == "POST" and form.is_valid():
         form.save_user()
@@ -105,7 +107,7 @@ def _edit_page(request, user, *, form=None, pin_form=None, status=200):
 @admin_only
 @require_POST
 def user_set_pin(request, pk):
-    user = get_object_or_404(User, pk=pk)
+    user = get_object_or_404(company_users(request.user), pk=pk)
     if not services.can_have_pin(user):
         messages.error(request, _("Only foremen and admins sign in with a PIN."))
         return redirect("accounts:user_edit", pk=user.pk)
@@ -124,7 +126,9 @@ def user_set_pin(request, pk):
 @admin_only
 @require_POST
 def device_revoke(request, pk, device_pk):
-    device = get_object_or_404(ForemanDevice, pk=device_pk, user_id=pk)
+    device = get_object_or_404(
+        ForemanDevice, pk=device_pk, user__in=company_users(request.user).filter(pk=pk)
+    )
     if services.revoke_device(device, actor=request.user, reason="Revoked on the Users screen."):
         messages.success(request, _("The phone was signed out."))
     return redirect("accounts:user_edit", pk=pk)

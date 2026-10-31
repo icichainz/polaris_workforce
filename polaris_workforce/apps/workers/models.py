@@ -5,19 +5,23 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from apps.core.choices import PayFrequency, PaymentMethod, PayType
-from apps.core.models import TimeStampedModel
+from apps.core.models import TimeStampedModel, company_field
 from apps.core.validators import UPLOAD_VALIDATORS
 
 
 class Trade(models.Model):
     """A trade such as mason, carpenter or labourer."""
 
-    name = models.CharField(_("name"), max_length=100, unique=True)
+    company = company_field(related_name="trades")
+    name = models.CharField(_("name"), max_length=100)
 
     class Meta:
         verbose_name = _("trade")
         verbose_name_plural = _("trades")
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(fields=["company", "name"], name="unique_trade_per_company"),
+        ]
 
     def __str__(self) -> str:
         return self.name
@@ -32,8 +36,11 @@ class Worker(TimeStampedModel):
         VOTER_CARD = "voter_card", _("Voter card")
         NONE = "none", _("None")
 
+    company = company_field(related_name="workers")
     number = models.CharField(
-        _("worker number"), max_length=16, unique=True, help_text=_("For example W-0142.")
+        _("worker number"),
+        max_length=16,
+        help_text=_("For example W-0142. Unique within the company."),
     )
     first_name = models.CharField(_("first name"), max_length=150)
     last_name = models.CharField(_("last name"), max_length=150)
@@ -70,6 +77,11 @@ class Worker(TimeStampedModel):
         verbose_name = _("worker")
         verbose_name_plural = _("workers")
         ordering = ["last_name", "first_name", "number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "number"], name="unique_worker_number_per_company"
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.full_name} ({self.number})"

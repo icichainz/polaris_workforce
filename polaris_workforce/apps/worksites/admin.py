@@ -13,15 +13,18 @@ class SiteAssignmentInline(admin.TabularInline):
 
 @admin.register(Site)
 class SiteAdmin(admin.ModelAdmin):
-    list_display = ("name", "status", "manager", "started_on", "labour_budget")
-    list_filter = ("status", "started_on")
+    list_display = ("name", "company", "status", "manager", "started_on", "labour_budget")
+    list_filter = ("company", "status", "started_on")
     search_fields = ("name", "address", "manager__username", "manager__last_name")
-    list_select_related = ("manager",)
+    list_select_related = ("company", "manager")
     autocomplete_fields = ("manager",)
     filter_horizontal = ("foremen",)
     inlines = [SiteAssignmentInline]
     fieldsets = (
-        (None, {"fields": ("name", "address", "status", "started_on", "labour_budget")}),
+        (
+            None,
+            {"fields": ("company", "name", "address", "status", "started_on", "labour_budget")},
+        ),
         (_("People"), {"fields": ("manager", "foremen")}),
         (
             _("Setting overrides (empty = company setting)"),

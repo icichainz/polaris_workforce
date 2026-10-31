@@ -18,6 +18,7 @@ from django.views.decorators.http import require_POST
 from apps.accounts.permissions import (
     Role,
     can_manage_site,
+    company_workers,
     get_site_or_403,
     is_admin,
     role_required,
@@ -30,7 +31,6 @@ from apps.core.money import format_money
 from apps.payroll.models import CashIssue, PayLine, PayPeriod
 from apps.workers import display
 from apps.workers import services as worker_services
-from apps.workers.models import Worker
 
 from . import services
 from .forms import AssignWorkersForm, SiteForm, SiteSettingsForm
@@ -130,7 +130,7 @@ def site_create(request):
 
 @role_required(Role.ADMIN)
 def site_edit(request, pk):
-    return _site_form_view(request, get_object_or_404(Site, pk=pk))
+    return _site_form_view(request, get_object_or_404(scoped_sites(request.user), pk=pk))
 
 
 # --- detail -----------------------------------------------------------------------------
@@ -389,7 +389,8 @@ def site_assign(request, pk):
     today = dates.company_today(company)
     on_site = services.crew_for(site, today).values("pk")
     candidates = (
-        Worker.objects.filter(is_active=True)
+        company_workers(request.user)
+        .filter(is_active=True)
         .exclude(pk__in=on_site)
         .select_related("trade")
         .order_by("last_name", "first_name")

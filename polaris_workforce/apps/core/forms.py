@@ -11,7 +11,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator, RegexVa
 from django.utils.translation import gettext_lazy as _
 
 from .choices import WEEKDAY_ABBRS, ProofType
-from .models import AuditLog, CompanySettings
+from .models import Company, CompanySettings
 from .money import from_minor, to_minor
 
 WEEKDAYS = list(enumerate(WEEKDAY_ABBRS, start=1))
@@ -264,6 +264,21 @@ def text_to_holidays(text: str) -> list[dict]:
     return [{"date": date, "name": name} for date, name in sorted(holidays.items())]
 
 
+class CompanyForm(forms.ModelForm):
+    """Platform admins: add a company (its settings start with the defaults)."""
+
+    class Meta:
+        model = Company
+        fields = ["name"]
+        labels = {"name": _("Company name")}
+
+    def clean_name(self):
+        name = " ".join(self.cleaned_data["name"].split())
+        if Company.objects.filter(name__iexact=name).exists():
+            raise forms.ValidationError(_("A company with this name already exists."))
+        return name
+
+
 class AuditLogFilterForm(forms.Form):
     """Filters for the audit log viewer (all optional)."""
 
@@ -280,15 +295,16 @@ class AuditLogFilterForm(forms.Form):
         label=_("To"), required=False, widget=forms.DateInput(attrs={"type": "date"})
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, entries, **kwargs):
+        """``entries``: the audit entries the viewer may see (their company's)."""
         super().__init__(*args, **kwargs)
         user_model = get_user_model()
         self.fields["actor"].queryset = user_model.objects.filter(
-            pk__in=AuditLog.objects.exclude(actor=None).values("actor")
+            pk__in=entries.exclude(actor=None).values("actor")
         ).order_by("first_name", "last_name", "username")
         self.fields["actor"].empty_label = _("Anyone")
         self.fields["target_type"].queryset = ContentType.objects.filter(
-            pk__in=AuditLog.objects.exclude(content_type=None).values("content_type")
+            pk__in=entries.exclude(content_type=None).values("content_type")
         ).order_by("app_label", "model")
         self.fields["target_type"].empty_label = _("Any type")
         self.fields["target_type"].label_from_instance = _content_type_label

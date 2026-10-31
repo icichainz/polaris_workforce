@@ -88,11 +88,12 @@ def test_a_number_taken_between_read_and_insert_is_retried(monkeypatch):
     real = services.next_worker_number
     answers = iter(["W-0001"])  # stale read, as if another create just took it
 
-    def racing():
-        return next(answers, None) or real()
+    def racing(company=None):
+        return next(answers, None) or real(company)
 
     monkeypatch.setattr(services, "next_worker_number", racing)
     monkeypatch.setattr(Worker, "validate_unique", lambda self, exclude=None: None)
+    monkeypatch.setattr(Worker, "validate_constraints", lambda self, exclude=None: None)
 
     worker = services.create_worker(first_name="T", last_name="Race")
 

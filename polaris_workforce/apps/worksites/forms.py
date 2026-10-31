@@ -35,13 +35,15 @@ class SiteForm(forms.ModelForm):
         self.fields["labour_budget"].decimals = decimals
         if self.instance.pk:
             self.fields["labour_budget"].initial = self.instance.labour_budget
-        self.fields["manager"].queryset = User.objects.filter(
-            role=User.Role.SITE_MANAGER, is_active=True
-        ).order_by("first_name", "last_name")
+        # People of the site's company only (a new Site() belongs to the current company).
+        people = User.objects.filter(company_id=self.instance.company_id, is_active=True)
+        self.fields["manager"].queryset = people.filter(role=User.Role.SITE_MANAGER).order_by(
+            "first_name", "last_name"
+        )
         self.fields["manager"].empty_label = _("No site manager")
-        self.fields["foremen"].queryset = User.objects.filter(
-            role=User.Role.FOREMAN, is_active=True
-        ).order_by("first_name", "last_name")
+        self.fields["foremen"].queryset = people.filter(role=User.Role.FOREMAN).order_by(
+            "first_name", "last_name"
+        )
 
 
 class SiteSettingsForm(forms.ModelForm):

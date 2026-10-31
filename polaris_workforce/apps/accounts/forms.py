@@ -14,6 +14,7 @@ from apps.worksites.models import Site
 
 from . import services
 from .models import User
+from .permissions import scoped_sites
 
 Role = User.Role
 
@@ -61,7 +62,8 @@ class UserForm(forms.ModelForm):
     def __init__(self, *args, actor=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.actor = actor
-        sites = Site.objects.order_by("name")
+        # The admin's company's sites (a new user joins the admin's company).
+        sites = scoped_sites(actor).order_by("name") if actor else Site.objects.none()
         self.fields["managed_sites"].queryset = sites
         self.fields["foreman_sites"].queryset = sites
         self.fields["first_name"].required = True
@@ -91,6 +93,7 @@ class UserForm(forms.ModelForm):
         )
 
     def clean_phone(self):
+        # Unique across every company: the phone signs in with phone + PIN only.
         phone = self.cleaned_data["phone"].strip()
         if phone and services.users_with_phone(phone, exclude_pk=self.instance.pk):
             raise forms.ValidationError(_("Another user already has this phone number."))

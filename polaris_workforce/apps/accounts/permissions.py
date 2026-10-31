@@ -4,8 +4,14 @@ Every office view, queryset and API endpoint that touches site data goes through
 these helpers (CLAUDE.md rule 8). Wave 2 agent A owns and extends this module;
 the other areas import from it.
 
+Every rule works inside the user's company first (``apps.core.tenancy``): a user of one
+company never sees, counts or changes another company's data. ``scoped_sites``,
+``company_workers`` and ``company_users`` are the starting querysets; build on them.
+
 Rules:
-- Admins (and superusers) see every site and may do everything.
+- Admins (and superusers) see every site of their company and may do everything there.
+  Platform admins (superusers without a company) act as admins of the company they
+  picked in the switcher.
 - Accountants see every site, read-only, plus pay-period locking and reports.
 - Site managers see the sites they manage (and may lock their pay periods).
 - Foremen see the sites they are a foreman on.
@@ -22,6 +28,8 @@ from django.core.exceptions import PermissionDenied
 from django.utils.translation import gettext_lazy as _
 from rest_framework.permissions import BasePermission
 
+from apps.core.tenancy import company_id_of
+from apps.workers.models import Worker
 from apps.worksites.models import Site
 
 from .models import User
@@ -42,17 +50,43 @@ def is_admin(user) -> bool:
     return has_role(user, Role.ADMIN)
 
 
-def scoped_sites(user):
-    """The sites this user may see."""
+def _company_id(user) -> int | None:
+    """The company ``user`` works in, if they are signed in and active."""
     if not getattr(user, "is_authenticated", False) or not user.is_active:
+        return None
+    return company_id_of(user)
+
+
+def scoped_sites(user):
+    """The sites this user may see (always within their company)."""
+    company_id = _company_id(user)
+    if company_id is None:
         return Site.objects.none()
+    sites = Site.objects.filter(company_id=company_id)
     if user.is_superuser or user.role in (Role.ADMIN, Role.ACCOUNTANT):
-        return Site.objects.all()
+        return sites
     if user.role == Role.SITE_MANAGER:
-        return Site.objects.filter(manager=user)
+        return sites.filter(manager=user)
     if user.role == Role.FOREMAN:
-        return Site.objects.filter(foremen=user)
+        return sites.filter(foremen=user)
     return Site.objects.none()
+
+
+def company_workers(user):
+    """Every worker of the user's company. Narrow it further for site roles (see
+    ``apps.workers.services.scoped_workers``)."""
+    company_id = _company_id(user)
+    if company_id is None:
+        return Worker.objects.none()
+    return Worker.objects.filter(company_id=company_id)
+
+
+def company_users(user):
+    """Every user of the user's company (platform admins are never in it)."""
+    company_id = _company_id(user)
+    if company_id is None:
+        return User.objects.none()
+    return User.objects.filter(company_id=company_id)
 
 
 def can_view_site(user, site) -> bool:

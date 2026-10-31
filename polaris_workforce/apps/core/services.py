@@ -1,4 +1,4 @@
-"""Company settings changes and audit-log helpers."""
+"""Companies, company settings changes and audit-log helpers."""
 
 import datetime
 import json
@@ -7,11 +7,33 @@ from decimal import Decimal
 
 from django.db import transaction
 
-from .models import AuditLog, CompanySettings
+from .models import AuditLog, Company, CompanySettings
 
 SETTINGS_UPDATE_ACTION = "settings.update"
+COMPANY_CREATE_ACTION = "core.company_create"
 CURRENCY_FIELDS = ("currency", "currency_decimals")
-_SKIPPED = {"id", "created_at", "updated_at"}
+_SKIPPED = {"id", "company", "created_at", "updated_at"}
+
+
+@transaction.atomic
+def create_company(name: str, *, actor=None, **settings) -> Company:
+    """A new company with its settings row (defaults, plus any ``settings`` given)."""
+    company = Company.objects.create(name=" ".join(name.split()))
+    set_up_company(company, actor=actor, **settings)
+    return company
+
+
+def set_up_company(company: Company, *, actor=None, **settings) -> CompanySettings:
+    """The settings row of a company just saved, and its audit entry."""
+    row = CompanySettings.objects.create(company=company, company_name=company.name, **settings)
+    AuditLog.record(
+        actor=actor,
+        action=COMPANY_CREATE_ACTION,
+        target=company,
+        after={"name": company.name, "slug": company.slug},
+        company=company,
+    )
+    return row
 
 
 def _jsonable(value):
@@ -58,6 +80,10 @@ def save_company_settings(form, *, actor, before: dict) -> SettingsChange:
         return SettingsChange(changed=(), entry=None)
     with transaction.atomic():
         form.save()
+        name = " ".join((company.company_name or "").split())
+        if "company_name" in changed and name:
+            # The name in the company switcher follows the name on the settings screen.
+            Company.objects.filter(pk=company.company_id).update(name=name)
         entry = AuditLog.record(
             actor=actor,
             action=SETTINGS_UPDATE_ACTION,

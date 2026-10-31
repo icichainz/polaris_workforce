@@ -65,7 +65,7 @@ def crew_for(site: Site, date: datetime.date):
     """Active workers assigned to ``site`` on ``date``, sorted by last name."""
     on_site = SiteAssignment.objects.active_on(date).filter(site=site, worker=OuterRef("pk"))
     return (
-        Worker.objects.filter(is_active=True)
+        Worker.objects.filter(company_id=site.company_id, is_active=True)
         .filter(Exists(on_site))
         .select_related("trade")
         .order_by("last_name", "first_name", "number")
@@ -136,6 +136,8 @@ def assign(
     """
     if end is not None and end < start:
         raise ValidationError({"end": _("The end date must be on or after the start date.")})
+    if worker.company_id != site.company_id:
+        raise ValidationError(_("This worker belongs to another company."))
 
     with transaction.atomic():
         for current in worker.assignments.filter(end_date__isnull=True).order_by("start_date"):
@@ -241,8 +243,15 @@ def update_site_settings(site: Site, changes: dict, *, actor=None) -> Site:
 
 
 def save_site(site: Site, *, actor=None, foremen=None) -> Site:
-    """Create or update a site's identity (name, address, people, budget)."""
+    """Create or update a site's identity (name, address, people, budget).
+
+    The manager and the foremen must be people of the site's company.
+    """
     creating = site.pk is None
+    people = [site.manager] if site.manager_id else []
+    people += list(foremen or [])
+    if any(person.company_id != site.company_id for person in people):
+        raise ValidationError(_("Site managers and foremen must belong to the site's company."))
     with transaction.atomic():
         site.save()
         if foremen is not None:

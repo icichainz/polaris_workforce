@@ -17,9 +17,16 @@ Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+.
 uv sync                                  # install dependencies into .venv
 export DJANGO_DEBUG=true                 # local development (DEBUG is off by default)
 uv run python manage.py migrate          # create db.sqlite3
-uv run python manage.py createsuperuser  # first admin account
+uv run python manage.py createsuperuser  # platform admin (no company)
 uv run python manage.py runserver        # http://127.0.0.1:8000
 ```
+
+One installation serves several companies, each with its own data (`apps/core/tenancy.py`).
+A superuser made with `createsuperuser` belongs to no company: a **platform admin**, who
+adds companies on the Companies page (`/companies/`) and switches between them in the
+sidebar. Every other user belongs to one company and only ever sees that company. For a
+demo, `manage.py seed_demo` fills one company (and a platform admin, `platform`); add a
+second one with `manage.py seed_demo --keep --company "Other Co"`.
 
 Configuration comes from environment variables; see `.env.example`. **`DEBUG` is off
 unless `DJANGO_DEBUG=true` is set**, and with `DEBUG` off the app refuses to start without

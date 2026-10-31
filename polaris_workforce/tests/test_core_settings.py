@@ -8,8 +8,9 @@ from django.db import IntegrityError
 from apps.core.choices import PayFrequency, PaymentMethod
 from apps.core.models import AuditLog, CompanySettings
 from apps.core.settings import SITE_OVERRIDABLE, WORKER_OVERRIDABLE, resolve_setting, setting_names
+from apps.core.tenancy import NoCurrentCompany, current_company, use_company
 from apps.worksites.models import Site
-from tests.factories import SiteFactory, UserFactory, WorkerFactory
+from tests.factories import CompanyFactory, SiteFactory, UserFactory, WorkerFactory
 
 
 @pytest.mark.django_db
@@ -19,7 +20,8 @@ class TestCompanySettings:
 
         company = CompanySettings.load()
 
-        assert company.pk == 1
+        assert company.company == current_company()
+        assert company.company_name == current_company().name
         assert company.currency == "XOF"
         assert company.currency_decimals == 0
         assert company.time_zone == "UTC"
@@ -56,18 +58,28 @@ class TestCompanySettings:
         assert again.currency == "EUR"
         assert CompanySettings.objects.count() == 1
 
-    def test_saving_a_new_instance_overwrites_the_singleton(self):
-        CompanySettings.load()
-        CompanySettings(company_name="Another").save()
+    def test_each_company_has_its_own_row(self):
+        mine = CompanySettings.load()
+        other_company = CompanyFactory(name="Other Co")
+        other = CompanySettings.load(other_company)
+        other.currency = "EUR"
+        other.save()
 
-        assert CompanySettings.objects.count() == 1
-        assert CompanySettings.load().company_name == "Another"
+        assert CompanySettings.objects.count() == 2
+        assert CompanySettings.load().pk == mine.pk
+        assert CompanySettings.load().currency == "XOF"
+        with use_company(other_company):
+            assert CompanySettings.load().currency == "EUR"
+        assert CompanySettings.load(other_company.pk).pk == other.pk
 
-    def test_database_rejects_a_second_row(self):
+    def test_database_rejects_a_second_row_for_a_company(self):
         CompanySettings.load()
         with pytest.raises(IntegrityError):
-            # bulk_create bypasses save(), so only the check constraint stops it.
-            CompanySettings.objects.bulk_create([CompanySettings(id=2)])
+            CompanySettings.objects.bulk_create([CompanySettings(company=current_company())])
+
+    def test_load_without_a_current_company_fails_loudly(self):
+        with use_company(None), pytest.raises(NoCurrentCompany):
+            CompanySettings.load()
 
     def test_every_n_days_requires_the_number(self):
         company = CompanySettings(pay_frequency=PayFrequency.EVERY_N_DAYS)

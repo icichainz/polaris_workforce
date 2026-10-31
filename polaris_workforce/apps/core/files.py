@@ -9,7 +9,8 @@ object it belongs to, and only by someone who may see that object's site:
 - Payment proof: ``/files/proofs/<payment id>/`` and ``/api/v1/files/proofs/<payment id>/``.
   Allowed when the payment's site is visible (``scoped_sites`` / ``can_view_site``).
 - Any file by stored name: ``/files/media/<name>``, which is what ``FieldFile.url`` gives
-  (Django admin links). Admins only (403 for everyone else).
+  (Django admin links). Admins only (403 for everyone else); a company admin only gets
+  files of their own company's workers, payments and advances (404 otherwise).
 
 An object out of scope answers 404, like an object without a file, so ids cannot be
 probed. The view checks access, then ``file_response`` hands the file over: Django streams
@@ -28,8 +29,9 @@ from django.http import FileResponse, Http404, HttpResponse, HttpResponseNotModi
 from django.urls import reverse
 from django.utils.http import content_disposition_header
 
-from apps.accounts.permissions import Role, has_role, is_admin, scoped_sites
-from apps.payroll.models import Payment
+from apps.accounts.permissions import Role, company_workers, has_role, is_admin, scoped_sites
+from apps.core.tenancy import company_id_of, is_platform_admin
+from apps.payroll.models import Advance, Payment
 from apps.workers.models import Worker
 from apps.worksites.models import SiteAssignment
 
@@ -47,12 +49,13 @@ INLINE_TYPES = {"image/jpeg", "image/png", "image/webp"}  # shown in <img>; the 
 
 
 def visible_workers(user):
-    """Workers whose photo ``user`` may see: everyone for admins and accountants, else the
-    workers with an assignment (past, current or future) on a site the user sees."""
+    """Workers whose photo ``user`` may see: the whole company for admins and accountants,
+    else the workers with an assignment (past, current or future) on a site the user sees."""
+    workers = company_workers(user)
     if has_role(user, Role.ADMIN, Role.ACCOUNTANT):
-        return Worker.objects.all()
+        return workers
     on_my_sites = SiteAssignment.objects.filter(worker=OuterRef("pk"), site__in=scoped_sites(user))
-    return Worker.objects.filter(Exists(on_my_sites))
+    return workers.filter(Exists(on_my_sites))
 
 
 def visible_payments(user):
@@ -77,13 +80,32 @@ def payment_proof_or_404(user, payment_id) -> str:
 
 
 def media_name_or_404(user, name: str) -> str:
-    """Any stored file by name, for admins only (``FieldFile.url`` in Django admin)."""
+    """Any stored file by name, for admins only (``FieldFile.url`` in Django admin).
+
+    Platform admins get any file; a company admin only the files of their company.
+    """
     if not is_admin(user):
         raise Http404
     name = posixpath.normpath(name)
     if name in {".", ".."} or name.startswith(("/", "../")) or "\\" in name:
         raise Http404
+    if not is_platform_admin(user) and not _company_owns_file(company_id_of(user), name):
+        raise Http404
     return name
+
+
+def _company_owns_file(company_id, name: str) -> bool:
+    """True if ``name`` is the file of one of the company's records. Every model with a
+    file field must be listed here."""
+    if company_id is None:
+        return False
+    return (
+        Worker.objects.filter(company_id=company_id, photo=name).exists()
+        or Payment.objects.filter(
+            pay_line__period__site__company_id=company_id, proof_file=name
+        ).exists()
+        or Advance.objects.filter(worker__company_id=company_id, proof_file=name).exists()
+    )
 
 
 def _exists(name: str) -> bool:

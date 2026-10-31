@@ -1,21 +1,24 @@
-"""Office views: company settings and the audit log viewer (admins only), and the
-protected downloads of uploaded files (signed-in users, scoped by site)."""
+"""Office views: company settings and the audit log viewer (admins only), the protected
+downloads of uploaded files (signed-in users, scoped by site), and the Companies page
+and company switcher (platform admins only)."""
 
 import datetime
+from functools import wraps
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.translation import gettext as _
-from django.views.decorators.http import require_safe
+from django.views.decorators.http import require_POST, require_safe
 
 from apps.accounts.permissions import Role, role_required
 
-from . import files, services
-from .forms import CURRENCY_SUGGESTIONS, AuditLogFilterForm, CompanySettingsForm
-from .models import AuditLog, CompanySettings
+from . import files, services, tenancy
+from .forms import CURRENCY_SUGGESTIONS, AuditLogFilterForm, CompanyForm, CompanySettingsForm
+from .models import AuditLog, Company, CompanySettings
 
 AUDIT_PAGE_SIZE = 50
 
@@ -61,8 +64,9 @@ def settings_view(request):
 
 @role_required(Role.ADMIN)
 def audit_log_view(request):
-    form = AuditLogFilterForm(request.GET or None)
-    entries = AuditLog.objects.select_related("actor", "content_type")
+    company_entries = AuditLog.objects.filter(company=tenancy.current_company())
+    form = AuditLogFilterForm(request.GET or None, entries=company_entries)
+    entries = company_entries.select_related("actor", "content_type")
     if form.is_bound and form.is_valid():
         data = form.cleaned_data
         if data["actor"]:
@@ -115,3 +119,54 @@ def payment_proof(request, pk):
 def media_file(request, name):
     """``FieldFile.url`` (Django admin's file links): admins only, like the admin."""
     return files.file_response(request, files.media_name_or_404(request.user, name))
+
+
+# --- companies (platform admins) -------------------------------------------------------------
+
+
+def platform_admin_required(view):
+    """Signed in as a platform admin (a superuser without a company), else 403."""
+
+    @login_required
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        if not tenancy.is_platform_admin(request.user):
+            raise PermissionDenied
+        return view(request, *args, **kwargs)
+
+    return wrapper
+
+
+@platform_admin_required
+def companies(request):
+    """Every company, and a form to add one (its settings start with the defaults)."""
+    form = CompanyForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        company = services.create_company(form.cleaned_data["name"], actor=request.user)
+        tenancy.switch_company(request, company)
+        messages.success(
+            request,
+            _("%(name)s was added. You are now viewing it: set it up in Settings.")
+            % {"name": company.name},
+        )
+        return redirect("core:settings")
+    return render(
+        request,
+        "core/companies.html",
+        {
+            "form": form,
+            "companies": Company.objects.order_by("name", "pk"),
+            "current": tenancy.current_company_or_none(),
+        },
+    )
+
+
+@platform_admin_required
+@require_POST
+def company_switch(request):
+    """The sidebar's company switcher: view another company's data."""
+    value = request.POST.get("company", "")
+    company = get_object_or_404(Company, pk=int(value) if value.isdigit() else 0)
+    tenancy.switch_company(request, company)
+    messages.success(request, _("Now viewing %(name)s.") % {"name": company.name})
+    return redirect("dashboard:home")
