@@ -1,0 +1,68 @@
+{% extends "layouts/app.html" %}
+{% load i18n payroll_tags %}
+
+{% block title %}{% translate "Bank & mobile money" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% translate "Transfers paid with a bulk-payment file, then confirmed" %}{% endblock %}
+{% block page_title %}{% translate "Bank & mobile money" %}{% endblock %}
+
+{% block content %}
+  {% include "payouts/_tabs.html" with current="batches" only %}
+
+  <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <section aria-labelledby="batches-title" class="flex min-w-0 flex-col gap-3">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="batches-title" class="font-display text-lg font-bold">{% translate "Batches" %}</h2>
+        <div role="tablist" aria-label="{% translate 'Batches shown' %}" class="flex gap-1 rounded-card bg-segment p-1">
+          <a role="tab" href="?status=open" aria-selected="{% if status == 'open' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if status == 'open' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Open" %}</a>
+          <a role="tab" href="?status=all" aria-selected="{% if status != 'open' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if status != 'open' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "All" %}</a>
+        </div>
+      </div>
+      {% if page.object_list %}
+      <div class="overflow-x-auto rounded-control border border-line bg-white">
+        <table class="w-full min-w-[720px] border-collapse text-sm">
+          <thead>
+            <tr class="bg-subtle text-left">
+              <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Batch" %}</th>
+              <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Pay day" %}</th>
+              <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Paid by" %}</th>
+              <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+              <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Total" %}</th>
+              <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Status" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for batch in page %}
+            <tr class="border-t border-line-soft">
+              <td class="px-4 py-3"><a href="{% url 'payouts:batch' batch.pk %}" class="font-semibold">{{ batch.reference }}</a><br><span class="text-xs text-steel">{% blocktranslate count n=batch.totals.count %}{{ n }} worker{% plural %}{{ n }} workers{% endblocktranslate %}</span></td>
+              <td class="px-4 py-3">{{ batch.pay_date|date:_("D j M Y") }}</td>
+              <td class="px-4 py-3">{{ batch.get_method_display }}</td>
+              <td class="px-4 py-3">{% if batch.site %}{{ batch.site.name }}{% else %}{% translate "All sites" %}{% endif %}</td>
+              <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ batch.totals.all|money:batch }}</td>
+              <td class="px-4 py-3">{% include "payouts/_batch_status.html" with batch=batch only %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% include "payroll/_pagination.html" %}
+      {% else %}
+        {% translate "No transfer batches" as empty_title %}
+        {% translate "Workers paid by bank transfer or mobile money are paid in batches: prepare one for a pay day." as empty_message %}
+        {% include "components/empty_state.html" with icon="cash" title=empty_title message=empty_message only %}
+      {% endif %}
+    </section>
+
+    {% if form %}
+    <aside aria-labelledby="prepare-title" class="flex flex-col gap-4 rounded-card border border-line bg-white p-5">
+      <h2 id="prepare-title" class="font-display text-lg font-bold">{% translate "Prepare a batch" %}</h2>
+      <form method="get" action="{% url 'payouts:prepare' %}" class="flex flex-col gap-4">
+        {% include "components/field.html" with field=form.pay_date only %}
+        {% include "components/field.html" with field=form.method only %}
+        {% include "components/field.html" with field=form.site only %}
+        {% translate "See who is to pay" as label %}{% include "components/button.html" with label=label type="submit" variant="primary" full=True only %}
+      </form>
+      <p class="text-xs text-steel">{% translate "Only cash sheets that are open (every day approved) are included. Workers without a payout account are listed so you can add one." %}</p>
+    </aside>
+    {% endif %}
+  </div>
+{% endblock %}

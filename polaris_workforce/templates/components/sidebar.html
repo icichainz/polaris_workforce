@@ -51,6 +51,7 @@ Menu button (Alpine).
         <p class="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-rail-label">{% translate "Pay" %}</p>
         {% translate "Pay periods" as nav_label %}{% include "components/nav_link.html" with url_name="payroll:periods" label=nav_label icon="payroll" current=current only %}
         {% translate "Advances" as nav_label %}{% include "components/nav_link.html" with url_name="payroll:advances" label=nav_label icon="advances" current=current only %}
+        {% translate "Bank & mobile money" as nav_label %}{% include "components/nav_link.html" with url_name="payouts:batches" label=nav_label icon="cash" current=current only %}
       </div>
       <div class="flex flex-col gap-0.5">
         <p class="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-rail-label">{% translate "People & sites" %}</p>

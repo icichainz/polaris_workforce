@@ -1,0 +1,77 @@
+{% extends "layouts/app.html" %}
+{% load i18n payroll_tags %}
+
+{% block title %}{% translate "Prepare a batch" %} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'payouts:batches' %}">{% translate "Bank & mobile money" %}</a> / {% translate "Prepare a batch" %}</nav>{% endblock %}
+{% block page_title %}{% translate "Prepare a batch" %}{% endblock %}
+
+{% block content %}
+  <form method="get" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-white px-5 py-4">
+    <div class="w-44">{% include "components/field.html" with field=form.pay_date only %}</div>
+    <div class="w-52">{% include "components/field.html" with field=form.method only %}</div>
+    <div class="w-64">{% include "components/field.html" with field=form.site only %}</div>
+    {% translate "Show" as label %}{% include "components/button.html" with label=label type="submit" only %}
+  </form>
+
+  {% if found is not None %}
+    {% if ready %}
+    <section aria-labelledby="ready-title" class="flex flex-col gap-3">
+      <h2 id="ready-title" class="font-display text-lg font-bold">{% blocktranslate with total=total|money:ready.0.pay_line.period count n=ready|length %}{{ n }} transfer ready · {{ total }}{% plural %}{{ n }} transfers ready · {{ total }}{% endblocktranslate %}</h2>
+      <div class="overflow-x-auto rounded-control border border-line bg-white">
+        <table class="w-full min-w-[720px] border-collapse text-sm">
+          <thead>
+            <tr class="bg-subtle text-left">
+              <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+              <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+              <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Account" %}</th>
+              <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Left to pay" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in ready %}
+            <tr class="border-t border-line-soft">
+              <td class="px-4 py-3"><span class="font-semibold">{{ c.worker.full_name }}</span><br><span class="text-xs text-steel">{{ c.worker.number }}</span></td>
+              <td class="px-4 py-3">{{ c.pay_line.period.site.name }}</td>
+              <td class="px-4 py-3">{{ c.account.holder }}<br><span class="text-xs text-steel">{% if c.method == "bank_transfer" %}{{ c.account.bank_name }}{% else %}{{ c.account.mobile_operator }}{% endif %} {{ c.account.masked }}</span></td>
+              <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ c.remaining|money:c.pay_line.period }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <form method="post" class="flex flex-wrap items-end gap-3">
+        {% csrf_token %}
+        <input type="hidden" name="pay_date" value="{{ form.cleaned_data.pay_date|date:'Y-m-d' }}">
+        <input type="hidden" name="method" value="{{ form.cleaned_data.method }}">
+        {% if form.cleaned_data.site %}<input type="hidden" name="site" value="{{ form.cleaned_data.site.pk }}">{% endif %}
+        <label class="flex flex-col gap-1.5 text-[13px] font-semibold">{% translate "Export layout" %}
+          <select name="layout" class="h-10 rounded-control border border-line-strong bg-white px-2.5 text-sm font-normal text-ink">
+            {% for layout in layouts %}<option value="{{ layout.pk }}"{% if default_layout and default_layout.pk == layout.pk %} selected{% endif %}>{{ layout.name }}</option>{% endfor %}
+          </select>
+        </label>
+        {% translate "Create the batch" as label %}{% include "components/button.html" with label=label type="submit" variant="primary" only %}
+      </form>
+    </section>
+    {% else %}
+      {% translate "Nobody to pay by transfer" as empty_title %}
+      {% translate "No open cash sheet of this pay day has a worker paid this way with money left to pay." as empty_message %}
+      {% include "components/empty_state.html" with icon="cash" title=empty_title message=empty_message only %}
+    {% endif %}
+
+    {% if missing %}
+    <section aria-labelledby="missing-title" class="flex flex-col gap-3">
+      <h2 id="missing-title" class="font-display text-lg font-bold">{% blocktranslate count n=missing|length %}{{ n }} worker needs a payout account{% plural %}{{ n }} workers need a payout account{% endblocktranslate %}</h2>
+      {% translate "Left out of the batch." as title %}{% translate "Add or fix their account, then prepare the batch again — or pay them in cash." as message %}
+      {% include "components/alert.html" with variant="warning" title=title message=message only %}
+      <ul class="flex flex-col divide-y divide-line-soft rounded-control border border-line bg-white text-sm">
+        {% for c in missing %}
+        <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+          <span><span class="font-semibold">{{ c.worker.full_name }}</span> · {{ c.worker.number }} · <span class="tabular-nums">{{ c.remaining|money:c.pay_line.period }}</span><br><span class="text-xs text-absent-fg">{{ c.problem }}</span></span>
+          <a href="{% url 'payouts:account_edit' c.worker.pk %}?next={{ request.get_full_path|urlencode }}" class="text-[13px] font-semibold">{% translate "Edit payout account" %}</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  {% endif %}
+{% endblock %}

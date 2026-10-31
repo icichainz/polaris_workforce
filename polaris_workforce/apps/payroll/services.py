@@ -30,6 +30,8 @@ attendance, stores the results and enforces the workflow:
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import dataclasses
 import datetime
 from collections import defaultdict
@@ -1067,15 +1069,36 @@ def issue_cash(user, site: Site, day: datetime.date, amount: int, *, received_by
 # --- payments ----------------------------------------------------------------------------
 
 
+# A bank transfer or mobile-money payment (``apps.payouts``) has no receipt to photograph:
+# its transfer reference is the proof. ``apps.payouts`` records such payments inside
+# ``transfer_proof(reference)``; ``validate_proof`` then accepts "none".
+_transfer_reference: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "payroll_transfer_reference", default=""
+)
+
+
+@contextlib.contextmanager
+def transfer_proof(reference: str):
+    """Payments recorded in this block are transfers with ``reference`` as their proof."""
+    token = _transfer_reference.set(reference.strip())
+    try:
+        yield
+    finally:
+        _transfer_reference.reset(token)
+
+
 def validate_proof(proof_type: str, proof_file, company: CompanySettings) -> None:
     """The proof must be one of ``accepted_proofs``.
 
-    "none" is allowed only when the setting lists it (or lists nothing). A photo proof
-    needs the photo; a signature or thumb mark may come as an image or be on the paper
-    sheet. Any file is checked like every upload (type, ≤ 5 MB).
+    "none" is allowed only when the setting lists it (or lists nothing), or for a
+    transfer recorded with its reference (``transfer_proof``). A photo proof needs the
+    photo; a signature or thumb mark may come as an image or be on the paper sheet. Any
+    file is checked like every upload (type, ≤ 5 MB).
     """
     errors = {}
     accepted = list(company.accepted_proofs or [])
+    if proof_type == ProofType.NONE and not proof_file and _transfer_reference.get():
+        return
     if proof_type not in ProofType.values:
         errors["proof_type"] = [_("Unknown proof type.")]
     elif proof_type == ProofType.NONE:
