@@ -414,3 +414,25 @@ Design and briefs P1–P7: `docs/presence-tracking.md`. Contracts:
 prototyped) and `docs/api/presence-django-openapi.yaml` (the new Django `presence` app;
 merged into `docs/api/openapi.yaml` by the API owner when P2 starts). Nothing in Waves 1–3
 depends on it.
+
+---
+
+## 11. Wave 2 and Wave 3 results
+
+All merged on `main` (not pushed): A accounts, B sites & workers, C attendance, D payroll,
+E settings & reports, FL1 Flutter UI, K API contract 1.1, CL cleanup, I1 end-to-end and
+security pass, FL2 Flutter HTTP client (live smoke test against Django passed), H-pay pay
+adjustments and period locking, H-sec protected files and access hardening, T French
+translations, plus the lead's integration fixes.
+
+- Django: 1264 tests; ruff, `manage.py check`, `makemigrations --check` and the OpenAPI
+  drift test clean. Flutter: `flutter analyze` clean, 98 tests.
+- Owner decisions: site managers may lock their sites' pay periods; corrections to a day
+  already paid become an adjustment on the next pay; the PIN answer keeps showing tries
+  left; the office language is the user's, then the switcher's, then the company's.
+- Local commands need `DJANGO_DEBUG=true` (debug is off by default). Tests use
+  `tests/settings.py`.
+- Open before go-live: hosting (deferred), the production checklist in
+  `docs/security-review.md`, a device test of the Flutter app (Android emulator, iOS
+  simulator, real camera uploads, HTTPS), `device_info_plus` for the device name, and
+  per-entry outbox ownership when foremen share a phone.
