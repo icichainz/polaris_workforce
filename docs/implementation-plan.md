@@ -377,3 +377,29 @@ pay period and payslip all agree.
 | API framework | Django REST Framework + drf-spectacular |
 | Payslip PDF library | Agent D chooses and justifies |
 | Production hosting | Deferred until implementation is finished |
+
+---
+
+## 10. Wave 1 results and notes for Wave 2
+
+- Wave 1 is merged on `main`: F3 (API contract), F1 (domain models), F2 (UI shell).
+  273 tests pass; ruff, `manage.py check` and `makemigrations --check` are clean.
+- **Site scoping is ready to use:** `apps/accounts/permissions.py` provides `has_role`,
+  `scoped_sites(user)`, `can_view_site`, `can_manage_site`, `get_site_or_403`,
+  `role_required(*roles)` (office views) and `IsForeman` (API). Agent A owns and may
+  extend it; B–E import from it instead of writing their own checks.
+- **Generated files are rebuilt by the lead after merging**, to avoid conflicts between
+  branches:
+  - `static/css/app.css`: run `scripts/build_css.sh` locally to see your classes
+    (`tailwindcss` v4.3.0 is on PATH), but **don't commit** `app.css`
+    (`git checkout -- static/css/app.css` before committing).
+  - `docs/api/openapi.yaml`: implement endpoints **to the existing contract**, so the
+    schema doesn't change. If a change is unavoidable, regenerate the file, commit it, and
+    list the change in your report.
+- **Components:** `templates/components/*.html` (gallery at `/_components/` in DEBUG).
+  Read a component's header comment for its `include ... with` parameters.
+- **Idempotent phone writes:** use `apps.api.idempotency` (see `docs/api/README.md`).
+- **Tests:** `tests/conftest.py` resets the language to English before each test. Use
+  `tests/factories.py` for test data.
+- **Network:** ~14 KB/s and connections sometimes reset. Run anything that downloads in
+  the background, and keep each command short (long blocking commands stall agents).
