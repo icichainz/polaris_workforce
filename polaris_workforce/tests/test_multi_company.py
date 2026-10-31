@@ -53,6 +53,7 @@ from tests.factories import (
     UserFactory,
     WorkerFactory,
 )
+from tests.test_checkin_seed import seed_checkin
 from tests.test_e2e_isolation import (
     API,
     JPEG,
@@ -145,6 +146,8 @@ def build_company(label: str, phone: str) -> World:
         "foreman_b": crew.foreman.pk,
         "device_b": ForemanDevice.objects.get(user=crew.foreman).pk,
     }
+    with use_company(company):
+        ids.update(seed_checkin(crew, worker))
     return World(company, crew, admin, accountant, worker, ids)
 
 
@@ -309,8 +312,12 @@ def test_company_a_cannot_reach_company_b_on_the_api(worlds, who):
         response = getattr(client, method)(url, data, format="json")
         assert response.status_code in (403, 404), (method, url, response.status_code)
 
-    for name in ("api:file-worker-photo", "api:file-payment-proof"):
-        key = "worker" if "photo" in name else "payment"
+    files = {
+        "api:file-worker-photo": "worker",
+        "api:file-payment-proof": "payment",
+        "api:checkin:file-photo": "checkin",
+    }
+    for name, key in files.items():
         response = client.get(reverse(name, args=[b.ids[key]]))
         assert response.status_code == 404, name
 

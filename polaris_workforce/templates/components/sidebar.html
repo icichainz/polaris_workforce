@@ -59,6 +59,7 @@ Menu button (Alpine).
         {% translate "Sites" as nav_label %}{% include "components/nav_link.html" with url_name="worksites:list" label=nav_label icon="sites" current=current only %}
         {% if user.is_superuser or user.role == "admin" or user.role == "site_manager" %}
         {% translate "Worker portal access" as nav_label %}{% include "components/nav_link.html" with url_name="portal:office_access" label=nav_label icon="phone" current=current only %}
+        {% translate "Check-in" as nav_label %}{% include "components/nav_link.html" with url_name="checkin:home" label=nav_label icon="phone" current=current only %}
         {% endif %}
       </div>
       <div class="flex flex-col gap-0.5">

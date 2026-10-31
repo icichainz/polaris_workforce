@@ -61,6 +61,7 @@ The JSON shapes do not change; the contract version stays `1.1.0`.
 | `POST /payments/` | Record a payment with proof | 201 / 200 replay | D |
 | `GET /files/workers/{worker_id}/photo/` | A worker's photo (`photo_url`) | 200 / 304 | H-sec |
 | `GET /files/proofs/{payment_id}/` | A payment's proof file (`proof_url`) | 200 / 304 | H-sec |
+| Check-in endpoints (1.2) | Badges, kiosks, check-ins, suggestions | see [Check-in (1.2)](#check-in-12) | CK |
 
 Which screen uses what:
 
@@ -395,6 +396,182 @@ The API uses words. The app shows letters.
 - Every endpoint is implemented; `501 not_implemented` stays in the error codes for
   future endpoints. The examples in `openapi.yaml` are one coherent data set
   (`polaris_workforce/apps/api/examples.py`) that the mock data can follow.
+
+## Check-in (1.2)
+
+Wave 4 (agent CK) adds QR badges, kiosk phones, GPS geofences and check-ins that pre-fill
+the roll call. Everything below is **added**: no 1.1 field or endpoint changes, so a 1.1
+client keeps working. (The contract version in `info.version` moves to `1.2.0` when the
+lead merges; see the lead's notes.)
+
+### Endpoints
+
+| Method & path | Purpose | Success |
+| --- | --- | --- |
+| `GET /checkin/device/` | This phone's role: `attendance_mode` and `kiosk` (`{site_id, site_name, since}` or `null`) | 200 |
+| `GET /sites/{site_id}/checkin-setup/` | Mode, `late_after`, `kiosk` (bool), `geofence` (`{latitude, longitude, radius_m}` or `null`), `badges: [{worker_id, payload_sha256, issued_at}]` (active badges of today's crew) | 200 |
+| `POST /checkins/` | Record a check-in or check-out (badge scan or manual), optional GPS and photo | 201 / 200 replay |
+| `GET /sites/{site_id}/checkins/{date}/` | Every check-in of the site that day, oldest first, with `flags` | 200 |
+| `GET /sites/{site_id}/days/{date}/suggestions/` | Roll-call suggestions per crew worker | 200 |
+| `GET /files/checkins/{checkin_id}/photo/` | A check-in's photo (`photo_url`; send the `Authorization` header, `ETag`/`304` like the other files) | 200 / 304 |
+
+All need the device token (or an office session). `POST /checkins/` needs a foreman (or
+an admin); a site manager's or accountant's session gets `403`.
+
+### Attendance modes
+
+`GET /me/` is unchanged; the mode comes from `GET /checkin/device/` and the setup and
+suggestion responses (`attendance_mode`, a company setting):
+
+| Mode | Phone | Server |
+| --- | --- | --- |
+| `foreman_roll_call` | Roll call as today. Check-in screens may stay hidden. | Check-ins (if any) are stored and suggested. |
+| `both` | Offer badge scans; pre-fill the roll call from `suggestions`; the foreman confirms and submits with `PUT .../records/` + `submit` as today. | Same as above. |
+| `self_check_in` | Workers scan (kiosk or the foreman's phone); the roll call shows the draft the scans wrote; the foreman reviews and submits. | Each counted check-in of a crew worker also writes that worker's **draft** record (`draft_updated: true`) as the scanning phone's user. Never once the day is `submitted`, `approved`, `rejected` or `locked`. A field the foreman changed by hand is not overwritten (a field is written when the record is new, the time is empty, or it still holds what the earlier check-ins suggested). |
+
+Attendance rules do not change: only a submitted roll call goes to the office.
+
+### QR badges
+
+The office prints badges (Check-in → Badges → Print badges; A4, 10 per sheet). The QR
+text is:
+
+```
+PW1:<public id>.<signature>
+PW1:K7Q2M4XR5TBN3WCA.D6HZP2LQ4V7NYE3S
+```
+
+- 37 characters, Base32 (`A–Z`, `2–7`) plus `PW1:` and `.`: QR *alphanumeric* mode.
+- The public id is random (not the worker id or number); the signature is an HMAC of it
+  made with the server's secret. The phone cannot check the signature, and does not need
+  to.
+- **Recognise a scan offline:** hash the scanned text exactly as read
+  (`sha256(utf8(text))`, lower-case hex) and look it up in `checkin-setup` →
+  `badges[].payload_sha256` to show the worker's name at once. Not found: say "Badge not
+  recognised", but still queue the check-in (the server decides; the list may be stale).
+- Send the scanned text as `badge` (the `PW1:` prefix may be left out; case and spaces
+  around it do not matter). Any other QR code may be sent too: it is recorded as an
+  unknown badge.
+- Reissuing a badge (lost, damaged) revokes the old one at once; refresh `checkin-setup`
+  with the crew list.
+
+### `POST /checkins/`
+
+JSON, or `multipart/form-data` when there is a photo.
+
+| Field | Type | |
+| --- | --- | --- |
+| `client_uuid` | UUID | Required. Made when the badge is scanned; reuse it for every retry. |
+| `site_id` | int | Required. A site from `GET /me/` (a kiosk: its own site). |
+| `direction` | `in` \| `out` | Required. |
+| `at` | ISO datetime with offset | Required. Phone clock at the scan. At most 10 minutes ahead of the server and 31 days old. Its date in the company time zone is the work day (`date` in the answer). |
+| `badge` | string ≤ 200 | The scanned QR text. Send `badge` **or** `worker_id`. |
+| `worker_id` | int | Manual check-in by the foreman (no badge). Not allowed on a kiosk. |
+| `latitude`, `longitude` | number, 6 decimals | Optional, together. WGS 84. |
+| `accuracy_m` | int ≥ 0 | Optional GPS accuracy (metres). |
+| `photo` | file | Optional: jpg, jpeg, png or webp, ≤ 5 MB, first bytes must match the type. Compress on the phone (≤ 1280 px). |
+
+Answer (`CheckIn`): `id, client_uuid, site_id, worker_id (null for an unknown badge), date,
+direction, at, received_at, source (foreman_scan | kiosk | manual), latitude, longitude,
+accuracy_m, distance_m, inside_geofence (null without GPS or geofence), counted,
+draft_updated, flags, photo_url`.
+
+**What the phone shows** comes from `counted` and `flags`; a check-in is never refused
+for what it says:
+
+| Flag | Meaning | `counted` | Phone |
+| --- | --- | --- | --- |
+| `unknown_badge` | Not a badge of this company (made up, damaged, another company's) | false | "Badge not recognised — see the foreman" |
+| `revoked_badge` | The badge was revoked (a newer one exists, or it was reported lost) | false | "This badge is no longer valid" |
+| `not_on_crew` | The worker is not on the site's crew that day | true | "Not on today's crew — tell the foreman" |
+| `outside_geofence` | GPS position outside the site's circle (accuracy up to 50 m is given the benefit of the doubt) | true | Warn; the office sees it |
+| `duplicate` | Same worker and direction less than 5 minutes after another | true | "Already checked in" |
+
+Only `counted` check-ins of crew workers feed the suggestions.
+
+Errors:
+
+| HTTP | `code` | When |
+| --- | --- | --- |
+| 400 | `validation_error` | Both or neither of `badge`/`worker_id` (`non_field_errors`); `latitude` without `longitude`; out-of-range coordinates; `at` in the future or too old (`at`); a `worker_id` that is not a worker of the company (`worker_id`: "Unknown worker."); a kiosk sending `worker_id` (`badge`: "A kiosk only records badge scans."); a bad photo (`photo`) |
+| 401 | `not_authenticated` | No, revoked or expired token |
+| 403 | `permission_denied` | A site you are not on; a kiosk phone sending for another site (`message`: "This phone is a kiosk for another site."); not a foreman |
+| 409 | `conflict` | The `client_uuid` was used for a different check-in (`details.client_uuid`) |
+
+Idempotency: `201` the first time, then `200` with the original check-in and
+`Idempotent-Replayed: true` (a photo sent again is ignored). A replay must have the same
+site, direction, `at`, user and worker (or a badge scan); anything else is `409`.
+
+### Suggestions
+
+`GET /sites/{site_id}/days/{date}/suggestions/` →
+`{site_id, date, attendance_mode, late_after, day_status, suggestions: [{worker_id, status, arrival, departure, first_in_at, last_out_at, checkin_count}]}`.
+
+Per crew worker with counted check-ins (no check-in → not listed), in the company time
+zone:
+
+1. `arrival` = earliest `in`, `departure` = latest `out` (`HH:MM`).
+2. An `in` and an `out` before 12:00, or a first `in` at or after 12:00 → `half_day`.
+3. Else a first `in` after `late_after` (the site's, else the company's; `07:15` is not
+   late when `late_after` is `07:15`) → `late`.
+4. Else `present`.
+5. Only an `out`: `status: null` (the foreman decides), `departure` set.
+
+`status` uses the record enum (`present`, `late`, `half_day`; never `absent`). To
+pre-fill: for each suggestion, set the worker's mark to `status`, `arrival` and
+`departure` unless the foreman already marked them; workers without a suggestion stay
+unmarked. Then `PUT .../records/` and `submit` as usual. `day_status` other than
+`not_started`/`draft`/`rejected` means the roll call can no longer be edited.
+
+### Kiosk phones
+
+An admin or the site manager switches a foreman's phone to kiosk mode for one site on
+the office page Check-in → Kiosk phones (the phone must be signed in, its foreman on
+that site). The phone learns it from `GET /checkin/device/` → `kiosk` (call it after
+sign-in, at start-up and with the background sync). On a kiosk phone:
+
+- Show only the kiosk screen for `kiosk.site_id`: scan, choose in/out, optional photo.
+- `POST /checkins/` only with `badge` and that `site_id` (`source` is `kiosk`). Another
+  site: `403`; `worker_id`: `400`. The check-in endpoints of other sites answer `403`
+  too.
+- Kiosk mode survives signing in again on the same phone (it belongs to the device row);
+  the office ends it with "End kiosk mode" (`kiosk` becomes `null`).
+- The other phone endpoints are not restricted by the server in 1.2 (see the lead's
+  integration notes); the app should not offer them in kiosk mode.
+
+### Offline
+
+Check-ins go through the existing outbox:
+
+- Queue `POST /checkins/` with its `client_uuid` and `at` taken **at the scan**, before
+  any network. Order in the outbox: check-ins → records → submit → corrections →
+  payments (records may be built from suggestions, which need the check-ins on the
+  server; offline, build them from the local scans with the rules above).
+- Retry network errors and `5xx`; drop the write once it is acknowledged (`200`/`201`).
+  Don't retry `400`, `403` or `409`.
+- A photo is part of the same multipart request; keep the compressed file with the
+  outbox entry until it is acknowledged.
+- `GET /sites/{id}/checkin-setup/` is cached with the crew list (refresh it when online);
+  the badge hashes let the phone show who scanned without the network.
+
+### Examples
+
+```json
+POST /api/v1/checkins/
+{"client_uuid": "9d5e1f7a-3b2c-4e8d-a1f0-6c7b8a9d0e12", "site_id": 3, "direction": "in",
+ "at": "2026-10-31T07:35:10Z", "badge": "PW1:K7Q2M4XR5TBN3WCA.D6HZP2LQ4V7NYE3S",
+ "latitude": 6.132101, "longitude": 1.223012, "accuracy_m": 12}
+
+201
+{"id": 5121, "client_uuid": "9d5e1f7a-3b2c-4e8d-a1f0-6c7b8a9d0e12", "site_id": 3,
+ "worker_id": 63, "date": "2026-10-31", "direction": "in", "at": "2026-10-31T07:35:10Z",
+ "received_at": "2026-10-31T07:35:12Z", "source": "foreman_scan", "latitude": 6.132101,
+ "longitude": 1.223012, "accuracy_m": 12, "distance_m": 32, "inside_geofence": true,
+ "counted": true, "draft_updated": false, "flags": [], "photo_url": null}
+```
+
+More in `openapi.yaml` (tag `checkin`), built from `apps/checkin/api/examples.py` on the
+shared data set.
 
 ## Regenerating the contract
 

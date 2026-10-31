@@ -174,6 +174,325 @@ paths:
                   summary: throttled
           description: Too many requests. Wait `details.retry_after` seconds (also
             in `Retry-After`).
+  /api/v1/checkin/device/:
+    get:
+      operationId: checkin_device
+      description: 'Call after sign-in and with `GET /me/`. `kiosk` is set when the
+        office has switched this phone to kiosk mode: show only the kiosk screen for
+        that site (the token may then only record check-ins there). `null`: an ordinary
+        foreman phone. A browser session has no device: `kiosk` is `null`.'
+      summary: This phone's check-in role
+      tags:
+      - checkin
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckInDevice'
+              examples:
+                KioskPhone:
+                  value:
+                    attendance_mode: both
+                    kiosk:
+                      site_id: 3
+                      site_name: Riverside Apartments
+                      since: '2026-10-30T06:30:00Z'
+                  summary: Kiosk phone
+                ForemanPhone:
+                  value:
+                    attendance_mode: both
+                    kiosk: null
+                  summary: Foreman phone
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+  /api/v1/checkins/:
+    post:
+      operationId: checkin_create
+      description: |-
+        A badge scanned by the foreman's phone or a kiosk phone (`badge`: the QR text as read), or a worker picked by hand (`worker_id`, not on a kiosk). Optional GPS (`latitude`, `longitude`, `accuracy_m`) is checked against the site's geofence; an optional `photo` (multipart) is kept for the office.
+
+        **Always recorded, never refused for what it says:** an unknown or revoked badge, a worker not on the crew, or a position outside the geofence still answers `201`, with `counted` and `flags` telling the phone what to show (e.g. `unknown_badge` → "Badge not recognised, see the foreman"). Only `counted: true` check-ins feed the roll-call suggestions.
+
+        Attendance mode `self_check_in`: a counted check-in of a crew worker also writes that worker's record on the day's **draft** (`draft_updated: true`), never once the day was submitted. Marks the foreman changed by hand are not overwritten.
+
+        Idempotent: `201` when created; the same `client_uuid` again returns the original check-in with `200` and `Idempotent-Replayed: true` (a photo sent again is ignored). The same `client_uuid` for a different check-in: `409 conflict`. A site you are not on, or a kiosk phone sending for another site: `403`. `at` more than 10 minutes ahead or 31 days old, both or neither of `badge`/`worker_id`, a worker of another company, a bad photo: `400`.
+      summary: Record a check-in or check-out
+      tags:
+      - checkin
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CheckInCreateRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckInCreateRequest'
+            examples:
+              BadgeScanWithGPS:
+                value:
+                  client_uuid: 9d5e1f7a-3b2c-4e8d-a1f0-6c7b8a9d0e12
+                  site_id: 3
+                  direction: in
+                  at: '2026-10-31T07:35:10Z'
+                  badge: PW1:K7Q2M4XR5TBN3WCA.D6HZP2LQ4V7NYE3S
+                  latitude: 6.132101
+                  longitude: 1.223012
+                  accuracy_m: 12
+                summary: Badge scan with GPS
+              ManualCheck-out:
+                value:
+                  client_uuid: 1a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c81
+                  site_id: 3
+                  direction: out
+                  at: '2026-10-31T11:30:00Z'
+                  worker_id: 44
+                summary: Manual check-out
+        required: true
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckIn'
+              examples:
+                Recorded:
+                  value:
+                    id: 5121
+                    client_uuid: 9d5e1f7a-3b2c-4e8d-a1f0-6c7b8a9d0e12
+                    site_id: 3
+                    worker_id: 63
+                    date: '2026-10-31'
+                    direction: in
+                    at: '2026-10-31T07:35:10Z'
+                    received_at: '2026-10-31T07:35:12Z'
+                    source: foreman_scan
+                    latitude: 6.132101
+                    longitude: 1.223012
+                    accuracy_m: 12
+                    distance_m: 32
+                    inside_geofence: true
+                    counted: true
+                    draft_updated: false
+                    flags: []
+                    photo_url: null
+                UnknownBadge,OutsideTheGeofence:
+                  value:
+                    id: 5119
+                    client_uuid: 2c4e6a8b-1d3f-4b5c-9e7a-0f1e2d3c4b02
+                    site_id: 3
+                    worker_id: null
+                    date: '2026-10-31'
+                    direction: in
+                    at: '2026-10-31T07:03:15Z'
+                    received_at: '2026-10-31T07:03:16Z'
+                    source: foreman_scan
+                    latitude: 6.141002
+                    longitude: 1.230113
+                    accuracy_m: 20
+                    distance_m: 1305
+                    inside_geofence: false
+                    counted: false
+                    draft_updated: false
+                    flags:
+                    - unknown_badge
+                    - outside_geofence
+                    photo_url: null
+                  summary: Unknown badge, outside the geofence
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckIn'
+              examples:
+                Recorded:
+                  value:
+                    id: 5121
+                    client_uuid: 9d5e1f7a-3b2c-4e8d-a1f0-6c7b8a9d0e12
+                    site_id: 3
+                    worker_id: 63
+                    date: '2026-10-31'
+                    direction: in
+                    at: '2026-10-31T07:35:10Z'
+                    received_at: '2026-10-31T07:35:12Z'
+                    source: foreman_scan
+                    latitude: 6.132101
+                    longitude: 1.223012
+                    accuracy_m: 12
+                    distance_m: 32
+                    inside_geofence: true
+                    counted: true
+                    draft_updated: false
+                    flags: []
+                    photo_url: null
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                BadgeAndWorkerId:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      non_field_errors:
+                      - Send either badge or worker_id.
+                  summary: Badge and worker_id
+                PhoneClockAhead:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      at:
+                      - This time is in the future. Check the phone's clock.
+                  summary: Phone clock ahead
+                KioskWithoutABadge:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      badge:
+                      - A kiosk only records badge scans.
+                  summary: Kiosk without a badge
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotYourSite:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: Not your site
+                KioskForAnotherSite:
+                  value:
+                    code: permission_denied
+                    message: This phone is a kiosk for another site.
+                    details: {}
+                  summary: Kiosk for another site
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Conflict:
+                  value:
+                    code: conflict
+                    message: This client_uuid was already used for a different request.
+                    details:
+                      client_uuid: 6f1c2b9e-1d1a-4c55-9a52-3f0e8a9d7b10
+                  summary: conflict
+          description: The request conflicts with the current state.
+  /api/v1/files/checkins/{checkin_id}/photo/:
+    get:
+      operationId: file_checkin_photo
+      description: The URL comes as `photo_url` in a check-in. Send the `Authorization`
+        header. `404` if the check-in has no photo or is not on one of your sites.
+      summary: A check-in's photo
+      parameters:
+      - in: header
+        name: If-None-Match
+        schema:
+          type: string
+        description: The `ETag` of the copy the phone already has.
+      - in: path
+        name: checkin_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - files
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+          description: 'The file, with an `ETag`: send it back in `If-None-Match`
+            to get `304 Not Modified` instead of the bytes.'
+        '304':
+          description: 'Not modified: the cached copy is current.'
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotFound:
+                  value:
+                    code: not_found
+                    message: Not found.
+                    details: {}
+                  summary: not_found
+          description: The resource does not exist.
   /api/v1/files/proofs/{payment_id}/:
     get:
       operationId: file_payment_proof
@@ -772,6 +1091,228 @@ paths:
                   summary: locked
           description: 'Locked: the day or pay period is locked, or the device is
             locked after failed PINs.'
+  /api/v1/sites/{site_id}/checkin-setup/:
+    get:
+      operationId: site_checkin_setup
+      description: 'What the phone needs to scan offline: the attendance mode, whether
+        this phone is the site''s kiosk, the geofence, and one entry per **active**
+        badge of today''s crew with the SHA-256 of its QR text. Hash what you scan
+        (`sha256(utf8(text))`, hex) and look it up to show the worker''s name at once;
+        queue the check-in in the outbox either way (the server decides). Refresh
+        it with the crew list.'
+      summary: Check-in setup of a site (badges, geofence, mode)
+      parameters:
+      - in: path
+        name: site_id
+        schema:
+          type: integer
+        description: A site the signed-in foreman is assigned to (from `GET /me/`).
+        required: true
+      tags:
+      - checkin
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckInSetup'
+              examples:
+                Setup:
+                  value:
+                    site_id: 3
+                    attendance_mode: both
+                    late_after: 07:15
+                    kiosk: false
+                    geofence:
+                      latitude: 6.131944
+                      longitude: 1.222778
+                      radius_m: 150
+                    badges:
+                    - worker_id: 63
+                      payload_sha256: 3f0c9a5e2b7d41c8a6e9f1b0d4c7a2e5f8b1c4d7e0a3b6c9d2e5f8a1b4c7d0e3
+                      issued_at: '2026-10-20T09:00:00Z'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotFound:
+                  value:
+                    code: not_found
+                    message: Not found.
+                    details: {}
+                  summary: not_found
+          description: The resource does not exist.
+  /api/v1/sites/{site_id}/checkins/{date}/:
+    get:
+      operationId: site_checkins
+      description: 'Every check-in recorded on the site that work day (all phones
+        and kiosks), oldest first, with `flags` (`duplicate`: the same worker and
+        direction less than 5 minutes after another). Includes the ones that do not
+        count.'
+      summary: A site's check-ins for one day
+      parameters:
+      - in: path
+        name: date
+        schema:
+          type: string
+          format: date
+        description: Work day, ISO 8601 `YYYY-MM-DD`, in the company time zone.
+        required: true
+      - in: path
+        name: site_id
+        schema:
+          type: integer
+        description: A site the signed-in foreman is assigned to (from `GET /me/`).
+        required: true
+      tags:
+      - checkin
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckInList'
+              examples:
+                Morning:
+                  value:
+                    site_id: 3
+                    date: '2026-10-31'
+                    checkins:
+                    - id: 5118
+                      client_uuid: 7f3e2d1c-0b9a-4c8d-b7e6-5f4a3b2c1d01
+                      site_id: 3
+                      worker_id: 51
+                      date: '2026-10-31'
+                      direction: in
+                      at: '2026-10-31T07:02:40Z'
+                      received_at: '2026-10-31T07:02:41Z'
+                      source: kiosk
+                      latitude: 6.132101
+                      longitude: 1.223012
+                      accuracy_m: 12
+                      distance_m: 32
+                      inside_geofence: true
+                      counted: true
+                      draft_updated: false
+                      flags: []
+                      photo_url: https://polaris.example.com/api/v1/files/checkins/5118/photo/
+                    - id: 5119
+                      client_uuid: 2c4e6a8b-1d3f-4b5c-9e7a-0f1e2d3c4b02
+                      site_id: 3
+                      worker_id: null
+                      date: '2026-10-31'
+                      direction: in
+                      at: '2026-10-31T07:03:15Z'
+                      received_at: '2026-10-31T07:03:16Z'
+                      source: foreman_scan
+                      latitude: 6.141002
+                      longitude: 1.230113
+                      accuracy_m: 20
+                      distance_m: 1305
+                      inside_geofence: false
+                      counted: false
+                      draft_updated: false
+                      flags:
+                      - unknown_badge
+                      - outside_geofence
+                      photo_url: null
+                    - id: 5121
+                      client_uuid: 9d5e1f7a-3b2c-4e8d-a1f0-6c7b8a9d0e12
+                      site_id: 3
+                      worker_id: 63
+                      date: '2026-10-31'
+                      direction: in
+                      at: '2026-10-31T07:35:10Z'
+                      received_at: '2026-10-31T07:35:12Z'
+                      source: foreman_scan
+                      latitude: 6.132101
+                      longitude: 1.223012
+                      accuracy_m: 12
+                      distance_m: 32
+                      inside_geofence: true
+                      counted: true
+                      draft_updated: false
+                      flags: []
+                      photo_url: null
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotFound:
+                  value:
+                    code: not_found
+                    message: Not found.
+                    details: {}
+                  summary: not_found
+          description: The resource does not exist.
   /api/v1/sites/{site_id}/crew/:
     get:
       operationId: site_crew
@@ -1663,6 +2204,111 @@ paths:
                       status: locked
           description: 'Locked: the day or pay period is locked, or the device is
             locked after failed PINs.'
+  /api/v1/sites/{site_id}/days/{date}/suggestions/:
+    get:
+      operationId: site_day_suggestions
+      description: |-
+        One suggestion per crew worker with counted check-ins (workers without any are not listed: no suggestion). Rules, in the company time zone: `arrival` = first `in`, `departure` = last `out`; an `in` and an `out` before 12:00, or an `in` at or after 12:00 → `half_day`; first `in` after `late_after` → `late`; else `present`. Only an `out` → `status: null`.
+
+        The phone pre-fills the roll call with them (modes `both` and `self_check_in`); the foreman confirms and submits as usual with `PUT .../records/`. `day_status` says whether the day can still change.
+      summary: Roll-call suggestions from check-ins
+      parameters:
+      - in: path
+        name: date
+        schema:
+          type: string
+          format: date
+        description: Work day, ISO 8601 `YYYY-MM-DD`, in the company time zone.
+        required: true
+      - in: path
+        name: site_id
+        schema:
+          type: integer
+        description: A site the signed-in foreman is assigned to (from `GET /me/`).
+        required: true
+      tags:
+      - checkin
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RollCallSuggestions'
+              examples:
+                Suggestions:
+                  value:
+                    site_id: 3
+                    date: '2026-10-31'
+                    attendance_mode: both
+                    late_after: 07:15
+                    day_status: not_started
+                    suggestions:
+                    - worker_id: 44
+                      status: half_day
+                      arrival: 07:05
+                      departure: '11:30'
+                      first_in_at: '2026-10-31T07:05:02Z'
+                      last_out_at: '2026-10-31T11:30:00Z'
+                      checkin_count: 2
+                    - worker_id: 51
+                      status: present
+                      arrival: 07:02
+                      departure: null
+                      first_in_at: '2026-10-31T07:02:40Z'
+                      last_out_at: null
+                      checkin_count: 1
+                    - worker_id: 63
+                      status: late
+                      arrival: 07:35
+                      departure: null
+                      first_in_at: '2026-10-31T07:35:10Z'
+                      last_out_at: null
+                      checkin_count: 1
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotFound:
+                  value:
+                    code: not_found
+                    message: Not found.
+                    details: {}
+                  summary: not_found
+          description: The resource does not exist.
   /api/v1/sites/{site_id}/payouts/{date}/:
     get:
       operationId: site_payout
@@ -2106,6 +2752,16 @@ components:
       - submitted_at
       - submitted_by
       - updated_at
+    AttendanceModeEnum:
+      enum:
+      - foreman_roll_call
+      - self_check_in
+      - both
+      type: string
+      description: |-
+        * `foreman_roll_call` - Foreman roll call
+        * `self_check_in` - Self check-in
+        * `both` - Both
     AttendanceRecord:
       type: object
       properties:
@@ -2174,6 +2830,238 @@ components:
         * `absent` - Absent
         * `half_day` - Half day
         * `late` - Late
+    BadgeHash:
+      type: object
+      properties:
+        worker_id:
+          type: integer
+        payload_sha256:
+          type: string
+          description: Hex SHA-256 of the badge's QR text (UTF-8, as printed, with
+            `PW1:`).
+        issued_at:
+          type: string
+          format: date-time
+      required:
+      - issued_at
+      - payload_sha256
+      - worker_id
+    CheckIn:
+      type: object
+      properties:
+        id:
+          type: integer
+        client_uuid:
+          type: string
+          format: uuid
+        site_id:
+          type: integer
+        worker_id:
+          type: integer
+          nullable: true
+          description: '`null` for a badge the server does not know.'
+        date:
+          type: string
+          format: date
+          description: Work day of `at` in the company time zone.
+        direction:
+          $ref: '#/components/schemas/DirectionEnum'
+        at:
+          type: string
+          format: date-time
+        received_at:
+          type: string
+          format: date-time
+        source:
+          $ref: '#/components/schemas/SourceEnum'
+        latitude:
+          type: number
+          format: double
+          maximum: 1000
+          minimum: -1000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 1000
+          minimum: -1000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          nullable: true
+        accuracy_m:
+          type: integer
+          nullable: true
+        distance_m:
+          type: integer
+          nullable: true
+          description: 'Distance from the geofence centre (no GPS or no geofence:
+            null).'
+        inside_geofence:
+          type: boolean
+          nullable: true
+          description: '`null` without GPS or when the site has no geofence.'
+        counted:
+          type: boolean
+          description: Counts towards the roll call (known worker, badge not revoked).
+        draft_updated:
+          type: boolean
+          description: '`self_check_in` mode: this check-in wrote the worker''s draft
+            record.'
+        flags:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlagsEnum'
+        photo_url:
+          type: string
+          format: uri
+          nullable: true
+          description: Protected download (send the `Authorization` header); null
+            without a photo.
+      required:
+      - accuracy_m
+      - at
+      - client_uuid
+      - counted
+      - date
+      - direction
+      - distance_m
+      - draft_updated
+      - flags
+      - id
+      - inside_geofence
+      - latitude
+      - longitude
+      - photo_url
+      - received_at
+      - site_id
+      - source
+      - worker_id
+    CheckInCreateRequest:
+      type: object
+      properties:
+        client_uuid:
+          type: string
+          format: uuid
+          description: Made on the phone when the user acts (UUID v4). Sending the
+            same client_uuid again returns the original result instead of applying
+            the write twice.
+        site_id:
+          type: integer
+          description: A site from `GET /me/`.
+        direction:
+          $ref: '#/components/schemas/DirectionEnum'
+        at:
+          type: string
+          format: date-time
+          description: Phone clock when the badge was scanned (ISO 8601 with offset).
+            At most 10 minutes ahead of the server and 31 days old. Decides the work
+            day.
+        badge:
+          type: string
+          nullable: true
+          minLength: 1
+          description: The scanned QR text exactly as read, e.g. `PW1:K7Q2M4XR5TBN3WCA.D6HZP2LQ4V7NYE3S`
+            (the `PW1:` prefix may be left out). Send this **or** `worker_id`. Kiosk
+            phones must send `badge`.
+          maxLength: 200
+        worker_id:
+          type: integer
+          nullable: true
+          description: 'Manual check-in: a worker picked by the foreman (no badge).
+            Send this **or** `badge`.'
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+          description: GPS latitude in decimal degrees (WGS 84), 6 decimals.
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
+          description: GPS longitude in decimal degrees (WGS 84), 6 decimals.
+        accuracy_m:
+          type: integer
+          maximum: 100000
+          minimum: 0
+          nullable: true
+          description: GPS accuracy radius in metres, as the phone reports it.
+        photo:
+          type: string
+          format: binary
+          nullable: true
+          description: 'Optional photo of the worker at the scan: jpg, jpeg, png or
+            webp, at most 5 MB (aim for ≤ 1280 px, a few hundred KB). Send `multipart/form-data`
+            with a photo, JSON otherwise.'
+          pattern: (?:jpg|jpeg|png|webp)$
+      required:
+      - at
+      - client_uuid
+      - direction
+      - site_id
+    CheckInDevice:
+      type: object
+      properties:
+        attendance_mode:
+          $ref: '#/components/schemas/AttendanceModeEnum'
+        kiosk:
+          allOf:
+          - $ref: '#/components/schemas/Kiosk'
+          nullable: true
+      required:
+      - attendance_mode
+      - kiosk
+    CheckInList:
+      type: object
+      properties:
+        site_id:
+          type: integer
+        date:
+          type: string
+          format: date
+        checkins:
+          type: array
+          items:
+            $ref: '#/components/schemas/CheckIn'
+      required:
+      - checkins
+      - date
+      - site_id
+    CheckInSetup:
+      type: object
+      properties:
+        site_id:
+          type: integer
+        attendance_mode:
+          $ref: '#/components/schemas/AttendanceModeEnum'
+        late_after:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: 07:00
+          description: Local wall-clock time on the site, 24-hour `HH:MM`.
+        kiosk:
+          type: boolean
+          description: This phone is the site's kiosk.
+        geofence:
+          allOf:
+          - $ref: '#/components/schemas/Geofence'
+          nullable: true
+        badges:
+          type: array
+          items:
+            $ref: '#/components/schemas/BadgeHash'
+      required:
+      - attendance_mode
+      - badges
+      - geofence
+      - kiosk
+      - late_after
+      - site_id
     Company:
       type: object
       properties:
@@ -2405,6 +3293,14 @@ components:
       - device_id
       - id
       - name
+    DirectionEnum:
+      enum:
+      - in
+      - out
+      type: string
+      description: |-
+        * `in` - In
+        * `out` - Out
     Error:
       type: object
       properties:
@@ -2467,6 +3363,43 @@ components:
         * `unsupported_media_type` - The request content type is not supported.
         * `not_acceptable` - The Accept header cannot be satisfied.
         * `server_error` - Unexpected server error.
+    FlagsEnum:
+      enum:
+      - unknown_badge
+      - revoked_badge
+      - not_on_crew
+      - outside_geofence
+      - duplicate
+      type: string
+      description: |-
+        * `unknown_badge` - The badge is not known (made up, damaged, or another company's)
+        * `revoked_badge` - The badge was revoked; the check-in does not count
+        * `not_on_crew` - The worker is not on this site's crew that day
+        * `outside_geofence` - The GPS position is outside the site's geofence
+        * `duplicate` - Same worker and direction less than 5 minutes after another
+    Geofence:
+      type: object
+      properties:
+        latitude:
+          type: number
+          format: double
+          maximum: 1000
+          minimum: -1000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        longitude:
+          type: number
+          format: double
+          maximum: 1000
+          minimum: -1000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        radius_m:
+          type: integer
+      required:
+      - latitude
+      - longitude
+      - radius_m
     Health:
       type: object
       properties:
@@ -2474,6 +3407,20 @@ components:
           type: string
       required:
       - status
+    Kiosk:
+      type: object
+      properties:
+        site_id:
+          type: integer
+        site_name:
+          type: string
+        since:
+          type: string
+          format: date-time
+      required:
+      - since
+      - site_id
+      - site_name
     LanguageEnum:
       enum:
       - en
@@ -2913,6 +3860,90 @@ components:
       - client_uuid
       - status
       - worker_id
+    RollCallSuggestion:
+      type: object
+      properties:
+        worker_id:
+          type: integer
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AttendanceStatusEnum'
+          nullable: true
+          description: |-
+            `null` when the worker only checked out: let the foreman decide.
+
+            * `present` - Present
+            * `absent` - Absent
+            * `half_day` - Half day
+            * `late` - Late
+        arrival:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: 07:00
+          description: Local wall-clock time on the site, 24-hour `HH:MM`.
+          nullable: true
+        departure:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: 07:00
+          description: Local wall-clock time on the site, 24-hour `HH:MM`.
+          nullable: true
+        first_in_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_out_at:
+          type: string
+          format: date-time
+          nullable: true
+        checkin_count:
+          type: integer
+      required:
+      - arrival
+      - checkin_count
+      - departure
+      - first_in_at
+      - last_out_at
+      - status
+      - worker_id
+    RollCallSuggestions:
+      type: object
+      properties:
+        site_id:
+          type: integer
+        date:
+          type: string
+          format: date
+        attendance_mode:
+          $ref: '#/components/schemas/AttendanceModeEnum'
+        late_after:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: 07:00
+          description: Local wall-clock time on the site, 24-hour `HH:MM`.
+        day_status:
+          $ref: '#/components/schemas/DayStatusEnum'
+        suggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RollCallSuggestion'
+      required:
+      - attendance_mode
+      - date
+      - day_status
+      - late_after
+      - site_id
+      - suggestions
+    SourceEnum:
+      enum:
+      - foreman_scan
+      - kiosk
+      - manual
+      type: string
+      description: |-
+        * `foreman_scan` - Badge scanned by the foreman's phone
+        * `kiosk` - Badge scanned on a kiosk phone
+        * `manual` - Worker picked by hand on the foreman's phone
     SubmitDayRequest:
       type: object
       properties:

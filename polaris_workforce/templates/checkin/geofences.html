@@ -1,0 +1,38 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Geofences" %} · Polaris Workforce{% endblock %}
+{% block page_title %}{% translate "Geofences" %}{% endblock %}
+{% block page_meta %}{% translate "A circle around each site. Check-ins whose GPS position is outside it are flagged for you; they are not refused." %}{% endblock %}
+
+{% block content %}
+{% include "checkin/_tabs.html" with active="geofences" only %}
+
+<section aria-label="{% translate 'Geofences' %}" class="flex flex-col">
+  {% if rows %}
+  <div class="overflow-x-auto rounded-control border border-line bg-white">
+    <table class="w-full min-w-[640px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Centre" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Radius" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel"><span class="sr-only">{% translate "Actions" %}</span></th>
+      </tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3 font-semibold">{{ row.site.name }}</td>
+          <td class="px-4 py-3 tabular-nums">{% if row.geofence %}{{ row.geofence.latitude }}, {{ row.geofence.longitude }}{% else %}<span class="text-steel">{% translate "Not set" %}</span>{% endif %}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{% if row.geofence %}{{ row.geofence.radius_m }} m{% else %}—{% endif %}</td>
+          <td class="px-4 py-3 text-right">{% if row.can_edit %}<a href="{% url 'checkin:geofence' row.site.pk %}" class="font-semibold">{% if row.geofence %}{% translate "Edit" %}{% else %}{% translate "Set" %}{% endif %}</a>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    {% translate "No sites" as empty_title %}{% translate "You have no sites to show." as empty_message %}
+    {% include "components/empty_state.html" with icon="sites" title=empty_title message=empty_message only %}
+  {% endif %}
+</section>
+{% endblock %}

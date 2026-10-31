@@ -1,0 +1,41 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Check-in" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% blocktranslate with mode=mode %}Attendance mode: {{ mode }}{% endblocktranslate %}{% endblock %}
+{% block page_title %}{% translate "Check-in" %}{% endblock %}
+{% block page_meta %}{% if mode_value == "foreman_roll_call" %}{% translate "Check-ins are recorded and suggested; the foreman takes the roll call." %}{% elif mode_value == "both" %}{% translate "Check-ins pre-fill the roll call on the phone; the foreman confirms and submits." %}{% else %}{% translate "Check-ins write the draft roll call; the foreman reviews and submits." %}{% endif %}{% endblock %}
+
+{% block content %}
+{% include "checkin/_tabs.html" with active="home" only %}
+
+<section aria-label="{% translate 'Sites today' %}" class="flex flex-col">
+  {% if rows %}
+  <div class="overflow-x-auto rounded-control border border-line bg-white">
+    <table class="w-full min-w-[640px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Check-ins today" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Workers" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Geofence" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Kiosks" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3"><a href="{% url 'checkin:site_day' row.site.pk today %}" class="font-semibold">{{ row.site.name }}</a></td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.checkins }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.workers }}</td>
+          <td class="px-4 py-3">{% if row.geofence %}{% translate "Set" as gf_label %}{% include "components/status_badge.html" with status="active" label=gf_label only %}{% else %}<a href="{% url 'checkin:geofence' row.site.pk %}">{% translate "Set a geofence" %}</a>{% endif %}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.kiosks }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    {% translate "No sites" as empty_title %}{% translate "You have no sites to show." as empty_message %}
+    {% include "components/empty_state.html" with icon="sites" title=empty_title message=empty_message only %}
+  {% endif %}
+</section>
+{% endblock %}
