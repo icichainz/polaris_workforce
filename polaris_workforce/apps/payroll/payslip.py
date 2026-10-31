@@ -66,6 +66,7 @@ def render_payslip(line: PayLine, *, printed_at: datetime.datetime | None = None
         line.adjustment_applications.select_related("adjustment__source_line__period")
     )
     raised = list(line.raised_adjustments.select_related("applied_to__period"))
+    bonuses = list(line.bonuses.order_by("date", "pk"))
 
     doc = Document(
         title=_("Pay statement") + f" {payslip_number(line)}", author=company.company_name
@@ -85,7 +86,9 @@ def render_payslip(line: PayLine, *, printed_at: datetime.datetime | None = None
     doc.line(LEFT, y, RIGHT, y, width=1.5, color=INK)
 
     # Worker block: 3 columns × 2 rows.
-    if last_day:
+    if last_day and last_day.get("pay_type") == "piece":
+        rate = _("Piece work")
+    elif last_day:
         unit = _("hour") if last_day.get("pay_type") == "hourly" else _("day")
         rate = f"{money(last_day.get('rate', 0))} / {unit}"
     else:
@@ -139,6 +142,9 @@ def render_payslip(line: PayLine, *, printed_at: datetime.datetime | None = None
         status_text = _status_word(status)
         if status == "late" and day.get("late_minutes"):
             status_text += " · " + _("%(minutes)s min") % {"minutes": day["late_minutes"]}
+        rules_text = labels.day_rules_label(day)
+        if rules_text:
+            status_text += " · " + rules_text
         doc.text(columns[1][0] + letter_width + 5, y + 15, status_text, size=9.5)
         doc.text(columns[2][0], y + 15, worked, size=9.5, align="right")
         doc.text(
@@ -155,6 +161,20 @@ def render_payslip(line: PayLine, *, printed_at: datetime.datetime | None = None
         doc.text(LEFT + 8, y + 15, _("No attendance in this period."), size=9.5, color=STEEL)
         y += 22
 
+    # Piece work paid on this line.
+    for piece in line.pieces or []:
+        if y > 700:
+            doc.add_page()
+            y = 64.0
+        date = datetime.date.fromisoformat(piece["date"])
+        doc.text(columns[0][0], y + 15, labels.short_date(date), size=9.5)
+        doc.text(columns[1][0], y + 15, labels.piece_label(piece, decimals), size=9.5)
+        doc.text(
+            columns[4][0], y + 15, money(piece.get("amount", 0), False), size=9.5, align="right"
+        )
+        y += 22
+        doc.line(LEFT, y, RIGHT, y, color=LINE_SOFT)
+
     # Totals, right-aligned box.
     y += 18
     box_x = RIGHT - 250
@@ -163,9 +183,23 @@ def render_payslip(line: PayLine, *, printed_at: datetime.datetime | None = None
         totals.append((_("Hours"), labels.number(line.hours), False, INK))
     if line.overtime_hours:
         totals.append((_("Overtime hours"), labels.number(line.overtime_hours), False, INK))
+    if line.piece_amount:
+        totals.append((_("Piece work"), money(line.piece_amount), False, INK))
+    for bonus in bonuses:
+        totals.append(
+            (_("Bonus · %(reason)s") % {"reason": bonus.reason}, money(bonus.amount), False, INK)
+        )
     totals.append((_("Gross"), money(line.gross), False, INK))
     if line.other_deductions:
         totals.append((_("Other deductions"), "− " + money(line.other_deductions), False, INK))
+    # Statutory deductions, employee share, one row per rule.
+    for item in line.deductions or []:
+        if item.get("employee"):
+            label = _("%(name)s (%(percent)s %%)") % {
+                "name": item.get("name", ""),
+                "percent": labels.number(item.get("employee_percent", "0")),
+            }
+            totals.append((label, "− " + money(item["employee"]), False, INK))
     totals.append(
         (
             _("Advance repaid"),

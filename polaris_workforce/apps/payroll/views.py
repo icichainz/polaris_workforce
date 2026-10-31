@@ -17,7 +17,7 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
 
-from apps.accounts.permissions import can_manage_site, get_site_or_403, scoped_sites
+from apps.accounts.permissions import can_manage_site, get_site_or_403, is_admin, scoped_sites
 from apps.api.exceptions import PolarisAPIException
 from apps.api.idempotency import run_once
 from apps.core import dates
@@ -106,9 +106,11 @@ def periods(request):
         .annotate(
             workers=Count("lines", distinct=True),
             gross=Sum("lines__gross"),
-            # Advances and other deductions, less pay adjustments (gross − this = net).
+            # Advances, statutory and other deductions, less pay adjustments
+            # (gross − this = net).
             deductions=Sum("lines__advance_deduction")
             + Sum("lines__other_deductions")
+            + Sum("lines__statutory_deductions")
             - Sum("lines__adjustment"),
             net=Sum("lines__net"),
         )
@@ -168,6 +170,7 @@ def periods(request):
             "left": (week_totals["net"] or 0) - paid_out,
         },
         "frequency_note": _frequency_note(company, sites),
+        "can_edit_rules": is_admin(request.user),
     }
     return render(request, "payroll/periods.html", context)
 

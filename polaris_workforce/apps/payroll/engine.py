@@ -5,8 +5,9 @@ inputs and store the results. Everything here is deterministic and exact:
 
 * Money is an ``int`` in the currency's smallest unit (``apps.core.money``). Rates are
   minor units per day or per hour.
-* Intermediate amounts are exact fractions. A pay line is rounded **once**, half up, to
-  a whole minor unit, at the end of the line (``round_half_up``).
+* Intermediate amounts are exact fractions. A pay line's time pay (its days) and its
+  piece work are each rounded **once**, half up, to a whole minor unit, at the end of
+  the line (``round_half_up``); each statutory deduction is rounded once too.
 * Units (days) and hours are reported as ``Decimal`` with 2 places, for display and
   storage; the money is computed from the exact values, never from the rounded ones.
 
@@ -30,9 +31,40 @@ Overtime: hours above ``overtime_after_hours`` in a day are paid × ``overtime_m
 For hourly workers that applies to their hours; daily-rate workers earn overtime only when
 both times are recorded, at ``daily rate / scheduled hours`` per hour.
 
+Piece-rate workers (pay type ``piece``) earn nothing for their time: they are paid by
+their piece-work entries (below). Their days still count as days worked.
+
+Night hours (``night_start``–``night_end``, may cross midnight): when both times are
+recorded, the hours of the shift inside the window (at most the hours worked) earn a
+premium of ``hourly rate × night hours × (night_multiplier − 1)``; the hourly rate of a
+daily-rate worker is ``daily rate / scheduled hours``. Overtime and night premiums add up.
+
+Day multipliers: a Sunday's time pay (regular, overtime and night premium) is × the
+``sunday_multiplier``, a public holiday's × the ``holiday_multiplier``; a public holiday
+on a Sunday takes the larger of the two, never both.
+
+Stoppage days (rain, no materials…): a worker present on a day the site was stopped earns
+``percent`` % of their day's pay (daily rate, or hourly rate × scheduled hours) × units,
+or a ``fixed`` amount × units, instead of their time pay: no overtime, night premium or
+day multiplier. Piece-rate workers get the fixed amount only.
+
+Pay line, in this order (``compute_line``):
+
+1. **Gross** = time pay (the days, rounded once) + piece work (Σ quantity × unit rate,
+   rounded once) + bonuses (one-off amounts settled on this pay).
+2. **Other deductions** (capped at the gross).
+3. **Statutory deductions** (``statutory_deductions``): each active rule matching the
+   line's pay type (the pay type of its last day), in ``order``, takes ``employee %`` of
+   its base, rounded half up; the base is the gross up to the rule's ``ceiling``, and 0
+   when the gross is under its ``floor``. Each is capped at what is left of
+   ``gross − other deductions``, so net is never negative. The ``employer %`` of the same
+   base is reported (employer cost), never deducted.
+4. **Advances**, then 5. **pay adjustments**, as below, from what is left.
+
 Advances (``compute_line``): one deduction per pay, from the oldest open advance first:
-its ``deduction_per_pay``, capped at its balance and at ``gross − other deductions``, so
-net is never negative. The next advance starts when the previous one is repaid.
+its ``deduction_per_pay``, capped at its balance and at
+``gross − other deductions − statutory deductions``, so net is never negative. The next
+advance starts when the previous one is repaid.
 
 Pay adjustments (``compute_line``, ``settle_adjustments``): a day corrected after it was
 paid leaves a difference to settle on the worker's next pay. A positive one (underpaid)
@@ -41,7 +73,7 @@ ones (overpaid) are recovered after the advance deduction, oldest first, from wh
 left, so net is never negative; whatever does not fit stays on the adjustment and is
 recovered from the following pays.
 
-    net = gross − other deductions − advance deduction + adjustment
+    net = gross − other deductions − statutory deductions − advance deduction + adjustment
 """
 
 from __future__ import annotations
@@ -62,7 +94,11 @@ STATUSES = (PRESENT, ABSENT, HALF_DAY, LATE)
 
 DAILY = "daily"
 HOURLY = "hourly"
-PAY_TYPES = (DAILY, HOURLY)
+PIECE = "piece"
+PAY_TYPES = (DAILY, HOURLY, PIECE)
+
+SUNDAY = "sunday"
+HOLIDAY = "holiday"
 
 FULL_DAY_FLAGGED = "full_day_flagged"
 DEDUCT_MINUTES = "deduct_minutes"
@@ -124,6 +160,11 @@ def span_minutes(start: datetime.time, end: datetime.time) -> int:
 # --- rules and inputs --------------------------------------------------------------------
 
 
+def _check_multiplier(value, name: str) -> None:
+    if _fraction(value) < 1:
+        raise ValueError(f"{name} must be 1 or more")
+
+
 @dataclass(frozen=True)
 class PayRules:
     """The settings the engine needs, already resolved for the site and worker."""
@@ -135,6 +176,11 @@ class PayRules:
     break_minutes: int = 60
     overtime_after_hours: Decimal | None = Decimal("9")
     overtime_multiplier: Decimal = Decimal("1.5")
+    sunday_multiplier: Decimal = Decimal("1")
+    holiday_multiplier: Decimal = Decimal("1")
+    night_start: datetime.time | None = None
+    night_end: datetime.time | None = None
+    night_multiplier: Decimal = Decimal("1")
 
     def __post_init__(self):
         if self.late_rule not in LATE_RULES:
@@ -147,16 +193,46 @@ class PayRules:
             raise ValueError("overtime_multiplier must not be negative")
         if self.overtime_after_hours is not None and _fraction(self.overtime_after_hours) < 0:
             raise ValueError("overtime_after_hours must not be negative")
+        _check_multiplier(self.sunday_multiplier, "sunday_multiplier")
+        _check_multiplier(self.holiday_multiplier, "holiday_multiplier")
+        _check_multiplier(self.night_multiplier, "night_multiplier")
+        if (self.night_start is None) != (self.night_end is None):
+            raise ValueError("set both ends of the night window, or neither")
+        if self.night_start is not None and self.night_start == self.night_end:
+            raise ValueError("the night window must not be empty")
 
     @property
     def scheduled_minutes(self) -> int:
         """Paid minutes in a normal day: work_end − work_start − break (never negative)."""
         return max(0, span_minutes(self.work_start, self.work_end) - self.break_minutes)
 
+    @property
+    def has_night_window(self) -> bool:
+        return self.night_start is not None and self.night_end is not None
+
+
+@dataclass(frozen=True)
+class Stoppage:
+    """The site was stopped that day (rain…): pay ``percent`` % of the day, or ``fixed``."""
+
+    percent: Decimal | None = None
+    fixed: int | None = None
+
+    def __post_init__(self):
+        if (self.percent is None) == (self.fixed is None):
+            raise ValueError("a stoppage pays a percentage or a fixed amount (one of them)")
+        if self.percent is not None and not 0 <= _fraction(self.percent) <= 100:
+            raise ValueError("percent must be between 0 and 100")
+        if self.fixed is not None:
+            _check_money(self.fixed, "fixed")
+
 
 @dataclass(frozen=True)
 class DayInput:
-    """One attendance record with the pay rate in effect that date."""
+    """One attendance record with the pay rate in effect that date.
+
+    ``holiday``: the date is a public holiday. ``stoppage``: the site was stopped that day.
+    """
 
     date: datetime.date
     status: str
@@ -164,6 +240,8 @@ class DayInput:
     rate: int
     arrival: datetime.time | None = None
     departure: datetime.time | None = None
+    holiday: bool = False
+    stoppage: Stoppage | None = None
 
     def __post_init__(self):
         if self.status not in STATUSES:
@@ -184,6 +262,10 @@ class DayResult:
     overtime_hours: Fraction
     late_minutes: int
     amount: Fraction  # exact, not rounded
+    night_hours: Fraction = Fraction(0)
+    multiplier: Fraction = Fraction(1)  # Sunday / public holiday multiplier applied
+    day_kind: str = ""  # SUNDAY or HOLIDAY when ``multiplier`` comes from it
+    stoppage: bool = False
 
     @property
     def gross(self) -> int:
@@ -191,8 +273,12 @@ class DayResult:
         return round_half_up(self.amount)
 
     def as_dict(self) -> dict:
-        """JSON-friendly snapshot (stored on the pay line, shown on the payslip)."""
-        return {
+        """JSON-friendly snapshot (stored on the pay line, shown on the payslip).
+
+        The keys of the pay rules (night hours, multiplier, stoppage) are only present
+        when they changed the day, so a plain day keeps its plain snapshot.
+        """
+        data = {
             "date": self.date.isoformat(),
             "status": self.status,
             "pay_type": self.pay_type,
@@ -202,6 +288,131 @@ class DayResult:
             "overtime_hours": str(to_decimal(self.overtime_hours)),
             "late_minutes": self.late_minutes,
             "gross": self.gross,
+        }
+        if self.night_hours:
+            data["night_hours"] = str(to_decimal(self.night_hours))
+        if self.multiplier != 1:
+            data["multiplier"] = str(to_decimal(self.multiplier))
+            data["day_kind"] = self.day_kind
+        if self.stoppage:
+            data["stoppage"] = True
+        return data
+
+
+@dataclass(frozen=True)
+class PieceInput:
+    """A piece-work entry: ``quantity`` units of a task at ``unit_rate`` each."""
+
+    entry_id: int
+    date: datetime.date
+    quantity: Decimal
+    unit_rate: int
+    task: str = ""
+    unit: str = ""
+
+    def __post_init__(self):
+        if _fraction(self.quantity) < 0:
+            raise ValueError("quantity must not be negative")
+        _check_money(self.unit_rate, "unit_rate")
+
+    @property
+    def amount(self) -> Fraction:
+        return _fraction(self.quantity) * self.unit_rate
+
+    def as_dict(self) -> dict:
+        return {
+            "entry_id": self.entry_id,
+            "date": self.date.isoformat(),
+            "task": self.task,
+            "unit": self.unit,
+            "quantity": str(to_decimal(_fraction(self.quantity))),
+            "unit_rate": self.unit_rate,
+            "amount": round_half_up(self.amount),
+        }
+
+
+@dataclass(frozen=True)
+class BonusInput:
+    """A one-off bonus to add to this pay."""
+
+    bonus_id: int
+    amount: int
+
+    def __post_init__(self):
+        _check_money(self.amount, "amount")
+
+
+@dataclass(frozen=True)
+class DeductionRuleInput:
+    """A statutory deduction rule (see the module docstring, "Pay line" step 3).
+
+    Percentages are of the base; ``floor``/``ceiling`` are minor units per pay;
+    ``pay_types`` empty means every pay type; ``active_from``/``active_to`` (inclusive)
+    are compared with the pay day.
+    """
+
+    rule_id: int
+    name: str
+    employee_percent: Decimal
+    employer_percent: Decimal = Decimal("0")
+    floor: int | None = None
+    ceiling: int | None = None
+    pay_types: tuple[str, ...] = ()
+    active_from: datetime.date | None = None
+    active_to: datetime.date | None = None
+    order: int = 0
+
+    def __post_init__(self):
+        for name in ("employee_percent", "employer_percent"):
+            if not 0 <= _fraction(getattr(self, name)) <= 100:
+                raise ValueError(f"{name} must be between 0 and 100")
+        for name in ("floor", "ceiling"):
+            if getattr(self, name) is not None:
+                _check_money(getattr(self, name), name)
+        if self.floor is not None and self.ceiling is not None and self.ceiling < self.floor:
+            raise ValueError("ceiling must not be under the floor")
+        unknown = set(self.pay_types) - set(PAY_TYPES)
+        if unknown:
+            raise ValueError(f"unknown pay types {sorted(unknown)!r}")
+
+    def applies(self, pay_day: datetime.date | None, pay_type: str | None) -> bool:
+        if self.pay_types and pay_type not in self.pay_types:
+            return False
+        if pay_day is not None:
+            if self.active_from is not None and pay_day < self.active_from:
+                return False
+            if self.active_to is not None and pay_day > self.active_to:
+                return False
+        return True
+
+    def base(self, gross: int) -> int:
+        """The part of the gross the percentages apply to."""
+        if self.floor is not None and gross < self.floor:
+            return 0
+        if self.ceiling is not None:
+            return min(gross, self.ceiling)
+        return gross
+
+
+@dataclass(frozen=True)
+class DeductionResult:
+    rule_id: int
+    name: str
+    base: int
+    employee_percent: Decimal
+    employee: int  # deducted from the pay
+    employer_percent: Decimal
+    employer: int  # employer cost, not deducted
+
+    def as_dict(self) -> dict:
+        return {
+            "rule_id": self.rule_id,
+            "name": self.name,
+            "base": self.base,
+            "employee_percent": str(self.employee_percent),
+            "employee": self.employee,
+            "employer_percent": str(self.employer_percent),
+            "employer": self.employer,
         }
 
 
@@ -247,6 +458,14 @@ class LineResult:
     net: int
     adjustment: int = 0  # signed: added − recovered
     adjustments: tuple[tuple[int, int], ...] = ()  # (adjustment_id, signed amount applied)
+    time_pay: int = 0  # the days (gross = time_pay + piece_amount + bonus_amount)
+    piece_amount: int = 0
+    bonus_amount: int = 0
+    pieces: tuple[PieceInput, ...] = ()
+    bonuses: tuple[tuple[int, int], ...] = ()  # (bonus_id, amount)
+    statutory: int = 0  # employee share of the statutory deductions, deducted
+    employer: int = 0  # employer share, reported only
+    deductions: tuple[DeductionResult, ...] = ()
 
 
 # --- per day -----------------------------------------------------------------------------
@@ -276,6 +495,34 @@ def day_units(status: str, rules: PayRules, arrival: datetime.time | None = None
     raise ValueError(f"unknown attendance status {status!r}")
 
 
+def night_minutes(
+    arrival: datetime.time,
+    departure: datetime.time,
+    night_start: datetime.time,
+    night_end: datetime.time,
+) -> int:
+    """Minutes of the shift ``arrival → departure`` inside the nightly window
+    ``night_start → night_end``. Either may cross midnight."""
+    start = _minutes(arrival)
+    end = start + span_minutes(arrival, departure)
+    window_start = _minutes(night_start)
+    window_end = window_start + span_minutes(night_start, night_end)
+    total = 0
+    for shift in (-24 * 60, 0, 24 * 60):  # the shift spans at most two calendar days
+        total += max(0, min(end, window_end + shift) - max(start, window_start + shift))
+    return total
+
+
+def day_multiplier(day: DayInput, rules: PayRules) -> tuple[Fraction, str]:
+    """``(multiplier, kind)`` for the day: the larger of Sunday and public holiday."""
+    best, kind = Fraction(1), ""
+    if day.date.isoweekday() == 7 and _fraction(rules.sunday_multiplier) > best:
+        best, kind = _fraction(rules.sunday_multiplier), SUNDAY
+    if day.holiday and _fraction(rules.holiday_multiplier) > best:
+        best, kind = _fraction(rules.holiday_multiplier), HOLIDAY
+    return best, kind
+
+
 def _split_overtime(hours: Fraction, rules: PayRules) -> tuple[Fraction, Fraction]:
     if rules.overtime_after_hours is None:
         return hours, Fraction(0)
@@ -295,6 +542,19 @@ def _measured_hours(day: DayInput, rules: PayRules, *, from_work_start: bool) ->
     return Fraction(max(0, minutes), 60)
 
 
+def _stoppage_amount(day: DayInput, rules: PayRules, units: Fraction) -> Fraction:
+    stoppage = day.stoppage
+    if stoppage.fixed is not None:
+        return stoppage.fixed * units
+    if day.pay_type == DAILY:
+        full_day = Fraction(day.rate)
+    elif day.pay_type == HOURLY:
+        full_day = day.rate * Fraction(rules.scheduled_minutes, 60)
+    else:
+        full_day = Fraction(0)
+    return full_day * units * _fraction(stoppage.percent) / 100
+
+
 def compute_day(day: DayInput, rules: PayRules) -> DayResult:
     units = day_units(day.status, rules, day.arrival)
     lateness = late_minutes(day.arrival, rules) if day.status == LATE else 0
@@ -305,6 +565,26 @@ def compute_day(day: DayInput, rules: PayRules) -> DayResult:
         hours = Fraction(0) if day.pay_type == HOURLY else None
         return DayResult(
             day.date, day.status, day.pay_type, day.rate, units, hours, Fraction(0), 0, Fraction(0)
+        )
+
+    if day.stoppage is not None:
+        amount = _stoppage_amount(day, rules, units)
+        return DayResult(
+            day.date,
+            day.status,
+            day.pay_type,
+            day.rate,
+            units,
+            None,
+            Fraction(0),
+            lateness,
+            amount,
+            stoppage=True,
+        )
+
+    if day.pay_type == PIECE:  # paid by the piece-work entries
+        return DayResult(
+            day.date, day.status, day.pay_type, day.rate, units, None, Fraction(0), lateness, 0
         )
 
     if day.pay_type == HOURLY:
@@ -318,24 +598,45 @@ def compute_day(day: DayInput, rules: PayRules) -> DayResult:
             hours = Fraction(rules.scheduled_minutes, 60) * units
         regular, overtime = _split_overtime(hours, rules)
         amount = day.rate * regular + day.rate * overtime * multiplier
-        return DayResult(
-            day.date, day.status, day.pay_type, day.rate, units, hours, overtime, lateness, amount
+        hourly_rate = Fraction(day.rate)
+        worked = hours
+    else:
+        # Daily rate.
+        amount = day.rate * units
+        hours = None
+        overtime = Fraction(0)
+        hourly_rate = (
+            Fraction(day.rate * 60, rules.scheduled_minutes) if rules.scheduled_minutes else None
         )
+        worked = _measured_hours(day, rules, from_work_start=False) if has_times else None
+        if has_times and day.status in (PRESENT, LATE):
+            hours = worked
+            _regular, overtime = _split_overtime(hours, rules)
+            if overtime and hourly_rate is not None:
+                amount += hourly_rate * overtime * multiplier
+            else:
+                overtime = Fraction(0)
 
-    # Daily rate.
-    amount = day.rate * units
-    hours = None
-    overtime = Fraction(0)
-    if has_times and day.status in (PRESENT, LATE):
-        hours = _measured_hours(day, rules, from_work_start=False)
-        _regular, overtime = _split_overtime(hours, rules)
-        if overtime and rules.scheduled_minutes:
-            hourly_equivalent = Fraction(day.rate * 60, rules.scheduled_minutes)
-            amount += hourly_equivalent * overtime * multiplier
-        else:
-            overtime = Fraction(0)
+    night = Fraction(0)
+    if rules.has_night_window and has_times and hourly_rate is not None:
+        minutes = night_minutes(day.arrival, day.departure, rules.night_start, rules.night_end)
+        night = min(Fraction(minutes, 60), worked)
+        amount += hourly_rate * night * (_fraction(rules.night_multiplier) - 1)
+
+    factor, kind = day_multiplier(day, rules)
     return DayResult(
-        day.date, day.status, day.pay_type, day.rate, units, hours, overtime, lateness, amount
+        day.date,
+        day.status,
+        day.pay_type,
+        day.rate,
+        units,
+        hours,
+        overtime,
+        lateness,
+        amount * factor,
+        night_hours=night,
+        multiplier=factor,
+        day_kind=kind,
     )
 
 
@@ -360,10 +661,10 @@ def settle_adjustments(
     """What to apply of each adjustment on one pay, in the given (oldest first) order.
 
     ``capacity`` is what is left of the pay without the adjustments: gross − other
-    deductions − advance deduction (negative when the advance deduction used part of a
-    positive adjustment). Positive adjustments are applied in full and add to it;
-    negative ones are recovered from it, oldest first, until it is used up, so the pay
-    never goes below zero. Adjustments with nothing left are skipped.
+    deductions − statutory deductions − advance deduction (negative when the advance
+    deduction used part of a positive adjustment). Positive adjustments are applied in
+    full and add to it; negative ones are recovered from it, oldest first, until it is
+    used up, so the pay never goes below zero. Adjustments with nothing left are skipped.
     """
     room = max(0, capacity + sum(a.amount for a in adjustments if a.amount > 0))
     applied = []
@@ -378,22 +679,87 @@ def settle_adjustments(
     return tuple(applied)
 
 
+def statutory_deductions(
+    gross: int,
+    rules: Sequence[DeductionRuleInput],
+    *,
+    pay_day: datetime.date | None = None,
+    pay_type: str | None = None,
+    capacity: int | None = None,
+) -> tuple[DeductionResult, ...]:
+    """Each rule that applies, in ``order``: its base, employee and employer amounts.
+
+    The employee amounts are capped, in order, at ``capacity`` (default: the gross), so
+    they never take the pay below zero. Rules that come to nothing are left out.
+    """
+    _check_money(gross, "gross")
+    room = gross if capacity is None else max(0, capacity)
+    results = []
+    for rule in sorted(rules, key=lambda r: (r.order, r.rule_id)):
+        if not rule.applies(pay_day, pay_type):
+            continue
+        base = rule.base(gross)
+        employee = min(round_half_up(base * _fraction(rule.employee_percent) / 100), room)
+        room -= employee
+        employer = round_half_up(base * _fraction(rule.employer_percent) / 100)
+        if employee or employer:
+            results.append(
+                DeductionResult(
+                    rule.rule_id,
+                    rule.name,
+                    base,
+                    rule.employee_percent,
+                    employee,
+                    rule.employer_percent,
+                    employer,
+                )
+            )
+    return tuple(results)
+
+
+def line_pay_type(days: Sequence[DayInput]) -> str:
+    """The pay type of a line, for the deduction rules: that of its last day."""
+    if not days:
+        return DAILY
+    return max(days, key=lambda d: d.date).pay_type
+
+
 def compute_line(
     days: Iterable[DayInput],
     rules: PayRules,
     advances: Sequence[AdvanceInput] = (),
     other_deductions: int = 0,
     adjustments: Sequence[AdjustmentInput] = (),
+    *,
+    pieces: Sequence[PieceInput] = (),
+    bonuses: Sequence[BonusInput] = (),
+    deduction_rules: Sequence[DeductionRuleInput] = (),
+    pay_day: datetime.date | None = None,
 ) -> LineResult:
-    """One worker's pay for a period: gross, deductions, adjustments and net (never negative)."""
+    """One worker's pay for a period: gross, deductions, adjustments and net (never negative).
+
+    The steps and their order are in the module docstring ("Pay line").
+    """
     _check_money(other_deductions, "other_deductions")
+    days = tuple(days)
     results = tuple(compute_day(day, rules) for day in days)
-    gross = round_half_up(sum((r.amount for r in results), Fraction(0)))
+    time_pay = round_half_up(sum((r.amount for r in results), Fraction(0)))
+    piece_amount = round_half_up(sum((p.amount for p in pieces), Fraction(0)))
+    bonus_amount = sum(b.amount for b in bonuses)
+    gross = time_pay + piece_amount + bonus_amount
     other = min(other_deductions, gross)
+    deductions = statutory_deductions(
+        gross,
+        deduction_rules,
+        pay_day=pay_day,
+        pay_type=line_pay_type(days),
+        capacity=gross - other,
+    )
+    statutory = sum(d.employee for d in deductions)
     added = sum(a.amount for a in adjustments if a.amount > 0)
-    repayments = advance_deductions(advances, gross + added - other)
+    repayments = advance_deductions(advances, gross + added - other - statutory)
     advance = sum(amount for _id, amount in repayments)
-    applied = settle_adjustments(adjustments, gross - other - advance)
+    applied = settle_adjustments(adjustments, gross - other - statutory - advance)
     adjustment = sum(amount for _id, amount in applied)
     hourly = [r.hours for r in results if r.pay_type == HOURLY and r.hours is not None]
     return LineResult(
@@ -405,9 +771,17 @@ def compute_line(
         other_deductions=other,
         advance_deduction=advance,
         repayments=repayments,
-        net=gross - other - advance + adjustment,
+        net=gross - other - statutory - advance + adjustment,
         adjustment=adjustment,
         adjustments=applied,
+        time_pay=time_pay,
+        piece_amount=piece_amount,
+        bonus_amount=bonus_amount,
+        pieces=tuple(pieces),
+        bonuses=tuple((b.bonus_id, b.amount) for b in bonuses if b.amount),
+        statutory=statutory,
+        employer=sum(d.employer for d in deductions),
+        deductions=deductions,
     )
 
 
@@ -517,11 +891,15 @@ def reconcile(cash_issued: int, lines: Iterable[tuple[int, int]]) -> CashReconci
 def expected_weekly_pay(
     pay_type: str, rate: int, working_days_per_week: int, scheduled_minutes: int
 ) -> int:
-    """A normal week's gross: rate × working days (× scheduled hours for hourly workers)."""
+    """A normal week's gross: rate × working days (× scheduled hours for hourly workers).
+
+    A piece-rate worker's rate is a reference day value (their pay comes from the
+    entries), used only here, for the advance limit.
+    """
     _check_money(rate, "rate")
     if pay_type == HOURLY:
         return round_half_up(Fraction(rate * scheduled_minutes, 60) * working_days_per_week)
-    if pay_type == DAILY:
+    if pay_type in (DAILY, PIECE):
         return rate * working_days_per_week
     raise ValueError(f"unknown pay type {pay_type!r}")
 

@@ -5,6 +5,8 @@
 {% block page_subtitle %}{{ frequency_note }}{% endblock %}
 {% block page_title %}{% translate "Pay periods" %}{% endblock %}
 {% block page_actions %}
+  {% if can_edit_rules %}{% translate "Pay rules" as label %}{% url "payroll:pay_rules" as rules_url %}
+  {% include "components/button.html" with label=label href=rules_url icon="settings" only %}{% endif %}
   {% translate "Cash sheets" as label %}{% url "payroll:cash_sheets" as sheets_url %}
   {% include "components/button.html" with label=label href=sheets_url icon="cash" only %}
 {% endblock %}

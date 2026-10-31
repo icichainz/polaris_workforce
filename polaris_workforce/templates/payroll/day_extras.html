@@ -1,0 +1,120 @@
+{% extends "layouts/app.html" %}
+{% load i18n payroll_tags %}{% comment %}
+Day extras of a site and date: stoppage day, piece work, bonuses. Context: `extras`
+(pay_rules.DayExtras), `site`, `date`, `company`, `can_edit` (manager or admin, pay not
+paid or locked), `can_manage`, `piece_form`, `bonus_form`, `stoppage_form`, `sheet_url`.
+{% endcomment %}
+
+{% block title %}{% translate "Day extras" %} · {{ site.name }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<nav aria-label="{% translate 'Breadcrumb' %}" class="text-[13px] text-steel"><a href="{% url 'payroll:cash_sheets' %}">{% translate "Cash sheets" %}</a> / <a href="{{ sheet_url }}">{{ site.name }} · {{ date|date:_("D j M") }}</a> / {% translate "Day extras" %}</nav>{% endblock %}
+{% block page_title %}{% translate "Piece work, bonuses and stoppage" %}{% endblock %}
+{% block page_meta %}{{ site.name }} · {{ date|date:_("l j F Y") }}{% endblock %}
+{% block page_actions %}
+  {% translate "Cash sheet" as label %}{% include "components/button.html" with label=label href=sheet_url icon="cash" only %}
+{% endblock %}
+
+{% block content %}
+  {% if can_manage and not extras.is_open %}
+    {% translate "Read only." as title %}{% translate "The pay of this day is already paid or locked: correct the attendance instead, the difference goes on the next pay." as message %}
+    {% include "components/alert.html" with variant="info" title=title message=message only %}
+  {% endif %}
+
+  <section aria-labelledby="stoppage-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4">
+    <h2 id="stoppage-title" class="font-display text-lg font-bold">{% translate "Stoppage day" %}</h2>
+    {% if extras.stoppage %}
+      <p class="text-sm"><strong>{{ extras.stoppage.reason }}</strong> · {% if extras.stoppage.pay == "fixed" %}{% blocktranslate with amount=extras.stoppage.amount|money:company %}workers present get {{ amount }}{% endblocktranslate %}{% else %}{% blocktranslate with percent=extras.stoppage.percent|num %}workers present get {{ percent }} % of their day{% endblocktranslate %}{% endif %}</p>
+    {% else %}
+      <p class="text-sm text-ink-700">{% translate "The site worked normally. If it was stopped (rain, no materials), mark it here: the workers present are paid the stoppage share instead of their day." %}</p>
+    {% endif %}
+    {% if can_edit %}
+    <form method="post" class="flex flex-wrap items-end gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="stoppage">
+      <div class="w-64">{% include "components/field.html" with field=stoppage_form.reason only %}</div>
+      <div class="w-56">{% include "components/field.html" with field=stoppage_form.pay only %}</div>
+      <div class="w-36">{% include "components/field.html" with field=stoppage_form.percent only %}</div>
+      <div class="w-44">{% include "components/money_field.html" with field=stoppage_form.amount currency=company.currency only %}</div>
+      {% if extras.stoppage %}{% translate "Update stoppage" as label %}{% else %}{% translate "Mark as stoppage day" as label %}{% endif %}
+      {% include "components/button.html" with label=label type="submit" only %}
+    </form>
+    {% if extras.stoppage %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="clear_stoppage">
+      {% translate "Remove stoppage" as label %}{% include "components/button.html" with label=label type="submit" variant="danger" only %}
+    </form>
+    {% endif %}
+    {% endif %}
+  </section>
+
+  <section aria-labelledby="piece-title" class="rounded-card border border-line bg-white">
+    <div class="border-b border-line px-5 py-3.5">
+      <h2 id="piece-title" class="font-display text-lg font-bold">{% translate "Piece work" %}</h2>
+      <p class="text-sm text-ink-700">{% translate "Paid once the day's roll call is approved." %}</p>
+    </div>
+    {% if extras.pieces %}
+    <ul class="divide-y divide-line-soft">
+      {% for entry in extras.pieces %}
+      <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+        <span><span class="font-semibold">{{ entry.worker.full_name }}</span> · {{ entry.task.name }} · <span class="tabular-nums">{{ entry.quantity|num }} {{ entry.task.unit }} × {{ entry.unit_rate|amount:company }}</span>{% if entry.note %}<span class="block text-xs text-steel">“{{ entry.note }}”</span>{% endif %}</span>
+        <span class="flex items-center gap-3"><span class="font-semibold tabular-nums">{{ entry|piece_amount|money:company }}</span>
+        {% if can_edit %}
+          <form method="post" action="{% url 'payroll:piece_work_delete' entry.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="h-[30px] px-2 text-xs font-medium text-steel underline">{% translate "Remove" %}</button>
+          </form>
+        {% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      <p class="px-5 py-4 text-sm text-ink-700">{% translate "No piece work on this day." %}</p>
+    {% endif %}
+    {% if can_edit %}
+    <form method="post" class="flex flex-wrap items-end gap-3 border-t border-line-soft px-5 py-4">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="piece">
+      <div class="w-64">{% include "components/field.html" with field=piece_form.worker only %}</div>
+      <div class="w-56">{% include "components/field.html" with field=piece_form.task only %}</div>
+      <div class="w-32">{% include "components/field.html" with field=piece_form.quantity only %}</div>
+      <div class="w-56">{% include "components/field.html" with field=piece_form.note only %}</div>
+      {% translate "Add piece work" as label %}{% include "components/button.html" with label=label type="submit" icon="plus" only %}
+    </form>
+    {% endif %}
+  </section>
+
+  <section aria-labelledby="bonus-title" class="rounded-card border border-line bg-white">
+    <div class="border-b border-line px-5 py-3.5">
+      <h2 id="bonus-title" class="font-display text-lg font-bold">{% translate "Bonuses" %}</h2>
+      <p class="text-sm text-ink-700">{% translate "A one-off amount, added to the worker's next pay at this site." %}</p>
+    </div>
+    {% if extras.bonuses %}
+    <ul class="divide-y divide-line-soft">
+      {% for bonus in extras.bonuses %}
+      <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+        <span><span class="font-semibold">{{ bonus.worker.full_name }}</span> · “{{ bonus.reason }}”{% if bonus.applied_to %}<span class="block text-xs text-steel">{% blocktranslate with date=bonus.applied_to.period.end_date|date:_("j M") %}On the pay of {{ date }}{% endblocktranslate %}</span>{% else %}<span class="block text-xs text-steel">{% translate "Waiting for the next pay" %}</span>{% endif %}</span>
+        <span class="flex items-center gap-3"><span class="font-semibold tabular-nums">{{ bonus.amount|money:company }}</span>
+        {% if can_manage %}
+          <form method="post" action="{% url 'payroll:bonus_delete' bonus.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="h-[30px] px-2 text-xs font-medium text-steel underline">{% translate "Remove" %}</button>
+          </form>
+        {% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      <p class="px-5 py-4 text-sm text-ink-700">{% translate "No bonus given on this day." %}</p>
+    {% endif %}
+    {% if can_manage %}
+    <form method="post" class="flex flex-wrap items-end gap-3 border-t border-line-soft px-5 py-4">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="bonus">
+      <div class="w-64">{% include "components/field.html" with field=bonus_form.worker only %}</div>
+      <div class="w-44">{% include "components/money_field.html" with field=bonus_form.amount currency=company.currency only %}</div>
+      <div class="w-64">{% include "components/field.html" with field=bonus_form.reason only %}</div>
+      {% translate "Add bonus" as label %}{% include "components/button.html" with label=label type="submit" icon="plus" only %}
+    </form>
+    {% endif %}
+  </section>
+{% endblock %}

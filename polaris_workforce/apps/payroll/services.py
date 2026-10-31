@@ -70,12 +70,19 @@ from . import engine
 from .models import (
     Advance,
     AdvanceRepayment,
+    Bonus,
     CashIssue,
+    DeductionRule,
     PayAdjustment,
     PayAdjustmentApplication,
     PayLine,
     Payment,
     PayPeriod,
+    PayRuleSettings,
+    PieceWorkEntry,
+    SitePayRules,
+    StoppageDay,
+    StoppagePay,
 )
 
 PAYABLE_DAY_STATUSES = (AttendanceDay.Status.APPROVED, AttendanceDay.Status.LOCKED)
@@ -91,11 +98,25 @@ SHEET_CLOSED = "closed"
 
 
 def pay_rules(site: Site | None, company: CompanySettings) -> engine.PayRules:
-    """The engine's rules for a site, resolved company → site."""
+    """The engine's rules for a site, resolved company → site.
+
+    The multipliers and the night window come from the company's ``PayRuleSettings``,
+    overridden by the site's ``SitePayRules`` (each field; the night window as a pair).
+    """
 
     def get(name):
         return resolve_setting(name, site, company=company)
 
+    rules = PayRuleSettings.load(company.company_id)
+    override = SitePayRules.objects.filter(site_id=site.pk).first() if site is not None else None
+
+    def pick(name):
+        value = getattr(override, name, None)
+        return value if value is not None else getattr(rules, name)
+
+    night = (rules.night_start, rules.night_end)
+    if override is not None and override.night_start and override.night_end:
+        night = (override.night_start, override.night_end)
     return engine.PayRules(
         half_day_units=get("half_day_units"),
         late_rule=get("late_rule"),
@@ -104,6 +125,54 @@ def pay_rules(site: Site | None, company: CompanySettings) -> engine.PayRules:
         break_minutes=get("break_minutes"),
         overtime_after_hours=get("overtime_after_hours"),
         overtime_multiplier=get("overtime_multiplier"),
+        sunday_multiplier=pick("sunday_multiplier"),
+        holiday_multiplier=pick("holiday_multiplier"),
+        night_start=night[0] if night[0] and night[1] else None,
+        night_end=night[1] if night[0] and night[1] else None,
+        night_multiplier=pick("night_multiplier"),
+    )
+
+
+def deduction_inputs(company_id) -> list[engine.DeductionRuleInput]:
+    """The company's statutory deduction rules for the engine (it checks their dates)."""
+    return [
+        engine.DeductionRuleInput(
+            rule_id=rule.pk,
+            name=rule.name,
+            employee_percent=rule.employee_percent,
+            employer_percent=rule.employer_percent,
+            floor=rule.base_floor,
+            ceiling=rule.base_ceiling,
+            pay_types=tuple(t for t in rule.pay_types or [] if t in engine.PAY_TYPES),
+            active_from=rule.active_from,
+            active_to=rule.active_to,
+            order=rule.order,
+        )
+        for rule in DeductionRule.objects.filter(company_id=company_id)
+    ]
+
+
+def stoppage_input(stoppage: StoppageDay) -> engine.Stoppage:
+    if stoppage.pay == StoppagePay.FIXED:
+        return engine.Stoppage(fixed=stoppage.amount or 0)
+    return engine.Stoppage(percent=stoppage.percent if stoppage.percent is not None else 0)
+
+
+@dataclass(frozen=True)
+class DayContext:
+    """What a date means for pay at a site: public holidays and stoppage days."""
+
+    holidays: frozenset = frozenset()
+    stoppages: dict = field(default_factory=dict)  # date → engine.Stoppage
+
+
+def day_context(
+    site: Site, start: datetime.date, end: datetime.date, company: CompanySettings
+) -> DayContext:
+    stoppages = StoppageDay.objects.filter(site=site, date__gte=start, date__lte=end)
+    return DayContext(
+        holidays=frozenset(company.holiday_dates()),
+        stoppages={s.date: stoppage_input(s) for s in stoppages},
     )
 
 
@@ -201,19 +270,28 @@ def _rate_on(rates: list[PayRate], day: datetime.date) -> PayRate | None:
     return current
 
 
-def _day_input(record: AttendanceRecord, rate: PayRate | None) -> engine.DayInput:
+def _day_input(
+    record: AttendanceRecord, rate: PayRate | None, context: DayContext | None = None
+) -> engine.DayInput:
+    pay_type = rate.pay_type if rate else PayType.DAILY
+    if pay_type not in engine.PAY_TYPES:  # pragma: no cover (rates are validated)
+        pay_type = engine.DAILY
+    date = record.day.date
+    context = context or DayContext()
     return engine.DayInput(
-        date=record.day.date,
+        date=date,
         status=record.status,
-        pay_type=rate.pay_type if rate else PayType.DAILY,
+        pay_type=pay_type,
         rate=rate.amount if rate else 0,
         arrival=record.arrival,
         departure=record.departure,
+        holiday=date in context.holidays,
+        stoppage=context.stoppages.get(date),
     )
 
 
 def _line_snapshot(line: PayLine) -> dict:
-    return {
+    snapshot = {
         "worker_id": line.worker_id,
         "units": str(line.units),
         "hours": None if line.hours is None else str(line.hours),
@@ -224,16 +302,22 @@ def _line_snapshot(line: PayLine) -> dict:
         "adjustment": line.adjustment,
         "net": line.net,
     }
+    # Pay rules (Wave 4): only when they are on the line, so older entries read the same.
+    for name in ("piece_amount", "bonus_amount", "statutory_deductions"):
+        if getattr(line, name):
+            snapshot[name] = getattr(line, name)
+    return snapshot
 
 
 def _period_totals(period: PayPeriod) -> dict:
     totals = period.lines.aggregate(
         gross=Sum("gross"),
+        statutory=Sum("statutory_deductions"),
         advance=Sum("advance_deduction"),
         adjustment=Sum("adjustment"),
         net=Sum("net"),
     )
-    return {
+    result = {
         "status": period.status,
         "lines": period.lines.count(),
         "gross": totals["gross"] or 0,
@@ -241,6 +325,9 @@ def _period_totals(period: PayPeriod) -> dict:
         "adjustment": totals["adjustment"] or 0,
         "net": totals["net"] or 0,
     }
+    if totals["statutory"]:
+        result["statutory_deductions"] = totals["statutory"]
+    return result
 
 
 def _apply_repayments(line: PayLine, wanted: tuple[tuple[int, int], ...]) -> None:
@@ -277,6 +364,75 @@ def _open_advances(worker_id: int, before: datetime.date, line: PayLine | None):
 
 def _paid_amount(line: PayLine) -> int:
     return line.payments.aggregate(total=Sum("amount"))["total"] or 0
+
+
+# --- piece work and bonuses ----------------------------------------------------------------
+
+
+def _pieces_by_worker(
+    period: PayPeriod, company: CompanySettings, worker_ids
+) -> dict[int, list[engine.PieceInput]]:
+    """The piece work this period pays, per worker: entries on days whose roll call is
+    approved (or locked) and that fall in the worker's period."""
+    site = period.site
+    payable = AttendanceDay.objects.filter(
+        site=site,
+        date__gte=period.start_date,
+        date__lte=period.end_date,
+        status__in=PAYABLE_DAY_STATUSES,
+    ).values_list("date", flat=True)
+    entries = (
+        PieceWorkEntry.objects.filter(site=site, date__in=list(payable), worker_id__in=worker_ids)
+        .select_related("task", "worker")
+        .order_by("date", "pk")
+    )
+    by_worker: dict[int, list[engine.PieceInput]] = defaultdict(list)
+    for entry in entries:
+        start, end, _frequency = period_bounds_for(site, entry.worker, entry.date, company)
+        if (start, end) != (period.start_date, period.end_date):
+            continue
+        by_worker[entry.worker_id].append(
+            engine.PieceInput(
+                entry_id=entry.pk,
+                date=entry.date,
+                quantity=entry.quantity,
+                unit_rate=entry.unit_rate,
+                task=entry.task.name,
+                unit=entry.task.unit,
+            )
+        )
+    return by_worker
+
+
+def _open_bonuses(worker_id: int, period: PayPeriod, line: PayLine | None):
+    """Bonuses this pay may add: dated on or before its pay day, at its site, not yet on
+    another pay (or already on this one), oldest first."""
+    query = Q(applied_to__isnull=True)
+    if line is not None and line.pk:
+        query |= Q(applied_to=line)
+    return (
+        Bonus.objects.filter(worker_id=worker_id, site_id=period.site_id, date__lte=period.end_date)
+        .filter(query)
+        .order_by("date", "pk")
+    )
+
+
+def _apply_bonuses(line: PayLine, wanted: tuple[tuple[int, int], ...], actor) -> None:
+    """Make the bonuses on this line exactly ``wanted`` (``(bonus_id, amount)``)."""
+    current = set(line.bonuses.values_list("pk", flat=True))
+    wanted_ids = {bonus_id for bonus_id, _amount in wanted}
+    if current == wanted_ids:
+        return
+    now = timezone.now()
+    Bonus.objects.filter(pk__in=current - wanted_ids).update(applied_to=None, updated_at=now)
+    Bonus.objects.filter(pk__in=wanted_ids - current).update(applied_to=line, updated_at=now)
+    _audit(
+        actor,
+        _pay_action(actor, "bonus.apply"),
+        line,
+        before={"bonus_ids": sorted(current)},
+        after={"bonus_ids": sorted(wanted_ids), "bonus_amount": line.bonus_amount},
+    )
 
 
 # --- pay adjustments (a day corrected after it was paid) ----------------------------------
@@ -435,9 +591,10 @@ def _late_corrections(period: PayPeriod, lines: list[PayLine]) -> dict[int, list
 
 
 def _paid_difference(line: PayLine, days: list[engine.DayInput], rules: engine.PayRules) -> int:
-    """What the attendance is worth now minus the gross that was paid.
+    """What the attendance is worth now minus the time pay that was paid.
 
     Days that were paid keep the rate they were paid at, so only the attendance counts.
+    Piece work and bonuses are not attendance: they stay as they were paid.
     """
     paid_rates = {d["date"]: (d["pay_type"], d["rate"]) for d in line.days or []}
     priced = []
@@ -446,7 +603,8 @@ def _paid_difference(line: PayLine, days: list[engine.DayInput], rules: engine.P
         if paid is not None:
             day = dataclasses.replace(day, pay_type=paid[0], rate=paid[1])
         priced.append(day)
-    return engine.compute_line(priced, rules).gross - line.gross
+    paid_time_pay = line.gross - line.piece_amount - line.bonus_amount
+    return engine.compute_line(priced, rules).time_pay - paid_time_pay
 
 
 @dataclass
@@ -595,6 +753,9 @@ def refresh_period(
     rules = pay_rules(site, company)
     by_worker = _records_by_worker(period, company)
     rates = _rates_by_worker(list(by_worker), period.end_date)
+    context = day_context(site, period.start_date, period.end_date, company)
+    pieces = _pieces_by_worker(period, company, list(by_worker))
+    deduction_rules = deduction_inputs(site.company_id)
     adjusted: set[int] = set()
 
     with transaction.atomic():
@@ -614,7 +775,10 @@ def refresh_period(
         paid: list[tuple[PayLine, list[engine.DayInput]]] = []
         for worker_id, worker_records in by_worker.items():
             line = lines.get(worker_id)
-            days = [_day_input(r, _rate_on(rates[worker_id], r.day.date)) for r in worker_records]
+            days = [
+                _day_input(r, _rate_on(rates[worker_id], r.day.date), context)
+                for r in worker_records
+            ]
             if line is not None and line.payments.all():
                 paid.append((line, days))  # Paid: frozen (a correction is adjusted below).
                 continue
@@ -637,10 +801,24 @@ def refresh_period(
                 for a in _open_adjustments(worker_id, period, line)
             ]
             other = line.other_deductions if line else 0
+            bonuses = [
+                engine.BonusInput(b.pk, b.amount) for b in _open_bonuses(worker_id, period, line)
+            ]
             result = engine.compute_line(
-                days, rules, advances, other_deductions=other, adjustments=adjustments
+                days,
+                rules,
+                advances,
+                other_deductions=other,
+                adjustments=adjustments,
+                pieces=pieces.get(worker_id, ()),
+                bonuses=bonuses,
+                deduction_rules=deduction_rules,
+                pay_day=period.end_date,
             )
-            worked = any(d.units > 0 or d.amount > 0 for d in result.days)
+            # A bonus alone does not make a pay: it waits for a day worked.
+            worked = result.piece_amount > 0 or any(
+                d.units > 0 or d.amount > 0 for d in result.days
+            )
             topped_up = any(amount > 0 for _id, amount in result.adjustments)
             if not (worked or topped_up):
                 if line is not None:
@@ -659,6 +837,12 @@ def refresh_period(
                 "adjustment": result.adjustment,
                 "net": result.net,
                 "days": [d.as_dict() for d in result.days],
+                "piece_amount": result.piece_amount,
+                "bonus_amount": result.bonus_amount,
+                "statutory_deductions": result.statutory,
+                "employer_contributions": result.employer,
+                "pieces": [p.as_dict() for p in result.pieces],
+                "deductions": [d.as_dict() for d in result.deductions],
             }
             dirty = line.pk is None or any(getattr(line, k) != v for k, v in values.items())
             if dirty:
@@ -668,6 +852,7 @@ def refresh_period(
                 changed.append(worker_id)
             _apply_repayments(line, result.repayments)
             _apply_adjustments(line, result.adjustments, actor)
+            _apply_bonuses(line, result.bonuses, actor)
 
         # A paid line stays as paid; the difference goes on the next pay, once the
         # corrected attendance is approved (the period is payable again).
@@ -716,11 +901,12 @@ def paid_corrections(day: AttendanceDay) -> dict[int, PaidCorrection]:
         )
         by_worker = _records_by_worker(period, company, [line.worker_id for line in lines])
         rates = _rates_by_worker(list(by_worker), period.end_date)
+        context = day_context(period.site, period.start_date, period.end_date, company)
         paid = [
             (
                 line,
                 [
-                    _day_input(r, _rate_on(rates[line.worker_id], r.day.date))
+                    _day_input(r, _rate_on(rates[line.worker_id], r.day.date), context)
                     for r in by_worker.get(line.worker_id, [])
                 ],
             )
@@ -1294,7 +1480,7 @@ def _lock_checked(user, period: PayPeriod, unpaid: list[PayLine], reason: str) -
         _apply_adjustments(line, (), user)
         line.advance_deduction = 0
         line.adjustment = 0
-        line.net = line.gross - line.other_deductions
+        line.net = line.gross - line.other_deductions - line.statutory_deductions
         line.save(update_fields=["advance_deduction", "adjustment", "net", "updated_at"])
         _audit(
             user,
