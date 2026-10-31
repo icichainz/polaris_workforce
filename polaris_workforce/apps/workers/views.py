@@ -1,10 +1,12 @@
-"""Office views for workers: list, profile, add / edit.
+"""Office views for workers: list, profile, add / edit, documents, Excel / CSV import.
 
 Scoping: ``services.scoped_workers`` (built on ``accounts.permissions.scoped_sites``).
 """
 
 import calendar
 import datetime
+import posixpath
+import secrets
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -12,9 +14,12 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Q, Value
 from django.db.models.functions import Replace
-from django.shortcuts import redirect, render
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.translation import gettext as _
+from django.utils.translation import ngettext
+from django.views.decorators.http import require_POST, require_safe
 
 from apps.accounts.permissions import Role, has_role, scoped_sites
 from apps.attendance.models import AttendanceRecord
@@ -25,9 +30,9 @@ from apps.core.settings import resolve_setting
 from apps.worksites import services as site_services
 from apps.worksites.models import SiteAssignment
 
-from . import display, services
-from .forms import WorkerFilterForm, WorkerForm
-from .models import Worker
+from . import display, importer, services
+from .forms import WorkerDocumentForm, WorkerFilterForm, WorkerForm, WorkerImportForm
+from .models import Worker, WorkerDocument
 
 PAGE_SIZE = 25
 
@@ -55,6 +60,10 @@ def _filter_workers(workers, data, today):
             Q(end_date__isnull=True) | Q(end_date__gte=today)
         )
         workers = workers.filter(pk__in=on_site.values("worker"))
+    if data.get("documents") == "attention":
+        workers = workers.filter(services.needs_document_attention(today))
+    elif data.get("documents") == "expired":
+        workers = workers.filter(services.has_expired_document(today))
     query = data.get("q") or ""
     if query:
         workers = workers.annotate(phone_digits=Replace("phone", Value(" "), Value("")))
@@ -92,7 +101,10 @@ def worker_list(request):
     today = dates.company_today(company)
     money = display.Money(company)
     visible = services.scoped_workers(request.user, today)
-    form = WorkerFilterForm(request.GET or None, sites=scoped_sites(request.user))
+    show_documents = services.can_view_documents(request.user)
+    form = WorkerFilterForm(
+        request.GET or None, sites=scoped_sites(request.user), show_documents=show_documents
+    )
     data = form.cleaned_data if form.is_bound and form.is_valid() else {}
 
     workers = (
@@ -106,6 +118,7 @@ def worker_list(request):
     statuses = services.statuses_on(on_page, today)
     owed = services.advances_owed(on_page)
     sites = _site_names(on_page, today)
+    expiry = services.document_expiry_by_worker(on_page, today) if show_documents else {}
 
     rows = []
     for worker in on_page:
@@ -119,6 +132,7 @@ def worker_list(request):
                 "unit": display.pay_unit(rate.pay_type) if rate else "",
                 "status": statuses.get(worker.pk, "not_recorded"),
                 "owes": money(owed[worker.pk], currency=False) if owed.get(worker.pk) else None,
+                "documents": expiry.get(worker.pk),
             }
         )
 
@@ -189,9 +203,28 @@ def _setting_source(worker, site, name) -> str:
 def worker_detail(request, pk):
     company = CompanySettings.load()
     today = dates.company_today(company)
+    worker = _get_worker_or_403(request.user, pk, today)
+    return _render_detail(request, worker, company, today)
+
+
+def _documents(user, worker, today) -> list[dict]:
+    if not services.can_view_documents(user):
+        return []
+    return [
+        {
+            "document": document,
+            "expiry": document.expiry(today),
+            "url": files.worker_document_url(document),
+        }
+        for document in worker.documents.select_related("uploaded_by").order_by(
+            "-uploaded_at", "-pk"
+        )
+    ]
+
+
+def _render_detail(request, worker, company, today, *, document_form=None, status=200):
     tz = dates.company_tz(company)
     money = display.Money(company)
-    worker = _get_worker_or_403(request.user, pk, today)
 
     first = _month_from(request.GET.get("month"), today)
     last = _shift_month(first, 1) - datetime.timedelta(days=1)
@@ -319,7 +352,19 @@ def worker_detail(request, pk):
         "pay_frequency_source": _setting_source(worker, site, "pay_frequency"),
         "pay_type": PayType(rate.pay_type).label if rate else None,
     }
-    return render(request, "workers/detail.html", context)
+    can_edit = context["can_edit"]
+    documents = _documents(request.user, worker, today)
+    context.update(
+        {
+            "show_documents": services.can_view_documents(request.user),
+            "documents": documents,
+            "expired_count": sum(1 for d in documents if d["expiry"] == "expired"),
+            "expiring_count": sum(1 for d in documents if d["expiry"] == "expiring"),
+            "document_form": (document_form or WorkerDocumentForm()) if can_edit else None,
+            "show_document_form": document_form is not None,
+        }
+    )
+    return render(request, "workers/detail.html", context, status=status)
 
 
 # --- add / edit -------------------------------------------------------------------------
@@ -378,6 +423,9 @@ def _form_fields(form) -> dict:
         "id_document_number": data["id_document_number"],
         "payment_method": data["payment_method"],
         "pay_frequency": data["pay_frequency"],
+        "emergency_contact_name": data["emergency_contact_name"],
+        "emergency_contact_relationship": data["emergency_contact_relationship"],
+        "emergency_contact_phone": data["emergency_contact_phone"],
     }
     if "is_active" in data:
         fields["is_active"] = data["is_active"]
@@ -468,3 +516,173 @@ def worker_edit(request, pk):
     company = CompanySettings.load()
     today = dates.company_today(company)
     return _worker_form_view(request, _get_worker_or_403(request.user, pk, today))
+
+
+# --- documents --------------------------------------------------------------------------
+
+
+def _editable_worker(request, pk):
+    company = CompanySettings.load()
+    today = dates.company_today(company)
+    worker = _get_worker_or_403(request.user, pk, today)
+    if not services.can_edit_worker(request.user, worker, today):
+        raise PermissionDenied
+    return worker, company, today
+
+
+@login_required
+@require_POST
+def document_upload(request, pk):
+    worker, company, today = _editable_worker(request, pk)
+    form = WorkerDocumentForm(request.POST, request.FILES)
+    if form.is_valid():
+        data = form.cleaned_data
+        try:
+            services.add_document(
+                worker,
+                actor=request.user,
+                file=data["file"],
+                type=data["type"],
+                title=data["title"],
+                issued_on=data["issued_on"],
+                expires_on=data["expires_on"],
+            )
+        except ValidationError as exc:
+            _add_service_errors(form, exc)
+        else:
+            messages.success(request, _("Document added."))
+            return redirect(reverse("workers:detail", args=[worker.pk]) + "#documents")
+    return _render_detail(request, worker, company, today, document_form=form, status=400)
+
+
+@login_required
+@require_POST
+def document_delete(request, pk, document_id):
+    worker, _company, _today = _editable_worker(request, pk)
+    document = get_object_or_404(WorkerDocument, pk=document_id, worker=worker)
+    services.delete_document(document, actor=request.user)
+    messages.success(request, _("Document “%(title)s” deleted.") % {"title": document.title})
+    return redirect(reverse("workers:detail", args=[worker.pk]) + "#documents")
+
+
+@login_required
+@require_safe
+def document_file(request, document_id):
+    """The document's file (rules in ``apps.core.files.worker_document_or_404``)."""
+    return files.file_response(request, files.worker_document_or_404(request.user, document_id))
+
+
+# --- Excel / CSV import -----------------------------------------------------------------
+
+IMPORT_SESSION_KEY = "workers_import"
+XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _check_can_import(user):
+    company = CompanySettings.load()
+    if not services.can_edit_worker(user, None, dates.company_today(company)):
+        raise PermissionDenied
+    return company
+
+
+def _display_name(name: str) -> str:
+    return posixpath.basename(str(name).replace("\\", "/"))[:120]
+
+
+def _import_page(request, form, *, preview=None, summary=None, status=200):
+    return render(
+        request,
+        "workers/import.html",
+        {
+            "form": form,
+            "preview": preview,
+            "summary": summary,
+            "max_rows": importer.MAX_ROWS,
+            "max_size_mb": importer.MAX_FILE_SIZE // (1024 * 1024),
+            "columns": importer.COLUMNS,
+            "nav_active": "workers:list",
+        },
+        status=status,
+    )
+
+
+def _preview(request, result, rows, file_name) -> dict:
+    """Keep the rows in the session for the confirm step and describe the preview."""
+    token = secrets.token_urlsafe(16)
+    request.session[IMPORT_SESSION_KEY] = {"token": token, "file": file_name, "rows": rows}
+    return {
+        "token": token,
+        "file": file_name,
+        "rows": [importer.cleaned_preview(row) for row in result.rows],
+        "total": len(result.rows),
+        "error_count": result.error_count,
+        "ok": result.ok,
+    }
+
+
+@login_required
+def worker_import(request):
+    """Upload the file → preview with the errors of each row (nothing saved yet)."""
+    _check_can_import(request.user)
+    form = WorkerImportForm(request.POST or None, request.FILES or None)
+    preview = None
+    if request.method == "POST" and form.is_valid():
+        upload = form.cleaned_data["file"]
+        try:
+            rows = importer.rows_as_dicts(importer.read_upload(upload))
+        except importer.ImportFileError as exc:
+            form.add_error("file", exc.message)
+        else:
+            name = _display_name(upload.name)
+            result = importer.run_import(rows, request.user, commit=False, file_name=name)
+            preview = _preview(request, result, rows, name)
+    status = 400 if form.is_bound and form.errors else 200
+    return _import_page(request, form, preview=preview, status=status)
+
+
+@login_required
+@require_POST
+def worker_import_confirm(request):
+    """Create every worker of the previewed file in one transaction (all or nothing)."""
+    _check_can_import(request.user)
+    stored = request.session.get(IMPORT_SESSION_KEY)
+    if not stored or request.POST.get("token") != stored.get("token"):
+        messages.error(request, _("This preview has expired. Upload the file again."))
+        return redirect("workers:import")
+    result = importer.run_import(
+        stored["rows"], request.user, commit=True, file_name=stored["file"]
+    )
+    if not result.ok:
+        # Something changed since the preview (a phone number taken meanwhile…).
+        messages.error(request, _("Nothing was imported: some rows have errors now."))
+        preview = _preview(request, result, stored["rows"], stored["file"])
+        return _import_page(request, WorkerImportForm(), preview=preview)
+    del request.session[IMPORT_SESSION_KEY]
+    messages.success(
+        request,
+        ngettext("%(n)s worker imported.", "%(n)s workers imported.", len(result.created))
+        % {"n": len(result.created)},
+    )
+    summary = {
+        "file": stored["file"],
+        "workers": [
+            {"worker": row.worker, "site": row.cleaned["site"].name}
+            for row in result.rows
+            if row.worker is not None
+        ],
+        "new_trades": result.new_trades,
+    }
+    return _import_page(request, WorkerImportForm(), summary=summary)
+
+
+@login_required
+@require_safe
+def worker_import_template(request):
+    """The XLSX template with the user's sites and the company's trades as drop-downs."""
+    _check_can_import(request.user)
+    response = HttpResponse(
+        importer.template_workbook(request.user), content_type=XLSX_CONTENT_TYPE
+    )
+    response["Content-Disposition"] = 'attachment; filename="polaris-workers-template.xlsx"'
+    response["Cache-Control"] = "private, no-store"
+    return response

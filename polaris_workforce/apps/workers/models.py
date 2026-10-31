@@ -1,5 +1,8 @@
-"""Workers and their pay rates."""
+"""Workers, their pay rates and their documents."""
 
+import datetime
+
+from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -65,6 +68,19 @@ class Worker(TimeStampedModel):
     )
     is_active = models.BooleanField(_("active"), default=True)
 
+    emergency_contact_name = models.CharField(
+        _("emergency contact name"), max_length=150, blank=True
+    )
+    emergency_contact_relationship = models.CharField(
+        _("emergency contact relationship"),
+        max_length=60,
+        blank=True,
+        help_text=_("For example spouse, brother, neighbour."),
+    )
+    emergency_contact_phone = models.CharField(
+        _("emergency contact phone"), max_length=32, blank=True
+    )
+
     # Overrides of CompanySettings / Site (see apps.core.settings.WORKER_OVERRIDABLE).
     payment_method = models.CharField(  # noqa: DJ001 (None = inherit)
         _("payment method"), max_length=20, choices=PaymentMethod.choices, null=True, blank=True
@@ -127,3 +143,69 @@ class PayRate(TimeStampedModel):
     def __str__(self) -> str:
         pay_type = self.get_pay_type_display()
         return f"{self.worker} · {self.amount} {pay_type} · {self.effective_from}"
+
+
+# How long before a document expires the profile and the workers list warn about it.
+EXPIRY_WARNING_DAYS = 30
+
+
+class WorkerDocument(models.Model):
+    """A contract, ID scan, certificate… kept with the worker (PDF or photo).
+
+    The file is served only through ``workers:document_file`` (``apps.core.files``):
+    admins, accountants and site managers who may see the worker.
+    """
+
+    class Type(models.TextChoices):
+        CONTRACT = "contract", _("Contract")
+        ID_SCAN = "id_scan", _("ID scan")
+        CERTIFICATE = "certificate", _("Certificate")
+        OTHER = "other", _("Other")
+
+    class Expiry(models.TextChoices):
+        EXPIRED = "expired", _("Expired")
+        EXPIRING = "expiring", _("Expires soon")
+
+    worker = models.ForeignKey(
+        Worker, verbose_name=_("worker"), on_delete=models.CASCADE, related_name="documents"
+    )
+    type = models.CharField(_("type"), max_length=20, choices=Type.choices, default=Type.OTHER)
+    title = models.CharField(_("title"), max_length=150)
+    file = models.FileField(_("file"), upload_to="worker-documents/", validators=UPLOAD_VALIDATORS)
+    issued_on = models.DateField(_("issued on"), null=True, blank=True)
+    expires_on = models.DateField(_("expires on"), null=True, blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=_("uploaded by"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    uploaded_at = models.DateTimeField(_("uploaded at"), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("worker document")
+        verbose_name_plural = _("worker documents")
+        ordering = ["worker", "-uploaded_at", "-pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(expires_on__isnull=True)
+                | models.Q(issued_on__isnull=True)
+                | models.Q(expires_on__gte=models.F("issued_on")),
+                name="worker_document_expires_after_issue",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.worker} · {self.title}"
+
+    def expiry(self, today: datetime.date) -> str | None:
+        """``expired``, ``expiring`` (within ``EXPIRY_WARNING_DAYS``) or ``None``."""
+        if self.expires_on is None:
+            return None
+        if self.expires_on < today:
+            return self.Expiry.EXPIRED
+        if self.expires_on <= today + datetime.timedelta(days=EXPIRY_WARNING_DAYS):
+            return self.Expiry.EXPIRING
+        return None

@@ -41,6 +41,18 @@
     </div>
   </section>
 
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-5 sm:p-6" aria-labelledby="emergency-title">
+    <div class="flex flex-col gap-1">
+      <h2 id="emergency-title" class="font-display text-lg font-bold">{% translate "Emergency contact" %}</h2>
+      <p class="text-sm text-ink-700">{% translate "Who to call if the worker is hurt on site. Optional." %}</p>
+    </div>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {% include "components/field.html" with field=form.emergency_contact_name %}
+      {% include "components/field.html" with field=form.emergency_contact_relationship %}
+      {% include "components/field.html" with field=form.emergency_contact_phone %}
+    </div>
+  </section>
+
   <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-5 sm:p-6" aria-labelledby="site-title">
     <h2 id="site-title" class="font-display text-lg font-bold">{% translate "Site" %}</h2>
     {% if worker and current_site %}<p class="text-sm text-ink-700">{% blocktranslate with site=current_site.name %}Now on {{ site }}.{% endblocktranslate %}</p>{% endif %}

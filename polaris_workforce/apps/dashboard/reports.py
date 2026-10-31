@@ -14,6 +14,7 @@ Which data counts:
 
 import csv
 import datetime
+import io
 from collections import defaultdict
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
@@ -336,3 +337,165 @@ def write_csv(report: Report, out) -> None:
             report.currency,
         ]
     )
+
+
+# --- Excel ------------------------------------------------------------------------------
+
+XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _money_format(decimals: int) -> str:
+    return "#,##0" if decimals == 0 else "#,##0." + "0" * decimals
+
+
+def _percent(rate: int | None) -> Decimal | None:
+    """A whole-number rate (85) as the fraction Excel shows with a % format (0.85)."""
+    return None if rate is None else Decimal(rate) / 100
+
+
+def write_xlsx(report: Report) -> bytes:
+    """The report as an Excel workbook: one sheet per section (by worker, by site, by week).
+
+    Same columns as the CSV, with real numbers and dates (money in major units with the
+    currency's decimals, rates as percentages) and a bold totals row. Typed text (names,
+    trades, sites) is always stored as text, never as a formula.
+    """
+    # Imported here: only the Excel exports need openpyxl.
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    from openpyxl.utils import get_column_letter
+
+    bold = Font(bold=True)
+    money_format = _money_format(report.currency_decimals)
+    decimals = report.currency_decimals
+    workbook = Workbook()
+
+    def sheet(title: str, headers: list[str], widths: list[int]):
+        ws = workbook.create_sheet(title[:31])
+        for index, (header, width) in enumerate(zip(headers, widths, strict=True), 1):
+            cell = ws.cell(row=1, column=index, value=str(header))
+            cell.data_type = "s"
+            cell.font = bold
+            ws.column_dimensions[get_column_letter(index)].width = width
+        ws.freeze_panes = "A2"
+        return ws
+
+    def put(ws, row: int, values: list, formats: dict[int, str], *, total=False) -> None:
+        for index, value in enumerate(values, 1):
+            cell = ws.cell(row=row, column=index, value=value)
+            if isinstance(value, str):
+                cell.data_type = "s"  # "=1+1" typed as a name stays text
+            if index in formats and value is not None and not isinstance(value, str):
+                cell.number_format = formats[index]
+            if total:
+                cell.font = bold
+
+    # By worker: the CSV's columns.
+    ws = sheet(
+        _("By worker"),
+        [
+            _("Worker number"),
+            _("Worker"),
+            _("Trade"),
+            _("Site"),
+            _("Present"),
+            _("Half days"),
+            _("Late"),
+            _("Absent"),
+            _("Worker-days"),
+            _("Attendance rate (%)"),
+            _("Earned"),
+            _("Currency"),
+        ],
+        [14, 28, 16, 28, 10, 10, 10, 10, 12, 14, 14, 10],
+    )
+    formats = {9: "0.##", 10: "0%", 11: money_format}
+    row_number = 1
+    for row_number, row in enumerate(report.workers, 2):
+        put(
+            ws,
+            row_number,
+            [
+                row.number,
+                row.name,
+                row.trade,
+                row.site_name,
+                row.present,
+                row.half,
+                row.late,
+                row.absent,
+                row.days,
+                _percent(row.rate),
+                from_minor(row.earned, decimals),
+                report.currency,
+            ],
+            formats,
+        )
+    totals = report.totals
+    put(
+        ws,
+        row_number + 1,
+        [
+            None,
+            _("Total"),
+            None,
+            None,
+            totals["present"],
+            totals["half"],
+            totals["late"],
+            totals["absent"],
+            report.worker_days,
+            _percent(report.attendance_rate),
+            from_minor(totals["earned"], decimals),
+            report.currency,
+        ],
+        formats,
+        total=True,
+    )
+
+    # By site: labour cost (and the site's labour budget).
+    ws = sheet(
+        _("By site"),
+        [_("Site"), _("Labour cost"), _("Labour budget"), _("Currency")],
+        [32, 16, 16, 10],
+    )
+    formats = {2: money_format, 3: money_format}
+    row_number = 1
+    for row_number, item in enumerate(report.by_site, 2):
+        budget = from_minor(item.budget, decimals) if item.budget is not None else None
+        put(
+            ws,
+            row_number,
+            [item.name, from_minor(item.cost, decimals), budget, report.currency],
+            formats,
+        )
+    put(
+        ws,
+        row_number + 1,
+        [_("Total"), from_minor(report.labour_cost, decimals), None, report.currency],
+        formats,
+        total=True,
+    )
+
+    # By week: attendance rate per ISO week.
+    ws = sheet(
+        _("By week"),
+        [_("Year"), _("Week"), _("Week starting"), _("Attendance rate (%)")],
+        [8, 8, 14, 18],
+    )
+    formats = {3: "yyyy-mm-dd", 4: "0%"}
+    row_number = 1
+    for row_number, week in enumerate(report.by_week, 2):
+        put(ws, row_number, [week.year, week.week, week.start, _percent(week.rate)], formats)
+    put(
+        ws,
+        row_number + 1,
+        [_("Total"), None, None, _percent(report.attendance_rate)],
+        formats,
+        total=True,
+    )
+
+    workbook.remove(workbook.worksheets[0])  # the empty default sheet
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()

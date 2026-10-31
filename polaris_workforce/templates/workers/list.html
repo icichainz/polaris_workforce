@@ -5,15 +5,17 @@
 {% block page_subtitle %}{% blocktranslate with active=active_count inactive=inactive_count %}{{ active }} active · {{ inactive }} inactive{% endblocktranslate %}{% endblock %}
 {% block page_title %}{% translate "Workers" %}{% endblock %}
 {% block page_actions %}
+  {% if can_create %}{% translate "Import from Excel" as import_label %}{% url "workers:import" as import_url %}{% include "components/button.html" with label=import_label href=import_url only %}{% endif %}
   {% if can_create %}{% translate "Add worker" as add_label %}{% url "workers:create" as add_url %}{% include "components/button.html" with label=add_label href=add_url variant="primary" icon="plus" only %}{% endif %}
 {% endblock %}
 
 {% block content %}
-<form method="get" role="search" class="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto]">
+<form method="get" role="search" class="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 {% if form.documents %}lg:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))_auto]{% else %}lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto]{% endif %}">
   {% include "components/field.html" with field=form.q %}
   {% include "components/field.html" with field=form.site %}
   {% include "components/field.html" with field=form.trade %}
   {% include "components/field.html" with field=form.status %}
+  {% if form.documents %}{% include "components/field.html" with field=form.documents %}{% endif %}
   {% translate "Filter" as filter_label %}{% include "components/button.html" with label=filter_label type="submit" only %}
 </form>
 
@@ -34,7 +36,7 @@
         {% for row in rows %}
         <tr class="border-t border-line-soft">
           <td class="px-4 py-3"><span class="flex items-center gap-2.5">{% if row.worker.photo %}<img src="{% url 'core:worker_photo' row.worker.pk %}" alt="" class="size-8 shrink-0 rounded-full object-cover">{% else %}<span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-line text-xs font-bold">{{ row.initials }}</span>{% endif %}
-            <span><a href="{% url 'workers:detail' row.worker.pk %}" class="font-semibold">{{ row.worker.full_name }}</a><br><span class="text-xs text-steel">{{ row.worker.number }}{% if not row.worker.is_active %} · {% translate "Inactive" %}{% endif %}</span></span></span></td>
+            <span><a href="{% url 'workers:detail' row.worker.pk %}" class="font-semibold">{{ row.worker.full_name }}</a><br><span class="text-xs text-steel">{{ row.worker.number }}{% if not row.worker.is_active %} · {% translate "Inactive" %}{% endif %}</span>{% if row.documents == "expired" %} <span class="inline-flex h-5 items-center rounded-full bg-absent-bg px-2 text-[11px] font-semibold text-absent-fg">{% translate "Document expired" %}</span>{% elif row.documents == "expiring" %} <span class="inline-flex h-5 items-center rounded-full bg-warning-bg px-2 text-[11px] font-semibold text-warning-fg">{% translate "Document expires soon" %}</span>{% endif %}</span></span></td>
           <td class="px-4 py-3">{{ row.worker.trade.name|default:"—" }}</td>
           <td class="px-4 py-3">{{ row.site }}</td>
           <td class="px-4 py-3 whitespace-nowrap tabular-nums">{{ row.worker.phone|default:"—" }}</td>

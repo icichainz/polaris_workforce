@@ -10,7 +10,9 @@ really comes from the scoping and not from a bad URL.
 """
 
 import datetime
+import io
 
+import openpyxl
 import pytest
 from django.core.cache import cache
 from django.core.files.base import ContentFile
@@ -22,6 +24,7 @@ from apps.accounts.models import ForemanDevice
 from apps.attendance.models import AttendanceCorrection, AttendanceDay, AttendanceRecord
 from apps.payroll import services as payroll_services
 from apps.payroll.models import Advance, CashIssue, PayLine, Payment
+from apps.workers.models import WorkerDocument
 from apps.worksites.models import SiteAssignment
 from tests.e2e import Office, Phone, admin_office, hire, lines_by_worker, make_site, new_uuid
 from tests.e2e import record as mark
@@ -40,10 +43,13 @@ SECRET = "Bravo"  # appears in site B's name, its worker's and its manager's nam
 #   "public":   not site data (sign-in, language, password screens)
 #   "debug":    only served with DEBUG on
 #   "platform": platform admins only (companies); checked in test_multi_company.py
+#   "own":      acts only on the user's own pending work (the import preview kept in the
+#               session); checked in test_workers_import.py
 OFFICE = {
     "dashboard:home": "list",
     "dashboard:reports": "list",
     "dashboard:reports_csv": "list",
+    "dashboard:reports_xlsx": "list",
     "dashboard:components": "debug",
     "core:settings": "admin",
     "core:audit_log": "admin",
@@ -54,6 +60,7 @@ OFFICE = {
     "core:company_switch": "platform",
     "attendance:approvals": "list",
     "attendance:decide": "b_post",
+    "attendance:bulk_approve": "b_post",
     "payroll:cash_sheets": "list",
     "payroll:cash_sheet": "b_get",
     "payroll:cash_issue": "b_post",
@@ -68,6 +75,12 @@ OFFICE = {
     "workers:create": "list",
     "workers:detail": "b_get",
     "workers:edit": "b_get",  # and its POST, below
+    "workers:import": "list",
+    "workers:import_template": "list",
+    "workers:import_confirm": "own",
+    "workers:document_upload": "b_post",
+    "workers:document_delete": "b_post",
+    "workers:document_file": "b_get",
     "worksites:list": "list",
     "worksites:create": "admin",
     "worksites:detail": "b_get",
@@ -114,6 +127,31 @@ API = {
     "api:file-payment-proof": "b_get (404)",
 }
 JPEG = b"\xff\xd8\xff\xe0" + b"0" * 64
+PDF = b"%PDF-1.4\n" + b"0" * 64
+XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def page_text(response) -> str:
+    """The text of a page, a CSV or an Excel export (every cell of every sheet)."""
+    if response.get("Content-Type", "").startswith(XLSX_TYPE):
+        workbook = openpyxl.load_workbook(io.BytesIO(response.content), read_only=True)
+        cells = [
+            str(value)
+            for sheet in workbook.worksheets
+            for row in sheet.iter_rows(values_only=True)
+            for value in row
+            if value is not None
+        ]
+        workbook.close()
+        return "\n".join(cells)
+    return response.content.decode("utf-8-sig")
+
+
+def add_document(worker, title):
+    """A contract for ``worker`` (the documents URLs need one)."""
+    document = WorkerDocument(worker=worker, type=WorkerDocument.Type.CONTRACT, title=title)
+    document.file.save("contract.pdf", ContentFile(PDF), save=True)
+    return document
 
 
 def _url_names(patterns=None, namespace=""):
@@ -153,6 +191,7 @@ def world(db):
     b.manager.save()
     zeb = hire(b, "Zebulon", 6000, last_name=f"{SECRET}worker")
     zeb.photo.save("zeb.jpg", ContentFile(JPEG))
+    contract = add_document(zeb, f"{SECRET} contract")
 
     # Site B: yesterday approved, paid, with cash issued; today submitted and corrected.
     phone_b = Phone(b.phone_number, PIN)
@@ -183,6 +222,7 @@ def world(db):
         "line": PayLine.objects.get(worker=zeb, period__end_date=yesterday).pk,
         "payment": Payment.objects.get().pk,
         "worker": zeb.pk,
+        "document": contract.pk,
         "assignment": SiteAssignment.objects.get(worker=zeb).pk,
         "manager_b": b.manager.pk,
         "foreman_b": b.foreman.pk,
@@ -211,6 +251,7 @@ def _b_state(b):
         ),
         "site": (b.site.name, b.site.pay_frequency, b.site.status),
         "devices": sorted(ForemanDevice.objects.values_list("pk", "revoked_at")),
+        "documents": sorted(WorkerDocument.objects.values_list("pk", "worker_id", "title")),
     }
 
 
@@ -231,6 +272,7 @@ def _office_b_get_urls(ids):
         "attendance:approvals?day": reverse("attendance:approvals") + f"?day={ids['pending_day']}",
         "core:worker_photo": reverse("core:worker_photo", args=[ids["worker"]]),
         "core:payment_proof": reverse("core:payment_proof", args=[ids["payment"]]),
+        "workers:document_file": reverse("workers:document_file", args=[ids["document"]]),
     }
 
 
@@ -240,6 +282,22 @@ def _office_b_posts(ids):
         "attendance:decide": (
             reverse("attendance:decide", args=[ids["pending_day"]]),
             {"action": "approve"},
+        ),
+        "attendance:bulk_approve": (
+            reverse("attendance:bulk_approve"),
+            {"days": [ids["pending_day"]]},
+        ),
+        "workers:document_upload": (
+            reverse("workers:document_upload", args=[ids["worker"]]),
+            {
+                "type": "contract",
+                "title": "Hacked",
+                "file": SimpleUploadedFile("x.pdf", PDF, content_type="application/pdf"),
+            },
+        ),
+        "workers:document_delete": (
+            reverse("workers:document_delete", args=[ids["worker"], ids["document"]]),
+            {},
         ),
         "payroll:cash_issue": (
             reverse("payroll:cash_issue", args=[site, day]),
@@ -283,6 +341,7 @@ def _list_pages(ids):
         "dashboard:home": (reverse("dashboard:home"), {}),
         "dashboard:reports": (reverse("dashboard:reports"), {**span, "site": ids["site"]}),
         "dashboard:reports_csv": (reverse("dashboard:reports_csv"), span),
+        "dashboard:reports_xlsx": (reverse("dashboard:reports_xlsx"), span),
         "attendance:approvals": (reverse("attendance:approvals"), {}),
         "payroll:cash_sheets": (reverse("payroll:cash_sheets"), {"site": ids["site"]}),
         "payroll:periods": (reverse("payroll:periods"), {"site": ids["site"], "status": "all"}),
@@ -293,6 +352,8 @@ def _list_pages(ids):
         ),
         "workers:list": (reverse("workers:list"), {"site": ids["site"]}),
         "workers:create": (reverse("workers:create"), {}),
+        "workers:import": (reverse("workers:import"), {}),
+        "workers:import_template": (reverse("workers:import_template"), {}),
         "worksites:list": (reverse("worksites:list"), {}),
     }
 
@@ -321,7 +382,9 @@ def test_checks_cover_every_office_url(world):
         | set(_list_pages(ids))
         | set(_admin_urls(ids))
     )
-    wanted = {name for name, kind in OFFICE.items() if kind not in ("public", "debug", "platform")}
+    wanted = {
+        name for name, kind in OFFICE.items() if kind not in ("public", "debug", "platform", "own")
+    }
     assert wanted - covered == set()
 
 
@@ -340,8 +403,8 @@ def test_site_b_objects_open_for_site_b_manager(world):
         assert response.status_code == 200, name
         if name == "payroll:advance_preview":
             assert response.context["preview"]["worker"].pk == ids["worker"]
-        elif name not in ("workers:create", "dashboard:home"):
-            assert SECRET in response.content.decode("utf-8-sig"), name
+        elif name not in ("workers:create", "workers:import", "dashboard:home"):
+            assert SECRET in page_text(response), name
     for name, url in _admin_urls(ids).items():
         if name not in ("accounts:user_set_pin", "accounts:device_revoke"):  # POST only
             assert admin.get(url).status_code == 200, name
@@ -369,7 +432,7 @@ def test_site_a_users_cannot_reach_site_b_in_the_office(world, who):
     for name, (url, query) in _list_pages(ids).items():
         response = office.get(url, query)
         assert response.status_code in (200, 403), name
-        assert SECRET not in response.content.decode("utf-8-sig"), name
+        assert SECRET not in page_text(response), name
         if name == "payroll:advance_preview":
             assert response.context["preview"] is None
 
