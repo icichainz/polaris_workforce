@@ -289,6 +289,16 @@ GET /api/v1/sync/?since=2026-10-31T07:45:00Z
 - `amount` must equal what is left to pay on the line (its `net` when unpaid),
   otherwise `400` on `amount`.
 
+### Corrections after payment: `net` can include an adjustment
+
+If a day the worker was already paid for is corrected later (for example marked absent),
+the difference is settled on the worker's **next** pay at that site: deducted when they
+were overpaid, added when they were underpaid. In `GET payouts/` that adjustment is only
+in `net`; `gross` stays what was earned that pay and `advance_deduction` the advance
+repayment. So on those lines `net ≠ gross − advance_deduction`. Always hand over `net`
+(and send it as `amount`). `net` is never negative; whatever doesn't fit carries to the
+following pay. The office cash sheet and the payslip show the adjustment as its own line.
+
 ### Pay line ids
 
 `pay_line_id` is the pay of one worker for one pay period (one line per period and

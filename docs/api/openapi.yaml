@@ -2753,7 +2753,9 @@ components:
         net:
           type: integer
           format: int64
-          description: 'Hand over: gross − advance_deduction.'
+          description: 'Hand over: gross − advance_deduction, plus any correction
+            adjustment (see README "Payments"), so it can differ from that difference.
+            Never negative.'
         payment:
           allOf:
           - $ref: '#/components/schemas/PaymentSummary'

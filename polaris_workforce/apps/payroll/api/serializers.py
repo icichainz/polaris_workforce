@@ -47,7 +47,12 @@ class PayoutLineSerializer(serializers.Serializer):
     )
     gross = MoneyField(help_text="Earned for the day.")
     advance_deduction = MoneyField(help_text="Advance repayment taken from this pay (0 if none).")
-    net = MoneyField(help_text="Hand over: gross − advance_deduction.")
+    net = MoneyField(
+        help_text=(
+            "Hand over: gross − advance_deduction, plus any correction adjustment "
+            '(see README "Payments"), so it can differ from that difference. Never negative.'
+        )
+    )
     payment = PaymentSummarySerializer(allow_null=True, help_text="Null until paid.")
 
 
