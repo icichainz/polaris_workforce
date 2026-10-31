@@ -1,17 +1,30 @@
 """Roll call over the API: days, batch records, submit, corrections, sync.
 
-Stubs: Wave 2 agent C replaces each body with calls into ``apps/attendance/services.py``
-(``upsert_records``, ``submit_day``, ``correct_record``) and keeps the schema as is.
+Views stay thin: they check the site scope, validate the body and call
+``apps/attendance/services.py`` (writes) or ``selectors.py`` (reads). Reads are open to
+anyone who can see the site; writes need a foreman (or an admin, for support).
 """
 
+import datetime
+
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+from django.utils.translation import gettext_lazy as _
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema
+from rest_framework import serializers
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.api.exceptions import NotImplementedYet
+from apps.accounts.permissions import IsForeman, get_site_or_403
+from apps.api.idempotency import IdempotentCreateMixin
 from apps.api.schema import DATE, SITE_ID, error_responses
+from apps.attendance import selectors, services
+from apps.attendance.models import AttendanceDay, AttendanceRecord
 
 from .serializers import (
+    STATUS_TO_MODEL,
     AttendanceDayListSerializer,
     AttendanceDaySerializer,
     CorrectionCreateSerializer,
@@ -19,7 +32,52 @@ from .serializers import (
     RecordBatchSerializer,
     SubmitDaySerializer,
     SyncSerializer,
+    correction_payload,
+    day_payload,
+    full_day_payload,
+    record_payload,
 )
+
+MAX_DAYS_IN_RANGE = 31
+WRITE_PERMISSIONS = [IsAuthenticated, IsForeman]
+
+
+class _RangeQueryBase(serializers.Serializer):
+    def validate(self, attrs):
+        end = attrs.get("to") or selectors.company_today()
+        start = attrs.get("from") or end - datetime.timedelta(days=6)
+        if start > end:
+            raise serializers.ValidationError({"from": [_("Must be on or before 'to'.")]})
+        if (end - start).days + 1 > MAX_DAYS_IN_RANGE:
+            raise serializers.ValidationError(
+                {"from": [_("At most %(n)s days at a time.") % {"n": MAX_DAYS_IN_RANGE}]}
+            )
+        return {"from": start, "to": end}
+
+
+# ``from`` is a Python keyword, hence type() to declare the field.
+_RangeQuery = type(
+    "_RangeQuery",
+    (_RangeQueryBase,),
+    {"from": serializers.DateField(required=False), "to": serializers.DateField(required=False)},
+)
+
+
+class _SinceQuery(serializers.Serializer):
+    since = serializers.DateTimeField(required=False)
+
+
+def _day(site, date):
+    return (
+        AttendanceDay.objects.filter(site=site, date=date)
+        .select_related("submitted_by", "approved_by")
+        .first()
+    )
+
+
+def _day_response(site, date):
+    return Response(AttendanceDaySerializer(full_day_payload(site, date, _day(site, date))).data)
+
 
 TAGS = ["attendance"]
 
@@ -160,7 +218,25 @@ class DayListView(APIView):
         ],
     )
     def get(self, request, site_id):
-        raise NotImplementedYet()
+        site = get_site_or_403(request.user, site_id)
+        query = _RangeQuery(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        start, end = query.validated_data["from"], query.validated_data["to"]
+        expected = selectors.expected_by_date(site, start, end)
+        days = {
+            day.date: day
+            for day in AttendanceDay.objects.filter(site=site, date__range=(start, end))
+            .select_related("submitted_by", "approved_by")
+            .prefetch_related("records")
+        }
+        summaries = []
+        date = end
+        while date >= start:
+            day = days.get(date)
+            records = day.records.all() if day else []
+            summaries.append(day_payload(site, date, day, expected[date], records))
+            date -= datetime.timedelta(days=1)
+        return Response(AttendanceDayListSerializer({"site_id": site.pk, "days": summaries}).data)
 
 
 class DayDetailView(APIView):
@@ -180,10 +256,13 @@ class DayDetailView(APIView):
         ],
     )
     def get(self, request, site_id, date):
-        raise NotImplementedYet()
+        site = get_site_or_403(request.user, site_id)
+        return _day_response(site, date)
 
 
 class RecordBatchView(APIView):
+    permission_classes = WRITE_PERMISSIONS
+
     @extend_schema(
         tags=TAGS,
         operation_id="site_day_records",
@@ -225,10 +304,22 @@ class RecordBatchView(APIView):
         ],
     )
     def put(self, request, site_id, date):
-        raise NotImplementedYet()
+        site = get_site_or_403(request.user, site_id)
+        body = RecordBatchSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        records = [
+            {**item, "status": STATUS_TO_MODEL[item["status"]]}
+            for item in body.validated_data["records"]
+        ]
+        with transaction.atomic():
+            day = services.get_or_create_day(site, date, request.user)
+            services.upsert_records(day, records, request.user)
+        return _day_response(site, date)
 
 
 class SubmitDayView(APIView):
+    permission_classes = WRITE_PERMISSIONS
+
     @extend_schema(
         tags=TAGS,
         operation_id="site_day_submit",
@@ -264,10 +355,23 @@ class SubmitDayView(APIView):
         ],
     )
     def post(self, request, site_id, date):
-        raise NotImplementedYet()
+        site = get_site_or_403(request.user, site_id)
+        body = SubmitDaySerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        with transaction.atomic():
+            day = services.get_or_create_day(site, date, request.user)
+            services.submit_day(
+                day,
+                request.user,
+                body.validated_data["client_uuid"],
+                body.validated_data["foreman_note"],
+            )
+        return _day_response(site, date)
 
 
-class CorrectionCreateView(APIView):
+class CorrectionCreateView(IdempotentCreateMixin, APIView):
+    permission_classes = WRITE_PERMISSIONS
+
     @extend_schema(
         tags=TAGS,
         operation_id="record_correction",
@@ -312,7 +416,19 @@ class CorrectionCreateView(APIView):
         ],
     )
     def post(self, request, record_id):
-        raise NotImplementedYet()
+        record = get_object_or_404(AttendanceRecord.objects.select_related("day"), pk=record_id)
+        get_site_or_403(request.user, record.day.site_id)
+        body = CorrectionCreateSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = body.validated_data
+        new_value = data["new_value"]
+        if data["field"] == "status":
+            new_value = STATUS_TO_MODEL.get(new_value, new_value)
+        result = services.correct_record(
+            record, data["field"], new_value, data["reason"], request.user, data["client_uuid"]
+        )
+        payload = correction_payload(result.instance)
+        return self.idempotent_response(result, CorrectionSerializer(payload).data)
 
 
 class SyncView(APIView):
@@ -363,4 +479,24 @@ class SyncView(APIView):
         ],
     )
     def get(self, request):
-        raise NotImplementedYet()
+        query = _SinceQuery(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        changes = selectors.changes_since(request.user, query.validated_data.get("since"))
+        days = changes.days
+        expected = {day.pk: selectors.expected_worker_ids(day.site, day.date) for day in days}
+        records_by_day = {}
+        for record in AttendanceRecord.objects.filter(day__in=days):
+            records_by_day.setdefault(record.day_id, []).append(record)
+        payload = {
+            "server_time": changes.server_time,
+            "since": changes.since,
+            "days": [
+                day_payload(
+                    day.site, day.date, day, expected[day.pk], records_by_day.get(day.pk, [])
+                )
+                for day in days
+            ],
+            "records": [record_payload(record) for record in changes.records],
+            "corrections": [correction_payload(c) for c in changes.corrections],
+        }
+        return Response(SyncSerializer(payload).data)

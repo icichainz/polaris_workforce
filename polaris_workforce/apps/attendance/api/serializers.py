@@ -11,8 +11,20 @@ from apps.api import enums
 from apps.api.fields import ClockTimeField
 from apps.api.idempotency import client_uuid_field
 from apps.api.serializers import PersonRefSerializer
+from apps.attendance import selectors
+from apps.attendance.models import AttendanceRecord
 
 MAX_RECORDS_PER_BATCH = 200
+
+# API word → model value for a record status, and back. (Today they are the same words;
+# keep the mapping so the contract never depends on the database values.)
+STATUS_TO_MODEL = {
+    "present": AttendanceRecord.Status.PRESENT,
+    "absent": AttendanceRecord.Status.ABSENT,
+    "half_day": AttendanceRecord.Status.HALF_DAY,
+    "late": AttendanceRecord.Status.LATE,
+}
+STATUS_FROM_MODEL = {value: word for word, value in STATUS_TO_MODEL.items()}
 
 
 # --- Responses ---------------------------------------------------------------------------
@@ -143,3 +155,79 @@ class CorrectionCreateSerializer(serializers.Serializer):
     reason = serializers.CharField(
         max_length=500, help_text="Required: why the record changes after submission."
     )
+
+
+# --- Payloads (model → the dicts the response serializers render) -----------------------
+
+
+def person(user):
+    if user is None:
+        return None
+    return {"id": user.pk, "name": str(user)}
+
+
+def record_payload(record: AttendanceRecord) -> dict:
+    return {
+        "id": record.pk,
+        "client_uuid": record.client_uuid,
+        "day_id": record.day_id,
+        "worker_id": record.worker_id,
+        "status": STATUS_FROM_MODEL[record.status],
+        "arrival": record.arrival,
+        "departure": record.departure,
+        "note": record.note,
+        "corrected": record.corrected,
+        "updated_at": record.updated_at,
+    }
+
+
+def day_payload(site, date, day, expected_ids: set[int], records, *, with_records=False) -> dict:
+    """One day summary (``not_started`` when ``day`` is None)."""
+    records = list(records)
+    data = {
+        "id": day.pk if day else None,
+        "site_id": site.pk,
+        "date": date,
+        "status": day.status if day else selectors.NOT_STARTED,
+        "foreman_note": day.foreman_note if day else "",
+        "submitted_at": day.submitted_at if day else None,
+        "submitted_by": person(day.submitted_by) if day else None,
+        "approved_at": day.approved_at if day else None,
+        "approved_by": person(day.approved_by) if day else None,
+        "rejection_note": day.rejection_note if day else "",
+        "counts": selectors.day_counts(expected_ids, records),
+        "payout_status": selectors.payout_status(day),
+        "updated_at": day.updated_at if day else None,
+    }
+    if with_records:
+        data["records"] = [record_payload(record) for record in records]
+    return data
+
+
+def full_day_payload(site, date, day) -> dict:
+    """``AttendanceDaySerializer`` data: the day and its records."""
+    records = list(day.records.all()) if day else []
+    expected = selectors.expected_worker_ids(site, date)
+    return day_payload(site, date, day, expected, records, with_records=True)
+
+
+def correction_payload(correction) -> dict:
+    new_value, old_value = correction.new_value, correction.old_value
+    if correction.field == "status":
+        old_value = STATUS_FROM_MODEL.get(old_value, old_value)
+        new_value = STATUS_FROM_MODEL.get(new_value, new_value)
+    elif correction.field in ("arrival", "departure"):
+        old_value = old_value or None
+        new_value = new_value or None
+    return {
+        "id": correction.pk,
+        "client_uuid": correction.client_uuid,
+        "record_id": correction.record_id,
+        "field": correction.field,
+        "old_value": old_value,
+        "new_value": new_value,
+        "reason": correction.reason,
+        "created_by": person(correction.corrected_by),
+        "created_at": correction.created_at,
+        "record": record_payload(correction.record),
+    }

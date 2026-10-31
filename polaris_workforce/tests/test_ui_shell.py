@@ -23,7 +23,11 @@ OFFICE_URLS = [
 @pytest.fixture
 def signed_in_client(client, db):
     user = get_user_model().objects.create_user(
-        username="edem", password="s3cret-pass", first_name="Edem", last_name="Kpodar"
+        username="edem",
+        password="s3cret-pass",
+        first_name="Edem",
+        last_name="Kpodar",
+        role="admin",  # office pages are role-checked (Wave 2)
     )
     client.force_login(user)
     return client

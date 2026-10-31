@@ -14,27 +14,7 @@ PROTECTED = [
     ("post", "api:accounts:auth-logout", {}, None),
     ("get", "api:accounts:me", {}, None),
     ("get", "api:worksites:crew", {"site_id": 3}, None),
-    ("get", "api:attendance:days", {"site_id": 3}, None),
-    ("get", "api:attendance:day", {"site_id": 3, "date": DAY}, None),
-    (
-        "put",
-        "api:attendance:day-records",
-        {"site_id": 3, "date": DAY},
-        {"records": [{"client_uuid": UUID, "worker_id": 44, "status": "present"}]},
-    ),
-    (
-        "post",
-        "api:attendance:day-submit",
-        {"site_id": 3, "date": DAY},
-        {"client_uuid": UUID, "foreman_note": ""},
-    ),
-    (
-        "post",
-        "api:attendance:record-corrections",
-        {"record_id": 9001},
-        {"client_uuid": UUID, "field": "arrival", "new_value": "07:20", "reason": "Gate log"},
-    ),
-    ("get", "api:attendance:sync", {}, None),
+    # Attendance endpoints are implemented: see tests/test_attendance_api.py.
     ("get", "api:payroll:payout", {"site_id": 3, "date": DAY}, None),
     (
         "post",
