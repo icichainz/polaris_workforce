@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import get_site_or_403
+from apps.api import examples as ex
 from apps.api.schema import SITE_ID, error_responses
 from apps.core.models import CompanySettings
 from apps.core.settings import resolve_setting
@@ -16,19 +17,6 @@ from .. import services
 from .serializers import CrewQuerySerializer, CrewSerializer
 
 TAGS = ["worksites"]
-
-
-def _worker(worker_id, number, first, last, trade, pay_type="daily", streak=0):
-    return {
-        "id": worker_id,
-        "number": number,
-        "first_name": first,
-        "last_name": last,
-        "trade": trade,
-        "photo_url": f"https://polaris.example.com/media/workers/{number}.jpg",
-        "pay_type": pay_type,
-        "absent_streak": streak,
-    }
 
 
 class CrewView(APIView):
@@ -58,16 +46,7 @@ class CrewView(APIView):
             OpenApiExample(
                 "Crew",
                 response_only=True,
-                value={
-                    "site_id": 3,
-                    "date": "2026-10-31",
-                    "count": 3,
-                    "workers": [
-                        _worker(51, "W-0142", "Komlan", "Agbeko", "Carpenter"),
-                        _worker(58, "W-0157", "Kodjo", "Atsu", "Labourer", streak=2),
-                        _worker(44, "W-0118", "Yao", "Mensah", "Mason", "hourly"),
-                    ],
-                },
+                value=ex.CREW,
             )
         ],
     )

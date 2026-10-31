@@ -193,7 +193,7 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Polaris Workforce API",
-    "VERSION": "1.0.0",
+    "VERSION": "1.1.0",
     "DESCRIPTION": (
         "Foreman phone API: PIN sign-in, crew lists, roll call, corrections, sync and "
         "cash payouts. Authenticate with `Authorization: Device <token>` from "

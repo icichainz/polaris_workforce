@@ -14,9 +14,11 @@ from rest_framework.views import APIView
 from apps.accounts import services
 from apps.accounts.models import ForemanDevice
 from apps.accounts.permissions import scoped_sites
+from apps.api import examples as ex
 from apps.api.authentication import KEYWORD
 from apps.api.exceptions import Locked
 from apps.api.schema import error_responses
+from apps.core.choices import ProofType
 from apps.core.models import CompanySettings
 from apps.core.settings import resolve_setting
 from apps.worksites.models import Site
@@ -24,22 +26,6 @@ from apps.worksites.models import Site
 from .serializers import MeSerializer, PinLoginResponseSerializer, PinLoginSerializer
 
 TAGS = ["accounts"]
-
-USER_EXAMPLE = {
-    "id": 7,
-    "name": "Kossi Amegah",
-    "role": "foreman",
-    "phone": "+22890112233",
-    "language": "fr",
-}
-SITE_EXAMPLE = {
-    "id": 3,
-    "name": "Riverside Apartments",
-    "address": "Boulevard du Mono, Lomé",
-    "manager": {"id": 4, "name": "Edem Kpodar"},
-    "work_start": "07:00",
-    "roll_call_due": "08:00",
-}
 
 
 class PinRejected(exceptions.AuthenticationFailed):
@@ -64,11 +50,27 @@ def profile_data(user, company: CompanySettings) -> dict:
     }
 
 
+# Mirrors apps.payroll.services.validate_proof: only a photo proof needs its file (a
+# signature or thumb mark may be on the paper sheet). tests/test_accounts_api.py checks
+# that the two stay in step.
+PROOF_TYPES_NEEDING_FILE = [ProofType.PHOTO]
+
+
+def payment_rules(company: CompanySettings) -> dict:
+    """What ``validate_proof`` accepts. An empty setting accepts every proof type."""
+    accepted = set(company.accepted_proofs or ProofType.values)
+    return {
+        "accepted_proofs": [value for value in ProofType.values if value in accepted],
+        "file_required_for": [str(value) for value in PROOF_TYPES_NEEDING_FILE],
+    }
+
+
 def company_data(company: CompanySettings) -> dict:
     return {
         "country": company.country,
         "time_zone": company.time_zone,
         "currency": {"code": company.currency, "decimals": company.currency_decimals},
+        "payments": payment_rules(company),
     }
 
 
@@ -110,26 +112,64 @@ class PinLoginView(APIView):
         description=(
             "Exchanges phone + 4-digit PIN for a **device token**. No authentication; "
             "throttled per IP (`pin` scope, 10/minute).\n\n"
-            "Signing in again from the same `device_id` revokes that device's previous "
-            "token. After repeated wrong PINs the device is locked: `423 locked` with "
-            "`details.locked_until`. A wrong PIN is `401 not_authenticated` with "
-            "`details.attempts_left`.\n\n"
+            "Signing in again from the same `device_id` replaces that device's previous "
+            "token. Signing in again after a logout gives a new token for the same "
+            "user: writes queued in the outbox before the logout are accepted with it.\n\n"
+            "Errors:\n"
+            "- A wrong PIN for a foreman (or admin) who has one: `401 not_authenticated` "
+            "with `details.attempts_left` (tries left before the lock; the 5th wrong PIN "
+            "answers `attempts_left: 0` plus `details.locked_until`).\n"
+            "- An unknown phone number, a user without a PIN, a disabled user, or a role "
+            "that cannot use the phone (site manager, accountant): the same plain "
+            "`401 not_authenticated` with empty `details`. The answer does not say which.\n"
+            "- While locked after 5 wrong PINs (15 minutes), even with the right PIN: "
+            "`423 locked` with `details.locked_until` (ISO datetime).\n\n"
             "Keep the token in secure storage; it is shown only once."
         ),
         request=PinLoginSerializer,
         responses={
             200: PinLoginResponseSerializer,
-            **error_responses(400, 401, 423, 429),
+            **error_responses(
+                400,
+                401,
+                423,
+                429,
+                examples={
+                    400: [
+                        (
+                            "Bad PIN format",
+                            "Invalid input.",
+                            {"pin": ["This value does not match the required pattern."]},
+                        )
+                    ],
+                    401: [
+                        ("Wrong PIN", "Wrong PIN.", {"attempts_left": 2}),
+                        ("Unknown phone or no PIN", "Wrong phone number or PIN.", {}),
+                    ],
+                    423: [
+                        (
+                            "Locked after wrong PINs",
+                            "Too many wrong PINs. Try again later.",
+                            {"locked_until": "2026-10-31T06:57:00Z"},
+                        )
+                    ],
+                },
+                descriptions={
+                    401: "Wrong PIN (`details.attempts_left`), or an unknown phone / no PIN / "
+                    "a role that cannot sign in on the phone (empty `details`).",
+                    423: "Locked after 5 wrong PINs: `details.locked_until` (ISO datetime).",
+                },
+            ),
         },
         examples=[
             OpenApiExample(
                 "Sign in",
                 request_only=True,
                 value={
-                    "phone": "+22890112233",
+                    "phone": ex.USER["phone"],
                     "pin": "4821",
-                    "device_id": "0b6f4c4e-61a2-4d5b-9a50-8f3c0f5d2a11",
-                    "device_name": "Tecno Spark 10",
+                    "device_id": ex.DEVICE["device_id"],
+                    "device_name": ex.DEVICE["name"],
                 },
             ),
             OpenApiExample(
@@ -137,14 +177,10 @@ class PinLoginView(APIView):
                 response_only=True,
                 status_codes=["200"],
                 value={
-                    "token": "q9V3rM2xQk7f0bU8p1sZcW4yL6tN5hJaDgE_oRiK-Yw",
-                    "device": {
-                        "id": 12,
-                        "device_id": "0b6f4c4e-61a2-4d5b-9a50-8f3c0f5d2a11",
-                        "name": "Tecno Spark 10",
-                    },
-                    "user": USER_EXAMPLE,
-                    "sites": [SITE_EXAMPLE],
+                    "token": ex.TOKEN,
+                    "device": ex.DEVICE,
+                    "user": ex.USER,
+                    "sites": [ex.SITE],
                 },
             ),
         ],
@@ -191,8 +227,15 @@ class LogoutView(APIView):
         summary="Sign out this device",
         description=(
             "Revokes the device token used for this call (sets `revoked_at`). Later calls "
-            "with it get `401`. The phone should first drain its outbox: unsent writes "
-            "cannot be sent after logout."
+            "with it get `401`.\n\n"
+            "**The outbox survives a logout.** Records, submissions, corrections and "
+            "payments belong to the user and the site, not to the token: writes queued "
+            "before the logout are accepted once the same user signs in again on the "
+            "device (new token), and replays of writes already sent still return the "
+            "original result. Try to drain the outbox first anyway; keep what is left "
+            "and send it after the next sign-in of the same user. Another user signed "
+            "in on the phone cannot replay a payment (`409 conflict`), so don't hand a "
+            "foreman's outbox to someone else."
         ),
         request=None,
         responses={
@@ -215,23 +258,16 @@ class MeView(APIView):
         operation_id="me",
         summary="Signed-in foreman and assigned sites",
         description=(
-            "Profile, company basics (time zone, currency) and the sites this user is "
-            "assigned to. Call after sign-in and on every app start when online."
+            "Profile, company basics (time zone, currency, proof-of-payment rules) and the "
+            "sites this user is assigned to. Call after sign-in and on every app start "
+            "when online."
         ),
         responses={200: MeSerializer, **error_responses(401)},
         examples=[
             OpenApiExample(
                 "Foreman",
                 response_only=True,
-                value={
-                    **USER_EXAMPLE,
-                    "company": {
-                        "country": "TG",
-                        "time_zone": "Africa/Lome",
-                        "currency": {"code": "XOF", "decimals": 0},
-                    },
-                    "sites": [SITE_EXAMPLE],
-                },
+                value={**ex.USER, "company": ex.COMPANY, "sites": [ex.SITE]},
             )
         ],
     )

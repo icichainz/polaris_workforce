@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Polaris Workforce API
-  version: 1.0.0
+  version: 1.1.0
   description: 'Foreman phone API: PIN sign-in, crew lists, roll call, corrections,
     sync and cash payouts. Authenticate with `Authorization: Device <token>` from
     `POST /api/v1/auth/pin/`. Errors are `{code, message, details}`. Every phone write
@@ -12,9 +12,10 @@ paths:
   /api/v1/auth/logout/:
     post:
       operationId: auth_logout
-      description: 'Revokes the device token used for this call (sets `revoked_at`).
-        Later calls with it get `401`. The phone should first drain its outbox: unsent
-        writes cannot be sent after logout.'
+      description: |-
+        Revokes the device token used for this call (sets `revoked_at`). Later calls with it get `401`.
+
+        **The outbox survives a logout.** Records, submissions, corrections and payments belong to the user and the site, not to the token: writes queued before the logout are accepted once the same user signs in again on the device (new token), and replays of writes already sent still return the original result. Try to drain the outbox first anyway; keep what is left and send it after the next sign-in of the same user. Another user signed in on the phone cannot replay a payment (`409 conflict`), so don't hand a foreman's outbox to someone else.
       summary: Sign out this device
       tags:
       - accounts
@@ -44,7 +45,12 @@ paths:
       description: |-
         Exchanges phone + 4-digit PIN for a **device token**. No authentication; throttled per IP (`pin` scope, 10/minute).
 
-        Signing in again from the same `device_id` revokes that device's previous token. After repeated wrong PINs the device is locked: `423 locked` with `details.locked_until`. A wrong PIN is `401 not_authenticated` with `details.attempts_left`.
+        Signing in again from the same `device_id` replaces that device's previous token. Signing in again after a logout gives a new token for the same user: writes queued in the outbox before the logout are accepted with it.
+
+        Errors:
+        - A wrong PIN for a foreman (or admin) who has one: `401 not_authenticated` with `details.attempts_left` (tries left before the lock; the 5th wrong PIN answers `attempts_left: 0` plus `details.locked_until`).
+        - An unknown phone number, a user without a PIN, a disabled user, or a role that cannot use the phone (site manager, accountant): the same plain `401 not_authenticated` with empty `details`. The answer does not say which.
+        - While locked after 5 wrong PINs (15 minutes), even with the right PIN: `423 locked` with `details.locked_until` (ISO datetime).
 
         Keep the token in secure storage; it is shown only once.
       summary: Sign in with phone number and PIN
@@ -109,14 +115,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               examples:
-                ValidationError:
+                BadPINFormat:
                   value:
                     code: validation_error
                     message: Invalid input.
                     details:
-                      field_name:
-                      - This field is required.
-                  summary: validation_error
+                      pin:
+                      - This value does not match the required pattern.
+                  summary: Bad PIN format
           description: The request is invalid; `details` maps each field to its errors.
         '401':
           content:
@@ -124,29 +130,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               examples:
-                NotAuthenticated:
+                WrongPIN:
                   value:
                     code: not_authenticated
-                    message: Invalid or revoked device token.
+                    message: Wrong PIN.
+                    details:
+                      attempts_left: 2
+                  summary: Wrong PIN
+                UnknownPhoneOrNoPIN:
+                  value:
+                    code: not_authenticated
+                    message: Wrong phone number or PIN.
                     details: {}
-                  summary: not_authenticated
-          description: Missing, invalid or revoked device token. Sign in again with
-            the PIN.
+                  summary: Unknown phone or no PIN
+          description: Wrong PIN (`details.attempts_left`), or an unknown phone /
+            no PIN / a role that cannot sign in on the phone (empty `details`).
         '423':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
               examples:
-                Locked:
+                LockedAfterWrongPINs:
                   value:
                     code: locked
-                    message: This resource is locked and cannot be changed.
+                    message: Too many wrong PINs. Try again later.
                     details:
-                      status: locked
-                  summary: locked
-          description: 'Locked: the day or pay period is locked, or the device is
-            locked after failed PINs.'
+                      locked_until: '2026-10-31T06:57:00Z'
+                  summary: Locked after wrong PINs
+          description: 'Locked after 5 wrong PINs: `details.locked_until` (ISO datetime).'
         '429':
           content:
             application/json:
@@ -187,8 +199,9 @@ paths:
   /api/v1/me/:
     get:
       operationId: me
-      description: Profile, company basics (time zone, currency) and the sites this
-        user is assigned to. Call after sign-in and on every app start when online.
+      description: Profile, company basics (time zone, currency, proof-of-payment
+        rules) and the sites this user is assigned to. Call after sign-in and on every
+        app start when online.
       summary: Signed-in foreman and assigned sites
       tags:
       - accounts
@@ -215,6 +228,13 @@ paths:
                       currency:
                         code: XOF
                         decimals: 0
+                      payments:
+                        accepted_proofs:
+                        - photo
+                        - signature
+                        - thumb_mark
+                        file_required_for:
+                        - photo
                     sites:
                     - id: 3
                       name: Riverside Apartments
@@ -246,6 +266,8 @@ paths:
         Records that a worker received their pay. Send `multipart/form-data` when there is a proof file, JSON otherwise.
 
         201 when created; repeating the same `client_uuid` returns the original payment with 200 and `Idempotent-Replayed: true` (send the file again on a retry; it is ignored on a replay). The line already paid under another `client_uuid`, or the sheet `not_open`: `409 conflict`. Sheet closed or period locked: `423 locked`.
+
+        Proof rules come from `GET /me/` → `company.payments`: `proof_type` must be in `accepted_proofs`, and a type in `file_required_for` (`photo`) needs `proof_file`. `amount` must equal what is left to pay on the line (its `net` when unpaid). A `pay_line_id` that no longer exists: `404 not_found`.
       summary: Record a payment with proof
       tags:
       - payroll
@@ -288,7 +310,7 @@ paths:
                     currency:
                       code: XOF
                       decimals: 0
-                    proof_url: https://polaris.example.com/media/proofs/3301.jpg
+                    proof_url: https://polaris.example.com/media/proofs/2026/10/receipt-3301.jpg
                     paid_by:
                       id: 7
                       name: Kossi Amegah
@@ -310,7 +332,7 @@ paths:
                     currency:
                       code: XOF
                       decimals: 0
-                    proof_url: https://polaris.example.com/media/proofs/3301.jpg
+                    proof_url: https://polaris.example.com/media/proofs/2026/10/receipt-3301.jpg
                     paid_by:
                       id: 7
                       name: Kossi Amegah
@@ -321,14 +343,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               examples:
-                ValidationError:
+                PhotoMissing:
                   value:
                     code: validation_error
                     message: Invalid input.
                     details:
-                      field_name:
-                      - This field is required.
-                  summary: validation_error
+                      proof_file:
+                      - Attach the photo of the worker receiving the cash.
+                  summary: Photo missing
+                WrongAmount:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      amount:
+                      - 'The amount must be the net left to pay: 4000.'
+                  summary: Wrong amount
           description: The request is invalid; `details` maps each field to its errors.
         '401':
           content:
@@ -377,13 +407,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               examples:
-                Conflict:
+                AlreadyPaid:
                   value:
                     code: conflict
-                    message: This client_uuid was already used for a different request.
+                    message: This worker has already been paid.
                     details:
-                      client_uuid: 6f1c2b9e-1d1a-4c55-9a52-3f0e8a9d7b10
-                  summary: conflict
+                      pay_line_id: 801
+                  summary: Already paid
+                SheetNotOpen:
+                  value:
+                    code: conflict
+                    message: 'The cash sheet is not open: the roll call is not approved
+                      yet.'
+                    details:
+                      status: not_open
+                  summary: Sheet not open
           description: The request conflicts with the current state.
         '423':
           content:
@@ -391,13 +429,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               examples:
-                Locked:
+                PeriodLocked:
                   value:
                     code: locked
-                    message: This resource is locked and cannot be changed.
+                    message: This pay period is locked.
                     details:
                       status: locked
-                  summary: locked
+                  summary: Period locked
           description: 'Locked: the day or pay period is locked, or the device is
             locked after failed PINs.'
   /api/v1/records/{record_id}/corrections/:
@@ -465,13 +503,15 @@ paths:
                       id: 9003
                       client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 63
                       status: late
                       arrival: 07:20
                       departure: null
                       note: ''
                       corrected: true
-                      updated_at: '2026-10-31T07:41:12Z'
+                      updated_at: '2026-10-31T09:15:00Z'
           description: ''
         '200':
           content:
@@ -496,13 +536,15 @@ paths:
                       id: 9003
                       client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 63
                       status: late
                       arrival: 07:20
                       departure: null
                       note: ''
                       corrected: true
-                      updated_at: '2026-10-31T07:41:12Z'
+                      updated_at: '2026-10-31T09:15:00Z'
           description: ''
         '400':
           content:
@@ -515,7 +557,7 @@ paths:
                     code: validation_error
                     message: Invalid input.
                     details:
-                      field_name:
+                      client_uuid:
                       - This field is required.
                   summary: validation_error
           description: The request is invalid; `details` maps each field to its errors.
@@ -626,14 +668,14 @@ paths:
                   value:
                     site_id: 3
                     date: '2026-10-31'
-                    count: 3
+                    count: 4
                     workers:
-                    - id: 51
-                      number: W-0142
-                      first_name: Komlan
-                      last_name: Agbeko
-                      trade: Carpenter
-                      photo_url: https://polaris.example.com/media/workers/W-0142.jpg
+                    - id: 63
+                      number: W-0163
+                      first_name: Delali
+                      last_name: Agbo
+                      trade: Painter
+                      photo_url: https://polaris.example.com/media/workers/W-0163.jpg
                       pay_type: daily
                       absent_streak: 0
                     - id: 58
@@ -644,13 +686,21 @@ paths:
                       photo_url: https://polaris.example.com/media/workers/W-0157.jpg
                       pay_type: daily
                       absent_streak: 2
+                    - id: 51
+                      number: W-0142
+                      first_name: Afi
+                      last_name: Dosseh
+                      trade: Labourer
+                      photo_url: https://polaris.example.com/media/workers/W-0142.jpg
+                      pay_type: daily
+                      absent_streak: 0
                     - id: 44
                       number: W-0118
                       first_name: Yao
                       last_name: Mensah
                       trade: Mason
                       photo_url: https://polaris.example.com/media/workers/W-0118.jpg
-                      pay_type: hourly
+                      pay_type: daily
                       absent_streak: 0
           description: ''
         '400':
@@ -664,7 +714,7 @@ paths:
                     code: validation_error
                     message: Invalid input.
                     details:
-                      field_name:
+                      client_uuid:
                       - This field is required.
                   summary: validation_error
           description: The request is invalid; `details` maps each field to its errors.
@@ -749,29 +799,50 @@ paths:
                   value:
                     site_id: 3
                     days:
-                    - id: 209
+                    - id: 210
                       site_id: 3
-                      date: '2026-10-30'
-                      status: approved
-                      foreman_note: Concrete delivery late, crew B started 07:30.
+                      date: '2026-10-31'
+                      status: submitted
+                      foreman_note: Concrete delivery late, Delali started 07:35.
                       submitted_at: '2026-10-31T07:42:05Z'
                       submitted_by:
                         id: 7
                         name: Kossi Amegah
-                      approved_at: '2026-10-30T16:10:00Z'
+                      approved_at: null
+                      approved_by: null
+                      rejection_note: ''
+                      counts:
+                        expected: 4
+                        present: 1
+                        absent: 1
+                        half_day: 1
+                        late: 1
+                        unmarked: 0
+                      payout_status: not_open
+                      updated_at: '2026-10-31T07:42:05Z'
+                    - id: 209
+                      site_id: 3
+                      date: '2026-10-30'
+                      status: approved
+                      foreman_note: ''
+                      submitted_at: '2026-10-30T07:38:40Z'
+                      submitted_by:
+                        id: 7
+                        name: Kossi Amegah
+                      approved_at: '2026-10-30T15:52:00Z'
                       approved_by:
                         id: 4
                         name: Edem Kpodar
                       rejection_note: ''
                       counts:
-                        expected: 42
-                        present: 40
-                        absent: 2
+                        expected: 4
+                        present: 3
+                        absent: 1
                         half_day: 0
                         late: 0
                         unmarked: 0
                       payout_status: paid
-                      updated_at: '2026-10-31T07:42:05Z'
+                      updated_at: '2026-10-30T15:52:00Z'
                   summary: This week
           description: ''
         '400':
@@ -785,7 +856,7 @@ paths:
                     code: validation_error
                     message: Invalid input.
                     details:
-                      field_name:
+                      client_uuid:
                       - This field is required.
                   summary: validation_error
           description: The request is invalid; `details` maps each field to its errors.
@@ -875,10 +946,10 @@ paths:
                     approved_by: null
                     rejection_note: ''
                     counts:
-                      expected: 42
-                      present: 35
-                      absent: 4
-                      half_day: 2
+                      expected: 4
+                      present: 1
+                      absent: 1
+                      half_day: 1
                       late: 1
                       unmarked: 0
                     payout_status: not_open
@@ -887,6 +958,8 @@ paths:
                     - id: 9001
                       client_uuid: 3f2a7c1e-5b8d-4e0a-9c61-0d4b8e2f7a10
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 44
                       status: present
                       arrival: 07:00
@@ -897,6 +970,8 @@ paths:
                     - id: 9002
                       client_uuid: 8c4d1b2e-7f3a-4a9b-b2c5-6e1f0a3d9b21
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 51
                       status: half_day
                       arrival: 07:00
@@ -907,6 +982,8 @@ paths:
                     - id: 9003
                       client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 63
                       status: late
                       arrival: 07:35
@@ -917,6 +994,8 @@ paths:
                     - id: 9004
                       client_uuid: d7b3e2a1-9c8f-4b5d-a6e0-1f2c3b4a5d43
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 58
                       status: absent
                       arrival: null
@@ -937,12 +1016,12 @@ paths:
                     approved_by: null
                     rejection_note: ''
                     counts:
-                      expected: 42
+                      expected: 4
                       present: 0
                       absent: 0
                       half_day: 0
                       late: 0
-                      unmarked: 42
+                      unmarked: 4
                     payout_status: not_open
                     updated_at: null
                     records: []
@@ -997,7 +1076,7 @@ paths:
 
         **Idempotent per record.** The server finds each record by `client_uuid`, then by `worker_id` (one record per worker per day), and writes only fields that changed; replaying a batch changes nothing. The response carries the server's `client_uuid` per worker: adopt it.
 
-        Allowed while the day is `not_started`, `draft` or `rejected` (a rejected day goes back to `draft`). Once `submitted`, `approved` or `locked`: `423 locked` — use corrections. A worker not on the crew that day: `400 validation_error`.
+        Allowed while the day is `not_started`, `draft` or `rejected` (a rejected day goes back to `draft`). Once `submitted`, `approved` or `locked`: `423 locked` — use corrections. A worker not on the crew that day: `400 validation_error`, with one entry per batch item in `details.records` (`{}` for items without errors). A `client_uuid` already used for another worker or day: `409 conflict`.
       summary: Save roll-call marks (batch upsert)
       parameters:
       - in: path
@@ -1078,10 +1157,10 @@ paths:
                     approved_by: null
                     rejection_note: ''
                     counts:
-                      expected: 42
-                      present: 35
-                      absent: 4
-                      half_day: 2
+                      expected: 4
+                      present: 1
+                      absent: 1
+                      half_day: 1
                       late: 1
                       unmarked: 0
                     payout_status: not_open
@@ -1090,6 +1169,8 @@ paths:
                     - id: 9001
                       client_uuid: 3f2a7c1e-5b8d-4e0a-9c61-0d4b8e2f7a10
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 44
                       status: present
                       arrival: 07:00
@@ -1100,6 +1181,8 @@ paths:
                     - id: 9002
                       client_uuid: 8c4d1b2e-7f3a-4a9b-b2c5-6e1f0a3d9b21
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 51
                       status: half_day
                       arrival: 07:00
@@ -1110,6 +1193,8 @@ paths:
                     - id: 9003
                       client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 63
                       status: late
                       arrival: 07:35
@@ -1120,6 +1205,8 @@ paths:
                     - id: 9004
                       client_uuid: d7b3e2a1-9c8f-4b5d-a6e0-1f2c3b4a5d43
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 58
                       status: absent
                       arrival: null
@@ -1134,14 +1221,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               examples:
-                ValidationError:
+                WorkerNotOnTheCrew:
                   value:
                     code: validation_error
                     message: Invalid input.
                     details:
-                      field_name:
-                      - This field is required.
-                  summary: validation_error
+                      records:
+                      - {}
+                      - worker_id:
+                        - This worker is not on the crew of this site that day.
+                  summary: Worker not on the crew
           description: The request is invalid; `details` maps each field to its errors.
         '401':
           content:
@@ -1184,19 +1273,34 @@ paths:
                     details: {}
                   summary: not_found
           description: The resource does not exist.
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ClientUuidOfAnotherRecord:
+                  value:
+                    code: conflict
+                    message: This client_uuid was already used for another record.
+                    details:
+                      client_uuid: 3f2a7c1e-5b8d-4e0a-9c61-0d4b8e2f7a10
+                  summary: client_uuid of another record
+          description: The request conflicts with the current state.
         '423':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
               examples:
-                Locked:
+                AlreadySubmitted:
                   value:
                     code: locked
-                    message: This resource is locked and cannot be changed.
+                    message: 'This day was already submitted: change records with
+                      a correction.'
                     details:
-                      status: locked
-                  summary: locked
+                      status: submitted
+                  summary: Already submitted
           description: 'Locked: the day or pay period is locked, or the device is
             locked after failed PINs.'
   /api/v1/sites/{site_id}/days/{date}/submit/:
@@ -1204,6 +1308,8 @@ paths:
       operationId: site_day_submit
       description: |-
         Moves the day from `draft` to `submitted` and notifies the site manager. After this, changes need a correction with a reason.
+
+        Send `submitted_at` (phone clock, when the foreman tapped Submit) if you have it: the office shows when the roll call was sent, and flags one that reached the server an hour or more after it was submitted on the phone. The day's `submitted_at` in the response is the server time.
 
         Idempotent: repeating it with the same `client_uuid` returns the day (200). Every crew member must be marked: otherwise `409 conflict` with `details.unmarked_worker_ids`. Already submitted with another `client_uuid`, or approved: `409 conflict`. Locked: `423 locked`.
       summary: Submit the roll call
@@ -1232,7 +1338,8 @@ paths:
               Submit:
                 value:
                   client_uuid: c0a8012e-4b7d-4f3e-9a1b-2d3c4e5f6a71
-                  foreman_note: Concrete delivery late, crew B started 07:30.
+                  foreman_note: Concrete delivery late, Delali started 07:35.
+                  submitted_at: '2026-10-31T07:42:01Z'
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/SubmitDayRequest'
@@ -1256,7 +1363,7 @@ paths:
                     site_id: 3
                     date: '2026-10-31'
                     status: submitted
-                    foreman_note: Concrete delivery late, crew B started 07:30.
+                    foreman_note: Concrete delivery late, Delali started 07:35.
                     submitted_at: '2026-10-31T07:42:05Z'
                     submitted_by:
                       id: 7
@@ -1265,10 +1372,10 @@ paths:
                     approved_by: null
                     rejection_note: ''
                     counts:
-                      expected: 42
-                      present: 35
-                      absent: 4
-                      half_day: 2
+                      expected: 4
+                      present: 1
+                      absent: 1
+                      half_day: 1
                       late: 1
                       unmarked: 0
                     payout_status: not_open
@@ -1277,6 +1384,8 @@ paths:
                     - id: 9001
                       client_uuid: 3f2a7c1e-5b8d-4e0a-9c61-0d4b8e2f7a10
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 44
                       status: present
                       arrival: 07:00
@@ -1287,6 +1396,8 @@ paths:
                     - id: 9002
                       client_uuid: 8c4d1b2e-7f3a-4a9b-b2c5-6e1f0a3d9b21
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 51
                       status: half_day
                       arrival: 07:00
@@ -1297,6 +1408,8 @@ paths:
                     - id: 9003
                       client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 63
                       status: late
                       arrival: 07:35
@@ -1307,6 +1420,8 @@ paths:
                     - id: 9004
                       client_uuid: d7b3e2a1-9c8f-4b5d-a6e0-1f2c3b4a5d43
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 58
                       status: absent
                       arrival: null
@@ -1326,7 +1441,7 @@ paths:
                     code: validation_error
                     message: Invalid input.
                     details:
-                      field_name:
+                      client_uuid:
                       - This field is required.
                   summary: validation_error
           description: The request is invalid; `details` maps each field to its errors.
@@ -1377,13 +1492,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               examples:
-                Conflict:
+                UnmarkedWorkers:
                   value:
                     code: conflict
-                    message: This client_uuid was already used for a different request.
+                    message: Mark every worker on the crew before submitting.
                     details:
-                      client_uuid: 6f1c2b9e-1d1a-4c55-9a52-3f0e8a9d7b10
-                  summary: conflict
+                      unmarked_worker_ids:
+                      - 58
+                  summary: Unmarked workers
+                AlreadySubmitted:
+                  value:
+                    code: conflict
+                    message: This day was already submitted.
+                    details:
+                      status: submitted
+                  summary: Already submitted
           description: The request conflicts with the current state.
         '423':
           content:
@@ -1394,10 +1517,9 @@ paths:
                 Locked:
                   value:
                     code: locked
-                    message: This resource is locked and cannot be changed.
+                    message: This day is locked and cannot be changed.
                     details:
                       status: locked
-                  summary: locked
           description: 'Locked: the day or pay period is locked, or the device is
             locked after failed PINs.'
   /api/v1/sites/{site_id}/payouts/{date}/:
@@ -1407,6 +1529,8 @@ paths:
         Who to pay and how much, with the cash reconciliation. Before the roll call is approved `status` is `not_open` and the figures are a preview ('Preview tonight's payout'). Every money value is an integer in the smallest unit of `currency`.
 
         Invariants: `total_to_pay = Σ net`, `left_to_pay = total_to_pay − paid_total`, `cash_in_hand = cash_issued − paid_total`.
+
+        **`pay_line_id`** is stable for a worker and pay period while the line is recomputed (a correction, an approval): the line is updated in place. It changes only if the worker drops off the sheet (no worked day left in the period, e.g. corrected to absent) and comes back later, which makes a new line. A paid line is frozen. Pay from the latest sheet: a queued payment for a line that no longer exists gets `404 not_found`, and one whose `net` changed gets `400` on `amount`; fetch the sheet again.
       summary: Cash sheet for the day
       parameters:
       - in: path
@@ -1452,12 +1576,36 @@ paths:
                     line_count: 3
                     paid_count: 1
                     lines:
+                    - pay_line_id: 803
+                      worker:
+                        id: 63
+                        name: Delali Agbo
+                        trade: Painter
+                        photo_url: https://polaris.example.com/media/workers/W-0163.jpg
+                      worked: 1 day · late
+                      units: '1.00'
+                      gross: 7500
+                      advance_deduction: 0
+                      net: 7500
+                      payment: null
+                    - pay_line_id: 802
+                      worker:
+                        id: 51
+                        name: Afi Dosseh
+                        trade: Labourer
+                        photo_url: https://polaris.example.com/media/workers/W-0142.jpg
+                      worked: ½ day
+                      units: '0.50'
+                      gross: 1750
+                      advance_deduction: 0
+                      net: 1750
+                      payment: null
                     - pay_line_id: 801
                       worker:
                         id: 44
                         name: Yao Mensah
                         trade: Mason
-                        photo_url: https://polaris.example.com/media/workers/44.jpg
+                        photo_url: https://polaris.example.com/media/workers/W-0118.jpg
                       worked: 1 day
                       units: '1.00'
                       gross: 6000
@@ -1469,30 +1617,6 @@ paths:
                         amount: 4000
                         proof_type: photo
                         paid_at: '2026-10-31T16:31:00Z'
-                    - pay_line_id: 802
-                      worker:
-                        id: 51
-                        name: Afi Dosseh
-                        trade: Labourer
-                        photo_url: https://polaris.example.com/media/workers/51.jpg
-                      worked: ½ day
-                      units: '0.50'
-                      gross: 1750
-                      advance_deduction: 0
-                      net: 1750
-                      payment: null
-                    - pay_line_id: 803
-                      worker:
-                        id: 63
-                        name: Delali Agbo
-                        trade: Painter
-                        photo_url: https://polaris.example.com/media/workers/63.jpg
-                      worked: 1 day · late
-                      units: '1.00'
-                      gross: 7500
-                      advance_deduction: 0
-                      net: 7500
-                      payment: null
                   summary: Open sheet
           description: ''
         '401':
@@ -1572,7 +1696,7 @@ paths:
                       site_id: 3
                       date: '2026-10-31'
                       status: approved
-                      foreman_note: Concrete delivery late, crew B started 07:30.
+                      foreman_note: Concrete delivery late, Delali started 07:35.
                       submitted_at: '2026-10-31T07:42:05Z'
                       submitted_by:
                         id: 7
@@ -1583,10 +1707,10 @@ paths:
                         name: Edem Kpodar
                       rejection_note: ''
                       counts:
-                        expected: 42
-                        present: 35
-                        absent: 4
-                        half_day: 2
+                        expected: 4
+                        present: 1
+                        absent: 1
+                        half_day: 1
                         late: 1
                         unmarked: 0
                       payout_status: open
@@ -1595,13 +1719,15 @@ paths:
                     - id: 9003
                       client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
                       day_id: 210
+                      site_id: 3
+                      date: '2026-10-31'
                       worker_id: 63
                       status: late
                       arrival: 07:20
                       departure: null
                       note: ''
                       corrected: true
-                      updated_at: '2026-10-31T07:41:12Z'
+                      updated_at: '2026-10-31T09:15:00Z'
                     corrections:
                     - id: 77
                       client_uuid: 5e9d0c4b-3a2f-4e1d-9b8c-7a6f5e4d3c21
@@ -1618,13 +1744,15 @@ paths:
                         id: 9003
                         client_uuid: a1e5f9c3-2d4b-4f7e-8a06-b3c2d1e0f932
                         day_id: 210
+                        site_id: 3
+                        date: '2026-10-31'
                         worker_id: 63
                         status: late
                         arrival: 07:20
                         departure: null
                         note: ''
                         corrected: true
-                        updated_at: '2026-10-31T07:41:12Z'
+                        updated_at: '2026-10-31T09:15:00Z'
           description: ''
         '400':
           content:
@@ -1637,7 +1765,7 @@ paths:
                     code: validation_error
                     message: Invalid input.
                     details:
-                      field_name:
+                      client_uuid:
                       - This field is required.
                   summary: validation_error
           description: The request is invalid; `details` maps each field to its errors.
@@ -1849,6 +1977,13 @@ components:
             it if it differs from its own (the same worker was marked from two phones).
         day_id:
           type: integer
+        site_id:
+          type: integer
+          description: The day's site (same as the day's `site_id`).
+        date:
+          type: string
+          format: date
+          description: The day's date (same as the day's `date`).
         worker_id:
           type: integer
         status:
@@ -1877,10 +2012,12 @@ components:
       - arrival
       - client_uuid
       - corrected
+      - date
       - day_id
       - departure
       - id
       - note
+      - site_id
       - status
       - updated_at
       - worker_id
@@ -1907,9 +2044,14 @@ components:
           description: IANA time zone, e.g. Africa/Lome. Decides which date is 'today'.
         currency:
           $ref: '#/components/schemas/Currency'
+        payments:
+          allOf:
+          - $ref: '#/components/schemas/PaymentRules'
+          description: Proof-of-payment rules for the payout screen.
       required:
       - country
       - currency
+      - payments
       - time_zone
     CorrectableFieldEnum:
       enum:
@@ -2293,17 +2435,27 @@ components:
         amount:
           type: integer
           format: int64
-          description: Smallest unit. Normally the line's `net`.
+          description: 'Smallest unit. Must equal what is left to pay on the line:
+            its `net` when unpaid.'
           minimum: 0
         proof_type:
-          $ref: '#/components/schemas/ProofTypeEnum'
+          allOf:
+          - $ref: '#/components/schemas/ProofTypeEnum'
+          description: |-
+            One of `GET /me/` → `company.payments.accepted_proofs`.
+
+            * `photo` - Photo
+            * `signature` - Signature
+            * `thumb_mark` - Thumb mark
+            * `none` - No proof
         proof_file:
           type: string
           format: binary
           nullable: true
-          description: JPEG/PNG of the photo, signature or thumb mark (compress on
-            the phone; ≤ 2 MB). Whether it is required depends on the company's proof
-            setting.
+          description: 'Image of the photo, signature or thumb mark: jpg, jpeg, png,
+            webp or pdf, at most 5 MB (compress on the phone). Required for the types
+            in `GET /me/` → `company.payments.file_required_for` (`photo`), optional
+            otherwise.'
         paid_at:
           type: string
           format: date-time
@@ -2314,6 +2466,26 @@ components:
       - client_uuid
       - pay_line_id
       - proof_type
+    PaymentRules:
+      type: object
+      properties:
+        accepted_proofs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProofTypeEnum'
+          description: 'Proof types `POST /payments/` accepts (company setting). Offer
+            only these on the payout screen; `none` (no proof) is accepted only when
+            it is listed. Anything else: `400 validation_error` on `proof_type`.'
+        file_required_for:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProofTypeEnum'
+          description: 'Proof types that must come with a `proof_file` (today `photo`).
+            For the others a file is optional. Missing file: `400 validation_error`
+            on `proof_file`.'
+      required:
+      - accepted_proofs
+      - file_required_for
     PaymentSummary:
       type: object
       properties:
@@ -2414,7 +2586,9 @@ components:
       properties:
         pay_line_id:
           type: integer
-          description: Send this to `POST /payments/`.
+          description: Send this to `POST /payments/`. Stable for this worker and
+            pay period while the figures are recomputed; a new id only if the worker
+            left the sheet (no worked day in the period) and came back.
         worker:
           $ref: '#/components/schemas/PayoutWorker'
         worked:
@@ -2609,6 +2783,14 @@ components:
           default: ''
           description: Optional note for the site manager.
           maxLength: 1000
+        submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the foreman tapped Submit, from the phone clock (ISO 8601
+            with offset). Optional. The office flags a roll call that reached the
+            server an hour or more later. The day's own `submitted_at` stays the server
+            time.
       required:
       - client_uuid
     Sync:

@@ -1,8 +1,10 @@
-# Polaris Workforce — foreman API (v1)
+# Polaris Workforce — foreman API (v1, contract 1.1.0)
 
 The contract between the Django backend (`polaris_workforce/`) and the Flutter foreman
 app (`polaris_foreman/`). The source of truth is **[`openapi.yaml`](openapi.yaml)**, which
 drf-spectacular generates from the code. This page explains the conventions behind it.
+The URL prefix stays `/api/v1/`; the contract version (`info.version`) is `1.1.0`. What
+changed since 1.0 is listed in [Changes in 1.1](#changes-in-11).
 
 - Base URL: `https://<server>/api/v1/`
 - Every path ends with a slash: `/api/v1/me/`, not `/api/v1/me`.
@@ -11,6 +13,24 @@ drf-spectacular generates from the code. This page explains the conventions behi
 - Swagger UI, DEBUG only: `/api/v1/docs/`. The raw schema is at `/api/v1/schema/`
   (`?format=json` for JSON).
 
+## Changes in 1.1
+
+For the Flutter developer. Every change adds a field or fixes the documentation, so a
+1.0 client keeps working; the last column is what to adopt.
+
+| # | Where | 1.0 | 1.1 |
+| --- | --- | --- | --- |
+| 1 | `GET /me/` → `company` | `{country, time_zone, currency}` | adds `payments: {accepted_proofs: [ProofType], file_required_for: [ProofType]}`. Offer only `accepted_proofs` on the payout screen; ask for a file for the types in `file_required_for` (today `["photo"]`). See [Payments](#payments). |
+| 2 | Every `AttendanceRecord`: day detail, records `PUT`, submit, correction `record`, sync `records` and `corrections[].record` | `{id, client_uuid, day_id, worker_id, …}` | adds `site_id` (int) and `date` (`YYYY-MM-DD`) of the record's day, so a synced record can be stored without its day. |
+| 3 | `POST /auth/pin/` errors | one generic example per status | `401` examples: wrong PIN `{"attempts_left": 2}`; unknown phone / no PIN / wrong role `{}` (the same answer for all three). `423` example: `{"locked_until": "2026-10-31T06:57:00Z"}`. See [PIN errors](#authentication-pin--device-token). |
+| 4 | Cash sheet `lines[].pay_line_id` | "Send this to `POST /payments/`" | a documented guarantee: stable for a (pay period, worker) while the figures are recomputed. See [Pay line ids](#pay-line-ids). |
+| 5 | Every example in `openapi.yaml` | unrelated ids and names per endpoint (a 42-worker count next to 4 records) | one data set: site 3, foreman 7, manager 4, workers 63/58/51/44 (Agbo, Atsu, Dosseh, Mensah), day 210 on 2026-10-31, times in order (marked 07:41 → submitted 07:42 → corrected 09:15 → approved 16:10 → synced 16:12 → paid 16:31). Source: `polaris_workforce/apps/api/examples.py`. |
+| 6 | `POST /auth/logout/` | "unsent writes cannot be sent after logout" | **that was wrong**: writes queued before a logout are accepted after the same user signs in again (new token). See [Logout and the outbox](#logout-and-the-outbox). |
+| 7 | `POST /sites/{id}/days/{date}/submit/` request | `{client_uuid, foreman_note}` | adds optional `submitted_at` (ISO datetime, phone clock when Submit was tapped). The office shows it and flags a roll call that reached the server 1 h or more later. |
+| 8 | `400 validation_error` details for list fields | `{"records": {"0": {…}}}` (an object keyed by index) for some errors | always a JSON list: `{"records": [{}, {"worker_id": ["…"]}]}`. See [Errors](#errors). |
+| 9 | Unknown URL under `/api/` | Django's HTML 404 page | JSON: `404 {"code": "not_found", "message": "Not found.", "details": {}}`. |
+| 10 | Documentation fixes | — | records `PUT` lists its `409 conflict` (a `client_uuid` of another record); `POST /payments/` says that `amount` must equal what is left to pay on the line, gives the real proof file limit (jpg/jpeg/png/webp/pdf, ≤ 5 MB, not 2 MB) and `400`/`409` examples; submit has `409` examples (`unmarked_worker_ids`, already submitted). The offline section no longer mentions drift (the app uses sqflite). |
+
 ## Endpoints
 
 | Method & path | Purpose | Success | Wave 2 owner |
@@ -18,7 +38,7 @@ drf-spectacular generates from the code. This page explains the conventions behi
 | `GET /health/` | Is the server reachable? No auth. | 200 | done |
 | `POST /auth/pin/` | Phone + PIN + device ID → device token. No auth; throttled. | 200 | A |
 | `POST /auth/logout/` | Revoke this device's token | 204 | A |
-| `GET /me/` | Profile, company (time zone, currency), assigned sites | 200 | A |
+| `GET /me/` | Profile, company (time zone, currency, payment proof rules), assigned sites | 200 | A |
 | `GET /sites/{site_id}/crew/?date=` | Workers expected on the site that day | 200 | B |
 | `GET /sites/{site_id}/days/?from=&to=` | Day summaries (home screen "This week") | 200 | C |
 | `GET /sites/{site_id}/days/{date}/` | The day and its records (`not_started` if none) | 200 | C |
@@ -61,8 +81,27 @@ Which screen uses what:
 
 PIN errors:
 
-- Wrong PIN: `401 not_authenticated`, with `details.attempts_left`.
-- Too many wrong PINs: `423 locked`, with `details.locked_until` (ISO datetime).
+- Wrong PIN for a foreman (or admin) who has a PIN: `401 not_authenticated`, with
+  `details.attempts_left` (tries left before the lock). The 5th wrong PIN answers
+  `attempts_left: 0` plus `details.locked_until`.
+
+  ```json
+  {"code": "not_authenticated", "message": "Wrong PIN.", "details": {"attempts_left": 2}}
+  ```
+
+- An unknown phone number, a user without a PIN, a disabled user, or a role that cannot
+  sign in on the phone (site manager, accountant): the **same plain** `401
+  not_authenticated`, `"message": "Wrong phone number or PIN."`, `"details": {}`. The
+  answer does not say which of these it was, so show one message ("Wrong phone number
+  or PIN").
+- Locked after 5 wrong PINs (for 15 minutes; even the right PIN is refused):
+  `423 locked`, with `details.locked_until` (ISO datetime). Show the time and keep the
+  keypad disabled until then.
+
+  ```json
+  {"code": "locked", "message": "Too many wrong PINs. Try again later.", "details": {"locked_until": "2026-10-31T06:57:00Z"}}
+  ```
+
 - More than 10 tries a minute from one IP address: `429 throttled`, with
   `details.retry_after` (seconds; also sent in the `Retry-After` header).
 
@@ -70,6 +109,28 @@ The server stores only `sha256(token)` (`ForemanDevice.token_hash`) and updates
 `last_seen_at` at most once a minute. Office staff can also call the API with their
 browser session (session authentication; unsafe methods need CSRF), which is useful in
 Swagger UI.
+
+### Logout and the outbox
+
+`POST /auth/logout/` revokes the token used for the call, nothing else. Records,
+submissions, corrections and payments belong to the **user and the site**, never to the
+token, so:
+
+- Writes queued in the outbox before a logout are accepted after **the same user** signs
+  in again on the device (with a new token). Send them as they are, with their original
+  `client_uuid`s.
+- A write that reached the server before the logout (its response lost) replays with
+  the new token: `200` and the original object (`Idempotent-Replayed: true` for payments
+  and corrections).
+- The same holds after a `401` because an admin revoked the device: sign in, then send
+  the outbox.
+- Don't send one foreman's outbox under another user's token: a payment replayed by
+  someone else is `409 conflict` (the first foreman paid it), and records or a
+  submission would be saved under the other user's name. When a different user signs in
+  on the phone, keep the previous user's outbox aside until they sign in again.
+
+Drain the outbox before logging out when you can; it is not required.
+`tests/test_api_outbox.py` checks this end to end (PIN sign-in, logout, sign-in again).
 
 ## Errors
 
@@ -86,21 +147,36 @@ Every error response, whatever the status, has this shape:
 
 | HTTP | `code` | When | `details` |
 | --- | --- | --- | --- |
-| 400 | `validation_error` | Bad body or query string | field → list of messages; nested for lists, e.g. `{"records": [{}, {"status": ["…"]}]}`; `non_field_errors` for the rest |
+| 400 | `validation_error` | Bad body or query string | field → list of messages; a JSON list for list fields (below); `non_field_errors` for the rest |
 | 401 | `not_authenticated` | No token, a wrong token, a revoked token, a wrong PIN | wrong PIN: `attempts_left` |
 | 403 | `permission_denied` | Signed in but not allowed, e.g. a site you are not assigned to | — |
-| 404 | `not_found` | No such object | — |
+| 404 | `not_found` | No such object, or no such URL under `/api/` | — |
 | 405 | `method_not_allowed` | Wrong HTTP method | — |
 | 409 | `conflict` | The request clashes with the current state (a `client_uuid` reused for another request, submitting with unmarked workers, paying a sheet that is not open) | context, e.g. `unmarked_worker_ids`, `client_uuid` |
 | 415 | `unsupported_media_type` | Wrong `Content-Type` | — |
 | 423 | `locked` | The day or pay period is locked or submitted, or the device is locked after failed PINs | e.g. `status`, `locked_until` |
 | 429 | `throttled` | Too many requests | `retry_after` (seconds) |
 | 500 | `server_error` | A bug on the server | — |
-| 501 | `not_implemented` | The endpoint is in the contract but not built yet (Wave 1 stubs) | — |
+| 501 | `not_implemented` | Reserved for an endpoint in the contract that is not built yet (none today) | — |
 
-One exception: a URL that matches no route at all (a typo, or an impossible date such
-as `2026-02-30` in the path) gets Django's plain 404 page, not JSON. Treat any 404 as
-`not_found`.
+**Errors on list items** (the records of a batch `PUT`) are always a JSON list, never an
+object keyed by index. The list has one entry per item, in the order sent, up to the
+last item with an error; an item without errors is `{}`; items after the last entry
+had no errors:
+
+```json
+{"code": "validation_error", "message": "Invalid input.",
+ "details": {"records": [{}, {"worker_id": ["This worker is not on the crew of this site that day."]}]}}
+```
+
+Too many items is an error on the field itself, not on an item:
+`{"records": {"non_field_errors": ["Ensure this field has no more than 200 elements."]}}`.
+
+**Unknown URLs** under `/api/` (a typo, an impossible date such as `2026-02-30` in the
+path, a site id that is not a number) answer in the same format:
+`404 {"code": "not_found", "message": "Not found.", "details": {}}`. Every path ends with
+a slash; without it, the server redirects (`301`) to the path with the slash. Office pages
+outside `/api/` keep the HTML 404 page.
 
 ## Idempotency: `client_uuid`
 
@@ -137,6 +213,9 @@ GET /api/v1/sync/?since=2026-10-31T07:45:00Z
 → {"server_time": "2026-10-31T16:12:30Z", "since": "…", "days": […], "records": […], "corrections": […]}
 ```
 
+- Every record carries `day_id`, `site_id` and `date`, so it can be stored even when its
+  day is not in the same response (a correction changes the record, not always the day).
+
 - On the first sync, leave out `since`: you get the last 14 days for every assigned site.
 - Store `server_time` exactly as received, and send it as `since` next time. Don't use
   the phone clock: it may be wrong.
@@ -165,6 +244,40 @@ GET /api/v1/sync/?since=2026-10-31T07:45:00Z
   `left_to_pay = total_to_pay − paid_total`, `cash_in_hand = cash_issued − paid_total`.
 - `units` (days or hours) is a decimal **string**, e.g. `"0.50"`.
 
+## Payments
+
+- **Proof rules** come from `GET /me/` → `company.payments`:
+  - `accepted_proofs`: the proof types `POST /payments/` accepts (a company setting).
+    Offer only these. `none` (no proof) is accepted only when it is listed. Anything
+    else: `400` on `proof_type`.
+  - `file_required_for`: the types that need a `proof_file` (today `["photo"]`). For a
+    signature or thumb mark the file is optional (it may be on the paper sheet). Missing
+    file: `400` on `proof_file`.
+  - The file: jpg, jpeg, png, webp or pdf, at most 5 MB. Send `multipart/form-data` when
+    there is one, JSON otherwise.
+- `amount` must equal what is left to pay on the line (its `net` when unpaid),
+  otherwise `400` on `amount`.
+
+### Pay line ids
+
+`pay_line_id` is the pay of one worker for one pay period (one line per period and
+worker; with daily pay, a period is one day). The server recomputes the unpaid lines
+whenever the attendance changes (approval, corrections). The guarantee:
+
+- **Recomputing keeps the id.** The line is updated in place: `units`, `gross`,
+  `advance_deduction` and `net` may change, the id does not.
+- **A paid line is frozen**: never recomputed, never deleted. Nothing changes in a
+  locked period.
+- **The id changes only if the worker leaves the sheet and comes back.** When a worker
+  has no worked day left in the period (for example their only day is corrected to
+  absent), their unpaid line is deleted; if a later correction puts them back, a new
+  line with a new id is made. (The same happens if the office changes the pay frequency,
+  which moves the days to another period.)
+
+So: pay from the latest `GET /sites/{id}/payouts/{date}/`. A payment queued for a line
+that no longer exists gets `404 not_found`, and one whose `net` changed gets `400` on
+`amount`: refresh the sheet and show it to the foreman again.
+
 ## Dates and times
 
 - Dates: ISO 8601 `YYYY-MM-DD`. A work day is a date in the company's time zone
@@ -191,7 +304,7 @@ The API uses words. The app shows letters.
 
 ## Working offline (for the Flutter app)
 
-- Read from the local database (drift) and write to it first. The network only moves
+- Read from the local database (sqflite) and write to it first. The network only moves
   the outbox and refreshes the cache.
 - Before draining the outbox, call `GET /health/` (it is cheap). Then send writes **in
   order, one at a time**: records → submit → corrections → payments. A correction needs
@@ -201,14 +314,15 @@ The API uses words. The app shows letters.
   wait `retry_after`.
 - Batch the roll call: one `PUT .../records/` holds up to 200 records.
 - The network can be as slow as ~15 KB/s. Cache the crew list and worker photos (they
-  rarely change). Compress proof photos on the phone (JPEG, longest side ≤ 1280 px,
-  well under the 2 MB limit). Send `paid_at` from the moment of payment, because an
-  offline payment can reach the server hours later.
+  rarely change). Compress proof photos on the phone (JPEG, longest side ≤ 1280 px; the
+  server takes up to 5 MB, but aim for a few hundred KB). Send `paid_at` from the moment
+  of payment, and `submitted_at` from the moment the foreman tapped Submit, because an
+  offline write can reach the server hours later.
 - `GET /sites/{id}/days/{date}/` always returns a day, with `status: not_started` and
   `id: null` when nothing has been saved yet.
-- Until Wave 2 is merged, every endpoint except `/health/` answers
-  `501 not_implemented`. Use the mock data, which follows the examples in
-  `openapi.yaml`.
+- Every endpoint is implemented; `501 not_implemented` stays in the error codes for
+  future endpoints. The examples in `openapi.yaml` are one coherent data set
+  (`polaris_workforce/apps/api/examples.py`) that the mock data can follow.
 
 ## Regenerating the contract
 
@@ -218,7 +332,7 @@ the code:
 
 ```sh
 cd polaris_workforce
-uv run python manage.py spectacular --file ../docs/api/openapi.yaml --validate
+uv run python manage.py spectacular --file ../docs/api/openapi.yaml --validate --fail-on-warn
 ```
 
 `tests/test_api_schema.py` regenerates the schema and fails if `openapi.yaml` is out of
@@ -226,7 +340,9 @@ date.
 
 Where to change things:
 
-- Endpoints, serializers and examples: `apps/<app>/api/` (the Wave 2 owner of that app).
+- Endpoints and serializers: `apps/<app>/api/` (the Wave 2 owner of that app).
+- Example values: `apps/api/examples.py`, one data set for every endpoint
+  (`tests/test_api_examples.py` checks that they validate and agree).
 - Shared enums, the error format, money and time fields, authentication, idempotency:
   `apps/api/`. These are contract changes, so coordinate with the lead.
 - Routes: each app's `api/urls.py`. `apps/api/urls.py` includes them all, once each.

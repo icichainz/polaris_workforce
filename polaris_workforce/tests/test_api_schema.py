@@ -55,7 +55,7 @@ def test_health_endpoint_still_works(client):
 def test_schema_is_valid_openapi(schema):
     validate_schema(schema)
     assert schema["info"]["title"] == "Polaris Workforce API"
-    assert schema["info"]["version"] == "1.0.0"
+    assert schema["info"]["version"] == "1.1.0"
 
 
 def test_schema_has_every_foreman_endpoint(schema):

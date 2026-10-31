@@ -309,8 +309,9 @@ def test_put_bad_status_is_400(crew):
     response = put_marks(crew, batch(crew.workers[:1], "P"))
 
     body = assert_error(response, 400, "validation_error")
-    # DRF keys list-item errors by index here (see the report), not a list.
-    assert "status" in body["details"]["records"]["0"]
+    # DRF keys list-item errors by index; the handler turns them into a JSON list.
+    assert isinstance(body["details"]["records"], list)
+    assert "status" in body["details"]["records"][0]
 
 
 # --- Submit ----------------------------------------------------------------------------
@@ -511,3 +512,84 @@ def test_sync_shows_office_approval(crew):
 
 def test_sync_bad_since_is_400(crew):
     assert_error(crew.client.get(url("sync"), {"since": "last week"}), 400, "validation_error")
+
+
+# --- Contract 1.1 ------------------------------------------------------------------------
+
+
+def _placed(record_data, crew):
+    return (record_data["site_id"], record_data["date"]) == (crew.site.pk, crew.today.isoformat())
+
+
+def test_every_record_carries_its_site_and_date(crew):
+    put_response = put_marks(crew)
+    submit(crew)
+    record = AttendanceRecord.objects.get(worker=crew.workers[0])
+    correction = correct(crew, record, reason="Late really").json()
+    day = crew.client.get(day_url(crew)).json()
+    synced = crew.client.get(url("sync")).json()
+
+    for data in (put_response.json()["records"], day["records"], synced["records"]):
+        assert data and all(_placed(r, crew) for r in data)
+        assert all(r["day_id"] == day["id"] for r in data)
+    assert _placed(correction["record"], crew)
+    assert all(_placed(c["record"], crew) for c in synced["corrections"])
+
+
+def test_sync_reads_record_days_in_bulk(crew, django_assert_max_num_queries):
+    put_marks(crew)
+    submit(crew)
+    for worker in crew.workers:
+        correct(crew, AttendanceRecord.objects.get(worker=worker), reason="Late really")
+
+    with django_assert_max_num_queries(16):
+        response = crew.client.get(url("sync"))
+
+    assert len(response.json()["corrections"]) == 3
+
+
+def test_submit_passes_the_phone_time(crew):
+    put_marks(crew)
+    phone_time = timezone.now() - datetime.timedelta(hours=3)
+
+    response = crew.client.post(
+        day_url(crew, "day-submit"),
+        {"client_uuid": str(uuid.uuid4()), "submitted_at": phone_time.isoformat()},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    day = AttendanceDay.objects.get()
+    assert day.client_submitted_at == phone_time
+    # The day's submitted_at in the response stays the server time.
+    assert response.json()["submitted_at"] != phone_time.isoformat()
+    assert selectors.approval_flags(day, 0) == ["Synced 3 h after submission"]
+
+
+def test_too_many_records_is_an_error_on_the_field(crew):
+    body = {"records": batch(crew.workers)["records"] * 67}  # 201 items
+
+    response = put_marks(crew, body)
+
+    details = assert_error(response, 400, "validation_error")["details"]
+    assert list(details["records"]) == ["non_field_errors"]
+
+
+def test_submit_without_phone_time(crew):
+    put_marks(crew)
+
+    assert submit(crew).status_code == 200
+    assert AttendanceDay.objects.get().client_submitted_at is None
+
+
+def test_submit_bad_phone_time_is_400(crew):
+    put_marks(crew)
+
+    response = crew.client.post(
+        day_url(crew, "day-submit"),
+        {"client_uuid": str(uuid.uuid4()), "submitted_at": "this morning"},
+        format="json",
+    )
+
+    body = assert_error(response, 400, "validation_error")
+    assert "submitted_at" in body["details"]
