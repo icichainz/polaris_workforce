@@ -1,5 +1,7 @@
+import datetime
 import io
 from decimal import Decimal
+from unittest import mock
 
 import pytest
 from django.core.management import CommandError, call_command
@@ -27,6 +29,21 @@ from apps.portal.models import WorkerAccess
 from apps.workers.models import Worker
 
 pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(autouse=True)
+def _a_working_day():
+    """The demo depends on the date (today's roll calls, check-ins, weekly pay): seed it on
+    a Friday morning so the tests don't change with the calendar (Sundays have no work)."""
+    friday = datetime.datetime(2026, 10, 30, 10, 0, tzinfo=datetime.UTC)
+    real_now = datetime.datetime.now
+    started = real_now(datetime.UTC)
+    # The clock keeps ticking from that Friday: the seed relies on events happening in order
+    # (a correction after a payment becomes a pay adjustment).
+    with mock.patch(
+        "django.utils.timezone.now", side_effect=lambda: friday + (real_now(datetime.UTC) - started)
+    ):
+        yield
 
 
 def test_seed_demo_builds_a_consistent_demo(settings):

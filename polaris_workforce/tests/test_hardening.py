@@ -335,6 +335,26 @@ call_command("check", deploy=True, fail_level="WARNING")
     assert result.returncode == 0, result.stderr
 
 
+def _cookie_flags(env):
+    code = (
+        "from django.conf import settings\n"
+        "print(settings.SESSION_COOKIE_SECURE, settings.CSRF_COOKIE_SECURE)\n"
+    )
+    base = {"DJANGO_SECRET_KEY": "production-" + "x9Q" * 20, "DJANGO_ALLOWED_HOSTS": "x"}
+    result = _settings_in_subprocess({**base, **env}, code)
+    assert result.returncode == 0, result.stderr
+    return result.stdout.strip()
+
+
+def test_cookies_are_secure_in_production_by_default():
+    assert _cookie_flags({}) == "True True"
+
+
+def test_secure_cookies_can_be_turned_off_for_local_plain_http():
+    # docker compose on http://localhost sets DJANGO_SECURE_COOKIES=false.
+    assert _cookie_flags({"DJANGO_SECURE_COOKIES": "false"}) == "False False"
+
+
 # --- M5: office sign-in lockout ------------------------------------------------------------------
 
 

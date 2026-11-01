@@ -43,6 +43,10 @@ checklist in `docs/security-review.md`.
 
 ## Deployment notes
 
+To run the whole platform (Django, scheduler, nginx, tracker) with Docker Compose, see
+[`docs/docker.md`](../docs/docker.md).
+
+
 Besides the production checklist in `docs/security-review.md`, two commands must run
 from cron (as the app user, with the production environment) once messaging is on:
 

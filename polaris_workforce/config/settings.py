@@ -225,8 +225,9 @@ DEVICE_TOKEN_IDLE_DAYS = int(env_str("DEVICE_TOKEN_IDLE_DAYS", "30"))
 # Security for production (only active when DEBUG is off)
 
 if not DEBUG:
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    # Cookies only travel over HTTPS. DJANGO_SECURE_COOKIES=false is for a local
+    # plain-HTTP setup only (e.g. docker compose on http://localhost), never production.
+    SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = env_bool("DJANGO_SECURE_COOKIES", default=True)
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     # Plain-HTTP requests are redirected to HTTPS. The proxy must set X-Forwarded-Proto
     # (see SECURE_PROXY_SSL_HEADER), or every request loops; turn it off only when the
