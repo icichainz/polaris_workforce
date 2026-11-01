@@ -70,7 +70,9 @@ DARK = {
     "danger-text": "#ffb4ab",
     # Always-dark chrome
     "inverse": "#0b0d10",
-    "inverse-line": "#3a414b",
+    # The headline tile is darker than the page here: an amber edge keeps it the figure
+    # that stands out (in light it is the one dark tile on a light page).
+    "inverse-line": "#a57c12",
     "on-inverse": "#f3f4f6",
     # Sidebar ("rail")
     "rail-edge": "#4b535e",

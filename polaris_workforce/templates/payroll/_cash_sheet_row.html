@@ -9,23 +9,23 @@ A line paid by bank transfer or mobile money (`apps.payouts`) shows its transfer
 <tr id="line-{{ line.pk }}" class="border-t border-line-soft{% if row.errors %} bg-amber-tint{% endif %}">
   <td class="px-4 py-3">
     <span class="flex items-center gap-2.5"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-line text-xs font-bold" aria-hidden="true">{{ worker|initials }}</span>
-      <span><span class="font-semibold">{{ worker.full_name }}</span><br><span class="text-xs text-steel">{{ worker.number }}{% if worker.trade %} · {{ worker.trade.name }}{% endif %}</span></span></span>
+      <span class="whitespace-nowrap"><span class="font-semibold">{{ worker.full_name }}</span><br><span class="text-xs text-steel">{{ worker.number }}{% if worker.trade %} · {{ worker.trade.name }}{% endif %}</span></span></span>
   </td>
-  <td class="px-4 py-3 tabular-nums">{{ line|worked:sheet }}</td>
-  <td class="px-4 py-3 text-right tabular-nums">{{ line.gross|amount:sheet }}
+  <td class="whitespace-nowrap px-4 py-3 tabular-nums">{{ line|worked:sheet }}</td>
+  <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums">{{ line.gross|amount:sheet }}
     {% if line.piece_amount %}<span class="block text-xs text-steel">{% blocktranslate with amount=line.piece_amount|amount:sheet %}incl. piece work {{ amount }}{% endblocktranslate %}</span>{% endif %}
     {% if line.bonus_amount %}<span class="block text-xs text-steel">{% blocktranslate with amount=line.bonus_amount|amount:sheet %}incl. bonus {{ amount }}{% endblocktranslate %}</span>{% endif %}
     {% for day in line.days %}{% if day|day_rules %}<span class="block text-xs text-steel">{{ day|day_rules }}</span>{% endif %}{% endfor %}
   </td>
-  <td class="px-4 py-3 text-right tabular-nums">{% if line.statutory_deductions %}− {{ line.statutory_deductions|amount:sheet }}{% for item in line.deductions %}{% if item.employee %}<span class="block text-xs text-steel">{{ item.name }} · {{ item.employee|amount:sheet }}</span>{% endif %}{% endfor %}{% else %}—{% endif %}</td>
-  <td class="px-4 py-3 text-right tabular-nums text-half-fg">{% if line.advance_deduction %}− {{ line.advance_deduction|amount:sheet }}{% else %}—{% endif %}</td>
-  <td class="px-4 py-3 text-right tabular-nums">
+  <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums">{% if line.statutory_deductions %}− {{ line.statutory_deductions|amount:sheet }}{% for item in line.deductions %}{% if item.employee %}<span class="block text-xs text-steel">{{ item.name }} · {{ item.employee|amount:sheet }}</span>{% endif %}{% endfor %}{% else %}<span class="text-steel">—</span>{% endif %}</td>
+  <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums">{% if line.advance_deduction %}<span class="text-half-fg">− {{ line.advance_deduction|amount:sheet }}</span>{% else %}<span class="text-steel">—</span>{% endif %}</td>
+  <td class="whitespace-nowrap px-4 py-3 text-right tabular-nums">
     {% if sl.adjustments %}
       <span class="font-semibold{% if line.adjustment < 0 %} text-absent-fg{% elif line.adjustment > 0 %} text-present-fg{% endif %}">{{ line.adjustment|signed:sheet }}</span>
       {% for adjustment, applied in sl.adjustments %}<span class="block text-xs text-steel">{{ adjustment|adjustment_label }}{% if sl.adjustments|length > 1 %} · {{ applied|signed:sheet }}{% endif %}</span>{% endfor %}
-    {% else %}—{% endif %}
+    {% else %}<span class="text-steel">—</span>{% endif %}
   </td>
-  <td class="px-4 py-3 text-right font-bold tabular-nums">{{ line.net|money:sheet }}</td>
+  <td class="whitespace-nowrap px-4 py-3 text-right font-bold tabular-nums">{{ line.net|money:sheet }}</td>
   <td class="px-4 py-2">
     <div class="flex flex-wrap items-center gap-2">
     {% if sl.is_paid %}

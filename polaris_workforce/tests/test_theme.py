@@ -572,10 +572,13 @@ def test_sidebar_has_the_switch(client, office):
     assert 'hx-post="/theme/"' in switch
     assert "csrfmiddlewaretoken" in switch
     assert _pressed(switch) == {"light": "false", "dark": "true", "system": "false"}
-    # Three real buttons with visible words (and an icon), reachable with the keyboard.
+    # Three real buttons, reachable with the keyboard. The sidebar shows icons only (it
+    # must fit short laptop screens): each word is read out and shown on hover.
     assert switch.count('<button type="submit" name="theme"') == 3
     for word in ("Light", "Dark", "System"):
-        assert f"<span>{word}</span>" in switch
+        assert f'<span class="sr-only">{word}</span>' in switch
+    assert 'title="Light"' in switch
+    assert 'title="Dark"' in switch
     assert 'title="Follow the device setting"' in switch
     assert 'name="device"' not in switch
 
