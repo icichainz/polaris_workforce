@@ -273,6 +273,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "presence.resync_site_configs",
         "schedule": crontab(minute="*/10"),
     },
+    # Past days' presence sessions corrected with the tracker's replay of its stored track
+    # (apps.presence.reconcile). One fixed time for every company: each company's days
+    # are worked out in its own time zone (a day is reconciled once it ended 2 h ago, so
+    # at 03:15 UTC that is "yesterday" from UTC-1 eastwards, the day before further west).
+    "reconcile-presence": {
+        "task": "presence.reconcile_sessions",
+        "schedule": crontab(hour=3, minute=15),
+    },
 }
 
 # Seconds a rebuild waits after the change that queued it: the marks of a roll call, its

@@ -172,6 +172,7 @@ def test_beat_runs_every_periodic_job():
         "messaging.send_notifications",
         "precompute.refresh",
         "presence.resync_site_configs",
+        "presence.reconcile_sessions",
     }
     assert all(entry["task"] in celery_app.tasks for entry in schedule.values())
     assert schedule["sweep-precomputed"]["kwargs"] == {"sweep": True}

@@ -44,6 +44,7 @@ from .models import (
     BleBadge,
     Gateway,
     PresenceEvent,
+    PresenceReconciliation,
     PresenceSession,
     SubjectKind,
     TrackerSync,
@@ -556,6 +557,9 @@ def rebuild_sessions(site_id: int, subject_kind: str, subject_id: int, since) ->
     The fold starts at the latest session that began at or before ``since`` (an event
     inside a visit can change it), else at ``since``; sessions before that cannot change.
     Nothing is written when the result is what is stored.
+
+    Days the nightly reconciliation replaced (``PresenceReconciliation.replayed_windows``)
+    are left out: their events are not folded and their ``replay`` sessions are kept.
     """
     site = Site.objects.only("pk", "company_id").get(pk=site_id)
     tz = company_tz(CompanySettings.load(site.company_id))
@@ -577,6 +581,10 @@ def rebuild_sessions(site_id: int, subject_kind: str, subject_id: int, since) ->
             applied=True,
             at__gte=start,
         )
+        for window_start, window_end in PresenceReconciliation.replayed_windows(
+            site_id, after=start
+        ):
+            events = events.exclude(at__gte=window_start, at__lt=window_end)
         visits = engine.fold(
             engine.Event(
                 event_id=str(e.event_id),
@@ -588,7 +596,11 @@ def rebuild_sessions(site_id: int, subject_kind: str, subject_id: int, since) ->
             )
             for e in events
         )
-        stored = list(sessions.filter(started_at__gte=start).order_by("started_at", "pk"))
+        stored = list(
+            sessions.filter(started_at__gte=start, source=PresenceSession.Source.LIVE).order_by(
+                "started_at", "pk"
+            )
+        )
         if [_session_key(s) for s in stored] == [visit.key() for visit in visits]:
             return
         PresenceSession.objects.filter(pk__in=[s.pk for s in stored]).delete()
@@ -630,6 +642,10 @@ class TrackerPushError(Exception):
 
 class TrackerUnreachable(TrackerPushError):
     """No answer from the tracker (down, timed out, wrong URL)."""
+
+
+class TrackerServerError(TrackerPushError):
+    """The tracker failed (HTTP 5xx): worth trying again, unlike a refusal (4xx)."""
 
 
 def site_config(site: Site) -> dict:
@@ -733,7 +749,8 @@ def push_site_config(site: Site) -> bool:
             status = response.status
     except urllib.error.HTTPError as exc:
         _record_push(site, now, enabled=config["tracking_enabled"], error=f"HTTP {exc.code}")
-        raise TrackerPushError(f"The tracker answered {exc.code} for site {site.pk}") from exc
+        error = TrackerServerError if exc.code >= 500 else TrackerPushError
+        raise error(f"The tracker answered {exc.code} for site {site.pk}") from exc
     except (urllib.error.URLError, OSError) as exc:
         _record_push(site, now, enabled=config["tracking_enabled"], error=str(exc)[:300])
         raise TrackerUnreachable(f"The tracker is unreachable: {exc}") from exc
