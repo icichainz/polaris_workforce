@@ -234,9 +234,9 @@ class IngestResult {
 }
 
 /// What the consent notice can say precisely. Read from the `details` of
-/// `403 consent_required` when the server sends them (`tracking_hours`,
-/// `gps_interval_seconds`, `retention_days`; not in the contract yet), else
-/// the notice uses general wording.
+/// `403 consent_required` (and of `tracking_disabled` after a refusal):
+/// `tracking_hours`, `gps_interval_seconds`, `retention_days` (contract 1.4).
+/// Without them the notice uses general wording.
 class ConsentContext {
   const ConsentContext({
     this.hours,
