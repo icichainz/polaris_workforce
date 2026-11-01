@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Polaris Workforce\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-01 18:12+0000\n"
+"POT-Creation-Date: 2026-11-01 19:02+0000\n"
 "PO-Revision-Date: 2026-10-31 18:00+0000\n"
 "Last-Translator: Polaris Workforce\n"
 "Language-Team: French\n"
@@ -390,7 +390,7 @@ msgstr "Peut valider ou renvoyer les appels (toujours après un aperçu)"
 
 #: apps/agents/models.py:31 apps/core/models.py:43 apps/payouts/models.py:190
 #: apps/payroll/models.py:595 apps/payroll/models.py:667
-#: apps/precompute/models.py:191 apps/workers/models.py:22
+#: apps/precompute/models.py:197 apps/workers/models.py:22
 #: apps/worksites/models.py:21
 msgid "name"
 msgstr "nom"
@@ -561,7 +561,7 @@ msgid "Hourly"
 msgstr "Horaire"
 
 #: apps/api/enums.py:49 apps/attendance/models.py:94
-#: apps/dashboard/reports.py:473 apps/dashboard/reports.py:585
+#: apps/dashboard/reports.py:490 apps/dashboard/reports.py:602
 #: apps/payroll/payslip.py:31 templates/attendance/approvals.html:49
 #: templates/components/status_badge.html:17 templates/dashboard/home.html:23
 #: templates/dashboard/home.html:68 templates/dashboard/reports.html:144
@@ -571,7 +571,7 @@ msgid "Present"
 msgstr "Présent"
 
 #: apps/api/enums.py:50 apps/attendance/models.py:95
-#: apps/dashboard/reports.py:476 apps/dashboard/reports.py:588
+#: apps/dashboard/reports.py:493 apps/dashboard/reports.py:605
 #: apps/payroll/payslip.py:32 templates/attendance/approvals.html:52
 #: templates/components/status_badge.html:17
 #: templates/dashboard/reports.html:147 templates/portal/_legend.html:13
@@ -587,7 +587,7 @@ msgid "Half day"
 msgstr "Demi-journée"
 
 #: apps/api/enums.py:52 apps/attendance/models.py:97
-#: apps/dashboard/reports.py:475 apps/dashboard/reports.py:587
+#: apps/dashboard/reports.py:492 apps/dashboard/reports.py:604
 #: apps/payroll/payslip.py:34 templates/attendance/approvals.html:51
 #: templates/components/status_badge.html:17
 #: templates/dashboard/reports.html:146 templates/portal/_legend.html:12
@@ -724,7 +724,7 @@ msgstr ""
 msgid "This client_uuid was already used for a different request."
 msgstr "Ce client_uuid a déjà été utilisé pour une autre requête."
 
-#: apps/attendance/apps.py:7 apps/core/admin.py:124
+#: apps/attendance/apps.py:7 apps/core/admin.py:130
 #: templates/core/settings.html:25 templates/core/settings.html:57
 msgid "Attendance"
 msgstr "Présences"
@@ -765,8 +765,8 @@ msgstr "p. ex. Kodjo a été vu sur le chantier — merci de vérifier"
 #: apps/payroll/models.py:556 apps/payroll/models.py:697
 #: apps/payroll/models.py:753 apps/payroll/models.py:795
 #: apps/precompute/models.py:23 apps/precompute/models.py:51
-#: apps/precompute/models.py:100 apps/precompute/models.py:132
-#: apps/precompute/models.py:163 apps/precompute/models.py:186
+#: apps/precompute/models.py:100 apps/precompute/models.py:137
+#: apps/precompute/models.py:169 apps/precompute/models.py:192
 #: apps/workers/views.py:187 apps/worksites/models.py:71
 #: apps/worksites/models.py:101
 msgid "site"
@@ -775,7 +775,7 @@ msgstr "chantier"
 #: apps/attendance/models.py:30 apps/checkin/models.py:224
 #: apps/payroll/models.py:267 apps/payroll/models.py:701
 #: apps/payroll/models.py:759 apps/payroll/models.py:799
-#: apps/precompute/models.py:165
+#: apps/precompute/models.py:171
 msgid "date"
 msgstr "date"
 
@@ -846,7 +846,7 @@ msgstr "journées de présence"
 #: apps/payroll/models.py:98 apps/payroll/models.py:174
 #: apps/payroll/models.py:354 apps/payroll/models.py:691
 #: apps/payroll/models.py:747 apps/portal/models.py:29
-#: apps/precompute/models.py:135 apps/workers/models.py:111
+#: apps/precompute/models.py:140 apps/workers/models.py:111
 #: apps/workers/models.py:142 apps/workers/models.py:194
 #: apps/workers/views.py:185 apps/worksites/models.py:96
 msgid "worker"
@@ -1123,8 +1123,8 @@ msgid "Name or number"
 msgstr "Nom ou matricule"
 
 #: apps/checkin/forms.py:15 apps/checkin/forms.py:24 apps/dashboard/forms.py:35
-#: apps/dashboard/reports.py:472 apps/dashboard/reports.py:584
-#: apps/dashboard/reports.py:649 apps/payouts/forms.py:15
+#: apps/dashboard/reports.py:489 apps/dashboard/reports.py:601
+#: apps/dashboard/reports.py:666 apps/payouts/forms.py:15
 #: apps/payroll/payslip.py:104 apps/workers/forms.py:164
 #: apps/workers/importer.py:93 templates/checkin/geofences.html:16
 #: templates/checkin/home.html:17 templates/dashboard/home.html:66
@@ -1471,24 +1471,24 @@ msgstr "Périmètre supprimé pour %(site)s."
 msgid "Geofence saved for %(site)s."
 msgstr "Périmètre enregistré pour %(site)s."
 
-#: apps/core/admin.py:109 apps/payroll/payslip.py:77
+#: apps/core/admin.py:115 apps/payroll/payslip.py:77
 #: templates/components/sidebar.html:34 templates/core/companies.html:15
 msgid "Company"
 msgstr "Entreprise"
 
-#: apps/core/admin.py:122 templates/portal/_language_switch.html:6
+#: apps/core/admin.py:128 templates/portal/_language_switch.html:6
 #: templates/registration/login.html:10
 msgid "Language"
 msgstr "Langue"
 
-#: apps/core/admin.py:143 templates/components/sidebar.html:58
+#: apps/core/admin.py:149 templates/components/sidebar.html:58
 #: templates/portal/home.html:25 templates/portal/layout.html:33
 #: templates/workers/form.html:66 templates/worksites/list.html:41
 #: templates/worksites/settings.html:16
 msgid "Pay"
 msgstr "Paie"
 
-#: apps/core/admin.py:156 templates/components/sidebar.html:60
+#: apps/core/admin.py:162 templates/components/sidebar.html:60
 #: templates/payroll/advances.html:12 templates/portal/advances.html:4
 #: templates/portal/layout.html:34
 msgid "Advances"
@@ -1692,9 +1692,9 @@ msgstr "Empreinte digitale sur la feuille papier (photo)"
 msgid "No proof needed"
 msgstr "Aucune preuve exigée"
 
-#: apps/core/forms.py:63 apps/dashboard/reports.py:482
-#: apps/dashboard/reports.py:594 apps/dashboard/reports.py:649
-#: apps/dashboard/reports.py:692 apps/workers/importer.py:764
+#: apps/core/forms.py:63 apps/dashboard/reports.py:499
+#: apps/dashboard/reports.py:611 apps/dashboard/reports.py:666
+#: apps/dashboard/reports.py:709 apps/workers/importer.py:764
 msgid "Currency"
 msgstr "Devise"
 
@@ -2188,8 +2188,8 @@ msgstr "Période"
 msgid "All sites"
 msgstr "Tous les chantiers"
 
-#: apps/dashboard/forms.py:38 apps/dashboard/reports.py:471
-#: apps/dashboard/reports.py:583 apps/dashboard/views.py:98
+#: apps/dashboard/forms.py:38 apps/dashboard/reports.py:488
+#: apps/dashboard/reports.py:600 apps/dashboard/views.py:98
 #: apps/payroll/payslip.py:103 apps/workers/forms.py:167
 #: apps/workers/importer.py:88 templates/workers/import.html:85
 #: templates/workers/list.html:28
@@ -2208,12 +2208,12 @@ msgstr "Choisissez les deux dates pour une période personnalisée."
 msgid "Pick a period of one year or less."
 msgstr "Choisissez une période d’un an au plus."
 
-#: apps/dashboard/reports.py:469 apps/dashboard/reports.py:581
+#: apps/dashboard/reports.py:486 apps/dashboard/reports.py:598
 #: apps/payouts/layouts.py:31
 msgid "Worker number"
 msgstr "Matricule de l’ouvrier"
 
-#: apps/dashboard/reports.py:470 apps/dashboard/reports.py:582
+#: apps/dashboard/reports.py:487 apps/dashboard/reports.py:599
 #: apps/payroll/forms.py:103 apps/payroll/forms.py:270
 #: apps/payroll/forms.py:276 apps/payroll/forms.py:291
 #: apps/payroll/payslip.py:101 templates/attendance/_approval_detail.html:59
@@ -2229,92 +2229,92 @@ msgstr "Matricule de l’ouvrier"
 msgid "Worker"
 msgstr "Ouvrier"
 
-#: apps/dashboard/reports.py:474 apps/dashboard/reports.py:586
+#: apps/dashboard/reports.py:491 apps/dashboard/reports.py:603
 msgid "Half days"
 msgstr "Demi-journées"
 
-#: apps/dashboard/reports.py:477 apps/dashboard/reports.py:589
+#: apps/dashboard/reports.py:494 apps/dashboard/reports.py:606
 #: templates/dashboard/reports.html:43
 msgid "Worker-days"
 msgstr "Jours-ouvrier"
 
-#: apps/dashboard/reports.py:478 apps/dashboard/reports.py:590
-#: apps/dashboard/reports.py:673
+#: apps/dashboard/reports.py:495 apps/dashboard/reports.py:607
+#: apps/dashboard/reports.py:690
 msgid "Attendance rate (%)"
 msgstr "Taux de présence (%)"
 
-#: apps/dashboard/reports.py:479 apps/dashboard/reports.py:591
+#: apps/dashboard/reports.py:496 apps/dashboard/reports.py:608
 #: templates/dashboard/reports.html:149
 msgid "Earned"
 msgstr "Gagné"
 
-#: apps/dashboard/reports.py:480 apps/dashboard/reports.py:592
+#: apps/dashboard/reports.py:497 apps/dashboard/reports.py:609
 #: templates/dashboard/reports.html:150 templates/payroll/pay_rules.html:47
 msgid "Statutory deductions"
 msgstr "Retenues légales"
 
-#: apps/dashboard/reports.py:481 apps/dashboard/reports.py:593
-#: apps/dashboard/reports.py:692 templates/dashboard/reports.html:97
+#: apps/dashboard/reports.py:498 apps/dashboard/reports.py:610
+#: apps/dashboard/reports.py:709 templates/dashboard/reports.html:97
 #: templates/dashboard/reports.html:99 templates/dashboard/reports.html:113
 msgid "Employer contributions"
 msgstr "Cotisations patronales"
 
-#: apps/dashboard/reports.py:509 apps/dashboard/reports.py:628
-#: apps/dashboard/reports.py:665 apps/dashboard/reports.py:683
-#: apps/dashboard/reports.py:714 templates/dashboard/reports.html:125
+#: apps/dashboard/reports.py:526 apps/dashboard/reports.py:645
+#: apps/dashboard/reports.py:682 apps/dashboard/reports.py:700
+#: apps/dashboard/reports.py:731 templates/dashboard/reports.html:125
 #: templates/dashboard/reports.html:168 templates/payouts/batch.html:12
 #: templates/payouts/batches.html:29
 msgid "Total"
 msgstr "Total"
 
-#: apps/dashboard/reports.py:579
+#: apps/dashboard/reports.py:596
 msgid "By worker"
 msgstr "Par ouvrier"
 
-#: apps/dashboard/reports.py:648
+#: apps/dashboard/reports.py:665
 msgid "By site"
 msgstr "Par chantier"
 
-#: apps/dashboard/reports.py:649 apps/dashboard/reports.py:723
+#: apps/dashboard/reports.py:666 apps/dashboard/reports.py:740
 #: templates/dashboard/reports.html:40 templates/dashboard/reports.html:97
 msgid "Labour cost"
 msgstr "Coût de main-d’œuvre"
 
-#: apps/dashboard/reports.py:649 apps/worksites/forms.py:26
+#: apps/dashboard/reports.py:666 apps/worksites/forms.py:26
 msgid "Labour budget"
 msgstr "Budget main-d’œuvre"
 
-#: apps/dashboard/reports.py:672
+#: apps/dashboard/reports.py:689
 msgid "By week"
 msgstr "Par semaine"
 
-#: apps/dashboard/reports.py:673
+#: apps/dashboard/reports.py:690
 msgid "Year"
 msgstr "Année"
 
-#: apps/dashboard/reports.py:673
+#: apps/dashboard/reports.py:690
 msgid "Week"
 msgstr "Semaine"
 
-#: apps/dashboard/reports.py:673
+#: apps/dashboard/reports.py:690
 msgid "Week starting"
 msgstr "Début de semaine"
 
-#: apps/dashboard/reports.py:691 templates/dashboard/reports.html:95
+#: apps/dashboard/reports.py:708 templates/dashboard/reports.html:95
 msgid "Employer cost"
 msgstr "Coût employeur"
 
-#: apps/dashboard/reports.py:692 apps/payroll/rule_views.py:144
+#: apps/dashboard/reports.py:709 apps/payroll/rule_views.py:144
 #: templates/dashboard/reports.html:111
 msgid "Deduction rule"
 msgstr "Règle de retenue"
 
-#: apps/dashboard/reports.py:692 templates/dashboard/reports.html:102
+#: apps/dashboard/reports.py:709 templates/dashboard/reports.html:102
 #: templates/dashboard/reports.html:112
 msgid "Deducted from pay"
 msgstr "Retenu sur la paie"
 
-#: apps/dashboard/reports.py:724
+#: apps/dashboard/reports.py:741
 msgid "Employer cost (labour cost + employer contributions)"
 msgstr "Coût employeur (coût main-d’œuvre + cotisations patronales)"
 
@@ -3631,7 +3631,7 @@ msgstr "heures"
 msgid "overtime hours"
 msgstr "heures supplémentaires"
 
-#: apps/payroll/models.py:109 apps/precompute/models.py:146
+#: apps/payroll/models.py:109 apps/precompute/models.py:151
 msgid "gross"
 msgstr "brut"
 
@@ -3677,7 +3677,7 @@ msgstr "travail à la tâche"
 msgid "bonuses"
 msgstr "primes"
 
-#: apps/payroll/models.py:131 apps/precompute/models.py:144
+#: apps/payroll/models.py:131 apps/precompute/models.py:149
 msgid "statutory deductions"
 msgstr "retenues légales"
 
@@ -3685,7 +3685,7 @@ msgstr "retenues légales"
 msgid "Employee share of the statutory deduction rules, taken from this pay."
 msgstr "Part salariale des règles de retenue légale, prélevée sur cette paie."
 
-#: apps/payroll/models.py:136 apps/precompute/models.py:145
+#: apps/payroll/models.py:136 apps/precompute/models.py:150
 msgid "employer contributions"
 msgstr "cotisations patronales"
 
@@ -3712,7 +3712,7 @@ msgid "Each deduction rule applied: base, employee and employer amounts."
 msgstr ""
 "Chaque règle de retenue appliquée : base, montants salarié et employeur."
 
-#: apps/payroll/models.py:155
+#: apps/payroll/models.py:155 apps/precompute/models.py:152
 msgid "pay lines"
 msgstr "lignes de paie"
 
@@ -4586,7 +4586,8 @@ msgstr "version"
 
 #: apps/precompute/models.py:30
 msgid "Moves on every mark (a rebuild keeps newer marks)."
-msgstr "Change à chaque marque (une reconstruction garde les marques plus récentes)."
+msgstr ""
+"Change à chaque marque (une reconstruction garde les marques plus récentes)."
 
 #: apps/precompute/models.py:33
 msgid "rebuild queued at"
@@ -4594,7 +4595,9 @@ msgstr "reconstruction demandée le"
 
 #: apps/precompute/models.py:36
 msgid "When a background rebuild was last queued (empty: none)."
-msgstr "Quand une reconstruction en arrière-plan a été demandée pour la dernière fois (vide : jamais)."
+msgstr ""
+"Quand une reconstruction en arrière-plan a été demandée pour la dernière "
+"fois (vide : jamais)."
 
 #: apps/precompute/models.py:40
 msgid "out-of-date site"
@@ -4634,7 +4637,8 @@ msgstr "changements non signalés"
 
 #: apps/precompute/models.py:77
 msgid "What a sweep had to change although nothing marked it out of date."
-msgstr "Ce qu’un contrôle complet a dû corriger alors que rien ne l’avait signalé."
+msgstr ""
+"Ce qu’un contrôle complet a dû corriger alors que rien ne l’avait signalé."
 
 #: apps/precompute/models.py:81
 msgid "refresh run"
@@ -4644,8 +4648,8 @@ msgstr "passage de recalcul"
 msgid "refresh runs"
 msgstr "passages de recalcul"
 
-#: apps/precompute/models.py:102 apps/precompute/models.py:137
-#: apps/precompute/models.py:188
+#: apps/precompute/models.py:102 apps/precompute/models.py:142
+#: apps/precompute/models.py:194
 msgid "month"
 msgstr "mois"
 
@@ -4668,79 +4672,89 @@ msgstr "à recalculer"
 #: apps/precompute/models.py:109
 msgid ""
 "A pay period ending in the month changed since: read live until rebuilt."
-msgstr "Une période de paie finissant dans le mois a changé depuis : lue en direct jusqu’au recalcul."
+msgstr ""
+"Une période de paie finissant dans le mois a changé depuis : lue en direct "
+"jusqu’au recalcul."
 
-#: apps/precompute/models.py:111
+#: apps/precompute/models.py:112
+msgid "generation"
+msgstr "génération"
+
+#: apps/precompute/models.py:114
+msgid "Moves when the month is flagged (a build that started before keeps it)."
+msgstr "Change quand le mois est signalé (un calcul commencé avant le garde signalé)."
+
+#: apps/precompute/models.py:116
 msgid "built at"
 msgstr "calculé le"
 
-#: apps/precompute/models.py:114
+#: apps/precompute/models.py:119
 msgid "report month"
 msgstr "mois du rapport"
 
-#: apps/precompute/models.py:115
+#: apps/precompute/models.py:120
 msgid "report months"
 msgstr "mois du rapport"
 
-#: apps/precompute/models.py:138 apps/precompute/models.py:166
-#: apps/precompute/models.py:189 apps/workers/models.py:25
+#: apps/precompute/models.py:143 apps/precompute/models.py:172
+#: apps/precompute/models.py:195 apps/workers/models.py:25
 #: apps/workers/models.py:76
 msgid "trade"
 msgstr "métier"
 
-#: apps/precompute/models.py:139 apps/precompute/models.py:167
+#: apps/precompute/models.py:144 apps/precompute/models.py:173
 msgid "present"
 msgstr "présent"
 
-#: apps/precompute/models.py:140 apps/precompute/models.py:168
+#: apps/precompute/models.py:145 apps/precompute/models.py:174
 msgid "half days"
 msgstr "demi-journées"
 
-#: apps/precompute/models.py:141 apps/precompute/models.py:169
+#: apps/precompute/models.py:146 apps/precompute/models.py:175
 msgid "late"
 msgstr "retard"
 
-#: apps/precompute/models.py:142 apps/precompute/models.py:170
+#: apps/precompute/models.py:147 apps/precompute/models.py:176
 msgid "absent"
 msgstr "absent"
 
-#: apps/precompute/models.py:143
+#: apps/precompute/models.py:148
 msgid "earned"
 msgstr "gagné"
 
-#: apps/precompute/models.py:149
+#: apps/precompute/models.py:155
 msgid "worker month"
 msgstr "mois d’un ouvrier"
 
-#: apps/precompute/models.py:150
+#: apps/precompute/models.py:156
 msgid "worker months"
 msgstr "mois des ouvriers"
 
-#: apps/precompute/models.py:173 apps/precompute/models.py:174
+#: apps/precompute/models.py:179 apps/precompute/models.py:180
 msgid "site day counts"
 msgstr "décomptes du jour d’un chantier"
 
-#: apps/precompute/models.py:190
+#: apps/precompute/models.py:196
 msgid "rule"
 msgstr "règle"
 
-#: apps/precompute/models.py:190
+#: apps/precompute/models.py:196
 msgid "Its id, else its name."
 msgstr "Son identifiant, sinon son nom."
 
-#: apps/precompute/models.py:192
+#: apps/precompute/models.py:198
 msgid "employee share"
 msgstr "part salariale"
 
-#: apps/precompute/models.py:193
+#: apps/precompute/models.py:199
 msgid "employer share"
 msgstr "part patronale"
 
-#: apps/precompute/models.py:196
+#: apps/precompute/models.py:202
 msgid "deduction total"
 msgstr "total d’une retenue"
 
-#: apps/precompute/models.py:197
+#: apps/precompute/models.py:203
 msgid "deduction totals"
 msgstr "totaux des retenues"
 

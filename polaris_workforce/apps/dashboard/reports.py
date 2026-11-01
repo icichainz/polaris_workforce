@@ -277,7 +277,8 @@ def build_report(
     ):
         cost_by_site[site_id] += cost or 0
     for site_id, cost in (
-        worker_months.values("site_id")
+        worker_months.filter(pay_lines__gt=0)  # sites with pay, as the live lines count
+        .values("site_id")
         .annotate(cost=Sum("earned"))
         .order_by()
         .values_list("site_id", "cost")
@@ -416,31 +417,47 @@ def _uncovered_ranges(site_ids, start, end, covered) -> dict[int, list[tuple]]:
     return ranges
 
 
+# The conditions below are ORs, one term per date range or month (sites with the same
+# one share it): SQLite nests an OR per term and refuses past 1000, so a term per site
+# and month would break a company-wide report over a few years.
+
+
+def _by_value(items: dict) -> dict:
+    """``{site_id: [value, …]}`` → ``{value: [site_id, …]}``."""
+    grouped: dict = defaultdict(list)
+    for site_id, values in items.items():
+        for value in values:
+            grouped[value].append(site_id)
+    return grouped
+
+
 def _on_ranges(ranges, site_field: str, date_field: str) -> Q:
     """Rows of the sites' date ranges (none when there is no range)."""
     found = Q(pk__in=[])
-    for site_id, gaps in ranges.items():
-        for first, last in gaps:
-            found |= Q(
-                **{site_field: site_id, f"{date_field}__gte": first, f"{date_field}__lte": last}
-            )
+    for (first, last), site_ids in _by_value(ranges).items():
+        found |= Q(
+            **{
+                f"{site_field}__in": site_ids,
+                f"{date_field}__gte": first,
+                f"{date_field}__lte": last,
+            }
+        )
     return found
 
 
 def _on_months(covered) -> Q:
     """Rollup rows of the sites' covered months."""
     found = Q(pk__in=[])
-    for site_id, months in covered.items():
-        found |= Q(site_id=site_id, month__in=months)
+    for month, site_ids in _by_value(covered).items():
+        found |= Q(site_id__in=site_ids, month=month)
     return found
 
 
 def _on_covered_days(covered) -> Q:
     """Day counts of the sites' covered months."""
     found = Q(pk__in=[])
-    for site_id, months in covered.items():
-        for month in months:
-            found |= Q(site_id=site_id, date__gte=month, date__lte=rollups.month_end(month))
+    for month, site_ids in _by_value(covered).items():
+        found |= Q(site_id__in=site_ids, date__gte=month, date__lte=rollups.month_end(month))
     return found
 
 

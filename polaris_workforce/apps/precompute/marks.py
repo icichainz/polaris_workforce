@@ -238,7 +238,7 @@ def _assignment(assignment, _entry):
     return [Range(assignment.site_id, assignment.start_date, None)]
 
 
-def _worker_sites(worker_id: int, since: datetime.date | None) -> set[int]:
+def worker_sites(worker_id: int, since: datetime.date | None) -> set[int]:
     """The sites a worker's pay may change on from ``since``: where they are assigned
     then or later, and where they have a pay line in an open period."""
     assignments = SiteAssignment.objects.filter(worker_id=worker_id)
@@ -257,17 +257,17 @@ def _worker(worker, entry):
     # A rate change says from when (``effective_from``); a profile change (pay frequency,
     # payment method, active) applies to every open period.
     since = _date((entry.after or {}).get("effective_from")) if entry.after else None
-    return [Range(site_id, since, None) for site_id in sorted(_worker_sites(worker.pk, since))]
+    return [Range(site_id, since, None) for site_id in sorted(worker_sites(worker.pk, since))]
 
 
 def _rate(rate, _entry):
     since = rate.effective_from
-    return [Range(site_id, since, None) for site_id in sorted(_worker_sites(rate.worker_id, since))]
+    return [Range(site_id, since, None) for site_id in sorted(worker_sites(rate.worker_id, since))]
 
 
 def _advance(advance, _entry):
     since = advance.given_on
-    sites = _worker_sites(advance.worker_id, since)
+    sites = worker_sites(advance.worker_id, since)
     return [Range(site_id, since, None) for site_id in sorted(sites)]
 
 

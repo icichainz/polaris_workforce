@@ -108,6 +108,11 @@ class ReportMonth(models.Model):
         default=False,
         help_text=_("A pay period ending in the month changed since: read live until rebuilt."),
     )
+    generation = models.PositiveIntegerField(
+        _("generation"),
+        default=0,
+        help_text=_("Moves when the month is flagged (a build that started before keeps it)."),
+    )
     built_at = models.DateTimeField(_("built at"), auto_now=True)
 
     class Meta:
@@ -144,6 +149,7 @@ class WorkerMonth(models.Model):
     statutory = models.BigIntegerField(_("statutory deductions"), default=0)
     employer = models.BigIntegerField(_("employer contributions"), default=0)
     gross = models.BigIntegerField(_("gross"), default=0)
+    pay_lines = models.PositiveIntegerField(_("pay lines"), default=0)
 
     class Meta:
         verbose_name = _("worker month")

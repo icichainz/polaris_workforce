@@ -26,8 +26,9 @@ from tests.test_payroll_services import (  # noqa: F401
 
 
 @pytest.fixture
-def broker(settings):
+def broker(settings, monkeypatch):
     settings.CELERY_BROKER_URL = "memory://"
+    monkeypatch.setattr(services, "_broker_down_until", 0.0)  # no backoff from another test
 
 
 @pytest.fixture

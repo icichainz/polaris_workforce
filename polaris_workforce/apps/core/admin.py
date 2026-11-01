@@ -49,7 +49,9 @@ class AuditedAdmin(admin.ModelAdmin):
     """An admin whose edits write audit entries (``admin.<app>.<model>.<add|change|delete>``),
     inline rows included, like every other change to attendance or pay (and so the
     figures built from them are marked out of date: ``apps.precompute``). Deletions are
-    recorded before the row goes, while what it belonged to can still be read."""
+    recorded before the row goes, while what it belonged to can still be read; a change
+    also before it is saved (``…change_from``), so that the place it moves away from (an
+    earlier date, another site) is marked as well as the new one."""
 
     def _audit(self, request, obj, verb: str, fields=None) -> None:
         AuditLog.record(
@@ -61,6 +63,8 @@ class AuditedAdmin(admin.ModelAdmin):
         )
 
     def save_model(self, request, obj, form, change):
+        if change:
+            self._audit(request, obj, "change_from", form.changed_data)
         super().save_model(request, obj, form, change)
         self._audit(request, obj, "change" if change else "add", form.changed_data)
 
@@ -81,6 +85,8 @@ class AuditedAdmin(admin.ModelAdmin):
         changed = {id(obj): fields for obj, fields in formset.changed_objects}
         for obj in instances:
             is_new = obj.pk is None
+            if not is_new:
+                self._audit(request, obj, "change_from", changed.get(id(obj)))
             obj.save()
             self._audit(request, obj, "add" if is_new else "change", changed.get(id(obj)))
         formset.save_m2m()

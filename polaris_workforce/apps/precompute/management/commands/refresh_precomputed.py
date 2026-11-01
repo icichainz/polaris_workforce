@@ -36,9 +36,14 @@ class Command(BaseCommand):
             if not companies.exists():
                 raise CommandError("No active company with that short name.")
         for company in companies:
-            with use_company(company):
-                run = services.run(company.pk, sweep=options["sweep"])
+            try:
+                with use_company(company):
+                    run = services.run(company.pk, sweep=options["sweep"])
+            except Exception:  # one company's failure must not stop the others
+                services.logger.exception("Precompute: the run of %s failed", company.slug)
+                self.stderr.write(f"{company.slug}: failed (see the log)")
+                continue
             line = f"{company.slug}: {run.sites} site(s) rebuilt"
             if run.mismatches:
-                line += f", {len(run.mismatches)} changed without a mark"
+                line += f", {len(run.mismatches)} failure(s) or unmarked change(s)"
             self.stdout.write(line)

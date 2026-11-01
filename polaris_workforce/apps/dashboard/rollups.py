@@ -23,6 +23,7 @@ from collections import defaultdict
 
 from django.db import transaction
 from django.db.models import Count, F, Min, Q, Sum
+from django.utils import timezone
 
 from apps.attendance.models import AttendanceDay, AttendanceRecord
 from apps.payroll.models import PayLine, PayPeriod
@@ -69,6 +70,9 @@ def rebuild_step(site, start, end, *, today, company) -> None:
     """The precompute step: rebuild the months of ``site`` between ``start`` (``None``:
     since its oldest open pay period) and ``end``. A rebuild of every open period (the
     nightly sweep) also builds a few months of history never built yet."""
+    # A month a change marked by its dates is rebuilt even when locked (an admin edit of
+    # locked pay); "every open period" leaves the locked months as they were.
+    force = start is not None
     if start is None:
         for month in missing_months(site, today)[:BACKFILL_MONTHS]:
             build_month(site, month, today=today)
@@ -80,13 +84,14 @@ def rebuild_step(site, start, end, *, today, company) -> None:
             .first()
         )
         start = min(oldest or end, end - datetime.timedelta(days=DEFAULT_LOOKBACK_DAYS))
-    months = set(months_between(start, end))
+    marked = set(months_between(start, end))
     # And the months whose pay changed meanwhile (a correction moved a later pay).
-    stale = ReportMonth.objects.filter(site=site, stale=True).values_list("month", flat=True)
-    months |= set(stale)
-    for month in sorted(months):
+    stale = set(ReportMonth.objects.filter(site=site, stale=True).values_list("month", flat=True))
+    for month in sorted(marked | stale):
         if month <= today:
-            build_month(site, month, today=today)
+            build_month(
+                site, month, today=today, force=(force and month in marked) or month in stale
+            )
 
 
 def missing_months(site, today: datetime.date) -> list[datetime.date]:
@@ -115,13 +120,17 @@ def _all_locked(site, month: datetime.date, last: datetime.date) -> bool:
     return not open_day and not open_period
 
 
-def build_month(site, month: datetime.date, *, today: datetime.date) -> bool:
-    """(Re)build one site's month. False when it was already built and is locked."""
+def build_month(site, month: datetime.date, *, today: datetime.date, force: bool = False) -> bool:
+    """(Re)build one site's month. False when it was already built and is locked (unless
+    ``force``: a change marked its dates)."""
     last = month_end(month)
     locked = last < today and _all_locked(site, month, last)
-    built = ReportMonth.objects.filter(site=site, month=month, locked=True, stale=False)
-    if locked and built.exists():
+    current = ReportMonth.objects.filter(site=site, month=month).first()
+    if locked and not force and current and current.locked and not current.stale:
         return False
+    # A flag set while this build reads (``generation`` moves) stays: the build may have
+    # read the pay from before the change.
+    generation = current.generation if current else None
 
     records = AttendanceRecord.objects.filter(
         day__site=site,
@@ -155,10 +164,12 @@ def build_month(site, month: datetime.date, *, today: datetime.date) -> bool:
             gross_sum=Sum("gross"),
             statutory=Sum("statutory_deductions"),
             employer=Sum("employer_contributions"),
+            lines=Count("id"),
         )
         .order_by()
     ):
         item = row(values["worker_id"], values["worker__trade_id"])
+        item.pay_lines = values["lines"]
         item.earned = values["earned"] or 0
         item.gross = values["gross_sum"] or 0
         item.statutory = values["statutory"] or 0
@@ -205,7 +216,12 @@ def build_month(site, month: datetime.date, *, today: datetime.date) -> bool:
         WorkerMonth.objects.bulk_create(rows.values())
         SiteDayCounts.objects.bulk_create(days)
         DeductionTotal.objects.bulk_create(totals)
-        ReportMonth.objects.update_or_create(
-            site=site, month=month, defaults={"locked": locked, "stale": False}
-        )
+        if generation is None:
+            ReportMonth.objects.create(site=site, month=month, locked=locked)
+        else:
+            built = ReportMonth.objects.filter(pk=current.pk, generation=generation).update(
+                locked=locked, stale=False, built_at=timezone.now()
+            )
+            if not built:  # flagged meanwhile: the rows stay unread until the next build
+                ReportMonth.objects.filter(pk=current.pk).update(locked=locked)
     return True

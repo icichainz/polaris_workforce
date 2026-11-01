@@ -24,9 +24,11 @@ from __future__ import annotations
 
 import datetime
 import logging
+import time
 from collections.abc import Callable
 
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import F, Q
 from django.utils import timezone
@@ -113,13 +115,28 @@ def queue_rebuild(site_id: int) -> None:
     transaction.on_commit(lambda: _send_rebuild(site_id))
 
 
+# After a failed send, rebuilds are not queued for this long (per process): a change that
+# marks many sites (company settings) must not wait on a dead broker once per site.
+BROKER_BACKOFF_SECONDS = 60
+_broker_down_until = 0.0
+
+
 def _send_rebuild(site_id: int) -> None:
     from .tasks import rebuild_site  # tasks import this module
 
+    global _broker_down_until
+    if time.monotonic() < _broker_down_until:
+        return  # the periodic run and the screens rebuild the site
     try:
         rebuild_site.apply_async((site_id,), countdown=settings.PRECOMPUTE_REBUILD_DELAY)
     except Exception:  # the broker is unreachable: kombu, redis and socket errors alike
-        logger.warning("Precompute: could not queue the rebuild of site %s", site_id, exc_info=True)
+        _broker_down_until = time.monotonic() + BROKER_BACKOFF_SECONDS
+        logger.warning(
+            "Precompute: could not queue the rebuild of site %s; not queueing for %ss",
+            site_id,
+            BROKER_BACKOFF_SECONDS,
+            exc_info=True,
+        )
 
 
 def mark_company(company_id: int) -> None:
@@ -153,17 +170,30 @@ def mark_from_audit(entry: AuditLog) -> None:
 PERIOD_REFRESH_ACTIONS = ("payroll.period.refresh", "payroll.auto.period.refresh")
 
 
+# A worker's profile (their trade) changed: the report rows of the months not locked yet
+# are rebuilt with the new one (locked months keep the trade of their time).
+WORKER_CHANGE_ACTIONS = ("workers.update", "admin.workers.worker.change")
+
+
 def flag_report_month(entry: AuditLog) -> None:
-    """The report rollups of the month a changed pay period ends in are out of date: the
-    report reads that month live until the rebuild step builds it again."""
-    if entry.action not in PERIOD_REFRESH_ACTIONS or not entry.object_id:
+    """The report rollups that ``entry`` makes out of date: the month a changed pay
+    period ends in, or the unlocked months of a changed worker's sites. The report reads
+    them live until the rebuild step builds them again; a build that started before the
+    flag does not clear it (``generation``)."""
+    if not entry.object_id:
         return
-    period = PayPeriod.objects.filter(pk=entry.object_id).values_list("site_id", "end_date").first()
-    if period is not None:
-        site_id, end_date = period
-        ReportMonth.objects.filter(site_id=site_id, month=end_date.replace(day=1)).update(
-            stale=True
+    months = ReportMonth.objects.none()
+    if entry.action in PERIOD_REFRESH_ACTIONS:
+        period = (
+            PayPeriod.objects.filter(pk=entry.object_id).values_list("site_id", "end_date").first()
         )
+        if period is not None:
+            site_id, end_date = period
+            months = ReportMonth.objects.filter(site_id=site_id, month=end_date.replace(day=1))
+    elif entry.action in WORKER_CHANGE_ACTIONS:
+        sites = marks.worker_sites(int(entry.object_id), None)
+        months = ReportMonth.objects.filter(site_id__in=sites, locked=False)
+    months.update(stale=True, generation=F("generation") + 1)
 
 
 def _today_of_site(site_id: int) -> datetime.date:
@@ -262,9 +292,12 @@ def _ranges_to_rebuild(stale, fresh_on, today, everything) -> list[tuple]:
 # --- the cron command ---------------------------------------------------------------------
 
 
-def process(company_id: int, *, today: datetime.date | None = None) -> int:
+def process(
+    company_id: int, *, today: datetime.date | None = None, failures: list | None = None
+) -> int:
     """Rebuild every marked site of the company, and every active site not rebuilt today.
-    Returns the number of sites rebuilt."""
+    Returns the number of sites rebuilt. A site that fails is logged (and added to
+    ``failures``) and left marked; the others are rebuilt all the same."""
     company = CompanySettings.load(company_id)
     today = today or company_today(company)
     marked = Stale.objects.filter(site__company_id=company_id).values("site_id")
@@ -274,9 +307,21 @@ def process(company_id: int, *, today: datetime.date | None = None) -> int:
     )
     count = 0
     for site in sites.order_by("pk"):
-        refresh_site(site, today=today, company=company)
-        count += 1
+        if _safely(refresh_site, site, failures, today=today, company=company):
+            count += 1
     return count
+
+
+def _safely(rebuild, site: Site, failures: list | None, **kwargs) -> bool:
+    """Run ``rebuild(site, **kwargs)``; on an error, log it and carry on with the next site."""
+    try:
+        rebuild(site, **kwargs)
+    except Exception as error:  # one site's bad data must not stop every other site
+        logger.exception("Precompute: the rebuild of site %s failed", site.pk)
+        if failures is not None:
+            failures.append({"site": site.pk, "error": f"{type(error).__name__}: {error}"})
+        return False
+    return True
 
 
 def run(company_id: int, *, sweep: bool = False, today: datetime.date | None = None) -> RefreshRun:
@@ -289,13 +334,33 @@ def run(company_id: int, *, sweep: bool = False, today: datetime.date | None = N
     company = CompanySettings.load(company_id)
     today = today or company_today(company)
     record = RefreshRun.objects.create(company_id=company_id, sweep=sweep)
-    record.sites = process(company_id, today=today)
+    record.sites = process(company_id, today=today, failures=record.mismatches)
     if sweep:
+        period_type = ContentType.objects.get_for_model(PayPeriod)
         for site in _sites_with_pay(company_id).order_by("pk"):
             last = AuditLog.objects.order_by("-pk").values_list("pk", flat=True).first() or 0
-            refresh_site(site, today=today, company=company, everything=True)
+            if not _safely(
+                refresh_site,
+                site,
+                record.mismatches,
+                today=today,
+                company=company,
+                everything=True,
+            ):
+                continue
+            # What the system recomputed on this site's periods (other sites may be
+            # rebuilt meanwhile, by the worker or a screen).
+            periods = [
+                str(pk) for pk in PayPeriod.objects.filter(site=site).values_list("pk", flat=True)
+            ]
             changed = list(
-                AuditLog.objects.filter(pk__gt=last, action__startswith="payroll.auto.")
+                AuditLog.objects.filter(
+                    pk__gt=last,
+                    company_id=company_id,
+                    action__startswith="payroll.auto.",
+                    content_type=period_type,
+                    object_id__in=periods,
+                )
                 .order_by("pk")
                 .values_list("action", "object_id")
             )
