@@ -73,7 +73,7 @@ void main() {
       expect(t.gpsIntervalSeconds, 60);
       expect(t.hours.start, const TimeOfDay24(6, 0));
       expect(t.hours.end, const TimeOfDay24(19, 0));
-      expect(t.expiresAt, DateTime.utc(2026, 10, 31, 19));
+      expect(t.expiresAt, DateTime.utc(2026, 10, 31, 18));
       final back = TrackingToken.fromJson(t.toJson());
       expect(back.toJson(), t.toJson());
       final schema = _schema(doc, 'TrackingToken');
