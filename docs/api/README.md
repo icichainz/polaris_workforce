@@ -62,6 +62,7 @@ The JSON shapes do not change; the contract version stays `1.1.0`.
 | `GET /files/workers/{worker_id}/photo/` | A worker's photo (`photo_url`) | 200 / 304 | H-sec |
 | `GET /files/proofs/{payment_id}/` | A payment's proof file (`proof_url`) | 200 / 304 | H-sec |
 | Check-in endpoints (1.2) | Badges, kiosks, check-ins, suggestions | see [Check-in (1.2)](#check-in-12) | CK |
+| Office endpoints (1.3) `/office/…` | For AI assistants (`polaris_mcp/`), not the phone: reads, and a roll-call decision as preview → confirmation. `Authorization: Bearer pol_…` (agent token) only; a device token or session gets `401` there, and an agent token gets `401` everywhere else | 200 | agents |
 
 Which screen uses what:
 

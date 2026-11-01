@@ -20,9 +20,11 @@ from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import ForemanDevice
+from apps.agents.models import AgentToken
 from apps.attendance.models import AttendanceDay
 from apps.core.models import AuditLog
 from apps.core.validators import validate_file_size, validate_upload_extension
@@ -128,6 +130,7 @@ GET_ONLY = {
     "portal:advances",
     "portal:office_access",
     "portal:office_worker",
+    "agents:access",
 }
 
 
@@ -151,6 +154,13 @@ def _state_changing_urls(crew):
     )
     bonus = Bonus.objects.create(
         worker_id=worker, site=crew.site, date=MON, amount=100, reason="Award"
+    )
+    agent_token = AgentToken.objects.create(
+        user=crew.foreman,
+        name="csrf",
+        prefix="pol_csrf",
+        token_hash="y" * 64,
+        expires_at=timezone.now(),
     )
     return {
         **_payout_state_changing_urls(crew),
@@ -211,6 +221,8 @@ def _state_changing_urls(crew):
         "portal:change_pin": reverse("portal:change_pin"),
         "portal:office_set_pin": reverse("portal:office_set_pin", args=[worker]),
         "portal:office_revoke": reverse("portal:office_revoke", args=[worker]),
+        "agents:create": reverse("agents:create"),
+        "agents:revoke": reverse("agents:revoke", args=[agent_token.pk]),
     }
 
 

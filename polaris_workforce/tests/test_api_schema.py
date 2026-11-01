@@ -35,6 +35,16 @@ EXPECTED_OPERATIONS = {
     ("get", "/api/v1/sites/{site_id}/checkins/{date}/"),
     ("get", "/api/v1/sites/{site_id}/days/{date}/suggestions/"),
     ("get", "/api/v1/files/checkins/{checkin_id}/photo/"),
+    # Office API for AI assistants (contract 1.3, agent tokens only)
+    ("get", "/api/v1/office/me/"),
+    ("get", "/api/v1/office/today/"),
+    ("get", "/api/v1/office/approvals/"),
+    ("get", "/api/v1/office/sites/{site_id}/days/{date}/"),
+    ("get", "/api/v1/office/sites/{site_id}/cash-sheets/{date}/"),
+    ("get", "/api/v1/office/workers/"),
+    ("get", "/api/v1/office/workers/{worker_id}/"),
+    ("post", "/api/v1/office/days/{day_id}/decision-preview/"),
+    ("post", "/api/v1/office/decisions/"),
 }
 
 
@@ -64,7 +74,7 @@ def test_health_endpoint_still_works(client):
 def test_schema_is_valid_openapi(schema):
     validate_schema(schema)
     assert schema["info"]["title"] == "Polaris Workforce API"
-    assert schema["info"]["version"] == "1.2.0"
+    assert schema["info"]["version"] == "1.3.0"
 
 
 def test_schema_has_every_foreman_endpoint(schema):
@@ -101,6 +111,16 @@ def test_device_token_security_scheme(schema):
     assert {"DeviceToken": []} in me["security"]
     # [{}] is OpenAPI for "no authentication required".
     assert schema["paths"]["/api/v1/auth/pin/"]["post"]["security"] == [{}]
+
+
+def test_office_endpoints_take_only_agent_tokens(schema):
+    assert schema["components"]["securitySchemes"]["AgentToken"]["scheme"] == "bearer"
+    for path, item in schema["paths"].items():
+        for operation in item.values():
+            agent = {"AgentToken": []} in operation.get("security", [])
+            assert agent == path.startswith("/api/v1/office/"), path
+            if agent:
+                assert operation["security"] == [{"AgentToken": []}], path
 
 
 def test_money_fields_are_integers(schema):

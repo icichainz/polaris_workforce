@@ -74,6 +74,9 @@ current. Keep everything that changes from page to page inside that <nav>.
         {% translate "Settings" as nav_label %}{% include "components/nav_link.html" with url_name="core:settings" label=nav_label icon="settings" current=current only %}
         {% translate "Messages" as nav_label %}{% include "components/nav_link.html" with url_name="messaging:messages" label=nav_label icon="phone" current=current only %}
         {% endif %}
+        {% if user.company_id and user.role != "foreman" or user.company_id and user.is_superuser %}
+        {% translate "AI assistant access" as nav_label %}{% include "components/nav_link.html" with url_name="agents:access" label=nav_label icon="settings" current=current only %}
+        {% endif %}
         {% if company_switcher.is_platform_admin %}
         {% translate "Companies" as nav_label %}{% include "components/nav_link.html" with url_name="core:companies" label=nav_label icon="sites" current=current only %}
         {% endif %}

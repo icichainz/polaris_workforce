@@ -9111,3 +9111,171 @@ msgstr "En vigueur actuellement"
 
 #~ msgid "Coming later"
 #~ msgstr "Bientôt disponible"
+
+msgid "AI assistant access"
+msgstr "Accès des assistants IA"
+
+msgid "Invalid Authorization header. Use: Bearer <token>."
+msgstr "En-tête Authorization invalide. Utilisez : Bearer <token>."
+
+msgid "Invalid agent token."
+msgstr "Jeton d’assistant non valide."
+
+msgid "Invalid or revoked agent token."
+msgstr "Jeton d’assistant non valide ou révoqué."
+
+msgid "This agent token has expired. Create a new one in Polaris."
+msgstr "Ce jeton d’assistant a expiré. Créez-en un nouveau dans Polaris."
+
+msgid "This agent token may only read. Create one that may approve roll calls."
+msgstr "Ce jeton d’assistant ne peut que lire. Créez-en un qui peut valider les appels."
+
+msgid "30 days"
+msgstr "30 jours"
+
+msgid "90 days"
+msgstr "90 jours"
+
+msgid "1 year"
+msgstr "1 an"
+
+msgid "Where it is used, e.g. “Claude on my laptop”."
+msgstr "Où il est utilisé, p. ex. « Claude sur mon ordinateur »."
+
+msgid "Works for"
+msgstr "Valable"
+
+msgid "May approve or send back roll calls (always after a preview)"
+msgstr "Peut valider ou renvoyer les appels (toujours après un aperçu)"
+
+msgid "prefix"
+msgstr "préfixe"
+
+msgid "may approve roll calls"
+msgstr "peut valider les appels"
+
+msgid "Approve or send back submitted days, always after a preview."
+msgstr "Valider ou renvoyer les journées envoyées, toujours après un aperçu."
+
+msgid "expires at"
+msgstr "expire le"
+
+msgid "last used at"
+msgstr "dernière utilisation le"
+
+msgid "agent token"
+msgstr "jeton d’assistant"
+
+msgid "agent tokens"
+msgstr "jetons d’assistant"
+
+msgid "Give the token a name."
+msgstr "Donnez un nom au jeton."
+
+msgid "Choose one of the offered durations."
+msgstr "Choisissez l’une des durées proposées."
+
+msgid "Your role may not approve roll calls."
+msgstr "Votre rôle ne permet pas de valider les appels."
+
+msgid "Choose approve or reject."
+msgstr "Choisissez valider ou renvoyer."
+
+#, python-format
+msgid "Only a submitted roll call can be approved or sent back. This one is %(status)s."
+msgstr "Seul un appel envoyé peut être validé ou renvoyé. Statut de celui-ci : %(status)s."
+
+msgid "This confirmation has expired. Preview the decision again."
+msgstr "Cette confirmation a expiré. Affichez à nouveau l’aperçu de la décision."
+
+msgid "This confirmation is not valid."
+msgstr "Cette confirmation n’est pas valide."
+
+msgid "The roll call changed after the preview. Preview it again before deciding."
+msgstr "L’appel a changé après l’aperçu. Affichez un nouvel aperçu avant de décider."
+
+#, python-format
+msgid "“%(name)s” can no longer use Polaris."
+msgstr "« %(name)s » ne peut plus utiliser Polaris."
+
+msgid "Access"
+msgstr "Accès"
+
+msgid "Last used"
+msgstr "Dernière utilisation"
+
+msgid "Read and approve"
+msgstr "Lecture et validation"
+
+msgid "Read only"
+msgstr "Lecture seule"
+
+msgid "Revoked"
+msgstr "Révoqué"
+
+#, python-format
+msgid "Until %(date)s"
+msgstr "Jusqu’au %(date)s"
+
+msgid "No tokens yet"
+msgstr "Aucun jeton pour l’instant"
+
+msgid "Create one above, then paste it into the Polaris connector of Claude Desktop."
+msgstr "Créez-en un ci-dessus, puis collez-le dans le connecteur Polaris de Claude Desktop."
+
+msgid "Ask Claude about today’s roll calls, cash sheets and workers. Each token acts as you: your sites, your role."
+msgstr "Interrogez Claude sur les appels du jour, les feuilles de caisse et les ouvriers. Chaque jeton agit en votre nom : vos chantiers, votre rôle."
+
+msgid "Pick a company first"
+msgstr "Choisissez d’abord une entreprise"
+
+msgid "Agent tokens belong to a user of a company. Sign in with your company account to create one."
+msgstr "Les jetons d’assistant appartiennent à un utilisateur d’une entreprise. Connectez-vous avec votre compte d’entreprise pour en créer un."
+
+msgid "New token"
+msgstr "Nouveau jeton"
+
+msgid "Create token"
+msgstr "Créer le jeton"
+
+msgid "What an assistant can do"
+msgstr "Ce qu’un assistant peut faire"
+
+msgid "Read today’s overview, the roll calls waiting for approval, a site’s day, a cash sheet and a worker’s days and pay."
+msgstr "Lire la vue du jour, les appels en attente de validation, la journée d’un chantier, une feuille de caisse, et les journées et la paie d’un ouvrier."
+
+msgid "With approval turned on: approve or send back a submitted roll call, only after showing you a preview."
+msgstr "Avec la validation activée : valider ou renvoyer un appel envoyé, uniquement après vous en avoir montré un aperçu."
+
+msgid "Never: record a payment, issue cash, give an advance, or change workers, pay or settings."
+msgstr "Jamais : enregistrer un paiement, remettre des fonds, accorder une avance, ni modifier les ouvriers, la paie ou les paramètres."
+
+msgid "Your tokens"
+msgstr "Vos jetons"
+
+msgid "Other people’s tokens"
+msgstr "Jetons des autres utilisateurs"
+
+msgid "Token ready"
+msgstr "Jeton prêt"
+
+msgid "Copy this token now."
+msgstr "Copiez ce jeton maintenant."
+
+msgid "It is shown only once and is not stored in clear. Anyone who has it can read what you can read in Polaris: keep it like a password."
+msgstr "Il n’est affiché qu’une seule fois et n’est pas conservé en clair. Quiconque le détient peut lire ce que vous pouvez lire dans Polaris : gardez-le comme un mot de passe."
+
+msgid "Agent token"
+msgstr "Jeton d’assistant"
+
+msgid "Works until"
+msgstr "Valable jusqu’au"
+
+msgid "Server address"
+msgstr "Adresse du serveur"
+
+msgid "Set up Claude Desktop"
+msgstr "Configurer Claude Desktop"
+
+msgid "Once the Polaris connector (polaris-mcp) is installed on this computer, add it to Claude Desktop’s configuration (Settings, Developer, Edit config), then restart Claude:"
+msgstr "Une fois le connecteur Polaris (polaris-mcp) installé sur cet ordinateur, ajoutez-le à la configuration de Claude Desktop (Settings, Developer, Edit config), puis redémarrez Claude :"

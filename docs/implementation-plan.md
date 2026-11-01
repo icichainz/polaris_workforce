@@ -486,3 +486,25 @@ Open before go-live (in addition to §11): choose an SMS/WhatsApp provider (the 
 writes phone numbers, texts and portal PINs to the log — set a retention), set up the two
 cron jobs, a real-device test of QR scanning, GPS, kiosk mode and the Android build with
 `mobile_scanner`, and extend `tool/live_smoke.dart` to the check-in endpoints.
+
+---
+
+## 13. AI assistant access (branch `feat/agent-access`)
+
+**Owner decisions (2026-11-01):** for office staff using Claude Desktop (claude.ai later);
+**read only**, plus **approving or sending back a roll call after a preview the person
+confirms**; assistants **never record payments** (nor issue cash, give advances, or
+change workers, pay or settings).
+
+| Part | Owns | Builds |
+| --- | --- | --- |
+| **Agent tokens** | new app `apps/agents/` (models, services, authentication, office screen) | `AgentToken` per office user (admin, site manager, accountant): hashed, shown once, 30/90/365 days, optional *may approve*; revoke (own; admins: the company's); audit entries; screen *AI assistant access* (`/settings/ai-assistants/`) |
+| **Office API** | `apps/agents/api/`, contract 1.3.0 | `/api/v1/office/`: me, today, approvals, a site's day, a cash sheet, find workers, a worker's days and pay; decision preview → signed confirmation (token, day, decision, note, fingerprint of the records; 10 min) → decision. Agent tokens only (`Authorization: Bearer pol_…`), refused everywhere else; throttled per token (120/min) |
+| **MCP server** | new package `polaris_mcp/` | stdio server for Claude Desktop (`polaris-mcp`, `polaris-mcp check`): 9 task-shaped tools, site names and relative dates resolved, money as minor units + display, confirm tool marked destructive |
+
+Audit: the decision writes the usual `attendance.day.*` entry under the person's name
+plus `agents.day.approve|reject` naming the token. Replaying a confirmation decides once.
+
+Open: claude.ai connectors (remote MCP over HTTPS with OAuth, after hosting is chosen);
+publishing `polaris-mcp` so office computers can install it without a checkout; a shell
+CLI on the same client if scripts need it.
