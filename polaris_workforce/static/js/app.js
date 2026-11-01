@@ -9,6 +9,11 @@
  * Anything that is not an office page (sign-in after a session expired, the badge print
  * sheet, a file download, a bare error page) falls back to a normal page load.
  *
+ * Back / Forward: htmx keeps no page snapshots (historyCacheSize 0 in base.html, they
+ * would hold names and pay amounts). Instead of htmx's restore, which would reload the
+ * page, we fetch the page again and swap it like a click: #main plus the sidebar <nav>.
+ * The window scroll position of each page is remembered in memory for the way back.
+ *
  * Loaded before Alpine (both deferred) so Alpine.data() is registered on alpine:init.
  */
 (function () {
@@ -17,16 +22,24 @@
   const SHELL = '#main[data-app-shell]';
   const PROGRESS_DELAY_MS = 150;
   let progressTimer = null;
+  let restoring = null; // AbortController of the Back / Forward fetch in flight
+  const scrollPositions = new Map(); // url → window.scrollY when the page was left
 
   function main() {
     return document.querySelector(SHELL);
   }
 
-  function isOfficePage(xhr) {
-    const type = xhr.getResponseHeader("Content-Type") || "";
-    if (!type.startsWith("text/html")) return false;
-    const doc = new DOMParser().parseFromString(xhr.responseText, "text/html");
+  function isOfficePage(contentType, html) {
+    if (!(contentType || "").startsWith("text/html")) return false;
+    const doc = new DOMParser().parseFromString(html, "text/html");
     return doc.querySelector(SHELL) !== null;
+  }
+
+  function focusHeading(area) {
+    // Move focus to the new page's heading so screen readers announce it.
+    const heading = area.querySelector("h1") || area;
+    if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+    heading.focus({ preventScroll: true });
   }
 
   function loadPage(url) {
@@ -62,7 +75,7 @@
     if (!detail.boosted || !area) return;
     const xhr = detail.xhr;
 
-    if (isOfficePage(xhr)) {
+    if (isOfficePage(xhr.getResponseHeader("Content-Type"), xhr.responseText)) {
       // Office page, including a 4xx/5xx rendered with the app layout: show it.
       detail.shouldSwap = true;
       detail.isError = false;
@@ -95,12 +108,68 @@
   });
 
   document.addEventListener("htmx:afterSettle", function (event) {
-    // Move focus to the new page's heading so screen readers announce it.
     const area = main();
-    if (!event.detail.boosted || event.detail.target !== area) return;
-    const heading = area.querySelector("h1") || area;
-    if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
-    heading.focus({ preventScroll: true });
+    if (event.detail.boosted && event.detail.target === area) focusHeading(area);
+  });
+
+  // --- Back / Forward ----------------------------------------------------------------
+
+  document.addEventListener("htmx:beforeHistoryUpdate", function () {
+    // Still on the page being left: remember where it was scrolled to.
+    scrollPositions.set(window.location.href, window.scrollY);
+  });
+
+  function restorePage() {
+    const url = window.location.href;
+    if (restoring) restoring.abort();
+    const controller = new AbortController();
+    restoring = controller;
+    showProgress(true);
+    window.dispatchEvent(new CustomEvent("polaris-navigate"));
+
+    fetch(url, {
+      credentials: "same-origin",
+      signal: controller.signal,
+      // The headers htmx sends for a history restore: the server answers with the full page.
+      headers: { "HX-Request": "true", "HX-History-Restore-Request": "true", "HX-Current-URL": url },
+    })
+      .then(function (response) {
+        return response.text().then(function (html) {
+          if (controller.signal.aborted || window.location.href !== url) return;
+          const area = main();
+          const contentType = response.headers.get("Content-Type");
+          if (!area || response.redirected || !isOfficePage(contentType, html)) {
+            window.location.reload();
+            return;
+          }
+          window.htmx.swap(area, html, { swapStyle: "innerHTML" }, { select: SHELL + " > *" });
+          window.scrollTo(0, scrollPositions.get(url) || 0);
+          focusHeading(area);
+        });
+      })
+      .catch(function (error) {
+        if (error.name !== "AbortError") window.location.reload();
+      })
+      .finally(function () {
+        if (restoring === controller) {
+          restoring = null;
+          showProgress(false);
+        }
+      });
+  }
+
+  // htmx sets window.onpopstate when the document is ready (its listener was added before
+  // this one, so it has run). Office pages restore with restorePage(); anything else keeps
+  // htmx's handling (a reload, as there is no snapshot).
+  document.addEventListener("DOMContentLoaded", function () {
+    const htmxPopstate = window.onpopstate;
+    window.onpopstate = function (event) {
+      if (event.state && event.state.htmx && main()) {
+        restorePage();
+      } else if (htmxPopstate) {
+        htmxPopstate.call(window, event);
+      }
+    };
   });
 
   document.addEventListener("alpine:init", function () {

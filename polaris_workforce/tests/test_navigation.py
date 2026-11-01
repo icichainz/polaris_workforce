@@ -16,6 +16,7 @@ from tests.factories import AdminUserFactory, CompanySettingsFactory
 pytestmark = pytest.mark.django_db
 
 BOOSTED = {"HTTP_HX_REQUEST": "true", "HTTP_HX_BOOSTED": "true"}
+HISTORY_RESTORE = {"HTTP_HX_REQUEST": "true", "HTTP_HX_HISTORY_RESTORE_REQUEST": "true"}
 
 
 @pytest.fixture
@@ -30,6 +31,7 @@ def admin(db):
         ({}, False),
         ({"HTTP_HX_REQUEST": "true"}, True),
         (BOOSTED, False),
+        (HISTORY_RESTORE, False),
     ],
 )
 def test_wants_fragment_only_for_explicit_htmx(headers, expected):
@@ -51,12 +53,14 @@ def test_office_layout_carries_the_navigation_hooks(client, admin):
     assert html.index("js/app.js") < html.index("vendor/alpine")
 
 
-def test_boosted_request_gets_the_full_page(client, admin):
+@pytest.mark.parametrize("headers", [BOOSTED, HISTORY_RESTORE], ids=["boosted", "back"])
+def test_boosted_and_history_requests_get_the_full_page(client, admin, headers):
     client.force_login(admin)
 
-    html = client.get(reverse("workers:list"), **BOOSTED).content.decode()
+    html = client.get(reverse("workers:list"), **headers).content.decode()
 
     assert "<title>" in html
+    assert '<main id="main" data-app-shell' in html
     assert 'id="sidebar-main-nav"' in html
     assert 'aria-current="page"' in html.split('id="sidebar-main-nav"', 1)[1]
 
