@@ -65,3 +65,25 @@ def test_the_pay_card_shows_piece_work_bonuses_and_deductions(scene):
     assert "Kofi only" not in text
     row = response.context["rows"][0]
     assert row.deductions == 360
+
+
+def test_left_to_pay_is_what_the_lines_still_owe(db):
+    # The portal home's "to pay": net minus paid on every line past its open period,
+    # never negative, read with one query.
+    from apps.portal import selectors as portal
+    from tests.test_payroll_services import TUE, WED, pay
+
+    CompanySettingsFactory()
+    site, _manager, foreman = setup_site()
+    ama = hire(site, 6000)
+    roll_call(site, MON, {ama: "present"})
+    roll_call(site, TUE, {ama: "half_day"})
+    roll_call(site, WED, {ama: "present"}, status="submitted")  # open: not counted
+    for day in (MON, TUE, WED):
+        services.cash_sheet(site, day)
+    pay(foreman, line_of(site, MON, ama))
+
+    lines = portal._lines(ama).exclude(period__status="open")
+    expected = sum(max(line.net - line.paid, 0) for line in lines)
+    assert expected == line_of(site, TUE, ama).net > 0
+    assert portal._left_to_pay(ama) == expected

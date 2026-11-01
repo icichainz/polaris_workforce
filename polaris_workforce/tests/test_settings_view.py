@@ -212,3 +212,26 @@ def test_text_to_holidays_deduplicates_dates():
     assert text_to_holidays("2026-01-01 New year\n2026-01-01 Jour de l'an") == [
         {"date": "2026-01-01", "name": "Jour de l'an"}
     ]
+
+
+def test_an_invalid_form_does_not_leak_into_the_page_settings(admin_client):
+    # The form edits its instance even when invalid; the page (money, language) must
+    # keep reading the saved settings.
+    saved = CompanySettings.load().currency
+
+    response = admin_client.post(
+        reverse("core:settings"), form_data(currency="francs", advance_limit_percent="101")
+    )
+
+    assert response.status_code == 200
+    assert response.context["company_settings"].currency == saved
+
+
+def test_a_page_reads_the_settings_once(admin_client):
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    with CaptureQueriesContext(connection) as queries:
+        assert admin_client.get(reverse("dashboard:home")).status_code == 200
+    reads = [q["sql"] for q in queries if 'FROM "core_companysettings"' in q["sql"]]
+    assert len(reads) == 1

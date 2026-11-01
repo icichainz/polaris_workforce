@@ -328,10 +328,11 @@ def week_strip(site: Site, today: datetime.date, company: CompanySettings | None
             present=Count("records", filter=Q(records__status__in=PRESENT_STATUSES))
         )
     }
+    crews = crew_ids_by_date(site, dates[0], dates[-1]) if dates else {}
     summaries = []
     for date in dates:
         day = days.get(date)
-        crew = crew_for(site, date).count()
+        crew = len(crews[date])
         if day is not None:
             summaries.append(DaySummary(date, day.status, day.present, crew, date == today))
         elif date > today:

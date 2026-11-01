@@ -23,7 +23,7 @@ from .choices import (
     PayType,
     ProofType,
 )
-from .tenancy import current_company, current_company_id
+from .tenancy import current_company, current_company_id, request_memo
 from .validators import validate_time_zone
 
 
@@ -296,6 +296,12 @@ class CompanySettings(TimeStampedModel):
     def __str__(self) -> str:
         return str(self.company_name or _("Company settings"))
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        memo = request_memo()  # the request's shared copy (``load``) is now this one
+        if memo is not None and (CompanySettings, self.company_id) in memo:
+            memo[(CompanySettings, self.company_id)] = self
+
     def clean(self):
         super().clean()
         errors = {}
@@ -318,18 +324,30 @@ class CompanySettings(TimeStampedModel):
             raise ValidationError(errors)
 
     @classmethod
-    def load(cls, company=None) -> "CompanySettings":
+    def load(cls, company=None, *, fresh: bool = False) -> "CompanySettings":
         """The settings of ``company`` (a ``Company`` or its id), else of the current
         company; created with the defaults if needed. Raises ``NoCurrentCompany`` when
-        there is no company to read."""
+        there is no company to read.
+
+        In a request they are read once and shared (``tenancy.request_memo``); saving
+        them updates the shared copy. ``fresh``: a copy of their own, for a form that
+        edits them (a form changes its instance even when it is invalid).
+        """
         if company is None:
             company = current_company()
+        company_id = company.pk if isinstance(company, Company) else company
+        memo = None if fresh else request_memo()
+        key = (cls, company_id)
+        if memo is not None and key in memo:
+            return memo[key]
         if isinstance(company, Company):
             obj, _created = cls.objects.get_or_create(
                 company=company, defaults={"company_name": company.name}
             )
-            return obj
-        obj, _created = cls.objects.get_or_create(company_id=company)
+        else:
+            obj, _created = cls.objects.get_or_create(company_id=company)
+        if memo is not None:
+            memo[key] = obj
         return obj
 
     def holiday_dates(self) -> set[datetime.date]:

@@ -43,12 +43,14 @@ class _RequestCompany:
         self.request = request
         self._user = None
         self._company = None
+        self.memo: dict = {}
 
     def resolve(self) -> Company | None:
         user = getattr(self.request, "user", None)
         if user is not self._user:
             self._user = user
             self._company = company_for_request(self.request)
+            self.memo = {}
         return self._company
 
 
@@ -83,6 +85,19 @@ def current_company_id() -> int | None:
     """The current company's id, or ``None``. The default of every ``company`` field."""
     company = current_company_or_none()
     return company.pk if company is not None else None
+
+
+def request_memo() -> dict | None:
+    """A dict that lives as long as the current request (``None`` outside a request).
+
+    For values read many times per request that only the request itself changes
+    (``CompanySettings.load``). It is emptied when the request's user changes.
+    """
+    value = _current.get()
+    if isinstance(value, _RequestCompany):
+        value.resolve()
+        return value.memo
+    return None
 
 
 def set_request_company(request) -> contextvars.Token:

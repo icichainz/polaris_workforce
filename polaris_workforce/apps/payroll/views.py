@@ -10,7 +10,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, prefetch_related_objects
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -238,6 +238,8 @@ def _row(request, sheet, sheet_line, company, form=None, errors=None):
 def cash_sheet(request, site_id, date):
     site = get_site_or_403(request.user, site_id)
     sheet = services.cash_sheet(site, date)
+    # Each unpaid row shows its transfer ({% transfer_state %}): read them all at once.
+    prefetch_related_objects([row.line for row in sheet.lines], "payout_lines__batch")
     return render(request, "payroll/cash_sheet.html", _sheet_context(request, sheet))
 
 
@@ -417,8 +419,9 @@ def advances(request):
     if show != "all":
         rows = owed
     page = Paginator(rows, PAGE_SIZE).get_page(request.GET.get("page"))
+    sites = services.current_sites([advance.worker_id for advance in page], today)
     for advance in page:
-        site = services.current_site(advance.worker, today)
+        site = sites.get(advance.worker_id)
         advance.site_name = site.name if site else ""
         advance.repaid_percent = round(100 * (advance.amount - advance.balance) / advance.amount)
     context = {

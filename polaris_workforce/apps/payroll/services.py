@@ -156,6 +156,18 @@ def deduction_inputs(company_id) -> list[engine.DeductionRuleInput]:
     ]
 
 
+@dataclass(frozen=True)
+class SiteInputs:
+    """A site's pay rules and the company's deduction rules, read once for several periods."""
+
+    rules: engine.PayRules
+    deduction_rules: list[engine.DeductionRuleInput]
+
+
+def site_inputs(site: Site, company: CompanySettings) -> SiteInputs:
+    return SiteInputs(pay_rules(site, company), deduction_inputs(site.company_id))
+
+
 def stoppage_input(stoppage: StoppageDay) -> engine.Stoppage:
     if stoppage.pay == StoppagePay.FIXED:
         return engine.Stoppage(fixed=stoppage.amount or 0)
@@ -664,8 +676,10 @@ def _paid_corrections(
     period: PayPeriod,
     paid: list[tuple[PayLine, list[engine.DayInput]]],
     rules: engine.PayRules,
+    late: dict[int, list] | None = None,
 ) -> list[PaidCorrection]:
-    late = _late_corrections(period, [line for line, _days in paid])
+    if late is None:
+        late = _late_corrections(period, [line for line, _days in paid])
     found = []
     for line, days in paid:
         corrections = late.get(line.worker_id)
@@ -779,6 +793,7 @@ def refresh_period(
     actor=None,
     today: datetime.date | None = None,
     company: CompanySettings | None = None,
+    inputs: SiteInputs | None = None,
 ) -> PayPeriod:
     """Recompute the period's unpaid lines from its attendance, then its status.
 
@@ -792,19 +807,22 @@ def refresh_period(
     refusing every write (``_reads_only``): an IMMEDIATE transaction takes SQLite's write
     lock when it begins, and screens opening pay must not make the phones' writes wait.
     Only when it reaches a write does it start again, in a transaction.
+
+    ``inputs``: the site's rules, when the caller refreshes several of its periods.
     """
     if period.is_locked:
         return period
     company = company or CompanySettings.load()
     today = today or company_today(company)
+    inputs = inputs or site_inputs(period.site, company)
     connection = transaction.get_connection()
     if actor is None and not connection.in_atomic_block:
         try:
             with connection.execute_wrapper(_reads_only):
-                return _refresh_period(period, actor, today, company, atomic=False)
+                return _refresh_period(period, actor, today, company, inputs, atomic=False)
         except _WouldWrite:
             period.refresh_from_db()  # The dry run may have changed it in memory.
-    return _refresh_period(period, actor, today, company, atomic=True)
+    return _refresh_period(period, actor, today, company, inputs, atomic=True)
 
 
 class _WouldWrite(Exception):
@@ -820,15 +838,21 @@ def _reads_only(execute, sql, params, many, context):
 
 
 def _refresh_period(
-    period: PayPeriod, actor, today: datetime.date, company: CompanySettings, *, atomic: bool
+    period: PayPeriod,
+    actor,
+    today: datetime.date,
+    company: CompanySettings,
+    inputs: SiteInputs,
+    *,
+    atomic: bool,
 ) -> PayPeriod:
     site = period.site
-    rules = pay_rules(site, company)
+    rules = inputs.rules
     by_worker = _records_by_worker(period, company)
     rates = _rates_by_worker(list(by_worker), period.end_date)
     context = day_context(site, period.start_date, period.end_date, company)
     pieces = _pieces_by_worker(period, company, list(by_worker))
-    deduction_rules = deduction_inputs(site.company_id)
+    deduction_rules = inputs.deduction_rules
     adjusted: set[int] = set()
 
     with transaction.atomic() if atomic else contextlib.nullcontext():
@@ -961,7 +985,7 @@ def paid_corrections(day: AttendanceDay) -> dict[int, PaidCorrection]:
     """Workers already paid for ``day`` whose corrected attendance is worth a different
     amount, with the difference still to settle (read only: for the Approvals screen)."""
     company = CompanySettings.load()
-    rules = pay_rules(day.site, company)
+    rules = None
     periods = (
         PayPeriod.objects.filter(
             site=day.site,
@@ -981,6 +1005,13 @@ def paid_corrections(day: AttendanceDay) -> dict[int, PaidCorrection]:
             .prefetch_related("payments", "raised_adjustments")
             .distinct()
         )
+        # Only a correction made after the payment can make a paid line worth something
+        # else; most periods have none, and the attendance is not read for them.
+        late = _late_corrections(period, lines)
+        lines = [line for line in lines if late.get(line.worker_id)]
+        if not lines:
+            continue
+        rules = rules or pay_rules(day.site, company)
         by_worker = _records_by_worker(period, company, [line.worker_id for line in lines])
         rates = _rates_by_worker(list(by_worker), period.end_date)
         context = day_context(period.site, period.start_date, period.end_date, company)
@@ -995,7 +1026,7 @@ def paid_corrections(day: AttendanceDay) -> dict[int, PaidCorrection]:
             for line in lines
             if line.worker_id in by_worker
         ]
-        for item in _paid_corrections(period, paid, rules):
+        for item in _paid_corrections(period, paid, rules, late):
             if item.difference:
                 found[item.line.worker_id] = item
     return found
@@ -1116,9 +1147,12 @@ def sync_site(
     for (p_start, p_end), frequency in wanted.items():
         if (p_start, p_end) not in periods:
             periods[(p_start, p_end)] = ensure_period(site, p_start, p_end, frequency)
+    inputs = site_inputs(site, company) if periods else None
     result = []
     for key in sorted(periods):
-        result.append(refresh_period(periods[key], actor=actor, today=today, company=company))
+        result.append(
+            refresh_period(periods[key], actor=actor, today=today, company=company, inputs=inputs)
+        )
     return result
 
 
@@ -1186,6 +1220,19 @@ def sync_sheets_on_read(
             today,
             lambda site=site: sync_sheet(site, today, today=today, company=company),
         )
+
+
+def cash_sheet_on_read(site: Site, day: datetime.date, *, today=None) -> CashSheet:
+    """``cash_sheet(site, day)``, skipping the recomputation while nothing changed."""
+    company = CompanySettings.load()
+    today = today or company_today(company)
+    _refresh_on_read(
+        f"sheet:{day.isoformat()}",
+        site,
+        today,
+        lambda: sync_sheet(site, day, today=today, company=company),
+    )
+    return cash_sheets([(site, day)], today=today, company=company)[0]
 
 
 def on_attendance_changed(day: AttendanceDay, *, actor=None) -> None:
@@ -1263,11 +1310,29 @@ def _sheet_status(
 
 def sheet_status(site: Site, day: datetime.date) -> str:
     """The phone's ``payout_status`` for a site and pay day (read only, no refresh)."""
-    company = CompanySettings.load()
-    periods = list(PayPeriod.objects.filter(site=site, end_date=day).select_related("site"))
-    amounts = _line_amounts(periods)
-    lines = [amount for period in periods for amount in amounts[period.pk]]
-    return _sheet_status(periods, lines, company_today(company), company)
+    return sheet_statuses([(site.pk, day)])[(site.pk, day)]
+
+
+def sheet_statuses(
+    keys, *, today: datetime.date | None = None, company: CompanySettings | None = None
+) -> dict[tuple[int, datetime.date], str]:
+    """``sheet_status`` of each ``(site id, pay day)``, read together (phone sync, day lists).
+
+    Two queries, plus the readiness check of each unlocked period.
+    """
+    keys = list(dict.fromkeys(keys))
+    if not keys:
+        return {}
+    company = company or CompanySettings.load()
+    today = today or company_today(company)
+    periods = _sheet_periods(keys)
+    amounts = _line_amounts(p for group in periods.values() for p in group)
+    statuses = {}
+    for key in keys:
+        sheet_periods = periods.get(key, [])
+        lines = [a for p in sheet_periods for a in amounts.get(p.pk, [])]
+        statuses[key] = _sheet_status(sheet_periods, lines, today, company)
+    return statuses
 
 
 def _on_sheets(keys, site_field: str, date_field: str) -> Q:
@@ -1346,7 +1411,7 @@ def cash_sheets(
     periods = _sheet_periods(keys)
     pay_lines = (
         PayLine.objects.filter(period__in=[p for group in periods.values() for p in group])
-        .select_related("worker__trade", "period")
+        .select_related("worker__trade", "period__site")
         .prefetch_related(
             "payments__paid_by",
             "adjustment_applications__adjustment__source_line__period",

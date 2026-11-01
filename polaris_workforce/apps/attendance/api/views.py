@@ -120,12 +120,16 @@ class DayListView(APIView):
             .select_related("submitted_by", "approved_by")
             .prefetch_related("records")
         }
+        payouts = selectors.payout_statuses(days.values())
         summaries = []
         date = end
         while date >= start:
             day = days.get(date)
             records = day.records.all() if day else []
-            summaries.append(day_payload(site, date, day, expected[date], records))
+            payout = payouts[day.pk] if day else None
+            summaries.append(
+                day_payload(site, date, day, expected[date], records, payout_status=payout)
+            )
             date -= datetime.timedelta(days=1)
         return Response(AttendanceDayListSerializer({"site_id": site.pk, "days": summaries}).data)
 
@@ -454,7 +458,8 @@ class SyncView(APIView):
         prefetch_related_objects(changes.records, "day")
         prefetch_related_objects(changes.corrections, "record__day")
         days = changes.days
-        expected = {day.pk: selectors.expected_worker_ids(day.site, day.date) for day in days}
+        expected = selectors.expected_for_days(days)
+        payouts = selectors.payout_statuses(days)
         records_by_day = {}
         for record in AttendanceRecord.objects.filter(day__in=days):
             records_by_day.setdefault(record.day_id, []).append(record)
@@ -463,7 +468,12 @@ class SyncView(APIView):
             "since": changes.since,
             "days": [
                 day_payload(
-                    day.site, day.date, day, expected[day.pk], records_by_day.get(day.pk, [])
+                    day.site,
+                    day.date,
+                    day,
+                    expected[day.pk],
+                    records_by_day.get(day.pk, []),
+                    payout_status=payouts[day.pk],
                 )
                 for day in days
             ],

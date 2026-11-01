@@ -12,7 +12,7 @@ import calendar
 import datetime
 from dataclasses import dataclass, field
 
-from django.db.models import Q, Sum
+from django.db.models import F, OuterRef, Q, Subquery, Sum
 from django.db.models.functions import Coalesce
 from django.utils.translation import gettext as _
 
@@ -135,10 +135,6 @@ def home(worker, company: CompanySettings) -> dict:
         .order_by("-paid_at", "-pk")
         .first()
     )
-    to_pay = sum(
-        max(line.net - line.paid, 0)
-        for line in _lines(worker).exclude(period__status=PayPeriod.Status.OPEN)
-    )
     return {
         "today": today,
         "week": week,
@@ -148,8 +144,26 @@ def home(worker, company: CompanySettings) -> dict:
         if last_payment
         else None,
         "advance": worker_services.advance_summary(worker),
-        "to_pay": to_pay,
+        "to_pay": _left_to_pay(worker),
     }
+
+
+def _left_to_pay(worker) -> int:
+    """What is still owed on the worker's pay lines past their open period (one query)."""
+    paid = (
+        Payment.objects.filter(pay_line=OuterRef("pk"))
+        .values("pay_line")
+        .annotate(total=Sum("amount"))
+        .values("total")
+    )
+    return (
+        PayLine.objects.filter(worker=worker)
+        .exclude(period__status=PayPeriod.Status.OPEN)
+        .annotate(paid=Coalesce(Subquery(paid), 0))
+        .filter(net__gt=F("paid"))
+        .aggregate(total=Sum(F("net") - F("paid")))["total"]
+        or 0
+    )
 
 
 # --- Days ------------------------------------------------------------------------------

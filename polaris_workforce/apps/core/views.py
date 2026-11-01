@@ -28,7 +28,7 @@ AUDIT_PAGE_SIZE = 50
 
 @role_required(Role.ADMIN)
 def settings_view(request):
-    company = CompanySettings.load()
+    company = CompanySettings.load(fresh=True)  # the form edits it
     before = services.settings_snapshot(company)
     if request.method == "POST":
         form = CompanySettingsForm(request.POST, instance=company)

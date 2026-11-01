@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import datetime
 
-from django.db.models import Q, Sum
+from django.db.models import OuterRef, Q, Subquery, Sum
 
 from apps.accounts.permissions import scoped_sites
 from apps.attendance import selectors as attendance
@@ -27,6 +27,7 @@ from apps.payroll import services as payroll
 from apps.payroll.models import Advance, PayLine
 from apps.workers.models import Worker
 from apps.workers.services import scoped_workers
+from apps.worksites.models import SiteAssignment
 
 from .models import AgentToken
 from .services import may_approve
@@ -151,7 +152,9 @@ def approvals_data(user) -> list[dict]:
     """Submitted days waiting for approval on the user's sites, oldest first."""
     tz = dates.company_tz()
     rows = []
-    for day in attendance.days_waiting_for_approval(user):
+    days = list(attendance.days_waiting_for_approval(user))
+    expected = attendance.expected_for_days(days)
+    for day in days:
         records = list(day.records.all())
         rows.append(
             {
@@ -162,9 +165,7 @@ def approvals_data(user) -> list[dict]:
                 "submitted_at": _local(day.client_submitted_at or day.submitted_at, tz),
                 # With the crew expected that day (the Approvals card skips it), so an
                 # assistant does not read "expected 0" as a fact.
-                "counts": attendance.day_counts(
-                    attendance.expected_worker_ids(day.site, day.date), records
-                ),
+                "counts": attendance.day_counts(expected[day.pk], records),
                 "flags": [
                     str(flag)
                     for flag in attendance.approval_flags(
@@ -244,7 +245,7 @@ def day_data(user, site, date: datetime.date) -> dict:
 def cash_sheet_data(site, date: datetime.date) -> dict:
     """Who is paid how much on ``site`` for the pay day ``date`` (read; nothing is paid)."""
     company = CompanySettings.load()
-    sheet = payroll.cash_sheet(site, date)
+    sheet = payroll.cash_sheet_on_read(site, date)
     rec = sheet.reconciliation
     currency, decimals = sheet.currency, sheet.currency_decimals
 
@@ -294,8 +295,16 @@ def find_workers(user, query: str = "", site=None) -> list[dict]:
             | Q(number__icontains=query)
         )
     if site is not None:
-        on_site = payroll.current_sites(list(workers.values_list("pk", flat=True)), today)
-        workers = workers.filter(pk__in=[pk for pk, s in on_site.items() if s.pk == site.pk])
+        # The worker's current site, as payroll.current_site picks it (latest start first).
+        current = (
+            SiteAssignment.objects.active_on(today)
+            .filter(worker=OuterRef("pk"))
+            .order_by("-start_date", "-pk")
+            .values("site_id")[:1]
+        )
+        workers = workers.annotate(current_site_id=Subquery(current)).filter(
+            current_site_id=site.pk
+        )
     workers = list(workers.order_by("last_name", "first_name", "pk")[:MAX_WORKERS])
     sites = payroll.current_sites([worker.pk for worker in workers], today)
     return [
