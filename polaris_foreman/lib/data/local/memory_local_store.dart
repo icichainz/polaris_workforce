@@ -3,8 +3,8 @@ import 'dart:async';
 import '../models/models.dart';
 import 'local_store.dart';
 
-/// In-memory [LocalStore] for tests and previews.
-class MemoryLocalStore implements LocalStore {
+/// In-memory [LocalStore] (and [ObservationStore]) for tests and previews.
+class MemoryLocalStore implements LocalStore, ObservationStore {
   final _changes = StreamController<void>.broadcast();
   final Map<String, String> _kv = {};
   final Map<int, Crew> _crews = {};
@@ -15,6 +15,9 @@ class MemoryLocalStore implements LocalStore {
   final Map<String, LocalCheckIn> _checkins = {};
   final Map<int, OutboxEntry> _outbox = {};
   int _outboxSeq = 0;
+
+  /// Insertion order is the sending order.
+  final Map<String, QueuedObservation> _observations = {};
 
   String _dk(int siteId, String date) => '$siteId|$date';
   String _rk(int siteId, String date, int workerId) =>
@@ -159,6 +162,57 @@ class MemoryLocalStore implements LocalStore {
   @override
   Future<List<OutboxEntry>> loadOutbox() async =>
       (_outbox.values.toList()..sort((a, b) => a.id!.compareTo(b.id!)));
+
+  @override
+  Future<void> addObservations(Iterable<QueuedObservation> items) async {
+    for (final o in items) {
+      _observations.putIfAbsent(o.clientUuid, () => o);
+    }
+  }
+
+  @override
+  Future<List<QueuedObservation>> nextObservations(
+    String owner,
+    int limit,
+  ) async =>
+      _observations.values.where((o) => o.owner == owner).take(limit).toList();
+
+  @override
+  Future<void> removeObservations(Iterable<String> clientUuids) async {
+    for (final id in clientUuids) {
+      _observations.remove(id);
+    }
+  }
+
+  @override
+  Future<int> countObservations([String? owner]) async => owner == null
+      ? _observations.length
+      : _observations.values.where((o) => o.owner == owner).length;
+
+  @override
+  Future<int> pruneObservations({
+    required String before,
+    int? keepAtMost,
+  }) async {
+    final old = [
+      for (final o in _observations.values)
+        if (o.at.compareTo(before) < 0) o.clientUuid,
+    ];
+    old.forEach(_observations.remove);
+    var n = old.length;
+    if (keepAtMost != null && _observations.length > keepAtMost) {
+      final extra = _observations.keys
+          .take(_observations.length - keepAtMost)
+          .toList();
+      extra.forEach(_observations.remove);
+      n += extra.length;
+    }
+    return n;
+  }
+
+  @override
+  Future<void> clearObservations(String owner) async =>
+      _observations.removeWhere((_, o) => o.owner == owner);
 
   @override
   Future<void> close() async => _changes.close();

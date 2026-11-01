@@ -2,6 +2,7 @@ import '../models/models.dart';
 import 'outbox.dart';
 import 'rows.dart';
 
+export 'observations.dart';
 export 'outbox.dart';
 export 'rows.dart';
 

@@ -721,4 +721,168 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get kioskPinWrong => 'Code PIN incorrect';
+
+  @override
+  String kindConsent(String date) {
+    return 'Réponse au suivi · $date';
+  }
+
+  @override
+  String get trackingConsentTitle => 'Suivi de la position';
+
+  @override
+  String get trackingConsentIntro =>
+      'Votre entreprise utilise Polaris pour savoir qui est sur ses chantiers. Lisez comment cela fonctionne, puis choisissez.';
+
+  @override
+  String get trackingConsentWhenTitle => 'Quand';
+
+  @override
+  String trackingConsentWhenHours(String start, String end) {
+    return 'Seulement pendant les heures de suivi, de $start à $end (heure du chantier), et seulement quand vous êtes connecté sur ce téléphone. En dehors de ces heures, rien n’est enregistré.';
+  }
+
+  @override
+  String get trackingConsentWhenGeneric =>
+      'Seulement pendant les heures de suivi fixées par votre entreprise, et seulement quand vous êtes connecté sur ce téléphone. En dehors de ces heures, rien n’est enregistré.';
+
+  @override
+  String get trackingConsentWhatTitle => 'Ce qui est enregistré';
+
+  @override
+  String trackingConsentWhatText(String every) {
+    return 'La position du téléphone $every, avec sa précision, et les badges des ouvriers que le téléphone capte à proximité quand l’application est ouverte sur un chantier. Jamais vos appels, messages, photos ou autres applications.';
+  }
+
+  @override
+  String trackingEveryMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'environ toutes les $count minutes',
+      one: 'environ toutes les minutes',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String trackingEverySeconds(int count) {
+    return 'environ toutes les $count secondes';
+  }
+
+  @override
+  String get trackingEveryGeneric => 'à intervalles réguliers';
+
+  @override
+  String get trackingConsentKeepTitle => 'Durée de conservation';
+
+  @override
+  String trackingConsentKeepDays(int days) {
+    return 'Les positions brutes sont effacées après $days jours. Les heures d’arrivée et de départ sont conservées comme les présences.';
+  }
+
+  @override
+  String get trackingConsentKeepGeneric =>
+      'Les positions brutes sont effacées après la durée fixée par votre entreprise (30 jours sauf réglage différent). Les heures d’arrivée et de départ sont conservées comme les présences.';
+
+  @override
+  String get trackingConsentWhoTitle => 'Qui y a accès';
+
+  @override
+  String get trackingConsentWhoText =>
+      'Les chefs de chantier voient qui est sur leurs propres chantiers. Les trajets entre chantiers ne sont visibles que par les administrateurs de l’entreprise. Vous pouvez demander votre propre historique au bureau.';
+
+  @override
+  String get trackingConsentUseTitle => 'À quoi cela sert';
+
+  @override
+  String get trackingConsentUseText =>
+      'La présence ne fait que suggérer le pointage : l’appel est toujours confirmé par une personne. Elle ne sert jamais à sanctionner automatiquement.';
+
+  @override
+  String get trackingConsentChoice =>
+      'Vous pouvez refuser : l’application fonctionne de la même façon, sans suivi. Vous pourrez changer d’avis plus tard.';
+
+  @override
+  String get trackingConsentAccept => 'Accepter';
+
+  @override
+  String get trackingConsentRefuse => 'Refuser';
+
+  @override
+  String trackingConsentVersion(String version) {
+    return 'Version de la notice $version';
+  }
+
+  @override
+  String get trackingConsentSaved =>
+      'Réponse enregistrée. Elle sera envoyée dès que le téléphone sera en ligne.';
+
+  @override
+  String get trackingConsentNeeded => 'Suivi de la position : lisez la notice';
+
+  @override
+  String get trackingMenu => 'Suivi de la position';
+
+  @override
+  String get trackingOn => 'Position activée';
+
+  @override
+  String get trackingPaused => 'Position en pause';
+
+  @override
+  String get trackingOff => 'Position désactivée';
+
+  @override
+  String trackingOnDetail(String start, String end) {
+    return 'Votre position est enregistrée pendant les heures de suivi, de $start à $end (heure du chantier).';
+  }
+
+  @override
+  String trackingPausedDetail(String start, String end) {
+    return 'En dehors des heures de suivi (de $start à $end, heure du chantier) : rien n’est enregistré.';
+  }
+
+  @override
+  String get trackingOffDetail =>
+      'La localisation est coupée ou refusée pour Polaris : activez-la dans les réglages du téléphone.';
+
+  @override
+  String get trackingBadgesDetail =>
+      'Recherche des badges des ouvriers sur ce chantier tant que l’application est ouverte.';
+
+  @override
+  String trackingQueued(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count relevés en attente d’envoi.',
+      one: '1 relevé en attente d’envoi.',
+      zero: 'Tout est envoyé.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String trackingMocked(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count positions venant d’une application de fausse localisation ont été ignorées.',
+      one:
+          '1 position venant d’une application de fausse localisation a été ignorée.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get trackingReadNotice => 'Lire la notice';
+
+  @override
+  String get trackingBackgroundTitle => 'Polaris : position activée';
+
+  @override
+  String get trackingBackgroundText =>
+      'Votre position est enregistrée pendant les heures de suivi.';
 }
