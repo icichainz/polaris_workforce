@@ -29,6 +29,12 @@ class Stale(TimeStampedModel):
     version = models.PositiveIntegerField(
         _("version"), default=1, help_text=_("Moves on every mark (a rebuild keeps newer marks).")
     )
+    queued_at = models.DateTimeField(
+        _("rebuild queued at"),
+        null=True,
+        blank=True,
+        help_text=_("When a background rebuild was last queued (empty: none)."),
+    )
 
     class Meta:
         verbose_name = _("out-of-date site")

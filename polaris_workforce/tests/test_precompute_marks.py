@@ -56,7 +56,8 @@ def _actions_in_the_code() -> set[str]:
     )
     for path in APPS_DIR.rglob("*.py"):
         parts = path.relative_to(APPS_DIR).parts
-        if "migrations" in parts or parts[0] == "precompute":
+        # Celery task names (tasks.py) look like actions but are not.
+        if "migrations" in parts or parts[0] == "precompute" or path.name == "tasks.py":
             continue
         found |= set(pattern.findall(path.read_text()))
     return found - labels

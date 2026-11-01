@@ -6,10 +6,12 @@ rebuilt per site, over the dates a change made out of date:
 1. A write marks what it changed (``mark``), in its own transaction. Every change to
    attendance or pay writes an audit entry, and ``signals.py`` marks from it
    (``marks.ranges_for``), so the services need not remember to.
-2. ``manage.py refresh_precomputed`` (cron, every few minutes) rebuilds the marked sites
-   in the background (``process``), and every active site once a day, since pay depends
-   on the date as well (``Freshness``). With ``--sweep`` (nightly) it rebuilds every open
-   period and records what changed although nobody marked it (``RefreshRun.mismatches``).
+2. Once the change commits, a Celery worker rebuilds the site (``tasks.rebuild_site``,
+   queued once per site however many marks come in). The periodic run (Celery beat every
+   5 minutes, or ``manage.py refresh_precomputed``) rebuilds any site still marked, and
+   every active site once a day, since pay depends on the date as well (``Freshness``).
+   The nightly sweep rebuilds every open period and records what changed although nobody
+   marked it (``RefreshRun.mismatches``).
 3. A screen that reads the figures calls ``ensure_fresh`` first: a site still marked for
    the dates it shows is rebuilt now, before the read. Otherwise the read costs nothing.
 
@@ -24,6 +26,7 @@ import datetime
 import logging
 from collections.abc import Callable
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import F, Q
 from django.utils import timezone
@@ -70,16 +73,53 @@ def mark(site_id: int, start: datetime.date | None, end: datetime.date | None = 
         end = start
     # The writer's transaction already holds SQLite's write lock (its audit entry is
     # written), so nobody changes the row between this read and the update.
+    now = timezone.now()
     stale = Stale.objects.filter(site_id=site_id).first()
     if stale is None:
-        Stale.objects.create(site_id=site_id, start=start, end=end)
+        queue = _queueing()
+        Stale.objects.create(
+            site_id=site_id, start=start, end=end, queued_at=now if queue else None
+        )
+        if queue:
+            queue_rebuild(site_id)
         return
+    # One rebuild for many marks: queue again only if none was queued, or long ago (lost).
+    requeue = _queueing() and (
+        stale.queued_at is None
+        or stale.queued_at
+        < now - datetime.timedelta(minutes=settings.PRECOMPUTE_REQUEUE_AFTER_MINUTES)
+    )
     Stale.objects.filter(pk=stale.pk).update(
         start=None if stale.start is None or start is None else min(stale.start, start),
         end=max(stale.end, end),
         version=F("version") + 1,
-        updated_at=timezone.now(),
+        updated_at=now,
+        **({"queued_at": now} if requeue else {}),
     )
+    if requeue:
+        queue_rebuild(site_id)
+
+
+def _queueing() -> bool:
+    """Rebuilds are queued for a worker only when a broker is set (``CELERY_BROKER_URL``)."""
+    return bool(settings.CELERY_BROKER_URL)
+
+
+def queue_rebuild(site_id: int) -> None:
+    """Have a worker rebuild the site once the current transaction commits (at once
+    outside one), after ``PRECOMPUTE_REBUILD_DELAY`` seconds so that the marks of the
+    next few writes ride along. A broker that is down never fails the write: the
+    periodic run and the screens rebuild the site anyway."""
+    transaction.on_commit(lambda: _send_rebuild(site_id))
+
+
+def _send_rebuild(site_id: int) -> None:
+    from .tasks import rebuild_site  # tasks import this module
+
+    try:
+        rebuild_site.apply_async((site_id,), countdown=settings.PRECOMPUTE_REBUILD_DELAY)
+    except Exception:  # the broker is unreachable: kombu, redis and socket errors alike
+        logger.warning("Precompute: could not queue the rebuild of site %s", site_id, exc_info=True)
 
 
 def mark_company(company_id: int) -> None:

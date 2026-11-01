@@ -23,3 +23,7 @@ STORAGES = {
 
 # The test client speaks plain HTTP; production redirects it to HTTPS.
 SECURE_SSL_REDIRECT = False
+
+# No broker: nothing is queued, whatever CELERY_BROKER_URL a developer exported. Tests of
+# the queueing set one themselves and catch what would be sent.
+CELERY_BROKER_URL = ""

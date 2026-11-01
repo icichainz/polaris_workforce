@@ -9,6 +9,7 @@ Values that differ between machines come from environment variables
 import os
 from pathlib import Path
 
+from celery.schedules import crontab
 from django.utils.translation import gettext_lazy as _
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -235,6 +236,44 @@ LOGIN_LOCKOUT_MINUTES = int(env_str("DJANGO_LOGIN_LOCKOUT_MINUTES", "15"))
 # A phone's device token stops working after this many days without use (measured on
 # ForemanDevice.last_seen_at); the foreman then signs in again with the PIN.
 DEVICE_TOKEN_IDLE_DAYS = int(env_str("DEVICE_TOKEN_IDLE_DAYS", "30"))
+
+
+# Background jobs: Celery with Redis (config/celery.py). A worker rebuilds the figures a
+# change made out of date (apps.precompute) and beat runs the periodic jobs. Without a
+# broker URL (local development, tests) nothing is queued: the screens still rebuild what
+# they read, and `manage.py refresh_precomputed` does the rest.
+
+CELERY_BROKER_URL = env_str("CELERY_BROKER_URL", "")
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_IGNORE_RESULT = True  # no task returns anything worth keeping
+CELERY_TASK_ACKS_LATE = True  # every task can run twice safely
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # rebuilds are long; don't hoard them
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+# A write that queues a rebuild must not hang when Redis is down: give up quickly (the
+# periodic run and the screens rebuild the site anyway).
+CELERY_BROKER_TRANSPORT_OPTIONS = {"socket_connect_timeout": 2, "socket_timeout": 5}
+CELERY_TASK_PUBLISH_RETRY_POLICY = {"max_retries": 1, "interval_start": 0, "interval_step": 0.5}
+CELERY_BEAT_SCHEDULE = {
+    "send-messages": {"task": "messaging.send_messages", "schedule": 120.0},
+    "send-notifications": {
+        "task": "messaging.send_notifications",
+        "schedule": crontab(minute="*/15"),
+    },
+    "refresh-precomputed": {"task": "precompute.refresh", "schedule": crontab(minute="*/5")},
+    "sweep-precomputed": {
+        "task": "precompute.refresh",
+        "schedule": crontab(hour=0, minute=30),
+        "kwargs": {"sweep": True},
+    },
+}
+
+# Seconds a rebuild waits after the change that queued it: the marks of a roll call, its
+# submission and its approval then rebuild the site once.
+PRECOMPUTE_REBUILD_DELAY = int(env_str("PRECOMPUTE_REBUILD_DELAY", "10"))
+# A site marked again after this long without its rebuild running is queued again (the
+# first task was lost: a worker restart, Redis down).
+PRECOMPUTE_REQUEUE_AFTER_MINUTES = int(env_str("PRECOMPUTE_REQUEUE_AFTER_MINUTES", "10"))
 
 
 # Security for production (only active when DEBUG is off)
