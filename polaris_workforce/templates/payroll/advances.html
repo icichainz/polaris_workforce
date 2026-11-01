@@ -11,15 +11,15 @@
       <div class="flex flex-wrap items-center justify-between gap-3">
         <h2 id="advances-title" class="sr-only">{% translate "Advances" %}</h2>
         <div role="tablist" aria-label="{% translate 'Advances shown' %}" class="flex gap-1 rounded-card bg-segment p-1">
-          <a role="tab" href="?{% if worker %}worker={{ worker.pk }}&amp;{% endif %}show=open" aria-selected="{% if show != 'all' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show != 'all' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Still owed" %}</a>
-          <a role="tab" href="?{% if worker %}worker={{ worker.pk }}&amp;{% endif %}show=all" aria-selected="{% if show == 'all' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show == 'all' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "All" %}</a>
+          <a role="tab" href="?{% if worker %}worker={{ worker.pk }}&amp;{% endif %}show=open" aria-selected="{% if show != 'all' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show != 'all' %}bg-surface text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Still owed" %}</a>
+          <a role="tab" href="?{% if worker %}worker={{ worker.pk }}&amp;{% endif %}show=all" aria-selected="{% if show == 'all' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show == 'all' %}bg-surface text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "All" %}</a>
         </div>
         {% if worker %}
         <p class="text-sm text-ink-700">{% blocktranslate with name=worker.full_name %}Showing {{ name }} only.{% endblocktranslate %} <a href="?show={{ show }}" class="font-semibold">{% translate "All workers" %}</a></p>
         {% endif %}
       </div>
       {% if page.object_list %}
-      <div class="overflow-x-auto rounded-control border border-line bg-white">
+      <div class="overflow-x-auto rounded-control border border-line bg-surface">
         <table class="w-full min-w-[720px] border-collapse text-sm">
           <thead>
             <tr class="bg-subtle text-left">
@@ -55,7 +55,7 @@
       {% endif %}
     </section>
 
-    <aside aria-labelledby="give-title" class="flex flex-col gap-4 rounded-card border border-line bg-white p-5">
+    <aside aria-labelledby="give-title" class="flex flex-col gap-4 rounded-card border border-line bg-surface p-5">
       <h2 id="give-title" class="font-display text-lg font-bold">{% translate "Give an advance" %}</h2>
       <form method="post" enctype="multipart/form-data" class="flex flex-col gap-4"
         hx-get="{% url 'payroll:advance_preview' %}" hx-trigger="change, keyup delay:400ms from:input" hx-target="#advance-preview" hx-swap="innerHTML">
@@ -68,7 +68,7 @@
         {% include "components/field.html" with field=form.proof_type only %}
         <div class="flex flex-col gap-1.5">
           <label for="{{ form.proof_file.auto_id }}" class="text-[13px] font-semibold text-ink">{{ form.proof_file.label }}</label>
-          <input type="file" name="{{ form.proof_file.html_name }}" id="{{ form.proof_file.auto_id }}" accept="image/jpeg,image/png,image/webp,application/pdf" class="text-sm text-ink-700 file:mr-2 file:h-9 file:rounded-control file:border file:border-line-strong file:bg-white file:px-3 file:text-[13px] file:font-semibold">
+          <input type="file" name="{{ form.proof_file.html_name }}" id="{{ form.proof_file.auto_id }}" accept="image/jpeg,image/png,image/webp,application/pdf" class="text-sm text-ink-700 file:mr-2 file:h-9 file:rounded-control file:border file:border-line-strong file:bg-surface file:px-3 file:text-[13px] file:font-semibold">
           {% if form.proof_file.errors %}<p class="text-[13px] font-medium text-absent-fg">{{ form.proof_file.errors|join:" " }}</p>{% else %}<p class="text-xs text-steel">{{ form.proof_file.help_text }}</p>{% endif %}
         </div>
         <div id="advance-preview" aria-live="polite">{% include "payroll/_advance_preview.html" %}</div>

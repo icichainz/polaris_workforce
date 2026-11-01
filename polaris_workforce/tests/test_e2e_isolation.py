@@ -76,6 +76,7 @@ OFFICE = {
     "core:media_file": "admin",
     "core:companies": "platform",
     "core:company_switch": "platform",
+    "core:set_theme": "public",  # display preference; tests/test_theme.py
     "attendance:approvals": "list",
     "attendance:decide": "b_post",
     "attendance:bulk_approve": "b_post",

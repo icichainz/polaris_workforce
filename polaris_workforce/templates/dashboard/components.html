@@ -15,7 +15,25 @@
 {% block content %}
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
 
-  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-6" aria-labelledby="g-buttons">
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-surface p-6 xl:col-span-2" aria-labelledby="g-themes">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 id="g-themes" class="font-display text-lg font-bold">Light and dark · theme_switch.html</h2>
+      {% include "components/theme_switch.html" with current=theme.office tone="" size="" browser_only=False %}
+    </div>
+    <p class="text-[13px] text-steel">The same components under data-theme="light" and data-theme="dark", whatever this page uses. Tokens: static/src/app.css; the dark values: scripts/theme_css.py.</p>
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div data-theme="light" class="flex flex-col gap-3 rounded-card border border-line bg-ground p-4 text-ink">
+        <p class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">Light</p>
+        {% include "dashboard/_theme_preview.html" %}
+      </div>
+      <div data-theme="dark" class="flex flex-col gap-3 rounded-card border border-line bg-ground p-4 text-ink">
+        <p class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">Dark</p>
+        {% include "dashboard/_theme_preview.html" %}
+      </div>
+    </div>
+  </section>
+
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-surface p-6" aria-labelledby="g-buttons">
     <h2 id="g-buttons" class="font-display text-lg font-bold">button.html</h2>
     <div class="flex flex-wrap items-center gap-3">
       {% include "components/button.html" with label="Approve day" variant="primary" only %}
@@ -38,7 +56,7 @@
     <p class="text-[13px] text-steel">One amber button per screen. Dark = irreversible (lock). Red outline = reject / remove.</p>
   </section>
 
-  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-6" aria-labelledby="g-badges">
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-surface p-6" aria-labelledby="g-badges">
     <h2 id="g-badges" class="font-display text-lg font-bold">status_badge.html</h2>
     <div class="flex flex-wrap gap-2.5">
       {% include "components/status_badge.html" with status="present" only %}
@@ -65,7 +83,7 @@
     </div>
   </section>
 
-  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-6 xl:col-span-2" aria-labelledby="g-tiles">
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-surface p-6 xl:col-span-2" aria-labelledby="g-tiles">
     <h2 id="g-tiles" class="font-display text-lg font-bold">stat_tile.html</h2>
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {% include "components/stat_tile.html" with label="Present today" value=86 suffix="/ 104" progress=83 only %}
@@ -75,7 +93,7 @@
     </div>
   </section>
 
-  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-6" aria-labelledby="g-fields">
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-surface p-6" aria-labelledby="g-fields">
     <h2 id="g-fields" class="font-display text-lg font-bold">field.html · money_field.html</h2>
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {% include "components/field.html" with field=form.full_name only %}
@@ -88,7 +106,7 @@
     {% include "components/field.html" with field=unbound.full_name size="lg" label="Large (sign-in, 44 px)" only %}
   </section>
 
-  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-6" aria-labelledby="g-inherit">
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-surface p-6" aria-labelledby="g-inherit">
     <h2 id="g-inherit" class="font-display text-lg font-bold">inherited_setting.html</h2>
     {% include "components/inherited_setting.html" with label="Pay frequency" value="Daily" source="From company default" only %}
     {% include "components/inherited_setting.html" with label="Half day counts" value="0.5 day" source="From site: Riverside Apartments" override_href="#g-inherit" only %}
@@ -102,7 +120,7 @@
     {% include "components/stepper.html" with status="rejected" only %}
   </section>
 
-  <section class="flex flex-col gap-3 rounded-card border border-line bg-white p-6" aria-labelledby="g-alerts">
+  <section class="flex flex-col gap-3 rounded-card border border-line bg-surface p-6" aria-labelledby="g-alerts">
     <h2 id="g-alerts" class="font-display text-lg font-bold">alert.html</h2>
     {% include "components/alert.html" with variant="offline" title="Offline." message="18 records saved on this phone." aside="Will sync" only %}
     {% include "components/alert.html" with variant="success" message="All synced · 07:45" only %}
@@ -111,7 +129,7 @@
     {% include "components/alert.html" with variant="info" message="Pay periods are generated from the pay frequency setting." only %}
   </section>
 
-  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-6" aria-labelledby="g-header">
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-surface p-6" aria-labelledby="g-header">
     <h2 id="g-header" class="font-display text-lg font-bold">page_header.html</h2>
     {% include "components/page_header.html" with title="Riverside Apartments" subtitle="Sites" status="active" meta="[Street address], Block B · Started 3 March 2026" level=2 only %}
 
@@ -119,13 +137,13 @@
     {% include "components/empty_state.html" with icon="workers" title="No workers yet" message="Add your first worker to start the roll call." action_label="Add worker" action_href="#g-header" only %}
   </section>
 
-  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-6 xl:col-span-2" aria-labelledby="g-table">
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-surface p-6 xl:col-span-2" aria-labelledby="g-table">
     <h2 id="g-table" class="font-display text-lg font-bold">data_table.html (guidance + reference)</h2>
     {% include "components/data_table.html" only %}
     <p class="text-[13px] text-steel">Amber row tint = record changed after submission. Money right-aligned, tabular figures, currency suffix from settings.</p>
   </section>
 
-  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-6 xl:col-span-2" aria-labelledby="g-icons">
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-surface p-6 xl:col-span-2" aria-labelledby="g-icons">
     <h2 id="g-icons" class="font-display text-lg font-bold">icon.html</h2>
     <ul class="grid grid-cols-3 gap-3 text-xs text-ink-700 sm:grid-cols-6 lg:grid-cols-8">
       <li class="flex flex-col items-center gap-1.5"><span class="text-ink">{% include "components/icon.html" with name="dashboard" class="size-6" only %}</span>dashboard</li>

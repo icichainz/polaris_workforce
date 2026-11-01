@@ -1,0 +1,44 @@
+{% comment %}
+One theme preview of the component gallery (dashboard/components.html), included inside
+a data-theme="light" or data-theme="dark" block. DEBUG only, like the gallery.
+{% endcomment %}<div class="flex flex-wrap items-center gap-2">
+  {% include "components/button.html" with label="Approve day" variant="primary" only %}
+  {% include "components/button.html" with label="Export" only %}
+  {% include "components/button.html" with label="Lock period" variant="dark" only %}
+  {% include "components/button.html" with label="Reject" variant="danger" only %}
+  {% include "components/button.html" with label="View history" variant="ghost" only %}
+  {% include "components/button.html" with label="Disabled" variant="primary" disabled=True only %}
+</div>
+<div class="flex flex-wrap gap-2">
+  {% include "components/status_badge.html" with status="present" only %}
+  {% include "components/status_badge.html" with status="absent" only %}
+  {% include "components/status_badge.html" with status="half_day" only %}
+  {% include "components/status_badge.html" with status="late" only %}
+  {% include "components/status_badge.html" with status="not_recorded" only %}
+  {% include "components/status_badge.html" with status="submitted" only %}
+  {% include "components/status_badge.html" with status="locked" only %}
+  {% include "components/status_badge.html" with status="to_pay" only %}
+</div>
+<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+  {% include "components/stat_tile.html" with label="Present today" value=86 suffix="/ 104" progress=83 only %}
+  {% include "components/stat_tile.html" with label="Cash to pay today" value="412 500" caption="XOF · 3 sites" dark=True only %}
+</div>
+{% include "components/alert.html" with variant="offline" title="Offline." message="18 records saved on this phone." aside="Will sync" only %}
+{% include "components/alert.html" with variant="success" message="All synced · 07:45" only %}
+{% include "components/alert.html" with variant="warning" title="2 records changed after submission." message="Check the reasons before approving." only %}
+{% include "components/alert.html" with variant="danger" title="Cash short by 2 000 XOF." message="Paid out more than issued." only %}
+{% include "components/alert.html" with variant="info" message="Pay periods are generated from the pay frequency setting." only %}
+<div class="overflow-hidden rounded-card border border-line bg-surface">
+  <table class="w-full text-sm">
+    <thead class="bg-subtle text-left text-xs font-semibold uppercase tracking-[0.06em] text-steel"><tr><th class="px-4 py-2.5">Worker</th><th class="px-4 py-2.5">Status</th><th class="px-4 py-2.5 text-right">Net</th></tr></thead>
+    <tbody>
+      <tr class="border-t border-line-soft"><td class="px-4 py-2.5"><a href="#g-themes" class="font-semibold">Yao Mensah</a><br><span class="text-steel">Mason</span></td><td class="px-4 py-2.5">{% include "components/status_badge.html" with status="present" only %}</td><td class="px-4 py-2.5 text-right tabular-nums">6 000</td></tr>
+      <tr class="border-t border-line-soft bg-amber-tint"><td class="px-4 py-2.5"><span class="font-semibold">Afi Dosseh</span><br><span class="text-amber-text">Changed after submission</span></td><td class="px-4 py-2.5">{% include "components/status_badge.html" with status="half_day" only %}</td><td class="px-4 py-2.5 text-right tabular-nums">1 750</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="flex flex-col gap-1.5">
+  <span class="text-[13px] font-semibold text-ink">Reason</span>
+  <input type="text" disabled aria-label="Reason" value="Bus breakdown, arrived 07:20" class="h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink disabled:bg-ground disabled:text-disabled">
+  <p class="text-[13px] font-medium text-absent-fg">Give a reason for the change.</p>
+</div>

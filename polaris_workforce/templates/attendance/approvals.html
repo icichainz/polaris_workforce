@@ -19,7 +19,7 @@
              x-data="{ selected: [], all: JSON.parse(document.getElementById('approval-day-ids').textContent) }">
       <h2 id="waiting-title" class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% blocktranslate count counter=cards|length %}Waiting · {{ counter }}{% plural %}Waiting · {{ counter }}{% endblocktranslate %}</h2>
       {% if cards %}
-      <form id="bulk-approve" method="post" action="{% url 'attendance:bulk_approve' %}" class="flex flex-wrap items-center justify-between gap-2 rounded-card border border-line bg-white px-4 py-2.5">
+      <form id="bulk-approve" method="post" action="{% url 'attendance:bulk_approve' %}" class="flex flex-wrap items-center justify-between gap-2 rounded-card border border-line bg-surface px-4 py-2.5">
         {% csrf_token %}
         <label class="flex min-h-10 items-center gap-2 text-sm font-semibold">
           <input type="checkbox" class="size-[18px] rounded accent-ink" :checked="all.length > 0 && selected.length === all.length" @change="selected = $event.target.checked ? [...all] : []">
@@ -35,14 +35,14 @@
       {% endif %}
       {% for card in cards %}
         <div class="flex items-stretch gap-2">
-        <label class="flex w-10 shrink-0 items-center justify-center rounded-card border border-line bg-white">
+        <label class="flex w-10 shrink-0 items-center justify-center rounded-card border border-line bg-surface">
           <input type="checkbox" name="days" value="{{ card.day.pk }}" form="bulk-approve" x-model="selected" class="size-[18px] rounded accent-ink">
           <span class="sr-only">{% blocktranslate with site=card.day.site.name date=card.day.date|date:_("D j M") %}Select {{ site }} · {{ date }}{% endblocktranslate %}</span>
         </label>
         <a href="?day={{ card.day.pk }}"
            hx-get="?day={{ card.day.pk }}" hx-select="#approvals-board" hx-target="#approvals-board" hx-swap="outerHTML" hx-push-url="true"
            {% if card.day.pk == selected_id %}aria-current="true"{% endif %}
-           class="flex min-w-0 grow flex-col gap-1.5 rounded-card bg-white px-4 py-3.5 text-ink no-underline hover:text-ink {% if card.day.pk == selected_id %}border-2 border-blue-700{% else %}border border-line{% endif %}">
+           class="flex min-w-0 grow flex-col gap-1.5 rounded-card bg-surface px-4 py-3.5 text-ink no-underline hover:text-ink {% if card.day.pk == selected_id %}border-2 border-blue-700{% else %}border border-line{% endif %}">
           <span class="flex justify-between gap-2"><span class="text-[15px] font-bold">{{ card.day.site.name }}</span><span class="whitespace-nowrap text-[13px] text-steel">{{ card.day.date|date:_("D j M") }}</span></span>
           <span class="text-[13px] text-ink-700">{% blocktranslate with foreman=card.foreman sent=card.sent %}{{ foreman }} · sent {{ sent }}{% endblocktranslate %}</span>
           <span class="flex flex-wrap gap-2 text-[13px] font-semibold tabular-nums">
@@ -55,11 +55,11 @@
         </a>
         </div>
       {% empty %}
-        <p class="rounded-card border border-line bg-white px-4 py-3.5 text-sm text-ink-700">{% translate "No other day is waiting." %}</p>
+        <p class="rounded-card border border-line bg-surface px-4 py-3.5 text-sm text-ink-700">{% translate "No other day is waiting." %}</p>
       {% endfor %}
     </section>
 
-    {% if detail %}{% include "attendance/_approval_detail.html" with detail=detail only %}{% endif %}
+    {% if detail %}{% include "attendance/_approval_detail.html" with detail=detail csrf_token=csrf_token only %}{% endif %}
   {% endif %}
 </div>
 {% endblock %}

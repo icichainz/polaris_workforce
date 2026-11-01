@@ -21,7 +21,7 @@
   {% include "payroll/_reconciliation.html" %}
 
   {% if can_manage and not sheet.is_closed %}
-  <section aria-labelledby="cash-issue-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4">
+  <section aria-labelledby="cash-issue-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4">
     <h2 id="cash-issue-title" class="font-display text-lg font-bold">{% translate "Cash handed over" %}</h2>
     {% if sheet.cash_issues %}
     <ul class="flex flex-col gap-1 text-sm">
@@ -37,7 +37,7 @@
   </section>
   {% endif %}
 
-  <section aria-labelledby="workers-title" class="rounded-card border border-line bg-white">
+  <section aria-labelledby="workers-title" class="rounded-card border border-line bg-surface">
     <div class="flex flex-wrap items-center justify-between gap-2.5 border-b border-line px-5 py-3.5">
       <h2 id="workers-title" class="font-display text-lg font-bold">{% translate "Workers" %}</h2>
     </div>
@@ -70,7 +70,7 @@
   </section>
 
   {% if can_lock %}
-  <section id="close" aria-labelledby="close-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4">
+  <section id="close" aria-labelledby="close-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4">
     <h2 id="close-title" class="font-display text-lg font-bold">{% translate "Close & lock sheet" %}</h2>
     <p class="text-sm text-ink-700">{% translate "Locking makes this pay and its attendance read-only. Count the cash returned first. Workers left unpaid need a reason; their advance deductions are given back." %}</p>
     <form method="post" action="{% url 'payroll:cash_sheet_lock' sheet.site.pk sheet.date|date:'Y-m-d' %}" class="flex flex-col gap-3 sm:max-w-xl">

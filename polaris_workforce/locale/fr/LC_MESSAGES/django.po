@@ -6159,6 +6159,7 @@ msgstr "Qui a modifié quoi, quand et pourquoi"
 msgid "Clear"
 msgstr "Effacer"
 
+#: apps/core/choices.py:18 templates/components/theme_switch.html:30
 #: templates/core/audit_log.html:29
 msgid "System"
 msgstr "Système"
@@ -9105,6 +9106,30 @@ msgstr "Enregistrer les paramètres du chantier"
 #: templates/worksites/settings.html:47
 msgid "In effect now"
 msgstr "En vigueur actuellement"
+
+#: apps/accounts/models.py:43
+msgid "theme"
+msgstr "thème"
+
+#: apps/core/choices.py:16 templates/components/theme_switch.html:26
+msgid "Light"
+msgstr "Clair"
+
+#: apps/core/choices.py:17 templates/components/theme_switch.html:28
+msgid "Dark"
+msgstr "Sombre"
+
+#: apps/core/views.py:201
+msgid "Choose light, dark or system."
+msgstr "Choisissez clair, sombre ou système."
+
+#: templates/components/theme_switch.html:21
+msgid "Colour theme"
+msgstr "Thème"
+
+#: templates/components/theme_switch.html:29
+msgid "Follow the device setting"
+msgstr "Suivre le réglage de l’appareil"
 
 #~ msgid "Excel files are coming later — the CSV opens in Excel."
 #~ msgstr "Les fichiers Excel arrivent bientôt — le CSV s’ouvre dans Excel."

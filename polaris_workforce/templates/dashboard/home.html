@@ -54,7 +54,7 @@
 </section>
 
 <div class="flex flex-col gap-6 xl:flex-row xl:items-start">
-  <section aria-labelledby="sites-today-title" class="min-w-0 rounded-card border border-line bg-white xl:basis-2/3">
+  <section aria-labelledby="sites-today-title" class="min-w-0 rounded-card border border-line bg-surface xl:basis-2/3">
     <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
       <h2 id="sites-today-title" class="font-display text-lg font-bold">{% translate "Sites today" %}</h2>
       <a href="{% url 'worksites:list' %}" class="text-sm font-semibold">{% translate "All sites" %}</a>
@@ -114,7 +114,7 @@
     {% endif %}
   </section>
 
-  <section aria-labelledby="attention-title" class="flex min-w-0 flex-col rounded-card border border-line bg-white px-5 py-4 xl:basis-1/3">
+  <section aria-labelledby="attention-title" class="flex min-w-0 flex-col rounded-card border border-line bg-surface px-5 py-4 xl:basis-1/3">
     <h2 id="attention-title" class="pb-2 font-display text-lg font-bold">{% translate "Needs attention" %}</h2>
     {% for alert in overview.alerts %}
     <div class="flex gap-3 border-t border-line-soft py-3">
@@ -145,7 +145,7 @@
   </section>
 </div>
 
-<section aria-labelledby="chart-title" class="flex flex-col gap-4 rounded-card border border-line bg-white px-5 py-4">
+<section aria-labelledby="chart-title" class="flex flex-col gap-4 rounded-card border border-line bg-surface px-5 py-4">
   <div class="flex flex-wrap items-baseline justify-between gap-2">
     <h2 id="chart-title" class="font-display text-lg font-bold">{% translate "Worker-days, last 7 working days" %}</h2>
     {% number overview.half_day_units as units %}<span class="text-[13px] text-steel">{% blocktranslate %}Your sites · present and late count as 1, half days as {{ units }}{% endblocktranslate %}</span>

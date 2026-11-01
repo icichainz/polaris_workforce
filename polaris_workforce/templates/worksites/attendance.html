@@ -2,7 +2,7 @@
 {% load i18n %}
 
 {% block tab_content %}
-<section aria-labelledby="history-title" class="rounded-card border border-line bg-white">
+<section aria-labelledby="history-title" class="rounded-card border border-line bg-surface">
   <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4">
     <h2 id="history-title" class="font-display text-lg font-bold">{% translate "Attendance history" %}</h2>
     <a href="{% url 'attendance:approvals' %}" class="text-sm font-semibold">{% translate "Open approvals" %}</a>

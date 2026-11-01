@@ -10,6 +10,8 @@ urlpatterns = [
     # Platform admins: companies and the company switcher (see apps.core.tenancy).
     path("companies/", views.companies, name="companies"),
     path("companies/switch/", views.company_switch, name="company_switch"),
+    # Colour theme switch (signed in or not, office and worker portal).
+    path("theme/", views.set_theme, name="set_theme"),
     # Uploaded files, never served from MEDIA_ROOT directly (see apps.core.files).
     path("files/workers/<int:pk>/photo/", views.worker_photo, name="worker_photo"),
     path("files/proofs/<int:pk>/", views.payment_proof, name="payment_proof"),

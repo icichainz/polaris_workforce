@@ -8,12 +8,12 @@
 {% block content %}
   {% include "payouts/_tabs.html" with current="accounts" only %}
   <div role="tablist" aria-label="{% translate 'Workers shown' %}" class="flex gap-1 self-start rounded-card bg-segment p-1">
-    <a role="tab" href="?show=transfer" aria-selected="{% if show == 'transfer' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show == 'transfer' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Paid by transfer" %}</a>
-    <a role="tab" href="?show=missing" aria-selected="{% if show == 'missing' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show == 'missing' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Missing an account" %}</a>
-    <a role="tab" href="?show=all" aria-selected="{% if show == 'all' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show == 'all' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "All workers" %}</a>
+    <a role="tab" href="?show=transfer" aria-selected="{% if show == 'transfer' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show == 'transfer' %}bg-surface text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Paid by transfer" %}</a>
+    <a role="tab" href="?show=missing" aria-selected="{% if show == 'missing' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show == 'missing' %}bg-surface text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Missing an account" %}</a>
+    <a role="tab" href="?show=all" aria-selected="{% if show == 'all' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if show == 'all' %}bg-surface text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "All workers" %}</a>
   </div>
   {% if page.object_list %}
-  <div class="overflow-x-auto rounded-control border border-line bg-white">
+  <div class="overflow-x-auto rounded-control border border-line bg-surface">
     <table class="w-full min-w-[720px] border-collapse text-sm">
       <thead>
         <tr class="bg-subtle text-left">

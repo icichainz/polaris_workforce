@@ -7,7 +7,7 @@
 
 {% block content %}
   <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-    <form method="post" class="flex flex-col gap-4 rounded-card border border-line bg-white p-5">
+    <form method="post" class="flex flex-col gap-4 rounded-card border border-line bg-surface p-5">
       {% csrf_token %}
       {% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}
       {% include "components/field.html" with field=form.name only %}
@@ -24,7 +24,7 @@
       {% include "components/field.html" with field=form.is_active only %}
       <div>{% translate "Save layout" as label %}{% include "components/button.html" with label=label type="submit" variant="primary" only %}</div>
     </form>
-    <aside aria-labelledby="fields-title" class="flex flex-col gap-3 rounded-card border border-line bg-white p-5">
+    <aside aria-labelledby="fields-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface p-5">
       <h2 id="fields-title" class="font-display text-lg font-bold">{% translate "Fields" %}</h2>
       <dl class="flex flex-col gap-2 text-sm">
         {% for key, label in fields %}<div><dt class="font-mono text-[13px] font-semibold">{{ key }}</dt><dd class="text-ink-700">{{ label }}</dd></div>{% endfor %}

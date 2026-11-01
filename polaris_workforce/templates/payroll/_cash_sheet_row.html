@@ -49,11 +49,11 @@ A line paid by bank transfer or mobile money (`apps.payouts`) shows its transfer
         <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
         <input type="hidden" name="client_uuid" value="{{ row.form.client_uuid.value }}">
         <label class="sr-only" for="proof-type-{{ line.pk }}">{% translate "Proof of receipt" %}</label>
-        <select id="proof-type-{{ line.pk }}" name="proof_type" class="h-9 rounded-control border border-line-strong bg-white px-2 text-[13px] text-ink">
+        <select id="proof-type-{{ line.pk }}" name="proof_type" class="h-9 rounded-control border border-line-strong bg-surface px-2 text-[13px] text-ink">
           {% for value, label in proof_choices %}<option value="{{ value }}"{% if row.form.proof_type.value == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
         </select>
         <label class="sr-only" for="proof-file-{{ line.pk }}">{% translate "Proof file" %}</label>
-        <input id="proof-file-{{ line.pk }}" type="file" name="proof_file" accept="image/jpeg,image/png,image/webp,application/pdf" class="max-w-48 text-xs text-ink-700 file:mr-2 file:h-8 file:rounded-control file:border file:border-line-strong file:bg-white file:px-2 file:text-xs file:font-semibold">
+        <input id="proof-file-{{ line.pk }}" type="file" name="proof_file" accept="image/jpeg,image/png,image/webp,application/pdf" class="max-w-48 text-xs text-ink-700 file:mr-2 file:h-8 file:rounded-control file:border file:border-line-strong file:bg-surface file:px-2 file:text-xs file:font-semibold">
         {% blocktranslate asvar pay_label with amount=line.net|money:sheet %}Mark paid · {{ amount }}{% endblocktranslate %}
         {% include "components/button.html" with label=pay_label variant="primary" type="submit" only %}
       </form>

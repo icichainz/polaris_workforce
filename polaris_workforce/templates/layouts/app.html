@@ -26,7 +26,7 @@ Navigation
 {% endcomment %}
 
 {% block body %}
-<a href="#main" class="sr-only rounded-control bg-amber-500 px-4 py-2 font-semibold text-ink focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50">{% translate "Skip to content" %}</a>
+<a href="#main" class="sr-only rounded-control bg-amber-500 px-4 py-2 font-semibold text-on-primary focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50">{% translate "Skip to content" %}</a>
 <div id="nav-progress" hidden aria-hidden="true" class="pointer-events-none fixed inset-x-0 top-0 z-50 h-1 animate-pulse bg-amber-500"></div>
 <div hx-boost="true" class="flex min-h-screen flex-col lg:flex-row">
   {% include "components/sidebar.html" %}

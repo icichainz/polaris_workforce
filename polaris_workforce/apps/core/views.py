@@ -1,6 +1,6 @@
 """Office views: company settings and the audit log viewer (admins only), the protected
 downloads of uploaded files (signed-in users, scoped by site), and the Companies page
-and company switcher (platform admins only)."""
+and company switcher (platform admins only), and the colour theme switch (everyone)."""
 
 import datetime
 from functools import wraps
@@ -9,15 +9,18 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST, require_safe
 
 from apps.accounts.permissions import Role, role_required
 
-from . import files, services, tenancy
+from . import files, services, tenancy, theme
 from .forms import CURRENCY_SUGGESTIONS, AuditLogFilterForm, CompanyForm, CompanySettingsForm
+from .htmx import wants_fragment
 from .models import AuditLog, Company, CompanySettings
 
 AUDIT_PAGE_SIZE = 50
@@ -170,3 +173,39 @@ def company_switch(request):
     tenancy.switch_company(request, company)
     messages.success(request, _("Now viewing %(name)s.") % {"name": company.name})
     return redirect("dashboard:home")
+
+
+def _safe_next(request) -> str:
+    """Where the no-JS switch goes back to: ``next``, else the referring page, else the
+    dashboard; only ever on this site (as Django's ``set_language`` does)."""
+    for candidate in (request.POST.get("next"), request.headers.get("referer")):
+        if candidate and url_has_allowed_host_and_scheme(
+            candidate, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+        ):
+            return candidate
+    return "/"
+
+
+@require_POST
+def set_theme(request):
+    """The theme switch (components/theme_switch.html): light, dark or system.
+
+    Open to everyone (signed out on the sign-in pages, workers on the portal). Saves
+    ``User.theme`` for a signed-in office user, unless the switch is the portal's
+    (``device=1``: there the choice belongs to the browser); always sets the cookie. An
+    htmx post gets 204 (the page has already switched); a plain form post is sent back to
+    a safe ``next``. No audit row: a display preference, not attendance or pay data.
+    """
+    value = request.POST.get("theme", "")
+    if not theme.is_valid(value):
+        return HttpResponseBadRequest(_("Choose light, dark or system."))
+    user = request.user
+    if user.is_authenticated and request.POST.get("device") != "1" and user.theme != value:
+        user.theme = value
+        user.save(update_fields=["theme"])
+    if wants_fragment(request):
+        response = HttpResponse(status=204)
+    else:
+        response = HttpResponseRedirect(_safe_next(request))
+    theme.set_cookie(response, value)
+    return response

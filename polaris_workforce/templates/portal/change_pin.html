@@ -12,7 +12,7 @@
   {% include "components/button.html" with label=home_label href=home_url size="phone" full=True only %}
 {% else %}
   <p class="text-[17px] text-ink-700">{% translate "Choose 4 digits only you know. Not 1111, not 1234." %}</p>
-  <form method="post" action="{% url 'portal:change_pin' %}" class="flex flex-col gap-5 rounded-card border border-line bg-white p-4" novalidate>
+  <form method="post" action="{% url 'portal:change_pin' %}" class="flex flex-col gap-5 rounded-card border border-line bg-surface p-4" novalidate>
     {% csrf_token %}
     {% include "components/field.html" with field=form.current_pin size="phone" only %}
     {% include "components/field.html" with field=form.pin size="phone" only %}

@@ -9,7 +9,7 @@
 {% block content %}
 {% include "messaging/_tabs.html" %}
 
-<section class="overflow-x-auto rounded-card border border-line bg-white" aria-labelledby="users-heading">
+<section class="overflow-x-auto rounded-card border border-line bg-surface" aria-labelledby="users-heading">
   <h2 id="users-heading" class="px-5 pt-4 pb-2 font-display text-lg font-bold">{% translate "Users" %}</h2>
   <table class="w-full min-w-[640px] border-collapse text-sm">
     <thead>
@@ -46,13 +46,13 @@
     <h2 id="workers-heading" class="font-display text-lg font-bold">{% translate "Workers" %}</h2>
     <form method="get" class="flex items-end gap-2" role="search">
       <label for="worker-search" class="sr-only">{% translate "Search workers" %}</label>
-      <input id="worker-search" type="search" name="q" value="{{ search }}" placeholder="{% translate 'Name, number or phone' %}" class="h-10 w-56 rounded-control border border-line-strong bg-white px-3 text-sm">
+      <input id="worker-search" type="search" name="q" value="{{ search }}" placeholder="{% translate 'Name, number or phone' %}" class="h-10 w-56 rounded-control border border-line-strong bg-surface px-3 text-sm">
       {% translate "Search" as search_label %}
       {% include "components/button.html" with label=search_label type="submit" only %}
     </form>
   </div>
   {% if worker_rows %}
-  <div class="overflow-x-auto rounded-card border border-line bg-white">
+  <div class="overflow-x-auto rounded-card border border-line bg-surface">
     <table class="w-full min-w-[640px] border-collapse text-sm">
       <thead>
         <tr class="bg-subtle text-left">

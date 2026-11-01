@@ -1,7 +1,8 @@
 {% load i18n static %}<!doctype html>
 {% get_current_language as LANGUAGE_CODE %}
-<html lang="{{ LANGUAGE_CODE }}">
+<html lang="{{ LANGUAGE_CODE }}" data-theme="{% block theme %}{{ theme.office|default:"light" }}{% endblock %}">
 <head>
+  {# data-theme above: light | dark | system, from apps.core.theme (user, then cookie, then light), rendered by the server so nothing flashes. Block "theme": a page may force one (the badge print sheet: light). #}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Polaris Workforce{% endblock %}</title>

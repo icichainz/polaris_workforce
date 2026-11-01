@@ -24,7 +24,7 @@
   {% include "components/alert.html" with variant="warning" title=off_title message=off_message only %}
 {% endif %}
 
-<form method="get" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-white px-4 py-3.5">
+<form method="get" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-surface px-4 py-3.5">
   <div class="w-full sm:w-44">{% include "components/field.html" with field=form.status %}</div>
   <div class="w-full sm:w-56">{% include "components/field.html" with field=form.kind %}</div>
   <div class="w-full sm:w-40">{% include "components/field.html" with field=form.date_from %}</div>
@@ -37,7 +37,7 @@
 </form>
 
 {% if page.object_list %}
-<section class="overflow-x-auto rounded-card border border-line bg-white" aria-labelledby="messages-heading">
+<section class="overflow-x-auto rounded-card border border-line bg-surface" aria-labelledby="messages-heading">
   <h2 id="messages-heading" class="sr-only">{% translate "Messages" %}</h2>
   <table class="w-full min-w-[860px] border-collapse text-sm">
     <thead>

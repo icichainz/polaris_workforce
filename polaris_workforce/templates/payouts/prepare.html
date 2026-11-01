@@ -6,7 +6,7 @@
 {% block page_title %}{% translate "Prepare a batch" %}{% endblock %}
 
 {% block content %}
-  <form method="get" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-white px-5 py-4">
+  <form method="get" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-surface px-5 py-4">
     <div class="w-44">{% include "components/field.html" with field=form.pay_date only %}</div>
     <div class="w-52">{% include "components/field.html" with field=form.method only %}</div>
     <div class="w-64">{% include "components/field.html" with field=form.site only %}</div>
@@ -17,7 +17,7 @@
     {% if ready %}
     <section aria-labelledby="ready-title" class="flex flex-col gap-3">
       <h2 id="ready-title" class="font-display text-lg font-bold">{% blocktranslate with total=total|money:ready.0.pay_line.period count n=ready|length %}{{ n }} transfer ready · {{ total }}{% plural %}{{ n }} transfers ready · {{ total }}{% endblocktranslate %}</h2>
-      <div class="overflow-x-auto rounded-control border border-line bg-white">
+      <div class="overflow-x-auto rounded-control border border-line bg-surface">
         <table class="w-full min-w-[720px] border-collapse text-sm">
           <thead>
             <tr class="bg-subtle text-left">
@@ -45,7 +45,7 @@
         <input type="hidden" name="method" value="{{ form.cleaned_data.method }}">
         {% if form.cleaned_data.site %}<input type="hidden" name="site" value="{{ form.cleaned_data.site.pk }}">{% endif %}
         <label class="flex flex-col gap-1.5 text-[13px] font-semibold">{% translate "Export layout" %}
-          <select name="layout" class="h-10 rounded-control border border-line-strong bg-white px-2.5 text-sm font-normal text-ink">
+          <select name="layout" class="h-10 rounded-control border border-line-strong bg-surface px-2.5 text-sm font-normal text-ink">
             {% for layout in layouts %}<option value="{{ layout.pk }}"{% if default_layout and default_layout.pk == layout.pk %} selected{% endif %}>{{ layout.name }}</option>{% endfor %}
           </select>
         </label>
@@ -63,7 +63,7 @@
       <h2 id="missing-title" class="font-display text-lg font-bold">{% blocktranslate count n=missing|length %}{{ n }} worker needs a payout account{% plural %}{{ n }} workers need a payout account{% endblocktranslate %}</h2>
       {% translate "Left out of the batch." as title %}{% translate "Add or fix their account, then prepare the batch again — or pay them in cash." as message %}
       {% include "components/alert.html" with variant="warning" title=title message=message only %}
-      <ul class="flex flex-col divide-y divide-line-soft rounded-control border border-line bg-white text-sm">
+      <ul class="flex flex-col divide-y divide-line-soft rounded-control border border-line bg-surface text-sm">
         {% for c in missing %}
         <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
           <span><span class="font-semibold">{{ c.worker.full_name }}</span> · {{ c.worker.number }} · <span class="tabular-nums">{{ c.remaining|money:c.pay_line.period }}</span><br><span class="text-xs text-absent-fg">{{ c.problem }}</span></span>

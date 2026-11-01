@@ -184,6 +184,7 @@ def _state_changing_urls(crew):
         "core:settings": reverse("core:settings"),
         "core:companies": reverse("core:companies"),
         "core:company_switch": reverse("core:company_switch"),
+        "core:set_theme": reverse("core:set_theme"),
         "accounts:user_create": reverse("accounts:user_create"),
         "accounts:user_edit": reverse("accounts:user_edit", args=[crew.foreman.pk]),
         "accounts:user_set_pin": reverse("accounts:user_set_pin", args=[crew.foreman.pk]),

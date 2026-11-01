@@ -8,7 +8,7 @@
 
 {% block content %}
 {% if summary %}
-<section aria-labelledby="summary-title" class="flex flex-col rounded-card border border-line bg-white">
+<section aria-labelledby="summary-title" class="flex flex-col rounded-card border border-line bg-surface">
   <div class="flex flex-col gap-1 border-b border-line px-5 py-4">
     <h2 id="summary-title" class="font-display text-lg font-bold">{% blocktranslate count n=summary.workers|length %}{{ n }} worker imported{% plural %}{{ n }} workers imported{% endblocktranslate %}</h2>
     <p class="text-sm text-ink-700">{% blocktranslate with file=summary.file %}From {{ file }}.{% endblocktranslate %}{% if summary.new_trades %} {% blocktranslate with trades=summary.new_trades|join:", " %}New trades: {{ trades }}.{% endblocktranslate %}{% endif %}</p>
@@ -38,7 +38,7 @@
 </section>
 {% else %}
 <div class="flex flex-wrap items-start gap-5">
-  <section aria-labelledby="template-title" class="flex min-w-0 flex-[1_1_300px] flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+  <section aria-labelledby="template-title" class="flex min-w-0 flex-[1_1_300px] flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
     <h2 id="template-title" class="font-display text-base font-bold">{% translate "1. Fill in the template" %}</h2>
     <p class="text-sm text-ink-700">{% translate "One row per worker. Your sites and the company's trades are in drop-down lists; a new trade you type is created on import." %}</p>
     <ul class="m-0 flex list-none flex-col gap-1 p-0 text-[13px] text-ink-700">
@@ -47,14 +47,14 @@
     <div>{% translate "Download the template (.xlsx)" as template_label %}{% url "workers:import_template" as template_url %}{% include "components/button.html" with label=template_label href=template_url download=True only %}</div>
   </section>
 
-  <section aria-labelledby="upload-title" class="flex min-w-0 flex-[1_1_300px] flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+  <section aria-labelledby="upload-title" class="flex min-w-0 flex-[1_1_300px] flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
     <h2 id="upload-title" class="font-display text-base font-bold">{% translate "2. Upload it" %}</h2>
     <p class="text-sm text-ink-700">{% blocktranslate %}At most {{ max_rows }} workers and {{ max_size_mb }} MB per file. You see every row before anything is saved.{% endblocktranslate %}</p>
     <form method="post" enctype="multipart/form-data" action="{% url 'workers:import' %}" novalidate class="flex flex-col gap-3">
       {% csrf_token %}
       <div class="flex flex-col gap-1.5">
         <label for="{{ form.file.auto_id }}" class="text-[13px] font-semibold">{{ form.file.label }}</label>
-        <input type="file" name="{{ form.file.html_name }}" id="{{ form.file.auto_id }}" accept=".xlsx,.csv" required{% if form.file.errors %} aria-invalid="true" aria-describedby="{{ form.file.auto_id }}_error"{% else %} aria-describedby="{{ form.file.auto_id }}_helptext"{% endif %} class="w-full text-sm file:mr-2 file:h-10 file:rounded-control file:border file:border-line-strong file:bg-white file:px-3 file:text-[13px] file:font-semibold">
+        <input type="file" name="{{ form.file.html_name }}" id="{{ form.file.auto_id }}" accept=".xlsx,.csv" required{% if form.file.errors %} aria-invalid="true" aria-describedby="{{ form.file.auto_id }}_error"{% else %} aria-describedby="{{ form.file.auto_id }}_helptext"{% endif %} class="w-full text-sm file:mr-2 file:h-10 file:rounded-control file:border file:border-line-strong file:bg-surface file:px-3 file:text-[13px] file:font-semibold">
         {% if form.file.errors %}<p id="{{ form.file.auto_id }}_error" class="text-[13px] font-medium text-absent-fg">{{ form.file.errors|join:" " }}</p>{% else %}<p id="{{ form.file.auto_id }}_helptext" class="text-xs text-steel">{{ form.file.help_text }}</p>{% endif %}
       </div>
       <div>{% translate "Check the file" as check_label %}{% include "components/button.html" with label=check_label type="submit" only %}</div>
@@ -63,7 +63,7 @@
 </div>
 
 {% if preview %}
-<section aria-labelledby="preview-title" class="flex flex-col rounded-card border border-line bg-white">
+<section aria-labelledby="preview-title" class="flex flex-col rounded-card border border-line bg-surface">
   <div class="flex flex-col gap-2 border-b border-line px-5 py-4">
     <h2 id="preview-title" class="font-display text-lg font-bold">{% blocktranslate with file=preview.file %}Preview · {{ file }}{% endblocktranslate %}</h2>
     {% if preview.ok %}

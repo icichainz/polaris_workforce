@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load i18n %}
 {% comment %}
-Split sign-in layout (Login artboard): ink brand panel on the left, form column on the
+Split sign-in layout (Login artboard): dark (inverse) brand panel on the left, form column on the
 right. Stacks at phone width.
 
 Blocks
@@ -11,9 +11,9 @@ Blocks
 
 {% block body %}
 <div class="flex min-h-screen flex-wrap bg-ground">
-  <section class="flex flex-[1_1_420px] flex-col gap-8 bg-ink p-8 text-white sm:p-12">
+  <section class="flex flex-[1_1_420px] flex-col gap-8 bg-inverse p-8 text-on-inverse sm:p-12">
     <div class="flex items-center gap-3">
-      <span class="flex size-10 items-center justify-center rounded-card bg-amber-500 text-ink">{% include "components/icon.html" with name="logo" class="size-[22px]" stroke_width="2.2" only %}</span>
+      <span class="flex size-10 items-center justify-center rounded-card bg-amber-500 text-on-primary">{% include "components/icon.html" with name="logo" class="size-[22px]" stroke_width="2.2" only %}</span>
       <span class="font-display text-[22px] font-extrabold">Polaris Workforce</span>
     </div>
     <div class="flex max-w-[520px] grow flex-col justify-center gap-5">

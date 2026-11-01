@@ -14,7 +14,7 @@
   <form method="post" class="flex flex-col gap-5">
     {% csrf_token %}
     {% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}
-    <section aria-labelledby="multipliers-title" class="flex flex-col gap-4 rounded-card border border-line bg-white px-5 py-4">
+    <section aria-labelledby="multipliers-title" class="flex flex-col gap-4 rounded-card border border-line bg-surface px-5 py-4">
       <div>
         <h2 id="multipliers-title" class="font-display text-lg font-bold">{% translate "Rate multipliers" %}</h2>
         <p class="text-sm text-ink-700">{% translate "1 means normal pay. Public holidays are the ones listed in Settings; a holiday on a Sunday takes the larger multiplier. A site can have its own (below)." %}</p>
@@ -27,7 +27,7 @@
         {% include "components/field.html" with field=form.night_multiplier only %}
       </div>
     </section>
-    <section aria-labelledby="stoppage-title" class="flex flex-col gap-4 rounded-card border border-line bg-white px-5 py-4">
+    <section aria-labelledby="stoppage-title" class="flex flex-col gap-4 rounded-card border border-line bg-surface px-5 py-4">
       <div>
         <h2 id="stoppage-title" class="font-display text-lg font-bold">{% translate "Stoppage days" %}</h2>
         <p class="text-sm text-ink-700">{% translate "When a site is stopped (rain, no materials), the workers present are paid this instead of their day. Mark a stoppage day from a cash sheet (Day extras)." %}</p>
@@ -41,7 +41,7 @@
     <div>{% translate "Save pay rules" as label %}{% include "components/button.html" with label=label type="submit" variant="primary" only %}</div>
   </form>
 
-  <section id="deductions" aria-labelledby="deductions-title" class="rounded-card border border-line bg-white">
+  <section id="deductions" aria-labelledby="deductions-title" class="rounded-card border border-line bg-surface">
     <div class="flex flex-wrap items-center justify-between gap-2.5 border-b border-line px-5 py-3.5">
       <div>
         <h2 id="deductions-title" class="font-display text-lg font-bold">{% translate "Statutory deductions" %}</h2>
@@ -87,7 +87,7 @@
     {% endif %}
   </section>
 
-  <section id="tasks" aria-labelledby="tasks-title" class="rounded-card border border-line bg-white">
+  <section id="tasks" aria-labelledby="tasks-title" class="rounded-card border border-line bg-surface">
     <div class="flex flex-wrap items-center justify-between gap-2.5 border-b border-line px-5 py-3.5">
       <div>
         <h2 id="tasks-title" class="font-display text-lg font-bold">{% translate "Piece work tasks" %}</h2>
@@ -110,7 +110,7 @@
     {% endif %}
   </section>
 
-  <section id="sites" aria-labelledby="sites-title" class="rounded-card border border-line bg-white">
+  <section id="sites" aria-labelledby="sites-title" class="rounded-card border border-line bg-surface">
     <div class="border-b border-line px-5 py-3.5">
       <h2 id="sites-title" class="font-display text-lg font-bold">{% translate "Sites with their own multipliers" %}</h2>
     </div>

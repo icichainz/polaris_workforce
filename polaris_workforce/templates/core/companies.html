@@ -8,7 +8,7 @@
 
 {% block content %}
 {% if companies %}
-<div class="overflow-x-auto rounded-control border border-line bg-white">
+<div class="overflow-x-auto rounded-control border border-line bg-surface">
   <table class="w-full min-w-[560px] border-collapse text-sm">
     <thead>
       <tr class="bg-subtle text-left">
@@ -46,7 +46,7 @@
   {% include "components/empty_state.html" with icon="sites" title=empty_title message=empty_message only %}
 {% endif %}
 
-<form method="post" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-white px-4 py-3.5">
+<form method="post" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-surface px-4 py-3.5">
   {% csrf_token %}
   <div class="w-full sm:w-80">{% include "components/field.html" with field=form.name %}</div>
   {% translate "Add company" as add_label %}{% include "components/button.html" with label=add_label type="submit" variant="primary" only %}

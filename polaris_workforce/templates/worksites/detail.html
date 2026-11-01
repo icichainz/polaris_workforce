@@ -2,11 +2,11 @@
 {% load i18n polaris %}
 
 {% block tab_content %}
-<section aria-labelledby="week-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4">
+<section aria-labelledby="week-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4">
   <h2 id="week-title" class="font-display text-base font-bold">{% translate "This week" %}</h2>
   <ol class="m-0 grid list-none grid-cols-2 gap-2.5 p-0 sm:grid-cols-3 lg:grid-cols-6">
     {% for d in week %}
-    <li class="flex flex-col gap-1.5 rounded-control border px-3 py-2.5 {% if d.status == 'submitted' %}border-line bg-amber-tint{% elif d.status == 'upcoming' %}border-line bg-subtle{% else %}border-line bg-white{% endif %}{% if d.is_today %} ring-2 ring-ink{% endif %}">
+    <li class="flex flex-col gap-1.5 rounded-control border px-3 py-2.5 {% if d.status == 'submitted' %}border-line bg-amber-tint{% elif d.status == 'upcoming' %}border-line bg-subtle{% else %}border-line bg-surface{% endif %}{% if d.is_today %} ring-2 ring-ink{% endif %}">
       <span class="text-[13px] font-semibold">{{ d.date|date:_("D j") }}{% if d.is_today %} · {% translate "today" %}{% endif %}</span>
       <span class="font-display text-xl font-bold tabular-nums">{% if d.present is None %}—{% else %}{{ d.present }} / {{ d.crew }}{% endif %}</span>
       <span>{% if d.status == "upcoming" %}{% translate "Upcoming" as up_label %}{% include "components/status_badge.html" with status="draft" label=up_label only %}{% elif d.status == "not_started" %}{% translate "Not started" as ns_label %}{% include "components/status_badge.html" with status="draft" label=ns_label only %}{% else %}{% include "components/status_badge.html" with status=d.status only %}{% endif %}</span>
@@ -16,7 +16,7 @@
 </section>
 
 <div class="flex flex-wrap items-start gap-6">
-  <section aria-labelledby="crew-title" class="min-w-0 flex-[2_1_560px] rounded-card border border-line bg-white">
+  <section aria-labelledby="crew-title" class="min-w-0 flex-[2_1_560px] rounded-card border border-line bg-surface">
     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4">
       <div class="flex flex-col gap-0.5">
         <h2 id="crew-title" class="font-display text-lg font-bold">{% translate "Crew today" %}</h2>
@@ -59,7 +59,7 @@
   </section>
 
   <aside class="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
-    <section aria-labelledby="people-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+    <section aria-labelledby="people-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
       <h2 id="people-title" class="font-display text-base font-bold">{% translate "People" %}</h2>
       <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Site manager" %}</span><span class="text-right font-semibold">{{ site.manager|default:"—" }}</span></div>
       {% for foreman in foremen %}
@@ -68,7 +68,7 @@
       <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Foreman" %}</span><span class="text-right font-semibold">—</span></div>
       {% endfor %}
     </section>
-    <section aria-labelledby="pay-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+    <section aria-labelledby="pay-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
       <h2 id="pay-title" class="font-display text-base font-bold">{% translate "Pay settings for this site" %}</h2>
       {% for s in pay_settings %}
       <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{{ s.label }}</span><span class="text-right"><span class="font-semibold">{{ s.value }}</span><br><span class="text-xs text-steel">{{ s.source }}</span></span></div>
@@ -76,7 +76,7 @@
       <a href="{% url 'worksites:settings' site.pk %}" class="text-sm font-semibold">{% if can_manage %}{% translate "Override for this site" %}{% else %}{% translate "See site settings" %}{% endif %}</a>
     </section>
     {% if checkin %}
-    <section id="site-checkin" aria-labelledby="checkin-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+    <section id="site-checkin" aria-labelledby="checkin-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
       <h2 id="checkin-title" class="font-display text-base font-bold">{% translate "Check-in" %}</h2>
       <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Geofence" %}</span><span class="text-right font-semibold">{% if checkin.geofence %}{% blocktranslate with radius=checkin.geofence.radius_m %}{{ radius }} m around the site{% endblocktranslate %}{% else %}{% translate "Not set" %}{% endif %}</span></div>
       <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "QR badges" %}</span><span class="text-right font-semibold">{% if checkin.without_badge %}{% blocktranslate count n=checkin.without_badge %}{{ n }} worker without a badge{% plural %}{{ n }} workers without a badge{% endblocktranslate %}{% else %}{% translate "Every worker has one" %}{% endif %}</span></div>
@@ -84,7 +84,7 @@
     </section>
     {% endif %}
     {% if batches is not None %}
-    <section id="site-payouts" aria-labelledby="payouts-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+    <section id="site-payouts" aria-labelledby="payouts-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
       <h2 id="payouts-title" class="font-display text-base font-bold">{% translate "Transfer batches" %}</h2>
       {% for batch in batches %}
       <div class="flex flex-wrap items-center justify-between gap-2 text-sm"><a href="{% url 'payouts:batch' batch.pk %}" class="font-semibold">{{ batch.reference }}</a><span class="text-steel">{{ batch.pay_date|date:_("j M Y") }} · {{ batch.get_method_display }}</span>{% include "payouts/_batch_status.html" with batch=batch only %}</div>
@@ -94,10 +94,10 @@
       <a href="{% url 'payouts:batches' %}" class="text-sm font-semibold">{% translate "All transfer batches" %}</a>
     </section>
     {% endif %}
-    <section class="flex flex-col gap-1.5 rounded-card border border-ink bg-ink px-5 py-4.5 text-white">
+    <section class="flex flex-col gap-1.5 rounded-card border border-inverse-line bg-inverse px-5 py-4.5 text-on-inverse">
       <span class="text-xs font-semibold uppercase tracking-[0.06em] text-rail-text">{% translate "Labour cost this month" %}</span>
       <span class="font-display text-[28px] font-bold leading-tight tabular-nums">{{ labour_cost }} <span class="text-base text-rail-text">{{ currency }}</span></span>
-      <span class="text-[13px] text-rail-text">{% if budget %}{% blocktranslate with budget=budget %}Budget {{ budget }}{% endblocktranslate %}{% else %}{% translate "Budget not set" %}{% endif %} · <a href="{% url 'dashboard:reports' %}" class="text-white underline hover:text-white">{% translate "Reports" %}</a></span>
+      <span class="text-[13px] text-rail-text">{% if budget %}{% blocktranslate with budget=budget %}Budget {{ budget }}{% endblocktranslate %}{% else %}{% translate "Budget not set" %}{% endif %} · <a href="{% url 'dashboard:reports' %}" class="text-on-inverse underline hover:text-on-inverse">{% translate "Reports" %}</a></span>
     </section>
   </aside>
 </div>

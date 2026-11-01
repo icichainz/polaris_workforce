@@ -8,8 +8,8 @@ Parameters
   current   the active URL name (the sidebar passes nav_active or the resolved view name)
   badge     optional count shown in an amber pill
 {% endcomment %}{% url url_name as href %}<a href="{{ href }}"{% if current == url_name %} aria-current="page"{% endif %}
-  class="flex h-10 items-center gap-3 rounded-control px-2.5 text-sm font-medium no-underline {% if current == url_name %}bg-rail-active text-white hover:text-white{% else %}text-rail-text hover:bg-rail-raised hover:text-white{% endif %}">
+  class="flex h-10 items-center gap-3 rounded-control px-2.5 text-sm font-medium no-underline {% if current == url_name %}bg-rail-active text-on-inverse hover:text-on-inverse{% else %}text-rail-text hover:bg-rail-raised hover:text-on-inverse{% endif %}">
   <span class="{% if current == url_name %}text-amber-500{% else %}text-rail-muted{% endif %}">{% include "components/icon.html" with name=icon class="size-[18px]" only %}</span>
   <span class="grow">{{ label }}</span>
-  {% if badge %}<span class="flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-bold text-ink">{{ badge }}</span>{% endif %}
+  {% if badge %}<span class="flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-bold text-on-primary">{{ badge }}</span>{% endif %}
 </a>

@@ -9,7 +9,7 @@ Context: `form`, `title`, `back` (URL), `money_fields` (names typed in money), `
 {% block page_title %}{{ title }}{% endblock %}
 
 {% block content %}
-  <form method="post" class="flex flex-col gap-4 rounded-card border border-line bg-white px-5 py-4 sm:max-w-2xl">
+  <form method="post" class="flex flex-col gap-4 rounded-card border border-line bg-surface px-5 py-4 sm:max-w-2xl">
     {% csrf_token %}
     {% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}
     {% for field in form %}

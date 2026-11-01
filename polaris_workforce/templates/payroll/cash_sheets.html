@@ -8,7 +8,7 @@
 {% block content %}
   <form method="get" class="flex flex-wrap items-center justify-end gap-3">
     <label class="flex items-center gap-2 text-[13px] font-semibold">{% translate "Site" %}
-      <select name="site" onchange="this.form.submit()" class="h-10 rounded-control border border-line-strong bg-white px-2.5 text-sm font-normal text-ink">
+      <select name="site" onchange="this.form.submit()" class="h-10 rounded-control border border-line-strong bg-surface px-2.5 text-sm font-normal text-ink">
         <option value="">{% translate "All sites" %}</option>
         {% for s in sites %}<option value="{{ s.pk }}"{% if site and site.pk == s.pk %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
       </select>
@@ -17,7 +17,7 @@
   </form>
 
   {% if sheets %}
-  <div class="overflow-x-auto rounded-control border border-line bg-white">
+  <div class="overflow-x-auto rounded-control border border-line bg-surface">
     <table class="w-full min-w-[880px] border-collapse text-sm">
       <thead>
         <tr class="bg-subtle text-left">

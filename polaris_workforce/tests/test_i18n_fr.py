@@ -223,7 +223,7 @@ def test_every_office_page_renders_in_french(client, scenario):
         response = client.get(url, headers=FR)
         assert response.status_code == 200, name
         page = response.content.decode()
-        assert '<html lang="fr">' in page, name
+        assert '<html lang="fr" ' in page, name
         text = _visible_text(page)
         for expected in SIDEBAR_FR + EXPECTED_FR[name]:
             assert expected in text, (name, expected)
@@ -234,7 +234,7 @@ def test_every_office_page_renders_in_french(client, scenario):
 def _assert_french_page(response, name, expected, phrases, allowed=()):
     assert response.status_code == 200, name
     page = response.content.decode()
-    assert '<html lang="fr">' in page, name
+    assert '<html lang="fr" ' in page, name
     text = _visible_text(page)
     for phrase in expected:
         assert phrase in text, (name, phrase)

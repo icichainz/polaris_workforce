@@ -69,4 +69,4 @@ def test_browser_language_is_ignored_once_signed_in(client):
 
     html = client.get("/", HTTP_ACCEPT_LANGUAGE="fr").content.decode()
 
-    assert '<html lang="en">' in html
+    assert '<html lang="en" ' in html

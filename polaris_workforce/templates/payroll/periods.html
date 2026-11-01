@@ -22,15 +22,15 @@
   <form method="get" class="flex flex-wrap items-center justify-between gap-3">
     <div role="tablist" aria-label="{% translate 'Period status' %}" class="flex gap-1 rounded-card bg-segment p-1">
       <a role="tab" href="?status=open{% if site %}&amp;site={{ site.pk }}{% endif %}" aria-selected="{% if tab == 'open' %}true{% else %}false{% endif %}"
-        class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if tab == 'open' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% blocktranslate with count=open_count %}Open · {{ count }}{% endblocktranslate %}</a>
+        class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if tab == 'open' %}bg-surface text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% blocktranslate with count=open_count %}Open · {{ count }}{% endblocktranslate %}</a>
       <a role="tab" href="?status=locked{% if site %}&amp;site={{ site.pk }}{% endif %}" aria-selected="{% if tab == 'locked' %}true{% else %}false{% endif %}"
-        class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if tab == 'locked' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Locked" %}</a>
+        class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if tab == 'locked' %}bg-surface text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Locked" %}</a>
       <a role="tab" href="?status=all{% if site %}&amp;site={{ site.pk }}{% endif %}" aria-selected="{% if tab == 'all' %}true{% else %}false{% endif %}"
-        class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if tab == 'all' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "All" %}</a>
+        class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if tab == 'all' %}bg-surface text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "All" %}</a>
     </div>
     <input type="hidden" name="status" value="{{ tab }}">
     <label class="flex items-center gap-2 text-[13px] font-semibold">{% translate "Site" %}
-      <select name="site" onchange="this.form.submit()" class="h-10 rounded-control border border-line-strong bg-white px-2.5 text-sm font-normal text-ink">
+      <select name="site" onchange="this.form.submit()" class="h-10 rounded-control border border-line-strong bg-surface px-2.5 text-sm font-normal text-ink">
         <option value="">{% translate "All sites" %}</option>
         {% for s in sites %}<option value="{{ s.pk }}"{% if site and site.pk == s.pk %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
       </select>
@@ -39,7 +39,7 @@
   </form>
 
   {% if rows %}
-  <div class="overflow-x-auto rounded-control border border-line bg-white">
+  <div class="overflow-x-auto rounded-control border border-line bg-surface">
     <table class="w-full min-w-[920px] border-collapse text-sm">
       <thead>
         <tr class="bg-subtle text-left">

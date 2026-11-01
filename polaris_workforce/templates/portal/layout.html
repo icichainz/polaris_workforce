@@ -1,8 +1,8 @@
 {% extends "portal/base.html" %}
 {% load i18n %}
 {% comment %}
-Signed-in worker portal layout: ink top bar (company, worker, sign out), four big tabs
-(Home, Days, Pay, Advances), the page, then the PIN link and the language switch.
+Signed-in worker portal layout: dark (inverse) top bar (company, worker, sign out), four big tabs
+(Home, Days, Pay, Advances), the page, then the PIN link, the theme switch and the language switch.
 
 Blocks
   title    <title> text
@@ -13,8 +13,8 @@ Context (from apps.portal.views)
 {% endcomment %}
 
 {% block body %}
-<a href="#main" class="sr-only rounded-control bg-amber-500 px-4 py-2 font-semibold text-ink focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50">{% translate "Skip to content" %}</a>
-<header class="bg-ink text-white">
+<a href="#main" class="sr-only rounded-control bg-amber-500 px-4 py-2 font-semibold text-on-primary focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50">{% translate "Skip to content" %}</a>
+<header class="bg-inverse text-on-inverse">
   <div class="mx-auto flex w-full max-w-xl items-center justify-between gap-3 px-4 py-3">
     <div class="flex min-w-0 flex-col leading-tight">
       <span class="truncate text-[13px] font-semibold text-rail-text">{{ access.company.name }}</span>
@@ -23,15 +23,15 @@ Context (from apps.portal.views)
     </div>
     <form method="post" action="{% url 'portal:sign_out' %}">
       {% csrf_token %}
-      <button type="submit" class="flex h-12 items-center gap-2 rounded-control border border-rail-line px-3 text-[15px] font-semibold text-white hover:bg-rail-raised">{% include "components/icon.html" with name="sign_out" class="size-5" only %}<span>{% translate "Sign out" %}</span></button>
+      <button type="submit" class="flex h-12 items-center gap-2 rounded-control border border-rail-line px-3 text-[15px] font-semibold text-on-inverse hover:bg-rail-raised">{% include "components/icon.html" with name="sign_out" class="size-5" only %}<span>{% translate "Sign out" %}</span></button>
     </form>
   </div>
   <nav aria-label="{% translate 'Main' %}" class="mx-auto w-full max-w-xl px-2 pb-2">
     <ul class="m-0 grid list-none grid-cols-4 gap-1 p-0">
-      <li><a href="{% url 'portal:home' %}"{% if portal_active == 'home' %} aria-current="page"{% endif %} class="flex h-14 items-center justify-center rounded-control px-1 text-center text-[15px] font-semibold no-underline {% if portal_active == 'home' %}bg-amber-500 text-ink hover:text-ink{% else %}text-rail-text hover:bg-rail-raised hover:text-white{% endif %}">{% translate "Home" %}</a></li>
-      <li><a href="{% url 'portal:days' %}"{% if portal_active == 'days' %} aria-current="page"{% endif %} class="flex h-14 items-center justify-center rounded-control px-1 text-center text-[15px] font-semibold no-underline {% if portal_active == 'days' %}bg-amber-500 text-ink hover:text-ink{% else %}text-rail-text hover:bg-rail-raised hover:text-white{% endif %}">{% translate "Days" %}</a></li>
-      <li><a href="{% url 'portal:pay' %}"{% if portal_active == 'pay' %} aria-current="page"{% endif %} class="flex h-14 items-center justify-center rounded-control px-1 text-center text-[15px] font-semibold no-underline {% if portal_active == 'pay' %}bg-amber-500 text-ink hover:text-ink{% else %}text-rail-text hover:bg-rail-raised hover:text-white{% endif %}">{% translate "Pay" %}</a></li>
-      <li><a href="{% url 'portal:advances' %}"{% if portal_active == 'advances' %} aria-current="page"{% endif %} class="flex h-14 items-center justify-center rounded-control px-1 text-center text-[15px] font-semibold no-underline {% if portal_active == 'advances' %}bg-amber-500 text-ink hover:text-ink{% else %}text-rail-text hover:bg-rail-raised hover:text-white{% endif %}">{% translate "Advances" %}</a></li>
+      <li><a href="{% url 'portal:home' %}"{% if portal_active == 'home' %} aria-current="page"{% endif %} class="flex h-14 items-center justify-center rounded-control px-1 text-center text-[15px] font-semibold no-underline {% if portal_active == 'home' %}bg-amber-500 text-on-primary hover:text-on-primary{% else %}text-rail-text hover:bg-rail-raised hover:text-on-inverse{% endif %}">{% translate "Home" %}</a></li>
+      <li><a href="{% url 'portal:days' %}"{% if portal_active == 'days' %} aria-current="page"{% endif %} class="flex h-14 items-center justify-center rounded-control px-1 text-center text-[15px] font-semibold no-underline {% if portal_active == 'days' %}bg-amber-500 text-on-primary hover:text-on-primary{% else %}text-rail-text hover:bg-rail-raised hover:text-on-inverse{% endif %}">{% translate "Days" %}</a></li>
+      <li><a href="{% url 'portal:pay' %}"{% if portal_active == 'pay' %} aria-current="page"{% endif %} class="flex h-14 items-center justify-center rounded-control px-1 text-center text-[15px] font-semibold no-underline {% if portal_active == 'pay' %}bg-amber-500 text-on-primary hover:text-on-primary{% else %}text-rail-text hover:bg-rail-raised hover:text-on-inverse{% endif %}">{% translate "Pay" %}</a></li>
+      <li><a href="{% url 'portal:advances' %}"{% if portal_active == 'advances' %} aria-current="page"{% endif %} class="flex h-14 items-center justify-center rounded-control px-1 text-center text-[15px] font-semibold no-underline {% if portal_active == 'advances' %}bg-amber-500 text-on-primary hover:text-on-primary{% else %}text-rail-text hover:bg-rail-raised hover:text-on-inverse{% endif %}">{% translate "Advances" %}</a></li>
     </ul>
   </nav>
 </header>
@@ -42,7 +42,10 @@ Context (from apps.portal.views)
 
   <footer class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
     <a href="{% url 'portal:change_pin' %}" class="flex h-12 items-center rounded-control px-1 text-[15px] font-semibold"{% if portal_active == 'pin' %} aria-current="page"{% endif %}>{% translate "Change my PIN" %}</a>
-    {% include "portal/_language_switch.html" %}
+    <div class="flex flex-wrap justify-end gap-3">
+      {% include "components/theme_switch.html" with current=theme.device tone="" size="phone" browser_only=True %}
+      {% include "portal/_language_switch.html" %}
+    </div>
   </footer>
 </main>
 {% endblock %}

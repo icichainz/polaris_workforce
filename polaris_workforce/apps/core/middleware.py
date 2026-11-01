@@ -24,7 +24,15 @@ from apps.core.models import CompanySettings
 from apps.core.templatetags.polaris import _CACHE_ATTR
 
 # Paths a platform admin may open before any company exists.
-NO_COMPANY_PATHS = ("/companies/", "/admin/", "/accounts/", "/i18n/", "/api/", "/static/")
+NO_COMPANY_PATHS = (
+    "/companies/",
+    "/admin/",
+    "/accounts/",
+    "/i18n/",
+    "/theme/",
+    "/api/",
+    "/static/",
+)
 
 
 class CurrentCompanyMiddleware:

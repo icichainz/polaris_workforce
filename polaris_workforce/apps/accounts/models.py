@@ -8,7 +8,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from apps.core.choices import Language
+from apps.core.choices import Language, Theme
 from apps.core.models import company_field
 
 from .phones import normalize_phone
@@ -39,6 +39,8 @@ class User(AbstractUser):
     )
     # Blank means "use CompanySettings.language".
     language = models.CharField(_("language"), max_length=2, choices=Language.choices, blank=True)
+    # Colour theme of the office dashboard, on any computer (apps.core.theme).
+    theme = models.CharField(_("theme"), max_length=6, choices=Theme.choices, default=Theme.LIGHT)
 
     # Phone sign-in. The PIN belongs to the person, not to a phone: it is set on the
     # Users screen before the first sign-in and works on any device. Stored with

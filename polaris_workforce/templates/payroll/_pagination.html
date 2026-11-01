@@ -5,10 +5,10 @@ Previous / next links for a Paginator page. Context: `page`; keeps the other GET
   <span class="text-steel">{% blocktranslate with number=page.number count=page.paginator.num_pages %}Page {{ number }} of {{ count }}{% endblocktranslate %}</span>
   <span class="flex gap-2">
     {% if page.has_previous %}{% translate "Previous" as label %}
-      <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}page={{ page.previous_page_number }}" class="inline-flex h-10 items-center rounded-control border border-line-strong bg-white px-4 font-semibold text-ink no-underline hover:bg-ground">{{ label }}</a>
+      <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}page={{ page.previous_page_number }}" class="inline-flex h-10 items-center rounded-control border border-line-strong bg-surface px-4 font-semibold text-ink no-underline hover:bg-ground">{{ label }}</a>
     {% endif %}
     {% if page.has_next %}{% translate "Next" as label %}
-      <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}page={{ page.next_page_number }}" class="inline-flex h-10 items-center rounded-control border border-line-strong bg-white px-4 font-semibold text-ink no-underline hover:bg-ground">{{ label }}</a>
+      <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}page={{ page.next_page_number }}" class="inline-flex h-10 items-center rounded-control border border-line-strong bg-surface px-4 font-semibold text-ink no-underline hover:bg-ground">{{ label }}</a>
     {% endif %}
   </span>
 </nav>
