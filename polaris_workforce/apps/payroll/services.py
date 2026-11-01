@@ -34,8 +34,10 @@ import contextlib
 import contextvars
 import dataclasses
 import datetime
+import operator
 from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import reduce
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
@@ -244,10 +246,24 @@ def current_site(worker: Worker, on: datetime.date) -> Site | None:
         SiteAssignment.objects.active_on(on)
         .filter(worker=worker)
         .select_related("site")
-        .order_by("-start_date")
+        .order_by("-start_date", "-pk")
         .first()
     )
     return assignment.site if assignment else None
+
+
+def current_sites(worker_ids, on: datetime.date) -> dict[int, Site]:
+    """``current_site(worker, on)`` for many workers, in one query (workers on no site
+    are absent)."""
+    sites: dict[int, Site] = {}
+    for assignment in (
+        SiteAssignment.objects.active_on(on)
+        .filter(worker_id__in=worker_ids)
+        .select_related("site")
+        .order_by("-start_date", "-pk")
+    ):
+        sites.setdefault(assignment.worker_id, assignment.site)
+    return sites
 
 
 # --- pay lines ---------------------------------------------------------------------------
@@ -349,17 +365,26 @@ def _apply_repayments(line: PayLine, wanted: tuple[tuple[int, int], ...]) -> Non
         advance.save(update_fields=["balance", "status", "updated_at"])
 
 
-def _open_advances(worker_id: int, before: datetime.date, line: PayLine | None):
-    """Advances this pay may deduct from: given before the pay day, oldest first."""
-    query = Q(balance__gt=0)
-    if line is not None and line.pk:
-        query |= Q(repayments__pay_line=line)
-    return (
-        Advance.objects.filter(worker_id=worker_id, given_on__lt=before)
+def _open_advances(
+    worker_ids, before: datetime.date, lines: dict[int, PayLine]
+) -> dict[int, list[Advance]]:
+    """Per worker, the advances their pay may deduct from: given before the pay day, with
+    a balance left or repaid by the worker's line (``lines``, with their
+    ``advance_repayments`` prefetched), oldest first. One query for every worker."""
+    repaid = {
+        worker_id: {r.advance_id for r in line.advance_repayments.all()}
+        for worker_id, line in lines.items()
+    }
+    query = Q(balance__gt=0) | Q(pk__in=set().union(*repaid.values()))
+    by_worker: dict[int, list[Advance]] = defaultdict(list)
+    for advance in (
+        Advance.objects.filter(worker_id__in=worker_ids, given_on__lt=before)
         .filter(query)
-        .distinct()
         .order_by("given_on", "pk")
-    )
+    ):
+        if advance.balance > 0 or advance.pk in repaid.get(advance.worker_id, ()):
+            by_worker[advance.worker_id].append(advance)
+    return by_worker
 
 
 def _paid_amount(line: PayLine) -> int:
@@ -404,22 +429,29 @@ def _pieces_by_worker(
     return by_worker
 
 
-def _open_bonuses(worker_id: int, period: PayPeriod, line: PayLine | None):
-    """Bonuses this pay may add: dated on or before its pay day, at its site, not yet on
-    another pay (or already on this one), oldest first."""
-    query = Q(applied_to__isnull=True)
-    if line is not None and line.pk:
-        query |= Q(applied_to=line)
-    return (
-        Bonus.objects.filter(worker_id=worker_id, site_id=period.site_id, date__lte=period.end_date)
-        .filter(query)
+def _open_bonuses(
+    worker_ids, period: PayPeriod, lines: dict[int, PayLine]
+) -> dict[int, list[Bonus]]:
+    """Per worker, the bonuses their pay may add: dated on or before its pay day, at its
+    site, not yet on another pay (or already on the worker's line in ``lines``), oldest
+    first. One query for every worker."""
+    line_ids = {worker_id: line.pk for worker_id, line in lines.items()}
+    by_worker: dict[int, list[Bonus]] = defaultdict(list)
+    for bonus in (
+        Bonus.objects.filter(
+            worker_id__in=worker_ids, site_id=period.site_id, date__lte=period.end_date
+        )
+        .filter(Q(applied_to__isnull=True) | Q(applied_to__in=line_ids.values()))
         .order_by("date", "pk")
-    )
+    ):
+        if bonus.applied_to_id is None or bonus.applied_to_id == line_ids.get(bonus.worker_id):
+            by_worker[bonus.worker_id].append(bonus)
+    return by_worker
 
 
 def _apply_bonuses(line: PayLine, wanted: tuple[tuple[int, int], ...], actor) -> None:
     """Make the bonuses on this line exactly ``wanted`` (``(bonus_id, amount)``)."""
-    current = set(line.bonuses.values_list("pk", flat=True))
+    current = {bonus.pk for bonus in line.bonuses.all()}
     wanted_ids = {bonus_id for bonus_id, _amount in wanted}
     if current == wanted_ids:
         return
@@ -452,22 +484,31 @@ def _adjustment_snapshot(adjustment: PayAdjustment) -> dict:
     }
 
 
-def _open_adjustments(worker_id: int, period: PayPeriod, line: PayLine | None):
-    """Adjustments this pay may settle: raised by an earlier pay of the worker at the
-    site and not settled yet (or settled by this very line), oldest first."""
-    query = ~Q(applied_amount=F("amount"))
-    if line is not None and line.pk:
-        query |= Q(applications__pay_line=line)
-    return (
+def _open_adjustments(
+    worker_ids, period: PayPeriod, lines: dict[int, PayLine]
+) -> dict[int, list[PayAdjustment]]:
+    """Per worker, the adjustments their pay may settle: raised by an earlier pay of the
+    worker at the site and not settled yet (or settled by the worker's line in ``lines``,
+    with their ``adjustment_applications`` prefetched), oldest first. One query for every
+    worker."""
+    applied = {
+        worker_id: {a.adjustment_id for a in line.adjustment_applications.all()}
+        for worker_id, line in lines.items()
+    }
+    query = ~Q(applied_amount=F("amount")) | Q(pk__in=set().union(*applied.values()))
+    by_worker: dict[int, list[PayAdjustment]] = defaultdict(list)
+    for adjustment in (
         PayAdjustment.objects.filter(
-            worker_id=worker_id,
+            worker_id__in=worker_ids,
             site_id=period.site_id,
             source_line__period__end_date__lt=period.end_date,
         )
         .filter(query)
-        .distinct()
         .order_by("created_at", "pk")
-    )
+    ):
+        if adjustment.remaining or adjustment.pk in applied.get(adjustment.worker_id, ()):
+            by_worker[adjustment.worker_id].append(adjustment)
+    return by_worker
 
 
 def _sync_applied(adjustment: PayAdjustment, actor, line: PayLine) -> None:
@@ -744,11 +785,41 @@ def refresh_period(
     ``PayAdjustment`` on the worker's next pay (and those later pays are recomputed).
     Writes AuditLog entries only when something changed, so refreshing twice is a no-op.
     Without an ``actor`` (refresh on read) the entries are the system's (``payroll.auto.``).
+
+    A refresh on read usually changes nothing, so it first runs without a transaction,
+    refusing every write (``_reads_only``): an IMMEDIATE transaction takes SQLite's write
+    lock when it begins, and screens opening pay must not make the phones' writes wait.
+    Only when it reaches a write does it start again, in a transaction.
     """
     if period.is_locked:
         return period
     company = company or CompanySettings.load()
     today = today or company_today(company)
+    connection = transaction.get_connection()
+    if actor is None and not connection.in_atomic_block:
+        try:
+            with connection.execute_wrapper(_reads_only):
+                return _refresh_period(period, actor, today, company, atomic=False)
+        except _WouldWrite:
+            period.refresh_from_db()  # The dry run may have changed it in memory.
+    return _refresh_period(period, actor, today, company, atomic=True)
+
+
+class _WouldWrite(Exception):
+    """A refresh running under ``_reads_only`` reached a write."""
+
+
+def _reads_only(execute, sql, params, many, context):
+    """A ``connection.execute_wrapper`` that lets reads through and refuses anything else
+    (writes, and BEGIN or SAVEPOINT) before it reaches the database."""
+    if not sql.lstrip()[:6].upper() == "SELECT":
+        raise _WouldWrite
+    return execute(sql, params, many, context)
+
+
+def _refresh_period(
+    period: PayPeriod, actor, today: datetime.date, company: CompanySettings, *, atomic: bool
+) -> PayPeriod:
     site = period.site
     rules = pay_rules(site, company)
     by_worker = _records_by_worker(period, company)
@@ -758,19 +829,30 @@ def refresh_period(
     deduction_rules = deduction_inputs(site.company_id)
     adjusted: set[int] = set()
 
-    with transaction.atomic():
+    with transaction.atomic() if atomic else contextlib.nullcontext():
         before = _period_totals(period)
         changed: list[int] = []
         lines = {
             line.worker_id: line
             for line in period.lines.select_related("period").prefetch_related(
-                "payments", "advance_repayments", "adjustment_applications", "raised_adjustments"
+                "payments",
+                "advance_repayments",
+                "adjustment_applications",
+                "raised_adjustments",
+                "bonuses",
             )
         }
         for worker_id, line in lines.items():
             if worker_id not in by_worker and not line.payments.all():
                 _drop_line(line, actor)
                 changed.append(worker_id)
+
+        # What each unpaid line may take, read for every worker at once. A worker's line
+        # only ever changes the worker's own advances, adjustments and bonuses.
+        kept = {worker_id: line for worker_id, line in lines.items() if worker_id in by_worker}
+        open_advances = _open_advances(list(by_worker), period.end_date, kept)
+        open_adjustments = _open_adjustments(list(by_worker), period, kept)
+        open_bonuses = _open_bonuses(list(by_worker), period, kept)
 
         paid: list[tuple[PayLine, list[engine.DayInput]]] = []
         for worker_id, worker_records in by_worker.items():
@@ -789,7 +871,7 @@ def refresh_period(
                 engine.AdvanceInput(
                     a.pk, a.balance + repaid_by_line.get(a.pk, 0), a.deduction_per_pay
                 )
-                for a in _open_advances(worker_id, period.end_date, line)
+                for a in open_advances[worker_id]
             ]
             applied_by_line = (
                 {a.adjustment_id: a.amount for a in line.adjustment_applications.all()}
@@ -798,12 +880,10 @@ def refresh_period(
             )
             adjustments = [
                 engine.AdjustmentInput(a.pk, a.remaining + applied_by_line.get(a.pk, 0))
-                for a in _open_adjustments(worker_id, period, line)
+                for a in open_adjustments[worker_id]
             ]
             other = line.other_deductions if line else 0
-            bonuses = [
-                engine.BonusInput(b.pk, b.amount) for b in _open_bonuses(worker_id, period, line)
-            ]
+            bonuses = [engine.BonusInput(b.pk, b.amount) for b in open_bonuses[worker_id]]
             result = engine.compute_line(
                 days,
                 rules,
@@ -1021,7 +1101,11 @@ def sync_site(
         if ending_on is None or p_end == ending_on:
             wanted.setdefault((p_start, p_end), frequency)
 
-    existing = PayPeriod.objects.filter(site=site).exclude(status=PayPeriod.Status.LOCKED)
+    existing = (
+        PayPeriod.objects.filter(site=site)
+        .exclude(status=PayPeriod.Status.LOCKED)
+        .select_related("site")
+    )
     if ending_on is not None:
         existing = existing.filter(end_date=ending_on)
     else:
@@ -1143,9 +1227,38 @@ def cash_sheet(
     company = CompanySettings.load()
     if refresh:
         sync_sheet(site, day, today=today, company=company)
-    periods = list(PayPeriod.objects.filter(site=site, end_date=day).order_by("start_date"))
+    return cash_sheets([(site, day)], today=today, company=company)[0]
+
+
+def cash_sheets(
+    sheets: list[tuple[Site, datetime.date]],
+    *,
+    today: datetime.date | None = None,
+    company: CompanySettings | None = None,
+) -> list[CashSheet]:
+    """``cash_sheet(site, day, refresh=False)`` for each ``(site, day)``, in order.
+
+    The periods, pay lines, cash issues, days and absences of every sheet are read
+    together (a list screen shows a page of sheets); only the readiness of each unlocked
+    period is still checked on its own.
+    """
+    if not sheets:
+        return []
+    company = company or CompanySettings.load()
+    today = today or company_today(company)
+    keys = [(site.pk, day) for site, day in sheets]
+
+    def on_sheets(site_field: str, date_field: str) -> Q:
+        return reduce(
+            operator.or_,
+            (Q(**{site_field: site_id, date_field: day}) for site_id, day in set(keys)),
+        )
+
+    periods: dict[tuple, list[PayPeriod]] = defaultdict(list)
+    for period in PayPeriod.objects.filter(on_sheets("site_id", "end_date")).order_by("start_date"):
+        periods[(period.site_id, period.end_date)].append(period)
     pay_lines = (
-        PayLine.objects.filter(period__in=periods)
+        PayLine.objects.filter(period__in=[p for group in periods.values() for p in group])
         .select_related("worker__trade", "period")
         .prefetch_related(
             "payments__paid_by",
@@ -1154,10 +1267,10 @@ def cash_sheet(
         )
         .order_by("worker__last_name", "worker__first_name", "worker__number")
     )
-    lines = []
+    lines: dict[tuple, list[SheetLine]] = defaultdict(list)
     for line in pay_lines:
         payments = list(line.payments.all())
-        lines.append(
+        lines[(line.period.site_id, line.period.end_date)].append(
             SheetLine(
                 line=line,
                 payment=payments[0] if payments else None,
@@ -1166,36 +1279,51 @@ def cash_sheet(
                 raised=list(line.raised_adjustments.all()),
             )
         )
-    issues = list(CashIssue.objects.filter(site=site, date=day).select_related("received_by"))
-    reconciliation = engine.reconcile(
-        sum(issue.amount for issue in issues), [(sl.line.net, sl.paid) for sl in lines]
-    )
-    attendance_day = AttendanceDay.objects.filter(site=site, date=day).first()
-    absent = []
-    if attendance_day is not None:
-        on_sheet = {sl.line.worker_id for sl in lines}
-        absent = [
-            r.worker
-            for r in attendance_day.records.select_related("worker").filter(
-                status=AttendanceRecord.Status.ABSENT
+    issues: dict[tuple, list[CashIssue]] = defaultdict(list)
+    for issue in CashIssue.objects.filter(on_sheets("site_id", "date")).select_related(
+        "received_by"
+    ):
+        issues[(issue.site_id, issue.date)].append(issue)
+    days = {
+        (day.site_id, day.date): day
+        for day in AttendanceDay.objects.filter(on_sheets("site_id", "date"))
+    }
+    absent: dict[int, list[AttendanceRecord]] = defaultdict(list)
+    for record in AttendanceRecord.objects.filter(
+        day__in=list(days.values()), status=AttendanceRecord.Status.ABSENT
+    ).select_related("worker"):
+        absent[record.day_id].append(record)
+
+    result = []
+    for (site, day), key in zip(sheets, keys, strict=True):
+        sheet_periods, sheet_lines = periods.get(key, []), lines.get(key, [])
+        sheet_issues = issues.get(key, [])
+        attendance_day = days.get(key)
+        on_sheet = {sl.line.worker_id for sl in sheet_lines}
+        first = sheet_periods[0] if sheet_periods else None
+        result.append(
+            CashSheet(
+                site=site,
+                date=day,
+                periods=sheet_periods,
+                lines=sheet_lines,
+                cash_issues=sheet_issues,
+                day=attendance_day,
+                reconciliation=engine.reconcile(
+                    sum(issue.amount for issue in sheet_issues),
+                    [(sl.line.net, sl.paid) for sl in sheet_lines],
+                ),
+                currency=first.currency if first else company.currency,
+                currency_decimals=first.currency_decimals if first else company.currency_decimals,
+                status=_sheet_status(sheet_periods, sheet_lines, today, company),
+                absent=[
+                    r.worker
+                    for r in (absent.get(attendance_day.pk, []) if attendance_day else [])
+                    if r.worker_id not in on_sheet
+                ],
             )
-            if r.worker_id not in on_sheet
-        ]
-    currency = periods[0].currency if periods else company.currency
-    decimals = periods[0].currency_decimals if periods else company.currency_decimals
-    return CashSheet(
-        site=site,
-        date=day,
-        periods=periods,
-        lines=lines,
-        cash_issues=issues,
-        day=attendance_day,
-        reconciliation=reconciliation,
-        currency=currency,
-        currency_decimals=decimals,
-        status=_sheet_status(periods, lines, today or company_today(company), company),
-        absent=absent,
-    )
+        )
+    return result
 
 
 def reconciliations(site_ids, day: datetime.date) -> dict[int, engine.CashReconciliation]:

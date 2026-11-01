@@ -5,6 +5,8 @@ import io
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from apps.core.models import AuditLog
@@ -13,7 +15,7 @@ from apps.payroll.models import Payment
 from tests.e2e import Office, admin_office
 from tests.factories import UserFactory
 from tests.test_payouts_services import MOMO, World, momo_account
-from tests.test_payroll_services import MON, setup_site
+from tests.test_payroll_services import MON, hire, setup_site
 
 pytestmark = pytest.mark.django_db
 
@@ -271,6 +273,21 @@ def test_payout_accounts_screen(world):
     foreman = Office(world.foreman)
     assert foreman.get(reverse("payouts:accounts")).status_code == 200
     assert foreman.get(url).status_code == 403
+
+
+def test_payout_accounts_screen_reads_the_sites_of_every_worker_at_once(world):
+    office = Office(world.manager)
+
+    def queries():
+        with CaptureQueriesContext(connection) as captured:
+            assert office.get(reverse("payouts:accounts")).status_code == 200
+        return len(captured)
+
+    before = queries()
+    for _ in range(4):
+        momo_account(hire(world.site))
+
+    assert queries() == before
 
 
 def test_a_line_of_a_cancelled_batch_is_inert(world):
