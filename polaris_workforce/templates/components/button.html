@@ -11,6 +11,8 @@ Parameters
               One amber (primary) button per screen. Dark = irreversible (lock). Danger = reject/remove.
   size        "" (default, 40px office) | phone (56px, glove-safe)
   href        render as a link
+  download    true → the link returns a file or a page outside the office layout
+              (export, print sheet): loaded by the browser, not by boosted navigation
   type        button (default) | submit | reset
   icon        optional icon name (see components/icon.html); icon-only needs aria_label
   aria_label  accessible name for icon-only buttons
@@ -19,7 +21,7 @@ Parameters
   name, value, form, id      passed to <button>
   hx_get, hx_post, hx_target, hx_swap, hx_confirm   htmx attributes
 Use `only` if the page context may already hold variables with these names.
-{% endcomment %}{% if href and not disabled %}<a href="{{ href }}"{% else %}<button type="{{ type|default:'button' }}"{% if name %} name="{{ name }}"{% endif %}{% if value %} value="{{ value }}"{% endif %}{% if form %} form="{{ form }}"{% endif %}{% if disabled %} disabled{% endif %}{% endif %}{% if id %} id="{{ id }}"{% endif %}{% if aria_label %} aria-label="{{ aria_label }}"{% endif %}{% if hx_get %} hx-get="{{ hx_get }}"{% endif %}{% if hx_post %} hx-post="{{ hx_post }}"{% endif %}{% if hx_target %} hx-target="{{ hx_target }}"{% endif %}{% if hx_swap %} hx-swap="{{ hx_swap }}"{% endif %}{% if hx_confirm %} hx-confirm="{{ hx_confirm }}"{% endif %}
+{% endcomment %}{% if href and not disabled %}<a href="{{ href }}"{% if download %} hx-boost="false"{% endif %}{% else %}<button type="{{ type|default:'button' }}"{% if name %} name="{{ name }}"{% endif %}{% if value %} value="{{ value }}"{% endif %}{% if form %} form="{{ form }}"{% endif %}{% if disabled %} disabled{% endif %}{% endif %}{% if id %} id="{{ id }}"{% endif %}{% if aria_label %} aria-label="{{ aria_label }}"{% endif %}{% if hx_get %} hx-get="{{ hx_get }}"{% endif %}{% if hx_post %} hx-post="{{ hx_post }}"{% endif %}{% if hx_target %} hx-target="{{ hx_target }}"{% endif %}{% if hx_swap %} hx-swap="{{ hx_swap }}"{% endif %}{% if hx_confirm %} hx-confirm="{{ hx_confirm }}"{% endif %}
   class="inline-flex items-center justify-center gap-2 whitespace-nowrap no-underline transition-colors disabled:cursor-not-allowed disabled:border-transparent disabled:bg-draft-bg disabled:text-disabled{% if full %} w-full min-w-0{% else %} shrink-0{% endif %}
   {% if size == 'phone' %}h-14 rounded-xl px-5 text-[17px] font-bold{% if not label %} w-14 px-0{% endif %}{% else %}h-10 rounded-control text-sm font-semibold{% if not label %} w-10 px-0{% elif variant == 'ghost' %} px-3{% else %} px-4{% endif %}{% endif %}
   {% if variant == 'primary' %}bg-amber-500 text-ink hover:bg-amber-500 hover:text-ink hover:brightness-95

@@ -103,7 +103,7 @@
       {% for c in connections %}
       <div id="connection-{{ c.key }}" class="flex flex-col gap-1 text-sm">
         <div class="flex flex-wrap items-center justify-between gap-2"><span class="text-steel">{{ c.title }}</span>{% include "components/status_badge.html" with status=c.status label=c.label only %}</div>
-        {% if c.url or c.print_url %}<div class="flex flex-wrap justify-end gap-3 text-[13px]">{% if c.url %}<a href="{{ c.url }}">{{ c.link_label }}</a>{% endif %}{% if c.print_url %}<a href="{{ c.print_url }}">{% translate "Print badge" %}</a>{% endif %}</div>{% endif %}
+        {% if c.url or c.print_url %}<div class="flex flex-wrap justify-end gap-3 text-[13px]">{% if c.url %}<a href="{{ c.url }}">{{ c.link_label }}</a>{% endif %}{% if c.print_url %}<a href="{{ c.print_url }}" hx-boost="false">{% translate "Print badge" %}</a>{% endif %}</div>{% endif %}
       </div>
       {% endfor %}
     </section>
@@ -147,7 +147,7 @@
       <tbody>
         {% for p in payments %}
         <tr class="border-t border-line-soft">
-          <td class="px-4 py-3 font-semibold">{% if p.payslip_url %}<a href="{{ p.payslip_url }}">{{ p.date|date:_("D j M") }}<span class="sr-only"> · {% translate "payslip (PDF)" %}</span></a>{% else %}{{ p.date|date:_("D j M") }}{% endif %}</td>
+          <td class="px-4 py-3 font-semibold">{% if p.payslip_url %}<a href="{{ p.payslip_url }}" hx-boost="false">{{ p.date|date:_("D j M") }}<span class="sr-only"> · {% translate "payslip (PDF)" %}</span></a>{% else %}{{ p.date|date:_("D j M") }}{% endif %}</td>
           <td class="px-4 py-3 text-right tabular-nums">{{ p.units }}</td>
           <td class="px-4 py-3 text-right tabular-nums">{{ p.gross }}</td>
           <td class="px-4 py-3 text-right tabular-nums">{% if p.advance %}− {{ p.advance }}{% else %}—{% endif %}</td>
