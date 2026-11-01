@@ -164,12 +164,14 @@ def test_the_periodic_task_runs_the_command(company, monkeypatch):  # noqa: F811
 
 def test_beat_runs_every_periodic_job():
     from apps.messaging import tasks as messaging_tasks  # noqa: F401 (registers its tasks)
+    from apps.presence import tasks as presence_tasks  # noqa: F401 (registers its tasks)
 
     schedule = celery_app.conf.beat_schedule
     assert {entry["task"] for entry in schedule.values()} == {
         "messaging.send_messages",
         "messaging.send_notifications",
         "precompute.refresh",
+        "presence.resync_site_configs",
     }
     assert all(entry["task"] in celery_app.tasks for entry in schedule.values())
     assert schedule["sweep-precomputed"]["kwargs"] == {"sweep": True}

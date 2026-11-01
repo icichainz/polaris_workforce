@@ -20,6 +20,8 @@ ERROR_CODES = [
     ("conflict", _("The request conflicts with the current state.")),
     ("locked", _("The resource is locked (a locked day or pay period, or a locked device).")),
     ("not_implemented", _("The endpoint is part of the contract but not built yet.")),
+    ("consent_required", _("Presence tracking: accept the tracking notice first.")),
+    ("tracking_disabled", _("Presence tracking is off for you (settings or your answer).")),
     ("method_not_allowed", _("The HTTP method is not allowed on this path.")),
     ("unsupported_media_type", _("The request content type is not supported.")),
     ("not_acceptable", _("The Accept header cannot be satisfied.")),
