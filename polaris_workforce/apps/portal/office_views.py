@@ -8,7 +8,6 @@ and never stored in clear or in the session.
 
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -58,13 +57,7 @@ def _status(access) -> tuple[str, str]:
 def access_list(request):
     workers = _workers(request.user).filter(is_active=True)
     query = request.GET.get("q", "").strip()
-    if query:
-        workers = workers.filter(
-            Q(first_name__icontains=query)
-            | Q(last_name__icontains=query)
-            | Q(number__icontains=query)
-            | Q(phone__icontains=query)
-        )
+    workers = workers.search(query)
     show = request.GET.get("show", "all")
     if show == "with":
         workers = workers.filter(portal_access__is_enabled=True)

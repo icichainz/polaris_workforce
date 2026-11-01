@@ -1122,7 +1122,7 @@ def sync_site(
 
 def sync_sheet(site: Site, day: datetime.date, **kwargs) -> list[PayPeriod]:
     """Bring the periods paid on ``day`` up to date (all frequencies)."""
-    company = kwargs.setdefault("company", CompanySettings.load())
+    company = kwargs["company"] = kwargs.get("company") or CompanySettings.load()
     lookback = max(31, resolve_setting("pay_every_n_days", site, company=company) or 0)
     return sync_site(site, day - datetime.timedelta(days=lookback), day, ending_on=day, **kwargs)
 

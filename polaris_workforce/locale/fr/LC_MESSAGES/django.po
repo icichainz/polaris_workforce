@@ -4644,6 +4644,10 @@ msgstr "type de pièce d’identité"
 msgid "ID document number"
 msgstr "numéro de pièce d’identité"
 
+#: apps/workers/models.py:106
+msgid "search text"
+msgstr "texte de recherche"
+
 #: apps/workers/importer.py:119
 msgid "Empty: the site's or the company's setting."
 msgstr "Vide : le paramètre du chantier ou de l’entreprise."
