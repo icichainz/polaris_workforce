@@ -120,6 +120,9 @@ pub type TrackPoint {
     accuracy_m: Float,
     /// The site whose geofence contains the fix, if any.
     site_id: Option(Int),
+    /// The company of the device token that sent the fix. Off-site points
+    /// are only shown to `travel` tokens of this company.
+    company: Int,
   )
   BlePoint(
     at: Int,

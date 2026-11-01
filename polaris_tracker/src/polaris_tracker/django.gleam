@@ -12,9 +12,6 @@ import polaris_tracker/domain.{type PresenceEvent}
 import polaris_tracker/token
 import polaris_tracker/wire
 
-/// Service tokens sent to Django live this long.
-const service_token_seconds = 300
-
 /// POSTs a batch to `POST /api/v1/presence/events/` with a short-lived
 /// service token. Any 2xx counts as delivered.
 pub fn deliver(
@@ -27,15 +24,7 @@ pub fn deliver(
       request.to(url) |> result.replace_error("invalid DJANGO_EVENTS_URL"),
     )
     let bearer =
-      token.Claims(
-        sub: "service:tracker",
-        kind: token.Service,
-        sites: [],
-        all_sites: True,
-        audience: token.django_audience,
-        expires_at: clock() / 1000 + service_token_seconds,
-      )
-      |> token.mint(secret:)
+      token.service_token_for_django(secret:, now_seconds: clock() / 1000)
     let req =
       req
       |> request.set_method(http.Post)

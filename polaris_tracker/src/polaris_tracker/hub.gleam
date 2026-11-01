@@ -262,10 +262,16 @@ fn ingest_gps(
       }
     })
   state.args.record_track(person, [
-    GpsPoint(at:, position:, accuracy_m:, site_id: case inside {
-      Ok(#(site_id, _)) -> Some(site_id)
-      Error(Nil) -> None
-    }),
+    GpsPoint(
+      at:,
+      position:,
+      accuracy_m:,
+      site_id: case inside {
+        Ok(#(site_id, _)) -> Some(site_id)
+        Error(Nil) -> None
+      },
+      company: claims.company,
+    ),
   ])
 
   // A fix outside a site only matters to a site that is already running.

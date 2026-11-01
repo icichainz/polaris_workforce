@@ -375,12 +375,14 @@ fn track_range(req: Request(BitArray)) -> Result(#(Int, Int), Response(String)) 
   }
 }
 
-/// Off-site travel is only visible to tokens that see every site.
+/// Points on a site follow site scoping; off-site travel is only visible to
+/// `travel` tokens of the company whose device recorded it.
 fn visible_to(claims: token.Claims, point: TrackPoint) -> Bool {
   case point {
     GpsPoint(site_id: Some(site_id), ..) ->
       token.can_access_site(claims, site_id)
-    GpsPoint(site_id: None, ..) -> claims.all_sites
+    GpsPoint(site_id: None, company:, ..) ->
+      token.can_see_travel(claims, company)
     BlePoint(site_id:, ..) -> token.can_access_site(claims, site_id)
   }
 }

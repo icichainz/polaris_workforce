@@ -53,17 +53,24 @@ later, relax those pins in `gleam.toml` and move to mist 6.
 ## Try it by hand
 
 Tokens come from Django in production. For local testing, mint one with the dev secret.
-This is the same HS256 JWT Django will issue:
+This is the same HS256 JWT (claims version 2) Django will issue, and byte for byte what
+the tracker's own `token.mint` produces for the same claims:
 
 ```python
 import base64, hashlib, hmac, json, time
 b64 = lambda b: base64.urlsafe_b64encode(b).rstrip(b"=").decode()
-def mint(sub, kind, sites, secret=b"dev-only-insecure-tracker-secret"):
-    h = b64(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
-    p = b64(json.dumps({"sub": sub, "kind": kind, "sites": sites,
-                        "aud": "polaris-tracker", "exp": int(time.time()) + 3600}).encode())
+dumps = lambda o: json.dumps(o, separators=(",", ":")).encode()
+def mint(sub, kind, company=0, sites=(), travel=False,
+         secret=b"dev-only-insecure-tracker-secret", aud="polaris-tracker"):
+    claims = {"sub": sub, "kind": kind}
+    if company: claims["company"] = company        # every kind except service
+    if sites: claims["sites"] = list(sites)        # explicit; service reaches all
+    if travel: claims["travel"] = True             # off-site points of `company`
+    claims |= {"aud": aud, "exp": int(time.time()) + 3600}
+    h, p = b64(dumps({"alg": "HS256", "typ": "JWT"})), b64(dumps(claims))
     return f"{h}.{p}.{b64(hmac.new(secret, f'{h}.{p}'.encode(), hashlib.sha256).digest())}"
-print(mint("service:django", "service", []))
+print(mint("service:django", "service"))
+print(mint("user:1", "dashboard", company=1, sites=[3], travel=True))
 ```
 
 Then push a site config (`PUT /internal/sites/3/config`), send gateway sightings or phone

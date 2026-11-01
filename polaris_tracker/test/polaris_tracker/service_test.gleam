@@ -93,12 +93,28 @@ fn start_stack() -> Stack {
   Stack(ctx:, outbox: outbox.data, delivered:)
 }
 
+/// A token of company 1 without travel (company 0 for service tokens).
 fn mint(sub: String, kind: token.Kind, sites: List(Int)) -> String {
+  let company = case kind {
+    token.Service -> 0
+    _ -> 1
+  }
+  mint_for(sub, kind, company:, sites:, travel: False)
+}
+
+fn mint_for(
+  sub: String,
+  kind: token.Kind,
+  company company: Int,
+  sites sites: List(Int),
+  travel travel: Bool,
+) -> String {
   token.Claims(
     sub:,
     kind:,
+    company:,
     sites:,
-    all_sites: False,
+    travel:,
     audience: token.tracker_audience,
     expires_at: clock.now_ms() / 1000 + 600,
   )
@@ -350,4 +366,117 @@ pub fn health_test() {
   assert response.status == 200
   assert response.body
     == "{\"status\":\"ok\",\"sites\":" <> int.to_string(1) <> "}"
+}
+
+fn gps_batch(uuid: String, at: String, lat: String) -> String {
+  "{\"observations\": [{\"client_uuid\": \""
+  <> uuid
+  <> "\", \"type\": \"gps\", \"at\": \""
+  <> at
+  <> "\", \"lat\": "
+  <> lat
+  <> ", \"lng\": 1.2228, \"accuracy_m\": 10}]}"
+}
+
+fn count(haystack: String, needle: String) -> Int {
+  list.length(string.split(haystack, needle)) - 1
+}
+
+/// Site 3 belongs to company 1, site 4 to company 2. Site ids are global, so
+/// only the explicit `sites` list and the `company` claim keep them apart.
+pub fn two_companies_are_kept_apart_test() {
+  let stack = start_stack()
+  configure(stack)
+  let service = mint("service:django", token.Service, [])
+  let response =
+    send(stack, http.Put, "/internal/sites/4/config", service, site_config)
+  assert response.status == 204
+
+  let admin_1 =
+    mint_for("user:1", token.Dashboard, company: 1, sites: [3], travel: True)
+  let viewer_1 =
+    mint_for("user:2", token.Dashboard, company: 1, sites: [3], travel: False)
+  let admin_2 =
+    mint_for("user:3", token.Dashboard, company: 2, sites: [4], travel: True)
+  let device_1 =
+    mint_for("foreman:5", token.Device, company: 1, sites: [3], travel: False)
+  let device_2 =
+    mint_for("foreman:8", token.Device, company: 2, sites: [4], travel: False)
+
+  // Sites: another company's admin cannot read or write site 3.
+  let response = send(stack, http.Get, "/v1/sites/3/presence", admin_2, "")
+  assert response.status == 403
+  assert string.contains(response.body, "\"code\":\"site_not_allowed\"")
+  let ble = "{\"observations\": [{\"client_uuid\": \"c2\", \"type\": \"ble\",
+      \"at\": \"" <> ago(1000) <> "\", \"site_id\": 3, \"badge_id\": \"BDG-1\",
+      \"rssi\": -70}]}"
+  let response = send(stack, http.Post, "/v1/observations", device_2, ble)
+  assert string.contains(response.body, "\"accepted\":0")
+  assert string.contains(response.body, "\"code\":\"site_not_allowed\"")
+
+  // Foreman 5 (company 1): one fix on site 3, one about 2 km away (travel).
+  let response =
+    send(
+      stack,
+      http.Post,
+      "/v1/observations",
+      device_1,
+      gps_batch("t1", ago(60_000), "6.1320"),
+    )
+  assert string.contains(response.body, "\"accepted\":1")
+  let response =
+    send(
+      stack,
+      http.Post,
+      "/v1/observations",
+      device_1,
+      gps_batch("t2", ago(30_000), "6.1500"),
+    )
+  assert string.contains(response.body, "\"accepted\":1")
+
+  // Foreman 8 (company 2) stands inside site 3's geofence, but site 3 is not
+  // in the token: the fix is stored off site, with company 2.
+  let response =
+    send(
+      stack,
+      http.Post,
+      "/v1/observations",
+      device_2,
+      gps_batch("t3", ago(30_000), "6.1320"),
+    )
+  assert string.contains(response.body, "\"accepted\":1")
+
+  let track = fn(path, bearer) {
+    let range =
+      "?from=" <> ago(3_600_000) <> "&to=" <> clock.to_rfc3339(clock.now_ms())
+    let response = send(stack, http.Get, path <> range, bearer, "")
+    assert response.status == 200
+    response.body
+  }
+  let foreman_5 = "/v1/people/foreman/5/track"
+  let foreman_8 = "/v1/people/foreman/8/track"
+
+  // The travel admin of company 1 sees the on-site point and the travel.
+  let body = track(foreman_5, admin_1)
+  assert count(body, "\"type\":\"gps\"") == 2
+  assert count(body, "\"site_id\":null") == 1
+  // Without `travel`, only the on-site point.
+  let body = track(foreman_5, viewer_1)
+  assert count(body, "\"type\":\"gps\"") == 1
+  assert count(body, "\"site_id\":3") == 1
+  // Company 2's travel admin sees none of company 1's points.
+  assert count(track(foreman_5, admin_2), "\"type\":\"gps\"") == 0
+  // And company 1 does not see company 2's travel, even inside its own site.
+  assert count(track(foreman_8, admin_1), "\"type\":\"gps\"") == 0
+  assert count(track(foreman_8, admin_2), "\"type\":\"gps\"") == 1
+}
+
+pub fn token_without_company_is_refused_test() {
+  let stack = start_stack()
+  configure(stack)
+  let no_company =
+    mint_for("user:1", token.Dashboard, company: 0, sites: [3], travel: True)
+  let response = send(stack, http.Get, "/v1/sites/3/presence", no_company, "")
+  assert response.status == 401
+  assert string.contains(response.body, "\"code\":\"invalid_token\"")
 }

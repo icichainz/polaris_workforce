@@ -13,20 +13,43 @@ info:
 
     **Authentication.** Every endpoint except `/health` takes a JWT (HS256) issued by
     Django and signed with the secret shared by Django and the tracker
-    (`TRACKER_SHARED_SECRET`). Required claims: `sub`, `kind`, `aud` (`polaris-tracker`)
-    and `exp` (Unix seconds); optional `sites` (site ids) and `all_sites` (admins).
-    The `kind` decides which endpoints a token may call:
+    (`TRACKER_SHARED_SECRET`). Encoding: header `{"alg":"HS256","typ":"JWT"}`, JSON
+    segments base64url-encoded **without padding** (what Python's `base64`, `hmac` and
+    `json.dumps(..., separators=(",", ":"))` produce; the tracker verifies the bytes as
+    sent, so other JSON spacing is accepted too). Only `HS256` is accepted.
+
+    Claims, version 2:
+
+    | claim | type | meaning |
+    | --- | --- | --- |
+    | `sub` | string | Who the token is for (table below). |
+    | `kind` | `device`, `gateway`, `dashboard`, `service` | Which endpoints it may call. |
+    | `company` | integer > 0 | The Django company. **Required for every kind except `service`**; a missing or `0` company gives `401 invalid_token`. Absent on service tokens. |
+    | `sites` | integer[] | The only sites the token reaches. Always explicit: an admin's token lists all of the company's sites. Absent means `[]`. |
+    | `travel` | boolean | May see off-site GPS points (travel) of its own `company` (company admins). Absent means `false`. |
+    | `aud` | string | `polaris-tracker` for tokens sent to the tracker. |
+    | `exp` | integer | Unix seconds. |
+
+    `all_sites` (version 1) is no longer read: a token carrying it gets nothing from it.
 
     | kind | sub | endpoints |
     | --- | --- | --- |
     | `device` | `foreman:<user id>` | `POST /v1/observations`, `GET /v1/sites/{id}/presence` |
     | `gateway` | `gateway:<gateway id>`, exactly one site in `sites` | `POST /v1/gateways/sightings` |
     | `dashboard` | `user:<user id>` | presence, live stream, tracks |
-    | `service` | `service:django` | `PUT /internal/sites/{id}/config` |
+    | `service` | `service:django` | `PUT /internal/sites/{id}/config`, `GET /internal/sites/{id}/sessions` |
 
-    **Site scoping.** A token only reaches the sites in its `sites` claim, unless
-    `all_sites` is true. Off-site GPS points (travel between sites) are returned only to
-    `all_sites` tokens.
+    **Tokens the tracker sends to Django** (`POST /api/v1/presence/events/`): `kind =
+    service`, `sub = service:tracker`, `aud = polaris-django`, `exp` 300 s ahead (minted
+    per call), and no `company`, `sites` or `travel` claim. Payload, byte for byte:
+    `{"sub":"service:tracker","kind":"service","aud":"polaris-django","exp":<n>}`.
+
+    **Site scoping.** A token only reaches the sites in its `sites` claim; `service`
+    tokens reach every site. Site ids are global, so Django must only list sites of the
+    token's company. GPS fixes are stored with the `company` of the device token that sent
+    them; off-site points (travel between sites, `site_id: null`) are returned only to
+    tokens with `travel = true` **and the same `company`**. A device's fix inside the
+    geofence of a site that is not in its token counts as off site.
 
     **Idempotency.** Every phone observation carries a `client_uuid` and every gateway
     batch a `batch_id`. Repeating one is acknowledged as a duplicate and changes nothing.
@@ -310,8 +333,9 @@ paths:
       description: |
         Token kind: `dashboard`. Returns the points with `from <= at < to`, oldest first,
         filtered by the token's sites: BLE points and on-site GPS points of the token's
-        sites, plus off-site GPS points (travel) only for `all_sites` tokens. Points are
-        kept for `TRACK_RETENTION_DAYS` (30 by default).
+        sites, plus off-site GPS points (travel) only for `travel` tokens of the company
+        whose device recorded them. Points are kept for `TRACK_RETENTION_DAYS` (30 by
+        default).
       parameters:
         - name: kind
           in: path

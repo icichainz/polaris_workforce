@@ -289,7 +289,7 @@ pub fn track_json(
 
 fn track_point_json(point: TrackPoint) -> Json {
   case point {
-    GpsPoint(at:, position:, accuracy_m:, site_id:) ->
+    GpsPoint(at:, position:, accuracy_m:, site_id:, ..) ->
       json.object([
         #("type", json.string("gps")),
         #("at", json.string(clock.to_rfc3339(at))),
