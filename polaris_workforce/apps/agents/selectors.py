@@ -245,7 +245,7 @@ def day_data(user, site, date: datetime.date) -> dict:
 def cash_sheet_data(site, date: datetime.date) -> dict:
     """Who is paid how much on ``site`` for the pay day ``date`` (read; nothing is paid)."""
     company = CompanySettings.load()
-    sheet = payroll.cash_sheet_on_read(site, date)
+    sheet = payroll.read_cash_sheet(site, date)
     rec = sheet.reconciliation
     currency, decimals = sheet.currency, sheet.currency_decimals
 

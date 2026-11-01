@@ -28,9 +28,8 @@ def _english_by_default():
 
 @pytest.fixture(autouse=True)
 def _empty_cache():
-    """Start every test with an empty cache: throttles, lockouts and the pay refresh
-    markers (``apps.payroll.services``) would otherwise leak between tests, which reuse
-    the same row ids."""
+    """Start every test with an empty cache: throttles and lockouts would otherwise leak
+    between tests, which reuse the same row ids."""
     cache.clear()
 
 

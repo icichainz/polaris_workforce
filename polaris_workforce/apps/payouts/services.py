@@ -337,12 +337,14 @@ def candidates(
     site: Site | None = None,
     *,
     today: datetime.date | None = None,
+    recompute: bool = True,
 ) -> list[Candidate]:
     """Pay lines of ``pay_date`` to pay by ``method``, on the sites where ``user`` pays out.
 
     Only open cash sheets count (every day of the period approved, not locked); lines
     already in a batch (pending or confirmed) and lines fully paid are left out. The pay is
-    brought up to date first, like opening the cash sheet.
+    brought up to date first: recomputed (``recompute``, for a batch), or like opening the
+    cash sheet, only where a change marked it out of date (the preview).
     """
     company = CompanySettings.load()
     today = today or company_today(company)
@@ -350,7 +352,10 @@ def candidates(
     if site is not None:
         sites = sites.filter(pk=site.pk)
     for active in sites.filter(status=Site.Status.ACTIVE):
-        payroll.sync_sheet(active, pay_date, today=today, company=company)
+        if recompute:
+            payroll.sync_sheet(active, pay_date, today=today, company=company)
+        else:
+            payroll.ensure_sheet_fresh(active, pay_date, today=today, company=company)
     periods = [
         p
         for p in PayPeriod.objects.filter(site__in=sites, end_date=pay_date)

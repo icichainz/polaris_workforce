@@ -39,7 +39,6 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import reduce
 
-from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import F, Q, Sum
@@ -60,12 +59,12 @@ from apps.accounts.permissions import (
 from apps.api.exceptions import Conflict, Locked
 from apps.attendance.models import AttendanceCorrection, AttendanceDay, AttendanceRecord
 from apps.attendance.services import lock_day
-from apps.core import changes
 from apps.core.choices import PayType, ProofType
 from apps.core.dates import company_today
 from apps.core.models import AuditLog, CompanySettings
 from apps.core.settings import resolve_setting
 from apps.core.validators import UPLOAD_VALIDATORS
+from apps.precompute import services as precompute
 from apps.workers.models import PayRate, Worker
 from apps.worksites.models import Site, SiteAssignment
 from apps.worksites.services import crew_ids_by_date
@@ -1159,38 +1158,63 @@ def sync_site(
 def sync_sheet(site: Site, day: datetime.date, **kwargs) -> list[PayPeriod]:
     """Bring the periods paid on ``day`` up to date (all frequencies)."""
     company = kwargs["company"] = kwargs.get("company") or CompanySettings.load()
-    lookback = max(31, resolve_setting("pay_every_n_days", site, company=company) or 0)
+    lookback = _sheet_lookback(site, company)
     return sync_site(site, day - datetime.timedelta(days=lookback), day, ending_on=day, **kwargs)
 
 
 # --- refreshing pay on read ---------------------------------------------------------------
 #
-# The screens that list every site's pay (Pay periods, Cash sheets) recompute it on read, a
-# safety net behind the services that recompute it on write. Most of the time nothing has
-# changed, and the recomputation costs dozens of queries per site, so it is skipped while
-# the company's change marker (apps.core.changes, moved by every AuditLog entry) and the
-# day are those of the site's last recomputation. A recomputation that changed something
-# wrote audit entries of its own (payroll.auto.…), which move the marker: the next read
-# recomputes once more, finds nothing to change, and the reads after it skip. Writes that
-# bypass the services and the audit log (Django admin, a shell) show after
-# READ_REFRESH_MAX_AGE seconds at the latest.
-
-READ_REFRESH_MAX_AGE = 300
+# Pay is recomputed when it changes: the services that change attendance or pay recompute
+# what they touched, and every change marks its site and dates out of date
+# (``apps.precompute``, from its audit entry). The cron command rebuilds marked sites in
+# the background, and each site once on a new day (a period is ready once its pay day has
+# come). A screen that reads pay calls ``ensure_fresh`` for what it shows: a site still
+# marked for those dates is recomputed first; otherwise the read recomputes nothing.
 
 
-def _refresh_on_read(kind: str, site: Site, today: datetime.date, refresh) -> bool:
-    """Run ``refresh()`` unless nothing changed since the last ``kind`` refresh of ``site``.
+def _sheet_lookback(site: Site, company: CompanySettings) -> int:
+    """How far back the periods paid on a day may start (the longest period)."""
+    return max(31, resolve_setting("pay_every_n_days", site, company=company) or 0)
 
-    True if it ran. The marker is read before the refresh: a change made during the
-    refresh moves it, and the next read refreshes again.
-    """
-    key = f"payroll:read-refresh:{kind}:{site.pk}"
-    marker = f"{changes.version(site.company_id)}|{today.isoformat()}"
-    if cache.get(key) == marker:
-        return False
-    refresh()
-    cache.set(key, marker, READ_REFRESH_MAX_AGE)
-    return True
+
+def refresh_pay_step(site: Site, start, end, *, today, company) -> None:
+    """The precompute step that recomputes pay: the periods holding attendance between
+    ``start`` (``None``: since the oldest open period) and ``end``."""
+    if start is None:
+        oldest = (
+            PayPeriod.objects.filter(site=site)
+            .exclude(status=PayPeriod.Status.LOCKED)
+            .order_by("start_date")
+            .values_list("start_date", flat=True)
+            .first()
+        )
+        start = min(oldest or end, end - datetime.timedelta(days=_sheet_lookback(site, company)))
+    sync_site(site, start, end, today=today, company=company)
+
+
+def ensure_pay_fresh(
+    site: Site,
+    start: datetime.date | None,
+    end: datetime.date | None,
+    *,
+    today: datetime.date | None = None,
+    company: CompanySettings | None = None,
+) -> bool:
+    """Recompute ``site``'s pay first if it is out of date between ``start`` and ``end``."""
+    return precompute.ensure_fresh(site, start, end, today=today, company=company)
+
+
+def ensure_sheet_fresh(
+    site: Site,
+    day: datetime.date,
+    *,
+    today: datetime.date | None = None,
+    company: CompanySettings | None = None,
+) -> bool:
+    """Recompute the pay of ``site``'s cash sheet of ``day`` first if it is out of date."""
+    company = company or CompanySettings.load(site.company_id)
+    start = day - datetime.timedelta(days=_sheet_lookback(site, company))
+    return ensure_pay_fresh(site, start, day, today=today, company=company)
 
 
 def sync_recent_on_read(
@@ -1200,12 +1224,7 @@ def sync_recent_on_read(
     company = company or CompanySettings.load()
     start = today - datetime.timedelta(days=days - 1)
     for site in sites.filter(status=Site.Status.ACTIVE):
-        _refresh_on_read(
-            f"recent{days}",
-            site,
-            today,
-            lambda site=site: sync_site(site, start, today, today=today, company=company),
-        )
+        ensure_pay_fresh(site, start, today, today=today, company=company)
 
 
 def sync_sheets_on_read(
@@ -1214,25 +1233,7 @@ def sync_sheets_on_read(
     """Bring today's cash sheet of the active ``sites`` up to date (Cash sheets)."""
     company = company or CompanySettings.load()
     for site in sites.filter(status=Site.Status.ACTIVE):
-        _refresh_on_read(
-            "sheet",
-            site,
-            today,
-            lambda site=site: sync_sheet(site, today, today=today, company=company),
-        )
-
-
-def cash_sheet_on_read(site: Site, day: datetime.date, *, today=None) -> CashSheet:
-    """``cash_sheet(site, day)``, skipping the recomputation while nothing changed."""
-    company = CompanySettings.load()
-    today = today or company_today(company)
-    _refresh_on_read(
-        f"sheet:{day.isoformat()}",
-        site,
-        today,
-        lambda: sync_sheet(site, day, today=today, company=company),
-    )
-    return cash_sheets([(site, day)], today=today, company=company)[0]
+        ensure_sheet_fresh(site, today, today=today, company=company)
 
 
 def on_attendance_changed(day: AttendanceDay, *, actor=None) -> None:
@@ -1379,11 +1380,20 @@ def cash_sheet(
     """The cash sheet of a site for a pay day, with the reconciliation.
 
     Reading it brings the pay up to date first (``refresh``); that recomputation is the
-    system's (no viewer in the audit log, nothing written when nothing changed).
+    system's (no viewer in the audit log, nothing written when nothing changed). Screens
+    read with ``read_cash_sheet``, which recomputes only what a change marked.
     """
     company = CompanySettings.load()
     if refresh:
         sync_sheet(site, day, today=today, company=company)
+    return cash_sheets([(site, day)], today=today, company=company)[0]
+
+
+def read_cash_sheet(site: Site, day: datetime.date, *, today=None) -> CashSheet:
+    """The cash sheet as a screen shows it: the pay is recomputed first only when a change
+    marked it out of date (``ensure_sheet_fresh``)."""
+    company = CompanySettings.load()
+    ensure_sheet_fresh(site, day, today=today, company=company)
     return cash_sheets([(site, day)], today=today, company=company)[0]
 
 

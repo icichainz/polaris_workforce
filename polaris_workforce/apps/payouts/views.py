@@ -161,7 +161,9 @@ def prepare(request):
             )
         messages.success(request, _("Batch %(ref)s prepared.") % {"ref": batch.reference})
         return redirect(_batch_url(batch))
-    found = services.candidates(request.user, data["pay_date"], data["method"], data["site"])
+    found = services.candidates(
+        request.user, data["pay_date"], data["method"], data["site"], recompute=False
+    )
     ready = [c for c in found if c.ready]
     return render(
         request,

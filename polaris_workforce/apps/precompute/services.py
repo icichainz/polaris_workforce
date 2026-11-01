@@ -161,8 +161,7 @@ def refresh_site(
     if fresh_on is None:
         fresh_on = Freshness.objects.filter(site=site).values_list("fresh_on", flat=True).first()
 
-    start, end = _range_to_rebuild(stale, fresh_on, today, everything)
-    if start is not False:
+    for start, end in _ranges_to_rebuild(stale, fresh_on, today, everything):
         for step in steps():
             step(site, start, end, today=today, company=company)
 
@@ -172,22 +171,25 @@ def refresh_site(
         Freshness.objects.update_or_create(site=site, defaults={"fresh_on": today})
 
 
-def _range_to_rebuild(stale, fresh_on, today, everything):
-    """``(start, end)`` to rebuild; ``start`` is ``False`` when there is nothing to do."""
+def _ranges_to_rebuild(stale, fresh_on, today, everything) -> list[tuple]:
+    """The ``(start, end)`` ranges to rebuild, apart unless they overlap (a mark a year
+    ago and a new day today are two small rebuilds, not every day in between)."""
     if everything:
-        return None, today
+        return [(None, today)]
     ranges = []
     if stale is not None:
-        ranges.append((stale.start, max(stale.end, today)))
+        ranges.append((stale.start, stale.end))
     if fresh_on != today:
         # A new day: the periods whose pay day came since the last rebuild may be ready.
         since = fresh_on if fresh_on is not None and fresh_on < today else None
         ranges.append((since or today - datetime.timedelta(days=NEW_DAY_LOOKBACK), today))
-    if not ranges:
-        return False, today
-    starts = [start for start, _end in ranges]
-    start = None if None in starts else min(starts)
-    return start, max(end for _start, end in ranges)
+    if len(ranges) == 2:
+        (first_start, first_end), (second_start, second_end) = ranges
+        if first_start is None or first_start <= second_end and first_end >= second_start:
+            starts = (first_start, second_start)
+            start = None if None in starts else min(starts)
+            return [(start, max(first_end, second_end))]
+    return ranges
 
 
 # --- the cron command ---------------------------------------------------------------------

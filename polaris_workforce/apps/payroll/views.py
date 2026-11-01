@@ -237,7 +237,7 @@ def _row(request, sheet, sheet_line, company, form=None, errors=None):
 @require_GET
 def cash_sheet(request, site_id, date):
     site = get_site_or_403(request.user, site_id)
-    sheet = services.cash_sheet(site, date)
+    sheet = services.read_cash_sheet(site, date)
     # Each unpaid row shows its transfer ({% transfer_state %}): read them all at once.
     prefetch_related_objects([row.line for row in sheet.lines], "payout_lines__batch")
     return render(request, "payroll/cash_sheet.html", _sheet_context(request, sheet))

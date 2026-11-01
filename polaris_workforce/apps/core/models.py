@@ -12,7 +12,6 @@ from django.db import models
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 
-from . import changes
 from .choices import (
     AttendanceMode,
     Language,
@@ -144,7 +143,6 @@ class AuditLog(models.Model):
 
         The entry belongs to ``company``, else the current company, else the actor's or
         the target's company (sign-in lockouts run before any company is current).
-        It moves the company's change marker (``apps.core.changes``).
         """
         company_id = getattr(company, "pk", company) or current_company_id()
         if company_id is None:
@@ -160,8 +158,7 @@ class AuditLog(models.Model):
         if target is not None:
             entry.content_type = ContentType.objects.get_for_model(target)
             entry.object_id = str(target.pk)
-        entry.save()
-        changes.mark_changed(company_id)
+        entry.save()  # apps.precompute marks what it changed (post_save)
         return entry
 
 
