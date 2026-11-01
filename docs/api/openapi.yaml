@@ -1587,7 +1587,7 @@ paths:
       description: |-
         Called by the tracker's outbox (service token), in batches of up to 500, oldest first. Each event is stored once by `event_id`; the sessions of the people in the batch are then rebuilt from every stored event in time order (`entered` opens a visit, `moved_zone` adds its zone, `left` closes it), so late, out-of-order or repeated events give the same sessions, and replaying a batch changes nothing.
 
-        Every item is counted once: `stored` (new, applied), `duplicates`, `ignored` (new and stored, but an unknown site or subject, or one of another company) and `rejected` (an item that does not match the schema: not stored, logged). Any `200` means the batch is delivered. `400` only for a body that is not `{events: [...]}` or has more than 500 events.
+        Every item is counted once: `stored` (new, applied), `duplicates`, `ignored` (new and stored, but not applied: an unknown site or subject, or one of another company; a site of an inactive company; a worker who is inactive or has tracking off; a foreman who had not accepted the notice at the event's time) and `rejected` (an item that does not match the schema: not stored, logged). Any `200` means the batch is delivered. `400` only for a body that is not `{events: [...]}` or has more than 500 events.
 
         Presence events are not attendance changes: no audit entry each.
       summary: Presence events from the tracker
@@ -5432,7 +5432,9 @@ components:
           description: Unique; stored once.
         site_id:
           type: integer
+          maximum: 9223372036854775807
           minimum: 1
+          format: int64
         subject:
           $ref: '#/components/schemas/SubjectRequest'
         type:
@@ -5492,8 +5494,10 @@ components:
             batch.
         ignored:
           type: integer
-          description: 'New, stored, but not applied: unknown site or subject (or
-            another company''s).'
+          description: 'New, stored, but not applied: an unknown site or subject (or
+            another company''s), a site of an inactive company, a worker inactive
+            or with tracking off, a foreman who had not accepted the notice at the
+            event''s time.'
         rejected:
           type: integer
           description: 'Items that do not match the schema: not stored, listed in
@@ -5727,7 +5731,9 @@ components:
           $ref: '#/components/schemas/PresenceSubjectKindEnum'
         id:
           type: integer
+          maximum: 9223372036854775807
           minimum: 1
+          format: int64
       required:
       - id
       - kind
@@ -5738,7 +5744,9 @@ components:
           $ref: '#/components/schemas/PresenceSubjectKindEnum'
         id:
           type: integer
+          maximum: 9223372036854775807
           minimum: 1
+          format: int64
       required:
       - id
       - kind

@@ -24,7 +24,7 @@ from dataclasses import dataclass
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Min
 from django.utils import timezone
@@ -130,6 +130,7 @@ def device_tracking(user) -> DeviceTracking:
     ``consent_required``. Both consent refusals carry the notice version and the
     ``TrackingTerms`` in their details, for the phone's notice.
     """
+    company_id = _company_or_refuse(user)
     sites = selectors.tracked_sites(user)
     if not sites:
         raise TrackingRefused(
@@ -137,7 +138,7 @@ def device_tracking(user) -> DeviceTracking:
             _("Tracking is not enabled for you."),
             details={"reason": "settings"},
         )
-    company = CompanySettings.load(user.company_id)
+    company = CompanySettings.load(company_id)
     terms = tracking_terms(sites, company)
     notice = {"text_version": selectors.current_text_version(), **terms.as_details()}
     state = selectors.consent_state(user)
@@ -154,7 +155,7 @@ def device_tracking(user) -> DeviceTracking:
     issued = tokens.mint(
         kind=tokens.DEVICE,
         sub=f"foreman:{user.pk}",
-        company=user.company_id,
+        company=company_id,
         sites=[site.pk for site in sites],
         travel=is_admin(user),
         lifetime=tokens.DEVICE_LIFETIME,
@@ -166,6 +167,16 @@ def device_tracking(user) -> DeviceTracking:
         sites=issued.claims["sites"],
         terms=terms,
     )
+
+
+def _company_or_refuse(user) -> int:
+    """The company ``user`` works on (``company_id_of``: a platform admin's is the one
+    they picked), else ``PermissionDenied`` (``403 permission_denied`` on the API, with
+    its usual message)."""
+    company_id = company_id_of(user)
+    if company_id is None:
+        raise PermissionDenied("Tracking needs a company.")
+    return company_id
 
 
 def mint_dashboard_token(user) -> tuple[str, datetime.datetime]:
@@ -197,8 +208,10 @@ def record_consent(
 
     An acceptance must name the current notice (``TRACKING_CONSENT_TEXT_VERSION``). A
     refusal is taken at any time, whatever version the phone shows: withdrawing consent
-    must never fail. A replay returns the original answer.
+    must never fail. A replay returns the original answer. The configs of the foreman's
+    tracked sites are pushed (their ``foremen``).
     """
+    company_id = _company_or_refuse(user)
 
     def create() -> TrackingConsent:
         current = selectors.current_text_version()
@@ -212,7 +225,7 @@ def record_consent(
                 }
             )
         consent = TrackingConsent.objects.create(
-            company_id=user.company_id,
+            company_id=company_id,
             user=user,
             accepted=accepted,
             text_version=text_version,
@@ -223,8 +236,11 @@ def record_consent(
             action=CONSENT_ACTIONS[bool(accepted)],
             target=consent,
             after={"accepted": bool(accepted), "text_version": text_version},
-            company=user.company_id,
+            company=company_id,
         )
+        # The foreman joins or leaves the ``foremen`` of their tracked sites' configs.
+        assigned = set(user.foreman_sites.values_list("pk", flat=True))
+        queue_site_push(assigned & set(selectors.company_sites_to_push(company_id)))
         return consent
 
     return run_once(
@@ -467,7 +483,7 @@ class EventIn:
 @dataclass(frozen=True)
 class IngestResult:
     """``stored``: new and applied; ``duplicates``: seen before (or twice in the batch);
-    ``ignored``: new, stored, but of an unknown site or subject; ``rejected``: invalid
+    ``ignored``: new, stored, but not applied (``_Applicability``); ``rejected``: invalid
     items, not stored. Together they count every item of the batch."""
 
     stored: int
@@ -476,13 +492,111 @@ class IngestResult:
     rejected: int = 0
 
 
+# Ids are 64-bit signed integers in the database (SQLite INTEGER, BigAutoField).
+MAX_ID = 2**63 - 1
+_EVENT_TYPES = frozenset({engine.ENTERED, engine.MOVED_ZONE, engine.LEFT})
+
+
+def _well_formed(event: EventIn) -> bool:
+    """What the serializer checks, again: a bad item must be rejected, not fail the
+    batch (an id the database cannot hold would)."""
+    return (
+        event.subject_kind in SubjectKind.values
+        and event.type in _EVENT_TYPES
+        and all(
+            isinstance(value, int) and 1 <= value <= MAX_ID
+            for value in (event.site_id, event.subject_id)
+        )
+        and isinstance(event.at, datetime.datetime)
+        and event.at.tzinfo is not None
+    )
+
+
+class _Applicability:
+    """Which new events of a batch count for the sessions (``PresenceEvent.applied``).
+
+    Not applied: an unknown site, a subject unknown or of another company, a site of an
+    inactive company; a worker who is inactive or whose ``tracking_enabled`` (company →
+    site → worker) is off; a foreman whose latest answer to the notice at the event's
+    time is not an acceptance (refused, or never accepted). Settings are read as they are
+    now; consent as it was at the event.
+    """
+
+    def __init__(self, events: list[EventIn]):
+        def ids(kind):
+            return {e.subject_id for e in events if e.subject_kind == kind}
+
+        self.sites = Site.objects.select_related("company").in_bulk({e.site_id for e in events})
+        self.workers = Worker.objects.in_bulk(ids(SubjectKind.WORKER))
+        foreman_ids = ids(SubjectKind.FOREMAN)
+        self.foremen = dict(
+            get_user_model().objects.filter(pk__in=foreman_ids).values_list("pk", "company_id")
+        )
+        self.consents: dict[int, list[tuple]] = {}
+        answers = TrackingConsent.objects.filter(user_id__in=foreman_ids).order_by("at", "pk")
+        for user_id, at, accepted, version in answers.values_list(
+            "user_id", "at", "accepted", "text_version"
+        ):
+            self.consents.setdefault(user_id, []).append((at, accepted, version))
+        self.current_version = selectors.current_text_version()
+        self._settings: dict[int, CompanySettings] = {}
+
+    def company_id(self, event: EventIn) -> int | None:
+        site = self.sites.get(event.site_id)
+        return site.company_id if site is not None else None
+
+    def applied(self, event: EventIn) -> bool:
+        site = self.sites.get(event.site_id)
+        if site is None or not site.company.is_active:
+            return False
+        if event.subject_kind == SubjectKind.WORKER:
+            worker = self.workers.get(event.subject_id)
+            return (
+                worker is not None
+                and worker.company_id == site.company_id
+                and worker.is_active
+                and bool(
+                    resolve_setting(
+                        "tracking_enabled",
+                        site=site,
+                        worker=worker,
+                        company=self._company_settings(site.company_id),
+                    )
+                )
+            )
+        if self.foremen.get(event.subject_id) != site.company_id:
+            return False
+        return self._consented(event.subject_id, event.at)
+
+    def _consented(self, user_id: int, at: datetime.datetime) -> bool:
+        """The latest answer at or before ``at`` accepts a notice no newer than the
+        current one (versions are ISO dates: they compare as text)."""
+        latest = None
+        for answer in self.consents.get(user_id, []):
+            if answer[0] > at:
+                break
+            latest = answer
+        if latest is None:
+            return False
+        _at, accepted, version = latest
+        return bool(accepted) and version <= self.current_version
+
+    def _company_settings(self, company_id: int) -> CompanySettings:
+        if company_id not in self._settings:
+            self._settings[company_id] = CompanySettings.load(company_id)
+        return self._settings[company_id]
+
+
 def ingest_events(events: Iterable[EventIn], *, rejected: int = 0) -> IngestResult:
     """Store a batch from the tracker's outbox once per ``event_id`` and rebuild the
     sessions of every person it is about. Replaying a batch changes nothing."""
     batch: dict = {}
     duplicates = 0
     for event in events:
-        if event.event_id in batch:
+        if not _well_formed(event):
+            rejected += 1
+            logger.warning("Presence: event %s of a batch rejected: malformed", event.event_id)
+        elif event.event_id in batch:
             duplicates += 1
         else:
             batch[event.event_id] = event
@@ -492,28 +606,11 @@ def ingest_events(events: Iterable[EventIn], *, rejected: int = 0) -> IngestResu
     duplicates += len(known)
     new = [event for event_id, event in batch.items() if event_id not in known]
 
-    site_company = dict(
-        Site.objects.filter(pk__in={e.site_id for e in new}).values_list("pk", "company_id")
-    )
-    owners = {
-        SubjectKind.WORKER: dict(
-            Worker.objects.filter(
-                pk__in={e.subject_id for e in new if e.subject_kind == SubjectKind.WORKER}
-            ).values_list("pk", "company_id")
-        ),
-        SubjectKind.FOREMAN: dict(
-            get_user_model()
-            .objects.filter(
-                pk__in={e.subject_id for e in new if e.subject_kind == SubjectKind.FOREMAN}
-            )
-            .values_list("pk", "company_id")
-        ),
-    }
+    rules = _Applicability(new)
     rows, ignored = [], 0
     for event in new:
-        company_id = site_company.get(event.site_id)
-        owner = owners[event.subject_kind].get(event.subject_id)
-        applied = company_id is not None and owner == company_id
+        company_id = rules.company_id(event)
+        applied = rules.applied(event)
         ignored += not applied
         rows.append(
             PresenceEvent(
@@ -554,9 +651,9 @@ def ingest_events(events: Iterable[EventIn], *, rejected: int = 0) -> IngestResu
 def rebuild_sessions(site_id: int, subject_kind: str, subject_id: int, since) -> None:
     """Recompute one person's sessions on a site from ``since`` on (``engine.fold``).
 
-    The fold starts at the latest session that began at or before ``since`` (an event
-    inside a visit can change it), else at ``since``; sessions before that cannot change.
-    Nothing is written when the result is what is stored.
+    The fold starts at a time (``_fold_start``) before which no live session can change,
+    and replaces the stored live sessions that began at or after it. Nothing is written
+    when the result is what is stored.
 
     Days the nightly reconciliation replaced (``PresenceReconciliation.replayed_windows``)
     are left out: their events are not folded and their ``replay`` sessions are kept.
@@ -567,13 +664,7 @@ def rebuild_sessions(site_id: int, subject_kind: str, subject_id: int, since) ->
         sessions = PresenceSession.objects.filter(
             site_id=site_id, subject_kind=subject_kind, subject_id=subject_id
         )
-        anchor = (
-            sessions.filter(started_at__lte=since)
-            .order_by("-started_at")
-            .values_list("started_at", flat=True)
-            .first()
-        )
-        start = min(since, anchor) if anchor is not None else since
+        start = _fold_start(sessions.filter(source=PresenceSession.Source.LIVE), since)
         events = PresenceEvent.objects.filter(
             site_id=site_id,
             subject_kind=subject_kind,
@@ -622,6 +713,32 @@ def rebuild_sessions(site_id: int, subject_kind: str, subject_id: int, since) ->
         )
 
 
+def _fold_start(sessions, since):
+    """The earliest time the events from ``since`` on can change ``sessions`` (live) from.
+
+    Folding the events at or after ``start`` gives the stored sessions that began at or
+    after it only if the fold is between visits there: the session before ``start``
+    ended before it (none of its events are at or after ``start``, even at the same
+    instant) and was closed by a ``left`` (it has a reason; a visit closed by the next
+    ``entered``, or still open, would take events of the window). Else ``start`` moves
+    back to that session's start, and again.
+    """
+    start = since
+    while True:
+        previous = (
+            sessions.filter(started_at__lt=start)
+            .order_by("-started_at", "-pk")
+            .values_list("started_at", "ended_at", "end_reason")
+            .first()
+        )
+        if previous is None:
+            return start
+        started_at, ended_at, end_reason = previous
+        if ended_at is not None and ended_at < start and end_reason:
+            return start
+        start = started_at
+
+
 def _session_key(session: PresenceSession) -> tuple:
     return (
         session.started_at,
@@ -653,8 +770,9 @@ def site_config(site: Site) -> dict:
 
     Geofence from ``checkin.SiteGeofence`` (none: gateways only); zones; gateways with a
     token that is not revoked; badges of active workers with ``tracking_enabled``
-    (company → site → worker) only; rules from the resolved settings. With tracking off
-    on the site, the lists are empty and the tracker stops ingest.
+    (company → site → worker) only; the foremen who may be tracked (``_tracked_foremen``);
+    rules from the resolved settings. With tracking off on the site, or the company
+    inactive, the lists are empty and the tracker stops ingest.
     """
     from apps.checkin.models import SiteGeofence
 
@@ -668,13 +786,14 @@ def site_config(site: Site) -> dict:
         "arrival_window_seconds": int(setting("presence_arrival_window_seconds")),
         "absence_to_leave_seconds": int(setting("presence_absence_to_leave_seconds")),
     }
-    if not setting("tracking_enabled"):
+    if not setting("tracking_enabled") or not site.company.is_active:
         return {
             "tracking_enabled": False,
             "geofence": None,
             "zones": [],
             "gateways": [],
             "badges": [],
+            "foremen": [],
             "rules": rules,
         }
     fence = SiteGeofence.objects.filter(site=site).first()
@@ -716,8 +835,25 @@ def site_config(site: Site) -> dict:
             for badge in badges
             if setting("tracking_enabled", worker=badge.worker)
         ],
+        "foremen": _tracked_foremen(site),
         "rules": rules,
     }
+
+
+def _tracked_foremen(site: Site) -> list[int]:
+    """The active foremen assigned to ``site`` whose latest answer to the notice accepts
+    the current version: the tracker drops GPS from any other foreman."""
+    foremen = list(
+        site.foremen.filter(is_active=True, company_id=site.company_id)
+        .order_by("pk")
+        .values_list("pk", flat=True)
+    )
+    latest: dict[int, tuple[bool, str]] = {}
+    answers = TrackingConsent.objects.filter(user_id__in=foremen).order_by("at", "pk")
+    for user_id, accepted, version in answers.values_list("user_id", "accepted", "text_version"):
+        latest[user_id] = (accepted, version)
+    current = selectors.current_text_version()
+    return [pk for pk in foremen if latest.get(pk) == (True, current)]
 
 
 def push_site_config(site: Site) -> bool:
@@ -770,15 +906,21 @@ def _record_push(site: Site, when, *, enabled: bool, error: str) -> None:
 
 def sites_to_resync() -> list[Site]:
     """For the periodic resync: every site of an active company that is tracked now or
-    was at its last push, or whose last push failed."""
+    was at its last push, or whose last push failed; and every site of an inactive
+    company that the tracker still has as tracked, or whose last push failed (its config
+    turns tracking off: ``site_config``)."""
     from apps.core.models import Company
 
     failed = set(TrackerSync.objects.exclude(last_error="").values_list("site_id", flat=True))
+    was_on = set(TrackerSync.objects.filter(pushed_enabled=True).values_list("site_id", flat=True))
     result = []
-    for company in Company.objects.filter(is_active=True).order_by("pk"):
-        wanted = set(selectors.company_sites_to_push(company.pk))
-        sites = Site.objects.filter(company=company).order_by("pk")
-        result.extend(site for site in sites if site.pk in wanted or site.pk in failed)
+    for company in Company.objects.order_by("pk"):
+        if company.is_active:
+            wanted = set(selectors.company_sites_to_push(company.pk)) | failed
+        else:
+            wanted = was_on | failed
+        sites = Site.objects.filter(company=company).select_related("company").order_by("pk")
+        result.extend(site for site in sites if site.pk in wanted)
     return result
 
 
@@ -800,13 +942,14 @@ def queue_site_push(site_ids: Iterable[int]) -> None:
     outside one), each site once however many changes asked for it.
 
     With a Celery broker the push is a task; without one it runs in this process after
-    the commit, and a failure is only logged (the periodic resync tries again).
+    the commit, and a failure is only logged (the periodic resync tries again). Whatever
+    goes wrong there, the change is committed: it never turns into an error (``robust``).
     """
     ids = {int(site_id) for site_id in site_ids if site_id is not None}
     if not ids:
         return
     _pending_sites().update(ids)
-    transaction.on_commit(_flush_pending)
+    transaction.on_commit(_flush_pending, robust=True)
 
 
 def _flush_pending() -> None:
@@ -814,7 +957,11 @@ def _flush_pending() -> None:
     ids = sorted(pending)
     pending.clear()
     for site_id in ids:
-        _send_push(site_id)
+        try:
+            _send_push(site_id)
+        except Exception:
+            # After the commit: log it, and push the other sites still.
+            logger.exception("Presence: config push of site %s failed", site_id)
 
 
 def _send_push(site_id: int) -> None:
@@ -884,6 +1031,10 @@ def sites_for_audit_entry(entry: AuditLog) -> set[int]:
         return {int(entry.object_id)} if _changed(entry) & TRACKING_SETTINGS else set()
     if action in {"worksites.site_create", "checkin.geofence.set", "checkin.geofence.clear"}:
         return {int(entry.object_id)} if entry.object_id else set()
+    if action == "worksites.site_update":  # its foremen may have changed (``foremen``)
+        if not entry.object_id or not entry.company_id:
+            return set()
+        return {int(entry.object_id)} & set(selectors.company_sites_to_push(entry.company_id))
     if action == "workers.update":
         if _changed(entry) & {"tracking_enabled", "is_active"} and _has_ble_badge(entry.object_id):
             return set(selectors.company_sites_to_push(entry.company_id))

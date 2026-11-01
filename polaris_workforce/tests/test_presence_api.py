@@ -12,24 +12,30 @@ What must hold:
 - Only the tracker's service token opens the ingest; the sessions are site-scoped.
 """
 
+import dataclasses
 import datetime
+import random
 import uuid
 
 import pytest
 from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
+from django.db import OperationalError
 from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework.throttling import ScopedRateThrottle
 
 from apps.core.models import AuditLog, CompanySettings
 from apps.core.tenancy import use_company
-from apps.presence import tokens
+from apps.presence import engine, services, tokens
+from apps.presence.api.serializers import PresenceEventSerializer
 from apps.presence.models import PresenceEvent, PresenceSession, TrackingConsent
 from tests.factories import (
     AdminUserFactory,
     CompanyFactory,
     ForemanDeviceFactory,
     ForemanFactory,
+    PlatformAdminFactory,
     SiteFactory,
     SiteManagerFactory,
     UserFactory,
@@ -305,6 +311,42 @@ def test_a_client_uuid_of_another_foreman_is_a_conflict(crew):
     assert response.json()["code"] == "conflict"
 
 
+def test_a_platform_admin_tracks_for_the_company_they_picked(crew):
+    admin = PlatformAdminFactory()  # a superuser of no company: signed in, no device token
+    client = APIClient()
+    client.force_login(admin)
+
+    assert accept(client).status_code == 200
+    response = client.post(TOKEN_URL)
+
+    assert response.status_code == 200
+    company_id = crew["north"].company_id
+    assert tokens.decode(response.json()["token"], audience="polaris-tracker")["company"] == (
+        company_id
+    )
+    assert TrackingConsent.objects.get(user=admin).company_id == company_id
+
+
+def test_without_a_company_token_and_consent_are_forbidden(crew, monkeypatch):
+    monkeypatch.setattr(services, "company_id_of", lambda user: None)
+
+    for response in (crew["phone"].post(TOKEN_URL), accept(crew["phone"])):
+        assert response.status_code == 403
+        assert response.json()["code"] == "permission_denied"
+    assert not TrackingConsent.objects.exists()
+
+
+def test_a_platform_admin_with_no_company_picked_is_refused(default_company):
+    admin = PlatformAdminFactory()
+    with use_company(None):
+        with pytest.raises(PermissionDenied):
+            services.device_tracking(admin)
+        with pytest.raises(PermissionDenied):
+            services.record_consent(
+                admin, client_uuid=uuid.uuid4(), accepted=True, text_version=VERSION
+            )
+
+
 # --- event ingest ------------------------------------------------------------------------------
 
 T0 = datetime.datetime(2026, 10, 31, 7, 2, 40, tzinfo=UTC)
@@ -419,7 +461,20 @@ def test_a_late_left_closes_the_open_session(crew):
     assert sessions_of(crew["north"], crew["worker"]) == EXPECTED_DAY
 
 
+def on_record(user, *, accepted=True, at=None, version=VERSION) -> TrackingConsent:
+    """An answer to the notice recorded at ``at`` (default: the day before ``T0``)."""
+    return TrackingConsent.objects.create(
+        company_id=user.company_id,
+        user=user,
+        accepted=accepted,
+        text_version=version,
+        at=at or T0 - datetime.timedelta(days=1),
+        client_uuid=uuid.uuid4(),
+    )
+
+
 def test_unknown_sites_and_subjects_are_stored_but_ignored(crew):
+    on_record(crew["foreman"])
     north = crew["north"]
     with use_company(CompanyFactory(name="Bravo")):
         stranger = WorkerFactory()
@@ -464,6 +519,270 @@ def test_a_body_without_events_is_refused(crew):
     assert response.status_code == 400
 
 
+def test_an_id_beyond_64_bits_is_rejected_not_a_server_error(crew):
+    north, who = crew["north"], ("worker", crew["worker"].pk)
+    batch = [
+        event("entered", T0, site=2**63, subject=who),
+        event("entered", T0, site=north, subject=("worker", 2**63)),
+        event("entered", T0, site=north, subject=who),
+    ]
+
+    response = tracker().post(EVENTS_URL, {"events": batch}, format="json")
+
+    assert response.status_code == 200
+    assert response.json() == {"stored": 1, "duplicates": 0, "ignored": 0, "rejected": 2}
+    assert PresenceEvent.objects.count() == 1
+
+
+def test_the_ingest_rejects_malformed_events_it_is_handed(crew):
+    """Without the serializer (a service caller): rejected, never a failed batch."""
+    good = services.EventIn(
+        event_id=uuid.uuid4(),
+        site_id=crew["north"].pk,
+        subject_kind="worker",
+        subject_id=crew["worker"].pk,
+        type="entered",
+        at=T0,
+    )
+    bad = [
+        dataclasses.replace(good, event_id=uuid.uuid4(), site_id=2**64),
+        dataclasses.replace(good, event_id=uuid.uuid4(), subject_id=0),
+        dataclasses.replace(good, event_id=uuid.uuid4(), subject_kind="robot"),
+        dataclasses.replace(good, event_id=uuid.uuid4(), type="teleported"),
+        dataclasses.replace(good, event_id=uuid.uuid4(), at=T0.replace(tzinfo=None)),
+    ]
+
+    result = services.ingest_events([*bad, good], rejected=1)
+
+    assert result == services.IngestResult(stored=1, duplicates=0, ignored=0, rejected=6)
+    assert PresenceEvent.objects.count() == 1
+
+
+def test_an_unexpected_error_on_one_item_rejects_only_that_item(crew, monkeypatch):
+    original = PresenceEventSerializer.to_event
+
+    def fragile(self):
+        if self.validated_data["zone_id"] == "boom":
+            raise ValueError("boom")
+        return original(self)
+
+    monkeypatch.setattr(PresenceEventSerializer, "to_event", fragile)
+    who = ("worker", crew["worker"].pk)
+    batch = [
+        event("entered", T0, site=crew["north"], subject=who, zone="boom"),
+        event("entered", T0, site=crew["north"], subject=who, zone="A"),
+    ]
+
+    response = tracker().post(EVENTS_URL, {"events": batch}, format="json")
+
+    assert response.status_code == 200
+    assert response.json() == {"stored": 1, "duplicates": 0, "ignored": 0, "rejected": 1}
+
+
+def test_a_database_error_still_fails_the_batch(crew, monkeypatch):
+    """A 500: the tracker keeps the batch and sends it again."""
+
+    def locked(self):
+        raise OperationalError("database is locked")
+
+    monkeypatch.setattr(PresenceEventSerializer, "to_event", locked)
+    batch = [event("entered", T0, site=crew["north"], subject=("worker", crew["worker"].pk))]
+
+    response = tracker().post(EVENTS_URL, {"events": batch}, format="json")
+
+    assert response.status_code == 500
+    assert not PresenceEvent.objects.exists()
+
+
+def test_two_lefts_at_the_same_instant_replayed_add_no_session(crew):
+    north, who = crew["north"], ("worker", crew["worker"].pk)
+    later = T0 + datetime.timedelta(minutes=30)
+    entered = event("entered", T0, site=north, subject=who)
+    lefts = [
+        event("left", later, site=north, subject=who, reason="timeout"),
+        event("left", later, site=north, subject=who, reason="left_geofence"),
+    ]
+    tracker().post(EVENTS_URL, {"events": [entered, *lefts]}, format="json")
+    before = sessions_of(north, crew["worker"])
+    assert len(before) == 2  # the visit, then the second left alone at the same instant
+
+    response = tracker().post(EVENTS_URL, {"events": lefts}, format="json")
+
+    assert response.json()["duplicates"] == 2
+    assert sessions_of(north, crew["worker"]) == before
+
+
+# --- sessions are the fold of every event, however the events arrive ---------------------------
+
+# (type, minutes after T0, zone, from_zone, reason): same instants, a left without its
+# entered, an entered while a visit is open, a left without a reason, an open visit.
+TRICKY_DAY = [
+    ("entered", 0, "A", "", ""),
+    ("moved_zone", 10, "B", "A", ""),
+    ("left", 30, "B", "", "timeout"),
+    ("left", 30, "", "", "left_geofence"),
+    ("entered", 30, "C", "", ""),
+    ("moved_zone", 30, "A", "C", ""),
+    ("left", 60, "", "", "timeout"),
+    ("entered", 90, "A", "", ""),
+    ("entered", 95, "B", "", ""),
+    ("left", 120, "", "", ""),
+    ("moved_zone", 130, "C", "B", ""),
+    ("left", 140, "", "", "timeout"),
+    ("left", 140, "", "", "timeout"),
+    ("entered", 200, "A", "", ""),
+]
+
+
+def random_day(rng: random.Random) -> list[tuple]:
+    """A few events on a coarse clock, so that many share an instant."""
+    day = []
+    for _ in range(rng.randint(1, 12)):
+        kind = rng.choice(["entered", "moved_zone", "left"])
+        reason = rng.choice(["timeout", "left_geofence", ""]) if kind == "left" else ""
+        day.append((kind, rng.choice(range(0, 90, 15)), rng.choice("AB "), "A", reason))
+    return day
+
+
+def as_events(rng: random.Random, day, site, worker) -> list[services.EventIn]:
+    return [
+        services.EventIn(
+            event_id=uuid.UUID(int=rng.getrandbits(128), version=4),
+            site_id=site.pk,
+            subject_kind="worker",
+            subject_id=worker.pk,
+            type=kind,
+            at=T0 + datetime.timedelta(minutes=minutes),
+            zone=zone.strip(),
+            from_zone=from_zone if kind == "moved_zone" else "",
+            reason=reason,
+        )
+        for kind, minutes, zone, from_zone, reason in day
+    ]
+
+
+def stored_sessions(site, worker) -> list[tuple]:
+    rows = PresenceSession.objects.filter(
+        site=site, subject_kind="worker", subject_id=worker.pk
+    ).order_by("started_at", "pk")
+    return [
+        (s.started_at, s.ended_at, s.end_reason, tuple(s.zones), s.last_event_at, s.event_count)
+        for s in rows
+    ]
+
+
+def folded(events) -> list[tuple]:
+    return [
+        visit.key()
+        for visit in engine.fold(
+            engine.Event(str(e.event_id), e.type, e.at, e.zone, e.from_zone, e.reason)
+            for e in events
+        )
+    ]
+
+
+@pytest.mark.parametrize("seed", range(30))
+def test_any_order_split_and_replay_gives_the_fold_of_all_events(crew, seed):
+    rng = random.Random(seed)
+    site, worker = crew["north"], crew["worker"]
+    day = TRICKY_DAY if seed % 3 == 0 else random_day(rng)
+    events = as_events(rng, day, site, worker)
+    pending = rng.sample(events, len(events))
+    sent: list[services.EventIn] = []
+    while pending:
+        size = rng.randint(1, 4)
+        batch, pending = pending[:size], pending[size:]
+        services.ingest_events(batch)
+        sent.extend(batch)
+        assert stored_sessions(site, worker) == folded(sent), (seed, len(sent))
+        if rng.random() < 0.5:  # the tracker sends part of what it sent again
+            services.ingest_events(rng.sample(sent, rng.randint(1, len(sent))))
+            assert stored_sessions(site, worker) == folded(sent), (seed, "replay")
+
+    services.ingest_events(events)
+
+    assert stored_sessions(site, worker) == folded(events)
+
+
+# --- which events count: consent, tracking switched off, an inactive company --------------------
+
+
+def test_foreman_events_count_only_while_the_notice_is_accepted(crew):
+    foreman, north = crew["foreman"], crew["north"]
+    hour = datetime.timedelta(hours=1)
+    on_record(foreman, at=T0 - hour)
+    on_record(foreman, accepted=False, at=T0 + 2 * hour)  # withdrawn
+    who = ("foreman", foreman.pk)
+    batch = [
+        event("entered", T0, site=north, subject=who),
+        event("entered", T0 + 3 * hour, site=north, subject=who),
+    ]
+
+    response = tracker().post(EVENTS_URL, {"events": batch}, format="json")
+
+    assert response.json() == {"stored": 1, "duplicates": 0, "ignored": 1, "rejected": 0}
+    assert PresenceEvent.objects.get(at=T0).applied is True
+    assert PresenceEvent.objects.get(at=T0 + 3 * hour).applied is False
+    assert list(PresenceSession.objects.values_list("started_at", flat=True)) == [T0]
+
+
+@pytest.mark.parametrize(
+    ("answers", "applied"),
+    [
+        ([], False),  # never answered
+        ([(False, VERSION)], False),  # refused
+        ([(True, "2025-01-01")], True),  # an older notice accepted: still consent
+        ([(True, "2027-01-01")], False),  # a notice newer than the current one
+    ],
+)
+def test_a_foreman_event_needs_an_acceptance_before_it(crew, answers, applied):
+    for accepted, version in answers:
+        on_record(crew["foreman"], accepted=accepted, version=version)
+    on_record(crew["foreman"], at=T0 + datetime.timedelta(minutes=1))  # too late for it
+    batch = [event("entered", T0, site=crew["north"], subject=("foreman", crew["foreman"].pk))]
+
+    tracker().post(EVENTS_URL, {"events": batch}, format="json")
+
+    assert PresenceEvent.objects.get().applied is applied
+
+
+def test_worker_events_count_only_while_tracking_is_on_for_them(crew):
+    north, off = crew["north"], crew["off"]
+    switched_off = WorkerFactory(tracking_enabled=False)
+    gone = WorkerFactory(is_active=False)
+    switched_on = WorkerFactory(tracking_enabled=True)  # on, whatever the site says
+    batch = [
+        event("entered", T0, site=north, subject=("worker", crew["worker"].pk)),
+        event("entered", T0, site=north, subject=("worker", switched_off.pk)),
+        event("entered", T0, site=north, subject=("worker", gone.pk)),
+        event("entered", T0, site=off, subject=("worker", crew["worker"].pk)),
+        event("entered", T0, site=off, subject=("worker", switched_on.pk)),
+    ]
+
+    response = tracker().post(EVENTS_URL, {"events": batch}, format="json")
+
+    assert response.json() == {"stored": 2, "duplicates": 0, "ignored": 3, "rejected": 0}
+    applied = PresenceEvent.objects.filter(applied=True).values_list("site_id", "subject_id")
+    assert sorted(applied) == sorted([(north.pk, crew["worker"].pk), (off.pk, switched_on.pk)])
+
+
+def test_events_of_an_inactive_company_are_stored_but_not_applied(crew):
+    on_record(crew["foreman"])
+    company = crew["north"].company
+    company.is_active = False
+    company.save()
+    batch = [
+        event("entered", T0, site=crew["north"], subject=("worker", crew["worker"].pk)),
+        event("entered", T0, site=crew["north"], subject=("foreman", crew["foreman"].pk)),
+    ]
+
+    response = tracker().post(EVENTS_URL, {"events": batch}, format="json")
+
+    assert response.json() == {"stored": 0, "duplicates": 0, "ignored": 2, "rejected": 0}
+    assert set(PresenceEvent.objects.values_list("company_id", flat=True)) == {company.pk}
+    assert not PresenceSession.objects.exists()
+
+
 @pytest.mark.parametrize("who", ["nobody", "device", "session", "dashboard", "expired", "long"])
 def test_only_the_tracker_service_token_opens_the_ingest(crew, who):
     batch = {"events": a_day(crew["north"], crew["worker"])}
@@ -504,6 +823,7 @@ def sessions_url(site, date="2026-10-31"):
 
 
 def test_a_site_day_folds_each_person_s_visits(crew):
+    on_record(crew["foreman"])
     north = crew["north"]
     batch = a_day(north, crew["worker"])
     batch.append(
