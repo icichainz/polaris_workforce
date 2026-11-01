@@ -501,6 +501,7 @@ def _form_fields(form) -> dict:
         "id_document_number": data["id_document_number"],
         "payment_method": data["payment_method"],
         "pay_frequency": data["pay_frequency"],
+        "tracking_enabled": data.get("tracking_enabled"),
         "emergency_contact_name": data["emergency_contact_name"],
         "emergency_contact_relationship": data["emergency_contact_relationship"],
         "emergency_contact_phone": data["emergency_contact_phone"],

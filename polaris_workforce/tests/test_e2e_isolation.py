@@ -219,6 +219,11 @@ API = {
     "api:office:worker": "b_get",
     "api:office:decision-preview": "b_post",
     "api:office:decisions": "b_post (confirmation of a site-B preview)",
+    # Presence tracking (test_presence_api: scoping, consent, the tracker's service token)
+    "api:presence:tracking-token": "list",  # your own sites only
+    "api:presence:tracking-consent": "own",
+    "api:presence:events": "tracker service token only",
+    "api:presence:site-sessions": "b_get",
 }
 JPEG = b"\xff\xd8\xff\xe0" + b"0" * 64
 PDF = b"%PDF-1.4\n" + b"0" * 64
@@ -669,6 +674,7 @@ def _api_b_calls(ids):
         ("get", f"/api/v1/sites/{site}/checkin-setup/", {}),
         ("get", f"/api/v1/sites/{site}/checkins/{pending}/", {}),
         ("get", f"/api/v1/sites/{site}/days/{pending}/suggestions/", {}),
+        ("get", f"/api/v1/sites/{site}/presence-sessions/?date={pending}", {}),
     ]
 
 

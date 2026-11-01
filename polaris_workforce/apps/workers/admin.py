@@ -56,7 +56,10 @@ class WorkerAdmin(AuditedAdmin):
         (_("Status"), {"fields": ("is_active",)}),
         (
             _("Setting overrides (empty = site or company setting)"),
-            {"classes": ("collapse",), "fields": ("payment_method", "pay_frequency")},
+            {
+                "classes": ("collapse",),
+                "fields": ("payment_method", "pay_frequency", "tracking_enabled"),
+            },
         ),
     )
 

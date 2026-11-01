@@ -1,15 +1,17 @@
 openapi: 3.1.0
 info:
   title: Polaris Workforce API — presence additions
-  version: 0.1.0
-  summary: Django endpoints for presence tracking (new `presence` app).
+  version: 1.4.0
+  summary: Django endpoints for presence tracking (the `presence` app).
   description: |
-    The Django side of presence tracking. Design: `docs/presence-tracking.md`. The tracker
-    service's own API is in `docs/api/tracker-openapi.yaml`.
+    The Django side of presence tracking. Design: `docs/presence-tracking.md` (where it
+    differs, `docs/implementation-plan.md` §14 wins). The tracker service's own API is in
+    `docs/api/tracker-openapi.yaml`.
 
-    **Status: contract, not implemented.** Brief P2 builds these in `apps/presence/api/`.
-    The API owner merges this file into `docs/api/openapi.yaml` once F3 has landed; until
-    then it lives here so the Wave 1 contract file is not touched.
+    **Status: implemented** in `polaris_workforce/apps/presence/` (brief P2+P3) and merged
+    into `docs/api/openapi.yaml` (contract 1.4.0), which drf-spectacular generates from the
+    code and is the source of truth. This file is the readable summary of the four
+    endpoints, kept in step with it.
 
     Conventions are those of the foreman API (`/api/v1/`, trailing slashes, error shape
     `{"code", "message", "details"}`, site scoping on every endpoint).
@@ -17,37 +19,80 @@ info:
     **Authentication**
 
     - `deviceToken`: `Authorization: Device <token>`, the foreman phone's token from
-      `POST /auth/pin` (agent A).
+      `POST /auth/pin/`.
     - `trackerService`: `Authorization: Bearer <jwt>`, a JWT (HS256) minted by the
       tracker with the shared secret `TRACKER_SHARED_SECRET`: `kind = "service"`,
-      `sub = "service:tracker"`, `aud = "polaris-django"`, `exp` at most 5 minutes ahead.
+      `sub = "service:tracker"`, `aud = "polaris-django"`, `exp` at most 5 minutes ahead
+      (60 s of clock skew accepted). Only `POST /presence/events/` takes it.
+
+    **Tokens (claims v2, §14).** Django issues every token the tracker accepts, HS256,
+    header `{"alg":"HS256","typ":"JWT"}`, compact JSON, base64url without padding:
+
+    ```
+    { "sub", "kind": "device|gateway|dashboard|service",
+      "company": <id>,           // every kind except service
+      "sites": [<site id>, ...], // always explicit: an admin gets the company's sites
+      "travel": true|false,      // off-site track points: company admins only
+      "aud": "polaris-tracker", "exp": <unix seconds> }
+    ```
+
+    | kind | sub | issued by | lifetime | sites |
+    | --- | --- | --- | --- | --- |
+    | `device` | `foreman:<user id>` | `POST /tracking/token/` | 12 h | the user's sites with tracking on |
+    | `dashboard` | `user:<user id>` | `presence.services.mint_dashboard_token` (office page) | 1 h | the user's sites with tracking on |
+    | `gateway` | `gateway:gw-<id>-<generation>` | `presence.services.issue_gateway_token` | 1 year | the gateway's site |
+    | `service` | `service:django` | each config push | 5 min | `[]` (no `company`) |
+
+    A gateway's id in the site config is `gw-<id>-<generation>`: issuing a new token
+    raises the generation, so an older token stops matching any configured gateway.
+
+    **Foremen and `tracking_enabled`.** A foreman is a user, not a worker: the
+    worker-level setting does not apply. Their sites come from the company → site setting;
+    their own switch is their answer to the tracking notice (consent).
+
+    **BLE badge ids** are opaque strings of at most 64 characters, stored and pushed to
+    the tracker (site config `badges[].badge_id`) trimmed and lower-case, e.g. the phone's
+    iBeacon form `ib:f7826da6-4fa2-4e98-8024-bc5b71e0893e:100:7`
+    (`ib:<uuid>:<major>:<minor>`, decimal). One holder at a time per company.
   license:
     name: Proprietary
 servers:
   - url: http://127.0.0.1:8000/api/v1
     description: Local development
 tags:
-  - name: Tracking tokens
-  - name: Presence
+  - name: presence
 
 paths:
   /tracking/token/:
     post:
-      tags: [Tracking tokens]
-      operationId: createTrackingToken
+      tags: [presence]
+      operationId: tracking_token
       summary: Get a tracker token for this foreman's phone
       description: |
-        Issues a `device` JWT for the tracker: `sub = "foreman:<user id>"`,
-        `sites` = the foreman's assigned sites where `tracking_enabled` resolves to true,
-        `aud = "polaris-tracker"`, lifetime 12 hours. The phone calls this after PIN
-        sign-in and again before `expires_at`.
+        Issues a `device` JWT (claims v2): `sub = "foreman:<user id>"`, `company`, `sites` =
+        the foreman's assigned sites where `tracking_enabled` resolves on, `travel` (true
+        for company admins), `aud = "polaris-tracker"`, 12 hours. The phone calls this
+        after PIN sign-in and again before `expires_at`. Foremen (and admins) only.
 
-        Returns `403 tracking_disabled` when tracking is off for this foreman (worker-level
-        setting) or for all of their sites, so the app shows no tracking UI.
+        `settings` are resolved over the token's sites: the shortest
+        `foreman_gps_interval_seconds`, the earliest `tracking_start` and the latest
+        `tracking_end` (company time zone), and `retention_days` (`track_retention_days`).
 
-        Dashboard tokens (`kind = "dashboard"`, 1 hour) are not issued here: Django renders
-        them into the office page for the signed-in user, with that user's scoped sites
-        (`all_sites` for admins).
+        `403` refusals, checked in this order:
+
+        1. `tracking_disabled`, `details.reason = "settings"`: tracking is off on all of the
+           foreman's sites. Show no tracking UI.
+        2. `tracking_disabled`, `details.reason = "consent_refused"`: the foreman's latest
+           answer is a refusal. `POST /tracking/consent/` with `accepted: true` turns it on.
+        3. `consent_required`: no answer yet, or the accepted notice is not the current one
+           (`TRACKING_CONSENT_TEXT_VERSION`, today `2026-11-01`). Show the consent screen
+           whenever this comes back, then `POST /tracking/consent/`.
+
+        Both consent refusals (2 and 3) carry what the notice shows in `details`:
+        `text_version`, `tracking_hours {start, end}`, `gps_interval_seconds` and
+        `retention_days`, resolved like `settings`.
+
+        Throttled per user (`tracking` scope, 30/minute, shared with the consent endpoint).
       security:
         - deviceToken: []
       responses:
@@ -58,8 +103,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/TrackingToken"
               example:
-                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmb3JlbWFuOjUiLCJraW5kIjoiZGV2aWNlIiwic2l0ZXMiOlszXSwiYWxsX3NpdGVzIjpmYWxzZSwiYXVkIjoicG9sYXJpcy10cmFja2VyIiwiZXhwIjoxNzkzNDQ1MjAwfQ.c2lnbmF0dXJl
-                expires_at: "2026-10-31T19:00:00Z"
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmb3JlbWFuOjciLCJraW5kIjoiZGV2aWNlIiwiY29tcGFueSI6MSwic2l0ZXMiOlszXSwidHJhdmVsIjpmYWxzZSwiYXVkIjoicG9sYXJpcy10cmFja2VyIiwiZXhwIjoxNzkzNDY4MDAwfQ.c2lnbmF0dXJl
+                expires_at: "2026-10-31T18:00:00Z"
                 tracker_url: https://tracker.example.com
                 sites: [3]
                 settings:
@@ -67,36 +112,130 @@ paths:
                   tracking_hours:
                     start: "06:00"
                     end: "19:00"
+                  retention_days: 30
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
-          description: Tracking is off for this foreman or all of their sites.
+          description: Tracking is off, the notice was refused, or it must be accepted first.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+              examples:
+                trackingOff:
+                  value:
+                    code: tracking_disabled
+                    message: Tracking is not enabled for you.
+                    details: { reason: settings }
+                consentRefused:
+                  value:
+                    code: tracking_disabled
+                    message: You declined tracking. Accept the notice to turn it on.
+                    details:
+                      reason: consent_refused
+                      text_version: "2026-11-01"
+                      tracking_hours: { start: "06:00", end: "19:00" }
+                      gps_interval_seconds: 60
+                      retention_days: 30
+                consentRequired:
+                  value:
+                    code: consent_required
+                    message: Accept the tracking notice first.
+                    details:
+                      text_version: "2026-11-01"
+                      tracking_hours: { start: "06:00", end: "19:00" }
+                      gps_interval_seconds: 60
+                      retention_days: 30
+        "429":
+          $ref: "#/components/responses/Throttled"
+
+  /tracking/consent/:
+    post:
+      tags: [presence]
+      operationId: tracking_consent
+      summary: Accept or refuse the tracking notice
+      description: |
+        The foreman's answer to the notice shown on the phone. The latest answer counts:
+        accepting the current version opens `POST /tracking/token/`; refusing, or
+        withdrawing an earlier acceptance, is recorded too and makes it answer
+        `403 tracking_disabled` (`reason: consent_refused`) until an acceptance. Each new
+        answer writes an `AuditLog` entry (`presence.consent.accept` /
+        `presence.consent.refuse`).
+
+        `accepted: false` (refusal or withdrawal) is taken at any time, whatever
+        `text_version` it names. `accepted: true` must name the current notice
+        (`TRACKING_CONSENT_TEXT_VERSION`, today `2026-11-01`, also in
+        `details.text_version` of `consent_required`), else `400 validation_error` on
+        `text_version`.
+
+        Idempotent by `client_uuid`: a repeat returns the original answer with `200` and
+        `Idempotent-Replayed: true`; a `client_uuid` already used by another user is
+        `409 conflict`.
+      security:
+        - deviceToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client_uuid, accepted, text_version]
+              properties:
+                client_uuid:
+                  type: string
+                  format: uuid
+                accepted:
+                  type: boolean
+                text_version:
+                  type: string
+                  maxLength: 32
+            example:
+              client_uuid: 0d9b6f3e-7a7c-4f43-9c1e-5b0a4d6f2e11
+              accepted: true
+              text_version: "2026-11-01"
+      responses:
+        "200":
+          description: The answer as recorded (the original one for a repeat).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Consent"
               example:
-                code: tracking_disabled
-                message: Tracking is not enabled for you.
-                details: {}
+                accepted: true
+                at: "2026-10-31T06:01:12Z"
+                text_version: "2026-11-01"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/PermissionDenied"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/Throttled"
 
   /presence/events/:
     post:
-      tags: [Presence]
-      operationId: ingestPresenceEvents
+      tags: [presence]
+      operationId: presence_events
       summary: Presence events from the tracker
       description: |
-        Called by the tracker's outbox, in batches of up to 500, oldest first. Stores each
-        event idempotently by `event_id` (unique constraint) and updates
-        `PresenceSession`s: `entered` opens a session, `moved_zone` adds the zone to it,
-        `left` closes it.
+        Called by the tracker's outbox, in batches of up to 500, oldest first (JSON only).
+        Each event is stored once by `event_id` (unique). Then the `PresenceSession`s of
+        every person in the batch are rebuilt from all their stored events in time order
+        (`entered` < `moved_zone` < `left` at the same instant): `entered` opens a visit,
+        `moved_zone` adds its zones, `left` closes it. So late, out-of-order or repeated
+        events give the same sessions, and replaying a batch changes nothing.
 
-        Events for unknown sites or subjects are stored and counted in `ignored` (they
-        must not block the tracker's queue). Any 2xx tells the tracker the batch is
-        delivered; anything else makes it retry the same batch.
+        Every item is counted once: `stored` (new and applied), `duplicates` (stored
+        before, or twice in the batch), `ignored` (new and stored but not applied: an
+        unknown site or subject, or a subject of another company than the site's) and
+        `rejected` (an item that does not match the schema: not stored, logged). Any `200`
+        tells the tracker the batch is delivered; one bad item never blocks its queue.
+        `400` only when the body is not `{events: [...]}` or has more than 500 events.
 
-        Presence events are not attendance changes and do not write an `AuditLog` entry
-        each (the audit happens when a suggestion is accepted into the roll call).
+        Presence events are not attendance changes and write no `AuditLog` entry each.
       security:
         - trackerService: []
       requestBody:
@@ -116,7 +255,7 @@ paths:
               events:
                 - event_id: 1b4e28ba-2fa1-41d2-883f-0016d3cca427
                   site_id: 3
-                  subject: { kind: worker, id: 12 }
+                  subject: { kind: worker, id: 63 }
                   type: entered
                   at: "2026-10-31T07:02:40Z"
                   zone_id: A
@@ -124,7 +263,7 @@ paths:
                   reason: null
                 - event_id: 6fa459ea-ee8a-4ca4-894e-db77e160355e
                   site_id: 3
-                  subject: { kind: worker, id: 12 }
+                  subject: { kind: worker, id: 63 }
                   type: moved_zone
                   at: "2026-10-31T07:10:05Z"
                   zone_id: B
@@ -132,7 +271,7 @@ paths:
                   reason: null
                 - event_id: 0b8ae8a3-50d6-4d3c-a3f0-5b0d2b8c6c41
                   site_id: 3
-                  subject: { kind: worker, id: 12 }
+                  subject: { kind: worker, id: 63 }
                   type: left
                   at: "2026-10-31T16:48:21Z"
                   zone_id: B
@@ -140,25 +279,26 @@ paths:
                   reason: timeout
       responses:
         "200":
-          description: Batch stored.
+          description: Batch delivered.
           content:
             application/json:
               schema:
                 type: object
-                required: [stored, duplicates, ignored]
+                required: [stored, duplicates, ignored, rejected]
                 properties:
                   stored:
                     type: integer
                   duplicates:
                     type: integer
-                    description: Already stored earlier (same `event_id`).
                   ignored:
                     type: integer
-                    description: Stored but not applied (unknown site or subject).
+                  rejected:
+                    type: integer
               example:
                 stored: 3
                 duplicates: 0
                 ignored: 0
+                rejected: 0
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -166,17 +306,20 @@ paths:
 
   /sites/{site_id}/presence-sessions/:
     get:
-      tags: [Presence]
-      operationId: listPresenceSessions
-      summary: Presence sessions for a day (roll-call suggestions)
+      tags: [presence]
+      operationId: site_presence_sessions
+      summary: Presence sessions of a site for a day
       description: |
         For the roll call and the approvals screen: one row per person seen on the site
-        that day, with first and last sighting and the zones visited. Site-scoped like
-        every endpoint. The phone shows "seen 07:02–16:48, zone B" next to each worker;
-        accepting it writes the attendance record through the normal upsert (with its own
-        `client_uuid` and `AuditLog` entry).
+        that day (visits started that day, company time zone), first arrival first, with
+        the first and last sighting and the zones visited. `open` rows have no
+        `last_seen_at`: the person is still on site. The phone shows "seen 07:02–16:48,
+        zone B" next to each worker; accepting it writes the attendance record through the
+        normal upsert (its own `client_uuid` and `AuditLog` entry). Presence never marks
+        attendance.
 
-        `open` sessions have no `last_seen_at` yet when the person is still on site.
+        Site-scoped like every endpoint: a site the user may not see (another foreman's,
+        another company's, or one that does not exist) is `403 permission_denied`.
       security:
         - deviceToken: []
       parameters:
@@ -188,7 +331,7 @@ paths:
         - name: date
           in: query
           required: true
-          description: Local date in the site's time zone.
+          description: Local date in the company time zone.
           schema:
             type: string
             format: date
@@ -214,30 +357,24 @@ paths:
                 site_id: 3
                 date: "2026-10-31"
                 sessions:
-                  - subject: { kind: worker, id: 12 }
+                  - subject: { kind: worker, id: 63 }
                     first_seen_at: "2026-10-31T07:02:40Z"
                     last_seen_at: "2026-10-31T16:48:21Z"
                     open: false
                     zones: [A, B]
                     visits: 1
-                  - subject: { kind: worker, id: 31 }
+                  - subject: { kind: worker, id: 58 }
                     first_seen_at: "2026-10-31T07:31:10Z"
                     last_seen_at: null
                     open: true
                     zones: [A]
                     visits: 2
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
-          description: The site is not assigned to this foreman.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-              example:
-                code: site_not_allowed
-                message: You are not assigned to this site.
-                details: {}
+          $ref: "#/components/responses/PermissionDenied"
 
 components:
   securitySchemes:
@@ -245,11 +382,11 @@ components:
       type: apiKey
       in: header
       name: Authorization
-      description: "`Device <token>` from `POST /auth/pin`."
+      description: "`Device <token>` from `POST /auth/pin/`."
     trackerService:
       type: http
       scheme: bearer
-      bearerFormat: JWT (HS256), kind=service, aud=polaris-django
+      bearerFormat: JWT (HS256), kind=service, sub=service:tracker, aud=polaris-django
 
   schemas:
     TrackingToken:
@@ -264,8 +401,7 @@ components:
           format: date-time
         tracker_url:
           type: string
-          format: uri
-          description: Base URL of the tracker service.
+          description: Base URL of the tracker (`TRACKER_PUBLIC_URL`).
         sites:
           type: array
           items:
@@ -273,12 +409,13 @@ components:
           description: Sites the token covers (same as its `sites` claim).
         settings:
           type: object
-          description: Resolved settings the phone needs to collect data.
-          required: [gps_interval_seconds, tracking_hours]
+          required: [gps_interval_seconds, tracking_hours, retention_days]
           properties:
             gps_interval_seconds:
               type: integer
-              description: Setting `foreman_gps_interval_seconds`.
+            retention_days:
+              type: integer
+              description: Setting `track_retention_days` (raw positions are deleted after it).
             tracking_hours:
               type: object
               required: [start, end]
@@ -290,6 +427,19 @@ components:
                   type: string
                   example: "19:00"
 
+    Consent:
+      type: object
+      required: [accepted, at, text_version]
+      properties:
+        accepted:
+          type: boolean
+        at:
+          type: string
+          format: date-time
+          description: When the server recorded the answer.
+        text_version:
+          type: string
+
     Subject:
       type: object
       required: [kind, id]
@@ -299,6 +449,7 @@ components:
           enum: [worker, foreman]
         id:
           type: integer
+          description: "`Worker` id, or the foreman's user id."
 
     PresenceEvent:
       description: Same shape as `PresenceEvent` in `tracker-openapi.yaml`.
@@ -320,8 +471,10 @@ components:
           format: date-time
         zone_id:
           type: [string, "null"]
+          maxLength: 64
         from_zone_id:
           type: [string, "null"]
+          maxLength: 64
         reason:
           type: [string, "null"]
           enum: [timeout, left_geofence, null]
@@ -344,10 +497,10 @@ components:
           type: array
           items:
             type: string
-          description: Zones visited, in order of first visit.
+          description: Zone codes visited, in order of first visit.
         visits:
           type: integer
-          description: Separate entered/left visits that day.
+          description: Separate entered → left visits that day.
 
     Error:
       type: object
@@ -362,15 +515,15 @@ components:
 
   responses:
     BadRequest:
-      description: The body does not match the schema.
+      description: The request is invalid; `details` maps each field to its errors.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
           example:
-            code: invalid_body
-            message: The body does not match the schema.
-            details: {}
+            code: validation_error
+            message: Invalid input.
+            details: { events: ["Ensure this field has no more than 500 elements."] }
     Unauthenticated:
       description: Missing, invalid or expired credentials.
       content:
@@ -378,6 +531,36 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
           example:
-            code: unauthenticated
+            code: not_authenticated
             message: Authentication credentials were not provided.
             details: {}
+    PermissionDenied:
+      description: Signed in, but not allowed (not a foreman, or a site you are not on).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: permission_denied
+            message: You do not have permission to perform this action.
+            details: {}
+    Conflict:
+      description: The `client_uuid` was already used by another user.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: conflict
+            message: This client_uuid was already used for a different request.
+            details: { client_uuid: 0d9b6f3e-7a7c-4f43-9c1e-5b0a4d6f2e11 }
+    Throttled:
+      description: Too many requests; wait `details.retry_after` seconds.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: throttled
+            message: Request was throttled. Expected available in 42 seconds.
+            details: { retry_after: 42 }

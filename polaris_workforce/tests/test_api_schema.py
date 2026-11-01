@@ -45,6 +45,11 @@ EXPECTED_OPERATIONS = {
     ("get", "/api/v1/office/workers/{worker_id}/"),
     ("post", "/api/v1/office/days/{day_id}/decision-preview/"),
     ("post", "/api/v1/office/decisions/"),
+    # Presence tracking (contract 1.4, agent P2)
+    ("post", "/api/v1/tracking/token/"),
+    ("post", "/api/v1/tracking/consent/"),
+    ("post", "/api/v1/presence/events/"),
+    ("get", "/api/v1/sites/{site_id}/presence-sessions/"),
 }
 
 
@@ -74,7 +79,7 @@ def test_health_endpoint_still_works(client):
 def test_schema_is_valid_openapi(schema):
     validate_schema(schema)
     assert schema["info"]["title"] == "Polaris Workforce API"
-    assert schema["info"]["version"] == "1.3.0"
+    assert schema["info"]["version"] == "1.4.0"
 
 
 def test_schema_has_every_foreman_endpoint(schema):
@@ -121,6 +126,16 @@ def test_office_endpoints_take_only_agent_tokens(schema):
             assert agent == path.startswith("/api/v1/office/"), path
             if agent:
                 assert operation["security"] == [{"AgentToken": []}], path
+
+
+def test_presence_ingest_takes_only_the_tracker_service_token(schema):
+    assert schema["components"]["securitySchemes"]["TrackerService"]["scheme"] == "bearer"
+    for path, item in schema["paths"].items():
+        for operation in item.values():
+            service = {"TrackerService": []} in operation.get("security", [])
+            assert service == (path == "/api/v1/presence/events/"), path
+            if service:
+                assert operation["security"] == [{"TrackerService": []}], path
 
 
 def test_money_fields_are_integers(schema):

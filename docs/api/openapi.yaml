@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Polaris Workforce API
-  version: 1.3.0
+  version: 1.4.0
   description: |-
     Foreman phone API: PIN sign-in, crew lists, roll call, corrections, sync and cash payouts. Authenticate with `Authorization: Device <token>` from `POST /api/v1/auth/pin/`. Errors are `{code, message, details}`. Every phone write carries a `client_uuid` and is idempotent. Money is an integer in the currency's smallest unit, next to a `currency {code, decimals}` object. Dates are ISO 8601, times `HH:MM`. Conventions: docs/api/README.md.
 
@@ -1581,6 +1581,109 @@ paths:
                   summary: Period locked
           description: 'Locked: the day or pay period is locked, or the device is
             locked after failed PINs.'
+  /api/v1/presence/events/:
+    post:
+      operationId: presence_events
+      description: |-
+        Called by the tracker's outbox (service token), in batches of up to 500, oldest first. Each event is stored once by `event_id`; the sessions of the people in the batch are then rebuilt from every stored event in time order (`entered` opens a visit, `moved_zone` adds its zone, `left` closes it), so late, out-of-order or repeated events give the same sessions, and replaying a batch changes nothing.
+
+        Every item is counted once: `stored` (new, applied), `duplicates`, `ignored` (new and stored, but an unknown site or subject, or one of another company) and `rejected` (an item that does not match the schema: not stored, logged). Any `200` means the batch is delivered. `400` only for a body that is not `{events: [...]}` or has more than 500 events.
+
+        Presence events are not attendance changes: no audit entry each.
+      summary: Presence events from the tracker
+      tags:
+      - presence
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresenceEventBatchRequest'
+            examples:
+              Batch:
+                value:
+                  events:
+                  - event_id: 1b4e28ba-2fa1-41d2-883f-0016d3cca427
+                    site_id: 3
+                    subject:
+                      kind: worker
+                      id: 63
+                    type: entered
+                    at: '2026-10-31T07:02:40Z'
+                    zone_id: A
+                    from_zone_id: null
+                    reason: null
+                  - event_id: 6fa459ea-ee8a-4ca4-894e-db77e160355e
+                    site_id: 3
+                    subject:
+                      kind: worker
+                      id: 63
+                    type: moved_zone
+                    at: '2026-10-31T07:10:05Z'
+                    zone_id: B
+                    from_zone_id: A
+                    reason: null
+                  - event_id: 0b8ae8a3-50d6-4d3c-a3f0-5b0d2b8c6c41
+                    site_id: 3
+                    subject:
+                      kind: worker
+                      id: 63
+                    type: left
+                    at: '2026-10-31T16:48:21Z'
+                    zone_id: B
+                    from_zone_id: null
+                    reason: timeout
+        required: true
+      security:
+      - TrackerService: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresenceIngestResult'
+              examples:
+                Stored:
+                  value:
+                    stored: 3
+                    duplicates: 0
+                    ignored: 0
+                    rejected: 0
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                TooManyEvents:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      events:
+                      - Ensure this field has no more than 500 elements.
+                  summary: Too many events
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NoToken:
+                  value:
+                    code: not_authenticated
+                    message: Authentication credentials were not provided.
+                    details: {}
+                  summary: No token
+                BadToken:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or expired tracker service token.
+                    details: {}
+                  summary: Bad token
+          description: No service token, or one that is invalid, expired, not the
+            tracker's or valid for more than 5 minutes.
   /api/v1/records/{record_id}/corrections/:
     post:
       operationId: record_correction
@@ -3166,6 +3269,115 @@ paths:
                     details: {}
                   summary: not_found
           description: The resource does not exist.
+  /api/v1/sites/{site_id}/presence-sessions/:
+    get:
+      operationId: site_presence_sessions
+      description: |-
+        For the roll call and the approvals screen: one row per person seen on the site that day (visits started that day, company time zone), first arrival first, with the first and last sighting and the zones visited. `open` rows have no `last_seen_at`: the person is still on site. The phone shows "seen 07:02–16:48, zone B" next to the worker; accepting it goes through the normal records upsert (its own `client_uuid` and audit entry). Presence never marks attendance.
+
+        Site-scoped like every endpoint: a site you are not assigned to is `403`.
+      summary: Presence sessions of a site for a day
+      parameters:
+      - in: query
+        name: date
+        schema:
+          type: string
+        description: Work day, ISO 8601 `YYYY-MM-DD`, in the company time zone.
+        required: true
+      - in: path
+        name: site_id
+        schema:
+          type: integer
+        description: A site the signed-in foreman is assigned to (from `GET /me/`).
+        required: true
+      tags:
+      - presence
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SitePresenceSessions'
+              examples:
+                Sessions:
+                  value:
+                    site_id: 3
+                    date: '2026-10-31'
+                    sessions:
+                    - subject:
+                        kind: worker
+                        id: 63
+                      first_seen_at: '2026-10-31T07:02:40Z'
+                      last_seen_at: '2026-10-31T16:48:21Z'
+                      open: false
+                      zones:
+                      - A
+                      - B
+                      visits: 1
+                    - subject:
+                        kind: foreman
+                        id: 7
+                      first_seen_at: '2026-10-31T07:05:00Z'
+                      last_seen_at: null
+                      open: true
+                      zones: []
+                      visits: 1
+                    - subject:
+                        kind: worker
+                        id: 58
+                      first_seen_at: '2026-10-31T07:31:10Z'
+                      last_seen_at: null
+                      open: true
+                      zones:
+                      - A
+                      visits: 2
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ValidationError:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      client_uuid:
+                      - This field is required.
+                  summary: validation_error
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
   /api/v1/sync/:
     get:
       operationId: sync
@@ -3289,6 +3501,236 @@ paths:
                   summary: not_authenticated
           description: Missing, invalid or revoked device token. Sign in again with
             the PIN.
+  /api/v1/tracking/consent/:
+    post:
+      operationId: tracking_consent
+      description: |-
+        The foreman's answer to the notice shown on the phone. Accepting the current version opens `POST /tracking/token/`; refusing, or withdrawing an earlier acceptance, is recorded too and makes it answer `403 tracking_disabled` (`reason: consent_refused`) until an acceptance. The latest answer counts. Each answer writes an audit entry.
+
+        `accepted: false` is taken at any time, whatever `text_version` it names. `accepted: true` must name the current notice (`details.text_version` of `consent_required`), else `400`.
+
+        Idempotent: the same `client_uuid` again returns the original answer (`200`, `Idempotent-Replayed: true`); used by another user, `409 conflict`.
+      summary: Accept or refuse the tracking notice
+      tags:
+      - presence
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentRequestRequest'
+            examples:
+              Accept:
+                value:
+                  client_uuid: 0d9b6f3e-7a7c-4f43-9c1e-5b0a4d6f2e11
+                  accepted: true
+                  text_version: '2026-11-01'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConsentRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConsentRequestRequest'
+        required: true
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consent'
+              examples:
+                Accepted:
+                  value:
+                    accepted: true
+                    at: '2026-10-31T06:01:12Z'
+                    text_version: '2026-11-01'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                OldNotice:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      text_version:
+                      - 'The notice has changed: show version 2026-11-01 and ask again.'
+                  summary: Old notice
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Conflict:
+                  value:
+                    code: conflict
+                    message: This client_uuid was already used for a different request.
+                    details:
+                      client_uuid: 6f1c2b9e-1d1a-4c55-9a52-3f0e8a9d7b10
+                  summary: conflict
+          description: The request conflicts with the current state.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Throttled:
+                  value:
+                    code: throttled
+                    message: Request was throttled. Expected available in 42 seconds.
+                    details:
+                      retry_after: 42
+                  summary: throttled
+          description: Too many requests. Wait `details.retry_after` seconds (also
+            in `Retry-After`).
+  /api/v1/tracking/token/:
+    post:
+      operationId: tracking_token
+      description: |-
+        A `device` JWT for the tracker (claims v2): `sub = "foreman:<user id>"`, `company`, `sites` = your sites where `tracking_enabled` is on, `travel` (true for company admins), `aud = "polaris-tracker"`, 12 hours. Call it after the PIN sign-in and again before `expires_at`.
+
+        `settings`: the resolved settings the phone needs, over the token's sites (shortest GPS interval, earliest start and latest end of the tracking hours, and the retention of raw positions).
+
+        Refusals (`403`), in this order:
+        - `tracking_disabled` with `details.reason = settings`: tracking is off on all of your sites; show no tracking screens.
+        - `tracking_disabled` with `details.reason = consent_refused`: you declined the notice (the latest answer); `POST /tracking/consent/` with `accepted: true` turns it on.
+        - `consent_required`: no answer yet, or the notice changed since you accepted it. Show the notice of version `details.text_version`, then `POST /tracking/consent/`.
+
+        Both consent refusals give, in `details`, what the notice shows: `text_version`, `tracking_hours {start, end}`, `gps_interval_seconds` and `retention_days`.
+
+        A foreman is a user, not a worker: the worker-level `tracking_enabled` does not apply; the foreman's own switch is their consent. Throttled per user (`tracking` scope, 30/minute).
+      summary: Get a tracker token for this foreman's phone
+      tags:
+      - presence
+      security:
+      - DeviceToken: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingToken'
+              examples:
+                Token:
+                  value:
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmb3JlbWFuOjciLCJraW5kIjoiZGV2aWNlIiwiY29tcGFueSI6MSwic2l0ZXMiOlszXSwidHJhdmVsIjpmYWxzZSwiYXVkIjoicG9sYXJpcy10cmFja2VyIiwiZXhwIjoxNzkzNDY4MDAwfQ.c2lnbmF0dXJl
+                    expires_at: '2026-10-31T18:00:00Z'
+                    tracker_url: https://tracker.example.com
+                    sites:
+                    - 3
+                    settings:
+                      gps_interval_seconds: 60
+                      tracking_hours:
+                        start: '06:00'
+                        end: '19:00'
+                      retention_days: 30
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                TrackingOffOnYourSites:
+                  value:
+                    code: permission_denied
+                    message: Tracking is not enabled for you.
+                    details:
+                      reason: settings
+                  summary: Tracking off on your sites
+                ConsentRefused:
+                  value:
+                    code: permission_denied
+                    message: You declined tracking. Accept the notice to turn it on.
+                    details:
+                      reason: consent_refused
+                      text_version: '2026-11-01'
+                      tracking_hours:
+                        start: '06:00'
+                        end: '19:00'
+                      gps_interval_seconds: 60
+                      retention_days: 30
+                  summary: Consent refused
+                ConsentRequired:
+                  value:
+                    code: permission_denied
+                    message: Accept the tracking notice first.
+                    details:
+                      text_version: '2026-11-01'
+                      tracking_hours:
+                        start: '06:00'
+                        end: '19:00'
+                      gps_interval_seconds: 60
+                      retention_days: 30
+                  summary: Consent required
+          description: '`tracking_disabled` or `consent_required` (see above); `permission_denied`
+            for a user who is not a foreman or an admin.'
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Throttled:
+                  value:
+                    code: throttled
+                    message: Request was throttled. Expected available in 42 seconds.
+                    details:
+                      retry_after: 42
+                  summary: throttled
+          description: Too many requests. Wait `details.retry_after` seconds (also
+            in `Retry-After`).
 components:
   schemas:
     Alert:
@@ -3869,6 +4311,45 @@ components:
       - currency
       - payments
       - time_zone
+    Consent:
+      type: object
+      properties:
+        accepted:
+          type: boolean
+        at:
+          type: string
+          format: date-time
+          description: When the server recorded the answer.
+        text_version:
+          type: string
+      required:
+      - accepted
+      - at
+      - text_version
+    ConsentRequestRequest:
+      type: object
+      properties:
+        client_uuid:
+          type: string
+          format: uuid
+          description: Made on the phone when the user acts (UUID v4). Sending the
+            same client_uuid again returns the original result instead of applying
+            the write twice.
+        accepted:
+          type: boolean
+          description: 'true: the foreman accepted the notice; false: refused or withdrawn
+            (taken at any time).'
+        text_version:
+          type: string
+          minLength: 1
+          description: The version of the notice shown (`details.text_version` of
+            the `consent_required` answer; today `2026-11-01`). An acceptance must
+            name the current one; a refusal may name any.
+          maxLength: 32
+      required:
+      - accepted
+      - client_uuid
+      - text_version
     CorrectableFieldEnum:
       enum:
       - status
@@ -4165,6 +4646,8 @@ components:
             * `conflict` - The request conflicts with the current state.
             * `locked` - The resource is locked (a locked day or pay period, or a locked device).
             * `not_implemented` - The endpoint is part of the contract but not built yet.
+            * `consent_required` - Presence tracking: accept the tracking notice first.
+            * `tracking_disabled` - Presence tracking is off for you (settings or your answer).
             * `method_not_allowed` - The HTTP method is not allowed on this path.
             * `unsupported_media_type` - The request content type is not supported.
             * `not_acceptable` - The Accept header cannot be satisfied.
@@ -4192,6 +4675,8 @@ components:
       - conflict
       - locked
       - not_implemented
+      - consent_required
+      - tracking_disabled
       - method_not_allowed
       - unsupported_media_type
       - not_acceptable
@@ -4206,6 +4691,8 @@ components:
         * `conflict` - The request conflicts with the current state.
         * `locked` - The resource is locked (a locked day or pay period, or a locked device).
         * `not_implemented` - The endpoint is part of the contract but not built yet.
+        * `consent_required` - Presence tracking: accept the tracking notice first.
+        * `tracking_disabled` - Presence tracking is off for you (settings or your answer).
         * `method_not_allowed` - The HTTP method is not allowed on this path.
         * `unsupported_media_type` - The request content type is not supported.
         * `not_acceptable` - The Accept header cannot be satisfied.
@@ -4925,6 +5412,143 @@ components:
       - sites
       - token
       - user
+    PresenceEventBatchRequest:
+      type: object
+      description: The request as documented (``EventBatchSerializer`` validates it).
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/PresenceEventRequest'
+      required:
+      - events
+    PresenceEventRequest:
+      type: object
+      description: Same shape as ``PresenceEvent`` in ``tracker-openapi.yaml``.
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          description: Unique; stored once.
+        site_id:
+          type: integer
+          minimum: 1
+        subject:
+          $ref: '#/components/schemas/SubjectRequest'
+        type:
+          $ref: '#/components/schemas/PresenceEventTypeEnum'
+        at:
+          type: string
+          format: date-time
+          description: '`entered`: first sighting of the visit; `moved_zone`: first
+            sighting in the new zone; `left`: last sighting on the site.'
+        zone_id:
+          type: string
+          nullable: true
+          description: Zone code, or null.
+          maxLength: 64
+        from_zone_id:
+          type: string
+          nullable: true
+          description: Only for `moved_zone`.
+          maxLength: 64
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/PresenceLeaveReasonEnum'
+          nullable: true
+          description: |-
+            Only for `left`.
+
+            * `timeout` - Not seen for `absence_to_leave_seconds`
+            * `left_geofence` - A GPS fix clearly outside the site
+      required:
+      - at
+      - event_id
+      - from_zone_id
+      - reason
+      - site_id
+      - subject
+      - type
+      - zone_id
+    PresenceEventTypeEnum:
+      enum:
+      - entered
+      - moved_zone
+      - left
+      type: string
+      description: |-
+        * `entered` - Arrived on the site
+        * `moved_zone` - Moved to another zone
+        * `left` - Left the site
+    PresenceIngestResult:
+      type: object
+      properties:
+        stored:
+          type: integer
+          description: New events, applied to the sessions.
+        duplicates:
+          type: integer
+          description: Already stored earlier (same `event_id`), or twice in this
+            batch.
+        ignored:
+          type: integer
+          description: 'New, stored, but not applied: unknown site or subject (or
+            another company''s).'
+        rejected:
+          type: integer
+          description: 'Items that do not match the schema: not stored, listed in
+            the log. The batch still counts as delivered.'
+      required:
+      - duplicates
+      - ignored
+      - rejected
+      - stored
+    PresenceLeaveReasonEnum:
+      enum:
+      - timeout
+      - left_geofence
+      type: string
+      description: |-
+        * `timeout` - Not seen for `absence_to_leave_seconds`
+        * `left_geofence` - A GPS fix clearly outside the site
+    PresenceSession:
+      type: object
+      properties:
+        subject:
+          $ref: '#/components/schemas/Subject'
+        first_seen_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Null while the person is still on site.
+        open:
+          type: boolean
+        zones:
+          type: array
+          items:
+            type: string
+          description: Zone codes visited, in order of first visit.
+        visits:
+          type: integer
+          description: Separate visits (entered → left) that day.
+      required:
+      - first_seen_at
+      - last_seen_at
+      - open
+      - subject
+      - visits
+      - zones
+    PresenceSubjectKindEnum:
+      enum:
+      - worker
+      - foreman
+      type: string
+      description: |-
+        * `worker` - A worker (`Worker` id)
+        * `foreman` - A foreman (user id)
     ProofTypeEnum:
       enum:
       - photo
@@ -5060,6 +5684,22 @@ components:
       description: |-
         * `danger` - Danger
         * `warning` - Warning
+    SitePresenceSessions:
+      type: object
+      properties:
+        site_id:
+          type: integer
+        date:
+          type: string
+          format: date
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PresenceSession'
+      required:
+      - date
+      - sessions
+      - site_id
     SiteRef:
       type: object
       properties:
@@ -5080,6 +5720,28 @@ components:
         * `foreman_scan` - Badge scanned by the foreman's phone
         * `kiosk` - Badge scanned on a kiosk phone
         * `manual` - Worker picked by hand on the foreman's phone
+    Subject:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/PresenceSubjectKindEnum'
+        id:
+          type: integer
+          minimum: 1
+      required:
+      - id
+      - kind
+    SubjectRequest:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/PresenceSubjectKindEnum'
+        id:
+          type: integer
+          minimum: 1
+      required:
+      - id
+      - kind
     SubmitDayRequest:
       type: object
       properties:
@@ -5236,6 +5898,70 @@ components:
       - half
       - late
       - present
+    TrackingHours:
+      type: object
+      properties:
+        start:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: '07:00'
+          description: Local wall-clock time on the site, 24-hour `HH:MM`.
+        end:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: '07:00'
+          description: Local wall-clock time on the site, 24-hour `HH:MM`.
+      required:
+      - end
+      - start
+    TrackingSettings:
+      type: object
+      properties:
+        gps_interval_seconds:
+          type: integer
+          description: Setting `foreman_gps_interval_seconds` (the shortest of the
+            token's sites).
+        tracking_hours:
+          allOf:
+          - $ref: '#/components/schemas/TrackingHours'
+          description: Settings `tracking_start` / `tracking_end`, company time zone
+            (the earliest start and the latest end of the token's sites). No GPS outside
+            them.
+        retention_days:
+          type: integer
+          description: 'Setting `track_retention_days`: raw positions are deleted
+            after this.'
+      required:
+      - gps_interval_seconds
+      - retention_days
+      - tracking_hours
+    TrackingToken:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT (HS256) for the tracker, `kind = "device"`.
+        expires_at:
+          type: string
+          format: date-time
+          description: 12 hours after issue. Ask again before.
+        tracker_url:
+          type: string
+          description: Base URL of the tracker service.
+        sites:
+          type: array
+          items:
+            type: integer
+          description: 'Sites the token covers (its `sites` claim): your sites with
+            tracking on.'
+        settings:
+          $ref: '#/components/schemas/TrackingSettings'
+      required:
+      - expires_at
+      - settings
+      - sites
+      - token
+      - tracker_url
     UserProfile:
       type: object
       properties:
@@ -5492,6 +6218,13 @@ components:
       name: Authorization
       description: 'Device token from `POST /api/v1/auth/pin/`, sent as `Authorization:
         Device <token>`.'
+    TrackerService:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'A JWT (HS256) the tracker service mints with `TRACKER_SHARED_SECRET`:
+        `kind = "service"`, `sub = "service:tracker"`, `aud = "polaris-django"`, `exp`
+        at most 5 minutes ahead. Opens only `POST /api/v1/presence/events/`.'
     cookieAuth:
       type: apiKey
       in: cookie
@@ -5513,5 +6246,8 @@ tags:
 - name: office
   description: 'Office API for AI assistants: read-only, plus approving or sending
     back a roll call after a preview. Agent tokens only.'
+- name: presence
+  description: 'Presence tracking (1.4): the phone''s tracker token and consent, presence
+    sessions per site and day, and the tracker service''s event ingest.'
 - name: files
   description: Worker photos and payment proofs; send the Authorization header.

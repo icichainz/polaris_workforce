@@ -9,6 +9,8 @@ import os
 
 os.environ["DJANGO_DEBUG"] = "false"
 os.environ.setdefault("DJANGO_SECRET_KEY", "tests-only-" + "not-a-secret-" * 4)
+# No tracker, whatever a developer exported: tests of the config push set TRACKER_URL.
+os.environ["TRACKER_URL"] = os.environ["TRACKER_PUBLIC_URL"] = ""
 
 from config.settings import *  # noqa: E402, F403
 
@@ -27,3 +29,7 @@ SECURE_SSL_REDIRECT = False
 # No broker: nothing is queued, whatever CELERY_BROKER_URL a developer exported. Tests of
 # the queueing set one themselves and catch what would be sent.
 CELERY_BROKER_URL = ""
+
+# Presence tracking: a fixed secret, so that tokens can be checked byte for byte
+# (tests/test_presence_tokens.py).
+TRACKER_SHARED_SECRET = "tests-only-tracker-secret-0123456789abcdef"

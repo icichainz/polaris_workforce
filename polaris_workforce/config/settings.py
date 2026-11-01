@@ -74,6 +74,8 @@ INSTALLED_APPS = [
     "apps.agents",
     # Figures rebuilt only where something changed (refresh_precomputed)
     "apps.precompute",
+    # Presence tracking: BLE badges, gateways, sessions; talks to polaris_tracker
+    "apps.presence",
 ]
 
 MIDDLEWARE = [
@@ -266,6 +268,11 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=0, minute=30),
         "kwargs": {"sweep": True},
     },
+    # Every tracked site's config again (a tracker restart forgets them; a lost push).
+    "resync-tracker-configs": {
+        "task": "presence.resync_site_configs",
+        "schedule": crontab(minute="*/10"),
+    },
 }
 
 # Seconds a rebuild waits after the change that queued it: the marks of a roll call, its
@@ -274,6 +281,29 @@ PRECOMPUTE_REBUILD_DELAY = int(env_str("PRECOMPUTE_REBUILD_DELAY", "10"))
 # A site marked again after this long without its rebuild running is queued again (the
 # first task was lost: a worker restart, Redis down).
 PRECOMPUTE_REQUEUE_AFTER_MINUTES = int(env_str("PRECOMPUTE_REQUEUE_AFTER_MINUTES", "10"))
+
+
+# Presence tracking (apps.presence, docs/presence-tracking.md). The tracker service
+# (polaris_tracker/) and Django sign their tokens (JWT HS256) with TRACKER_SHARED_SECRET.
+#   TRACKER_URL         where Django reaches the tracker (site configs). Unset: configs
+#                       are not pushed (logged), e.g. in development without a tracker.
+#   TRACKER_PUBLIC_URL  what phones and browsers use (default: TRACKER_URL).
+# The tracker's own TRACK_RETENTION_DAYS must match the company setting
+# track_retention_days.
+
+TRACKER_URL = env_str("TRACKER_URL", "").rstrip("/")
+TRACKER_PUBLIC_URL = env_str("TRACKER_PUBLIC_URL", TRACKER_URL).rstrip("/")
+TRACKER_SHARED_SECRET = env_str("TRACKER_SHARED_SECRET", "")
+if TRACKER_URL and not TRACKER_SHARED_SECRET and not DEBUG:
+    raise RuntimeError(
+        "TRACKER_SHARED_SECRET must be set when TRACKER_URL is set and DJANGO_DEBUG is off "
+        "(the same value as the tracker's; see .env.example)."
+    )
+# Seconds to wait for the tracker when pushing a site config.
+TRACKER_TIMEOUT_SECONDS = float(env_str("TRACKER_TIMEOUT_SECONDS", "5"))
+# The version of the tracking notice the phone shows (polaris_foreman). Raise it when the
+# text changes: foremen are then asked to accept the new notice.
+TRACKING_CONSENT_TEXT_VERSION = env_str("TRACKING_CONSENT_TEXT_VERSION", "2026-11-01")
 
 
 # Security for production (only active when DEBUG is off)
@@ -312,7 +342,7 @@ REST_FRAMEWORK = {
     ],
     "EXCEPTION_HANDLER": "apps.api.exceptions.handler",
     "DEFAULT_PAGINATION_CLASS": "apps.api.pagination.StandardPagination",
-    "DEFAULT_THROTTLE_RATES": {"pin": "10/minute", "agent": "120/minute"},
+    "DEFAULT_THROTTLE_RATES": {"pin": "10/minute", "agent": "120/minute", "tracking": "30/minute"},
     # Throttles key on the client IP. Without NUM_PROXIES, DRF trusts the whole
     # X-Forwarded-For header, which a client can rotate to dodge the PIN throttle.
     # 0: use REMOTE_ADDR. Behind N reverse proxies that set the header, use N.
@@ -326,7 +356,7 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Polaris Workforce API",
-    "VERSION": "1.3.0",
+    "VERSION": "1.4.0",
     "DESCRIPTION": (
         "Foreman phone API: PIN sign-in, crew lists, roll call, corrections, sync and "
         "cash payouts. Authenticate with `Authorization: Device <token>` from "
@@ -350,6 +380,11 @@ SPECTACULAR_SETTINGS = {
         "CorrectableFieldEnum": "apps.api.enums.CORRECTABLE_FIELDS",
         "PayoutStatusEnum": "apps.api.enums.PAYOUT_STATUSES",
         "ProofTypeEnum": "apps.api.enums.PROOF_TYPES",
+        # The office alerts' `kind` keeps its name next to the presence subjects' `kind`.
+        "KindEnum": "apps.presence.api.serializers.office_alert_kinds",
+        "PresenceSubjectKindEnum": "apps.presence.api.serializers.SUBJECT_KINDS",
+        "PresenceEventTypeEnum": "apps.presence.api.serializers.EVENT_TYPES",
+        "PresenceLeaveReasonEnum": "apps.presence.api.serializers.LEAVE_REASONS",
     },
     "TAGS": [
         {"name": "system", "description": "Reachability."},
@@ -366,6 +401,13 @@ SPECTACULAR_SETTINGS = {
             "description": (
                 "Office API for AI assistants: read-only, plus approving or sending back a "
                 "roll call after a preview. Agent tokens only."
+            ),
+        },
+        {
+            "name": "presence",
+            "description": (
+                "Presence tracking (1.4): the phone's tracker token and consent, presence "
+                "sessions per site and day, and the tracker service's event ingest."
             ),
         },
         {

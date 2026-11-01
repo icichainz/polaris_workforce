@@ -286,6 +286,48 @@ class CompanySettings(TimeStampedModel):
         help_text=_("In the currency's smallest unit."),
     )
 
+    # Presence tracking (apps.presence): BLE badges and the foremen's phone GPS. Sites
+    # override all of these but the retention; workers override ``tracking_enabled``.
+    tracking_enabled = models.BooleanField(
+        _("presence tracking"),
+        default=False,
+        help_text=_(
+            "Badges and the foremen's phones report who is on site. Check the "
+            "data-protection rules of your country before turning it on."
+        ),
+    )
+    presence_sightings_to_enter = models.PositiveSmallIntegerField(
+        _("sightings before arrival"),
+        default=2,
+        validators=[MinValueValidator(1), MaxValueValidator(20)],
+        help_text=_("How many times a person must be seen before they count as arrived."),
+    )
+    presence_arrival_window_seconds = models.PositiveIntegerField(
+        _("arrival window (seconds)"),
+        default=300,
+        validators=[MinValueValidator(10), MaxValueValidator(3600)],
+        help_text=_("Time allowed to collect those sightings."),
+    )
+    presence_absence_to_leave_seconds = models.PositiveIntegerField(
+        _("absence before departure (seconds)"),
+        default=900,
+        validators=[MinValueValidator(60), MaxValueValidator(86400)],
+        help_text=_("Someone not seen for this long has left the site."),
+    )
+    foreman_gps_interval_seconds = models.PositiveIntegerField(
+        _("foreman GPS interval (seconds)"),
+        default=60,
+        validators=[MinValueValidator(10), MaxValueValidator(3600)],
+    )
+    tracking_start = models.TimeField(_("tracking starts"), default=datetime.time(6, 0))
+    tracking_end = models.TimeField(_("tracking ends"), default=datetime.time(19, 0))
+    track_retention_days = models.PositiveSmallIntegerField(
+        _("keep movement traces (days)"),
+        default=30,
+        validators=[MinValueValidator(1), MaxValueValidator(365)],
+        help_text=_("Raw positions are deleted after this; presence sessions are kept."),
+    )
+
     class Meta:
         verbose_name = _("company settings")
         verbose_name_plural = _("company settings")
@@ -317,6 +359,12 @@ class CompanySettings(TimeStampedModel):
             errors["public_holidays"] = _(
                 'Use a list of {"date": "YYYY-MM-DD", "name": "…"} entries.'
             )
+        if (
+            self.tracking_start is not None
+            and self.tracking_end is not None
+            and self.tracking_end <= self.tracking_start
+        ):
+            errors["tracking_end"] = _("Tracking must end after it starts.")
         if errors:
             raise ValidationError(errors)
 

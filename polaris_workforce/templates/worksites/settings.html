@@ -36,6 +36,18 @@
         {% include "components/field.html" with field=form.overtime_multiplier %}
       </div>
     </fieldset>
+    <fieldset class="flex flex-col gap-4">
+      <legend class="mb-3 text-[13px] font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Presence tracking" %}</legend>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {% include "components/field.html" with field=form.tracking_enabled %}
+        {% include "components/field.html" with field=form.foreman_gps_interval_seconds %}
+        {% include "components/field.html" with field=form.tracking_start %}
+        {% include "components/field.html" with field=form.tracking_end %}
+        {% include "components/field.html" with field=form.presence_sightings_to_enter %}
+        {% include "components/field.html" with field=form.presence_arrival_window_seconds %}
+        {% include "components/field.html" with field=form.presence_absence_to_leave_seconds %}
+      </div>
+    </fieldset>
     {% if can_manage %}
     <div class="flex flex-wrap justify-end gap-2.5 border-t border-line-soft pt-4">
       {% translate "Save site settings" as save_label %}{% include "components/button.html" with label=save_label type="submit" variant="primary" only %}

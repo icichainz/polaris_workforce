@@ -26,6 +26,7 @@
     <a href="#pay" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-surface hover:text-ink">{% translate "Pay rules" %}</a>
     <a href="#payments" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-surface hover:text-ink">{% translate "Payments & advances" %}</a>
     <a href="#holidays" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-surface hover:text-ink">{% translate "Working days & holidays" %}</a>
+    <a href="#tracking" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-surface hover:text-ink">{% translate "Presence tracking" %}</a>
   </nav>
 
   <form method="post" novalidate x-data="settingsForm" @input="update()" @change="update()" @reset="$nextTick(() => update())"
@@ -150,6 +151,22 @@
         {% if form.working_days.errors %}<p class="mt-1.5 text-[13px] font-medium text-absent-fg">{{ form.working_days.errors|join:" " }}</p>{% endif %}
       </fieldset>
       {% include "components/field.html" with field=form.public_holidays %}
+    </section>
+
+    {# --- Presence tracking ----------------------------------------------------------- #}
+    <section id="tracking" aria-labelledby="tracking-title" class="grid scroll-mt-6 grid-cols-1 gap-4 rounded-card border border-line bg-surface p-6 sm:grid-cols-2">
+      <div class="flex flex-col gap-1 sm:col-span-2">
+        <h2 id="tracking-title" class="font-display text-lg font-bold">{% translate "Presence tracking" %}</h2>
+        <p class="text-sm text-ink-700">{% translate "BLE badges and the foremen’s phones show who is on site. Presence only suggests attendance: the foreman still confirms the roll call. Sites and workers can turn it off for themselves." %}</p>
+      </div>
+      <div class="sm:col-span-2">{% include "components/field.html" with field=form.tracking_enabled %}</div>
+      {% include "components/field.html" with field=form.tracking_start %}
+      {% include "components/field.html" with field=form.tracking_end %}
+      {% include "components/field.html" with field=form.presence_sightings_to_enter %}
+      {% include "components/field.html" with field=form.presence_arrival_window_seconds %}
+      {% include "components/field.html" with field=form.presence_absence_to_leave_seconds %}
+      {% include "components/field.html" with field=form.foreman_gps_interval_seconds %}
+      {% include "components/field.html" with field=form.track_retention_days %}
     </section>
 
     {# --- Sticky save bar ------------------------------------------------------------- #}
