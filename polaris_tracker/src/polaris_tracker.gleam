@@ -73,10 +73,10 @@ pub fn start(config: Config) -> actor.StartResult(supervisor.Supervisor) {
         factory_supervisor.get_by_name(sites_name)
         |> factory_supervisor.start_child(args)
       },
-      record_track: fn(person, points) {
+      record_track: fn(points) {
         process.send(
           process.named_subject(tracks_name),
-          track_store.Record(person, points),
+          track_store.Record(points),
         )
       },
       publish:,
@@ -101,13 +101,20 @@ pub fn start(config: Config) -> actor.StartResult(supervisor.Supervisor) {
   )
   |> supervisor.add(
     supervision.worker(fn() {
-      outbox.Args(deliver:, flush_every_ms:, batch_size: outbox_batch_size)
+      outbox.Args(
+        db_path: config.db_path,
+        deliver:,
+        flush_every_ms:,
+        batch_size: outbox_batch_size,
+        clock: clock.now_ms,
+      )
       |> outbox.start(Some(outbox_name))
     }),
   )
   |> supervisor.add(
     supervision.worker(fn() {
       track_store.Args(
+        db_path: config.db_path,
         retention_ms: config.track_retention_days * 86_400_000,
         prune_every_ms:,
         clock: clock.now_ms,

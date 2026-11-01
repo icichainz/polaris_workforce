@@ -26,6 +26,9 @@ gleam_crypto = ">= 1.5.1 and < 2.0.0"
 gleam_time = ">= 1.11.0 and < 2.0.0"
 mist = ">= 6.0.0 and < 7.0.0"
 gleam_httpc = ">= 5.0.0 and < 6.0.0"
+# SQLite for tracks and the outbox (the tracker's own file, never Django's).
+# Builds esqlite's bundled SQLite from C: needs a C compiler and make.
+sqlight = ">= 1.2.0 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.9.0 and < 2.0.0"

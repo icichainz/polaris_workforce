@@ -132,6 +132,56 @@ fn rules_decoder() -> Decoder(presence.Rules) {
   ))
 }
 
+/// The inverse of `presence_event_json`, for events read back from the
+/// outbox table.
+pub fn presence_event_decoder() -> Decoder(PresenceEvent) {
+  use event_id <- decode.field("event_id", non_empty_string())
+  use site_id <- decode.field("site_id", decode.int)
+  use person <- decode.field("subject", person_decoder())
+  use kind <- decode.field("type", decode.string)
+  use at <- decode.field("at", timestamp())
+  use zone_id <- decode.field("zone_id", decode.optional(decode.string))
+  use from_zone_id <- decode.field(
+    "from_zone_id",
+    decode.optional(decode.string),
+  )
+  use reason <- decode.field("reason", decode.optional(decode.string))
+  let event = fn(change) {
+    decode.success(domain.PresenceEvent(event_id:, site_id:, person:, change:))
+  }
+  case kind, zone_id, reason {
+    "entered", _, _ -> event(presence.Entered(zone: zone_id, at:))
+    "moved_zone", Some(to), _ ->
+      event(presence.MovedZone(from: from_zone_id, to:, at:))
+    "left", _, Some("timeout") ->
+      event(presence.Left(zone: zone_id, at:, reason: presence.Timeout))
+    "left", _, Some("left_geofence") ->
+      event(presence.Left(zone: zone_id, at:, reason: presence.LeftGeofence))
+    _, _, _ ->
+      decode.failure(
+        domain.PresenceEvent(
+          event_id:,
+          site_id:,
+          person:,
+          change: presence.Entered(zone: None, at:),
+        ),
+        "presence event",
+      )
+  }
+}
+
+pub fn person_decoder() -> Decoder(Person) {
+  use kind <- decode.field("kind", {
+    use text <- decode.then(decode.string)
+    case domain.kind_from_string(text) {
+      Ok(kind) -> decode.success(kind)
+      Error(Nil) -> decode.failure(domain.Worker, "worker or foreman")
+    }
+  })
+  use id <- decode.field("id", decode.int)
+  decode.success(domain.Person(kind:, id:))
+}
+
 fn position_decoder() -> Decoder(geo.LatLng) {
   use lat <- decode.field("lat", number())
   use lng <- decode.field("lng", number())

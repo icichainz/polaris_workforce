@@ -12,6 +12,7 @@ import gleam/string
 import polaris_tracker/api
 import polaris_tracker/broadcaster
 import polaris_tracker/clock
+import polaris_tracker/db
 import polaris_tracker/domain.{type PresenceEvent}
 import polaris_tracker/hub
 import polaris_tracker/outbox
@@ -47,18 +48,21 @@ fn start_stack() -> Stack {
   let assert Ok(outbox) =
     outbox.start(
       outbox.Args(
+        db_path: db.memory,
         deliver: fn(events) {
           process.send(delivered, events)
           Ok(Nil)
         },
         flush_every_ms: 0,
         batch_size: 500,
+        clock: clock.now_ms,
       ),
       None,
     )
   let assert Ok(tracks) =
     track_store.start(
       track_store.Args(
+        db_path: db.memory,
         retention_ms: 86_400_000,
         prune_every_ms: 0,
         clock: clock.now_ms,
@@ -73,8 +77,8 @@ fn start_stack() -> Stack {
     hub.start(
       hub.Args(
         start_site: site.start,
-        record_track: fn(person, points) {
-          process.send(tracks.data, track_store.Record(person, points))
+        record_track: fn(points) {
+          process.send(tracks.data, track_store.Record(points))
         },
         publish:,
         clock: clock.now_ms,

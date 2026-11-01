@@ -66,7 +66,8 @@ pub type GatewayError {
 pub type Args {
   Args(
     start_site: fn(site.Args) -> actor.StartResult(Subject(site.Message)),
-    record_track: fn(Person, List(TrackPoint)) -> Nil,
+    /// Called once per ingested batch with every point it accepted.
+    record_track: fn(List(#(Person, TrackPoint))) -> Nil,
     publish: fn(List(PresenceEvent)) -> Nil,
     clock: fn() -> Int,
     heartbeat_ms: Int,
@@ -79,6 +80,8 @@ type State {
     configs: Dict(Int, SiteConfig),
     running: Dict(Int, RunningSite),
     seen: Dict(String, Int),
+    /// Points of the batch being ingested, newest first.
+    pending: List(#(Person, TrackPoint)),
   )
 }
 
@@ -96,7 +99,13 @@ pub fn start(
         process.new_selector()
         |> process.select(self)
         |> process.select_monitors(SiteDown)
-      State(args:, configs: dict.new(), running: dict.new(), seen: dict.new())
+      State(
+        args:,
+        configs: dict.new(),
+        running: dict.new(),
+        seen: dict.new(),
+        pending: [],
+      )
       |> actor.initialised
       |> actor.selecting(selector)
       |> actor.returning(self)
@@ -134,14 +143,14 @@ fn handle_message(
           ingest_phone(state, foreman_id, claims, observation, now, tally)
         })
       process.send(reply, finish(tally))
-      actor.continue(state)
+      actor.continue(flush_track(state))
     }
 
     IngestGateway(gateway_id:, site_id:, batch_id:, sightings:, reply:) -> {
       let #(state, result) =
         ingest_gateway(state, gateway_id, site_id, batch_id, sightings)
       process.send(reply, result)
-      actor.continue(state)
+      actor.continue(flush_track(state))
     }
 
     FindSite(site_id:, reply:) -> {
@@ -264,18 +273,21 @@ fn ingest_gps(
         _ -> Error(Nil)
       }
     })
-  state.args.record_track(person, [
-    GpsPoint(
-      at:,
-      position:,
-      accuracy_m:,
-      site_id: case inside {
-        Ok(#(site_id, _)) -> Some(site_id)
-        Error(Nil) -> None
-      },
-      company: claims.company,
-    ),
-  ])
+  let state =
+    track(
+      state,
+      person,
+      GpsPoint(
+        at:,
+        position:,
+        accuracy_m:,
+        site_id: case inside {
+          Ok(#(site_id, _)) -> Some(site_id)
+          Error(Nil) -> None
+        },
+        company: claims.company,
+      ),
+    )
 
   // A fix outside a site only matters to a site that is already running.
   list.each(placements, fn(placement) {
@@ -312,9 +324,12 @@ fn ingest_phone_ble(
   let assert Ok(config) = dict.get(state.configs, site_id)
   let assert Ok(worker_id) = domain.find_worker(config, badge_id)
   let person = Person(Worker, worker_id)
-  state.args.record_track(person, [
-    BlePoint(at:, site_id:, zone_id: None, rssi:, source: FromPhone),
-  ])
+  let state =
+    track(
+      state,
+      person,
+      BlePoint(at:, site_id:, zone_id: None, rssi:, source: FromPhone),
+    )
   case is_late(config, at, now) {
     True -> #(state, True)
     False -> #(
@@ -427,15 +442,18 @@ fn ingest_sighting(
     )
     False, True, Ok(worker_id) -> {
       let person = Person(Worker, worker_id)
-      state.args.record_track(person, [
-        BlePoint(
-          at: sighting.at,
-          site_id:,
-          zone_id: gateway.zone_id,
-          rssi: sighting.rssi,
-          source: FromGateway,
-        ),
-      ])
+      let state =
+        track(
+          state,
+          person,
+          BlePoint(
+            at: sighting.at,
+            site_id:,
+            zone_id: gateway.zone_id,
+            rssi: sighting.rssi,
+            source: FromGateway,
+          ),
+        )
       case is_late(config, sighting.at, now) {
         True -> #(state, accept(tally, True))
         False -> #(
@@ -453,6 +471,22 @@ fn ingest_sighting(
 }
 
 // ---- Helpers ----------------------------------------------------------------
+
+fn track(state: State, person: Person, point: TrackPoint) -> State {
+  State(..state, pending: [#(person, point), ..state.pending])
+}
+
+/// Hands the batch's points to the track store in one message (one
+/// transaction there).
+fn flush_track(state: State) -> State {
+  case state.pending {
+    [] -> state
+    pending -> {
+      state.args.record_track(list.reverse(pending))
+      State(..state, pending: [])
+    }
+  }
+}
 
 /// Sends a signal to a site actor, starting it if needed.
 fn observe(
