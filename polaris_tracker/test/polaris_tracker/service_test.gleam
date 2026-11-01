@@ -94,6 +94,7 @@ fn start_stack() -> Stack {
       secret: bit_array.from_string(secret),
       cors_origin: None,
       clock: clock.now_ms,
+      zoneinfo_dir: "/usr/share/zoneinfo",
     )
   Stack(ctx:, outbox: outbox.data, delivered:)
 }
@@ -484,4 +485,117 @@ pub fn token_without_company_is_refused_test() {
   let response = send(stack, http.Get, "/v1/sites/3/presence", no_company, "")
   assert response.status == 401
   assert string.contains(response.body, "\"code\":\"invalid_token\"")
+}
+
+/// Sightings from a past day are all late (track only), yet the sessions
+/// endpoint replays them; the local day follows `tz`.
+pub fn sessions_are_recomputed_from_the_track_test() {
+  let stack = start_stack()
+  configure(stack)
+  let gateway = mint("gateway:GW-1", token.Gateway, [3])
+  let device = mint("foreman:5", token.Device, [3])
+  let sighting = fn(at) {
+    "{\"badge_id\": \"BDG-1\", \"at\": \"" <> at <> "\", \"rssi\": -60}"
+  }
+  let batch =
+    "{\"batch_id\": \"day\", \"sightings\": ["
+    <> string.join(
+      [
+        sighting("2025-06-02T08:00:00Z"),
+        sighting("2025-06-02T08:00:30Z"),
+        // Back after a long gap: a second visit.
+        sighting("2025-06-02T12:00:00Z"),
+        sighting("2025-06-02T12:00:20Z"),
+        // 00:30 on June 3 at +01:00, still June 2 in UTC.
+        sighting("2025-06-02T23:30:00Z"),
+        sighting("2025-06-02T23:30:30Z"),
+      ],
+      ",",
+    )
+    <> "]}"
+  let response =
+    send(stack, http.Post, "/v1/gateways/sightings", gateway, batch)
+  assert string.contains(
+    response.body,
+    "\"accepted\":6,\"duplicates\":0,\"late\":6",
+  )
+  let fixes =
+    "{\"observations\": ["
+    <> string.join(
+      [
+        gps_fix("g1", "2025-06-02T09:00:00Z", "6.1320"),
+        gps_fix("g2", "2025-06-02T09:01:00Z", "6.1321"),
+        gps_fix("g3", "2025-06-02T09:05:00Z", "6.1500"),
+      ],
+      ",",
+    )
+    <> "]}"
+  let response = send(stack, http.Post, "/v1/observations", device, fixes)
+  assert string.contains(response.body, "\"accepted\":3")
+
+  let service = mint("service:django", token.Service, [])
+  let get = fn(query, bearer) {
+    send(stack, http.Get, "/internal/sites/3/sessions?" <> query, bearer, "")
+  }
+  let response = get("date=2025-06-02&tz=Z", service)
+  assert response.status == 200
+  assert response.body
+    == "{\"site_id\":3,\"date\":\"2025-06-02\",\"tz\":\"Z\","
+    <> "\"from\":\"2025-06-02T00:00:00Z\",\"to\":\"2025-06-03T00:00:00Z\","
+    <> "\"sessions\":["
+    <> "{\"subject\":{\"kind\":\"worker\",\"id\":12},\"started_at\":\"2025-06-02T08:00:00Z\",\"ended_at\":\"2025-06-02T08:00:30Z\",\"zones\":[\"B\"]},"
+    <> "{\"subject\":{\"kind\":\"foreman\",\"id\":5},\"started_at\":\"2025-06-02T09:00:00Z\",\"ended_at\":\"2025-06-02T09:01:00Z\",\"zones\":[]},"
+    <> "{\"subject\":{\"kind\":\"worker\",\"id\":12},\"started_at\":\"2025-06-02T12:00:00Z\",\"ended_at\":\"2025-06-02T12:00:20Z\",\"zones\":[\"B\"]},"
+    <> "{\"subject\":{\"kind\":\"worker\",\"id\":12},\"started_at\":\"2025-06-02T23:30:00Z\",\"ended_at\":\"2025-06-02T23:30:30Z\",\"zones\":[\"B\"]}"
+    <> "]}"
+
+  // At +01:00 (`+` encoded), the late-evening visit belongs to June 3.
+  let response = get("date=2025-06-02&tz=%2B01:00", service)
+  assert string.contains(response.body, "\"from\":\"2025-06-01T23:00:00Z\"")
+  assert count(response.body, "\"started_at\"") == 3
+  let response = get("date=2025-06-03&tz=%2B01:00", service)
+  assert count(response.body, "\"started_at\"") == 1
+
+  // An IANA name, when the system has zoneinfo.
+  let response = get("date=2025-06-02&tz=Europe/Paris", service)
+  case response.status {
+    200 -> {
+      assert string.contains(response.body, "\"from\":\"2025-06-01T22:00:00Z\"")
+      assert string.contains(response.body, "\"tz\":\"Europe/Paris\"")
+    }
+    // No zoneinfo on this machine.
+    status -> {
+      assert status == 400
+    }
+  }
+
+  // Errors.
+  let dashboard = mint("user:1", token.Dashboard, [3])
+  assert get("date=2025-06-02&tz=Z", dashboard).status == 403
+  assert get("date=2025-6-2&tz=Z", service).status == 400
+  assert get("tz=Z", service).status == 400
+  assert string.contains(
+    get("date=2025-06-02&tz=Mars/Olympus", service).body,
+    "\"code\":\"invalid_tz\"",
+  )
+  assert get("date=2025-06-02", service).status == 400
+  let response =
+    send(
+      stack,
+      http.Get,
+      "/internal/sites/99/sessions?date=2025-06-02&tz=Z",
+      service,
+      "",
+    )
+  assert response.status == 404
+}
+
+fn gps_fix(uuid: String, at: String, lat: String) -> String {
+  "{\"client_uuid\": \""
+  <> uuid
+  <> "\", \"type\": \"gps\", \"at\": \""
+  <> at
+  <> "\", \"lat\": "
+  <> lat
+  <> ", \"lng\": 1.2228, \"accuracy_m\": 10}"
 }

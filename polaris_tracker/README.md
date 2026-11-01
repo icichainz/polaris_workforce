@@ -28,6 +28,7 @@ TRACKER_DEBUG=1 gleam run             # http://127.0.0.1:4100, dev secret, event
 | `TRACKER_CORS_ORIGIN` | unset | Dashboard origin, when served from another origin |
 | `TRACK_RETENTION_DAYS` | `30` | Must match Django's `track_retention_days` setting |
 | `TRACKER_DB_PATH` | `var/tracker.sqlite3` (relative to the working directory) | The tracker's own SQLite file for tracks and the outbox; `:memory:` keeps them in memory (lost on restart). The Docker image sets `/data/tracker.sqlite3`. |
+| `TRACKER_ZONEINFO_DIR` | `/usr/share/zoneinfo` | Compiled IANA zones, for the `tz` of the sessions endpoint (fixed offsets need none) |
 
 **Gleam version.** Gleam ≥ 1.14 is required (`gleam = ">= 1.14.0"` in `gleam.toml`);
 built and tested with **Gleam 1.19.2 on Erlang/OTP 28**. The old pins for Gleam 1.12

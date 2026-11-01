@@ -18,9 +18,11 @@ import polaris_tracker/broadcaster
 import polaris_tracker/clock
 import polaris_tracker/domain.{type TrackPoint, BlePoint, GpsPoint, Person}
 import polaris_tracker/hub
+import polaris_tracker/sessions
 import polaris_tracker/site
 import polaris_tracker/token
 import polaris_tracker/track_store
+import polaris_tracker/tz
 import polaris_tracker/wire
 
 pub const max_phone_batch = 500
@@ -31,6 +33,9 @@ const max_track_range_ms = 604_800_000
 
 const call_timeout_ms = 5000
 
+/// Reading a whole day of a busy site can take longer.
+const day_query_timeout_ms = 60_000
+
 pub type Context {
   Context(
     hub: Subject(hub.Message),
@@ -39,6 +44,8 @@ pub type Context {
     secret: BitArray,
     cors_origin: Option(String),
     clock: fn() -> Int,
+    /// Compiled IANA time zones (`/usr/share/zoneinfo`).
+    zoneinfo_dir: String,
   )
 }
 
@@ -55,6 +62,8 @@ pub fn handle(req: Request(BitArray), ctx: Context) -> Response(String) {
       get_track(req, ctx, kind, id)
     http.Put, ["internal", "sites", site_id, "config"] ->
       put_site_config(req, ctx, site_id)
+    http.Get, ["internal", "sites", site_id, "sessions"] ->
+      get_sessions(req, ctx, site_id)
     _, _ -> error(404, "not_found", "No such endpoint.")
   }
   |> with_cors(ctx.cors_origin)
@@ -183,6 +192,68 @@ fn put_site_config(
   use config <- respond(decode_body(req, wire.site_config_decoder()))
   process.call(ctx.hub, call_timeout_ms, hub.ConfigureSite(site_id, config, _))
   response.new(204) |> response.set_body("")
+}
+
+/// `GET /internal/sites/{site_id}/sessions?date=YYYY-MM-DD&tz=…`: the day's
+/// sessions recomputed from the stored track (`sessions.recompute`), for
+/// Django's nightly reconciliation. The local day is defined in `tz`.
+fn get_sessions(
+  req: Request(BitArray),
+  ctx: Context,
+  site_id: String,
+) -> Response(String) {
+  use _claims <- respond(authenticate(req, ctx, [token.Service]))
+  use site_id <- respond(parse_site_id(site_id))
+  let query = request.get_query(req) |> result.unwrap([])
+  use #(date_text, date) <- respond(
+    {
+      use text <- result.try(list.key_find(query, "date"))
+      use date <- result.map(tz.parse_date(text))
+      #(text, date)
+    }
+    |> result.replace_error(error(
+      400,
+      "invalid_date",
+      "`date` must be a day as YYYY-MM-DD.",
+    )),
+  )
+  use #(tz_text, zone) <- respond(
+    {
+      use text <- result.try(list.key_find(query, "tz"))
+      use zone <- result.map(tz.load(text, ctx.zoneinfo_dir))
+      #(text, zone)
+    }
+    |> result.replace_error(error(
+      400,
+      "invalid_tz",
+      "`tz` must be an IANA time zone (Africa/Lome) or a UTC offset (+01:00).",
+    )),
+  )
+  use config <- respond(
+    process.call(ctx.hub, call_timeout_ms, hub.GetConfig(site_id, _))
+    |> result.replace_error(error(
+      404,
+      "site_not_configured",
+      "The site has no tracking config.",
+    )),
+  )
+  let #(from_s, to_s) = tz.day_bounds(zone, date)
+  let #(from, to) = #(from_s * 1000, to_s * 1000)
+  let points =
+    process.call(ctx.tracks, day_query_timeout_ms, track_store.SiteDay(
+      site_id,
+      from,
+      to,
+      _,
+    ))
+  // A visit still going on now stays open; on a past day, time runs on past
+  // midnight long enough for the last visits to time out.
+  let until = int.min(ctx.clock(), to + config.rules.absence_to_leave_ms)
+  let found = sessions.recompute(points, site_id:, config:, until:)
+  json_response(
+    200,
+    wire.sessions_json(site_id, date_text, tz_text, from, to, found),
+  )
 }
 
 // ---- Shared with the live stream ---------------------------------------------

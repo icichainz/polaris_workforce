@@ -47,6 +47,8 @@ pub type Message {
     reply: Subject(Result(IngestResult, GatewayError)),
   )
   FindSite(site_id: Int, reply: Subject(SiteStatus))
+  /// The site's current config, as last pushed by Django.
+  GetConfig(site_id: Int, reply: Subject(Result(SiteConfig, Nil)))
   CountSites(reply: Subject(Int))
   SiteDown(process.Down)
 }
@@ -163,6 +165,11 @@ fn handle_message(
         Error(Nil), False -> NotConfigured
       }
       process.send(reply, status)
+      actor.continue(state)
+    }
+
+    GetConfig(site_id:, reply:) -> {
+      process.send(reply, dict.get(state.configs, site_id))
       actor.continue(state)
     }
 

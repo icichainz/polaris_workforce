@@ -13,7 +13,9 @@ COPY src ./src
 RUN gleam export erlang-shipment
 
 FROM ghcr.io/gleam-lang/gleam:v1.19.2-erlang-alpine
-RUN addgroup -S app && adduser -S -G app app \
+# tzdata: IANA zones for the `tz` of GET /internal/sites/{id}/sessions.
+RUN apk add --no-cache tzdata \
+    && addgroup -S app && adduser -S -G app app \
     && mkdir -p /data && chown app:app /data
 COPY --from=build --chown=app:app /src/build/erlang-shipment /app
 USER app

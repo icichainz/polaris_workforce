@@ -1,8 +1,14 @@
 -module(polaris_tracker_ffi).
 -export([
-    now_ms/0, get_env/1, ensure_parent_dir/1,
+    now_ms/0, get_env/1, ensure_parent_dir/1, read_file/1,
     db_prepare/2, db_run/3, db_changes/1
 ]).
+
+read_file(Path) ->
+    case file:read_file(Path) of
+        {ok, Bits} -> {ok, Bits};
+        {error, _} -> {error, nil}
+    end.
 
 now_ms() ->
     erlang:system_time(millisecond).

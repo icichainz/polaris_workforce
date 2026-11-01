@@ -91,6 +91,7 @@ pub fn start(config: Config) -> actor.StartResult(supervisor.Supervisor) {
       secret: config.secret,
       cors_origin: config.cors_origin,
       clock: clock.now_ms,
+      zoneinfo_dir: config.zoneinfo_dir,
     )
 
   supervisor.new(supervisor.RestForOne)

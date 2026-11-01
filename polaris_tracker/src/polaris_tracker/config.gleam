@@ -17,6 +17,8 @@ pub type Config {
     track_retention_days: Int,
     /// The tracker's own SQLite file (tracks and outbox), or `:memory:`.
     db_path: String,
+    /// Compiled IANA time zones, for the `tz` of the sessions endpoint.
+    zoneinfo_dir: String,
   )
 }
 
@@ -49,20 +51,20 @@ pub fn from_env(
         Error("TRACKER_SHARED_SECRET must be set when TRACKER_DEBUG is not 1.")
     },
   )
-  Ok(
-    Config(
-      port:,
-      bind: lookup("TRACKER_BIND") |> result.unwrap("127.0.0.1"),
-      secret: bit_array.from_string(secret),
-      django_events_url: optional("DJANGO_EVENTS_URL"),
-      cors_origin: optional("TRACKER_CORS_ORIGIN"),
-      track_retention_days:,
-      db_path: case lookup("TRACKER_DB_PATH") {
-        Ok(path) if path != "" -> path
-        _ -> default_db_path
-      },
-    ),
-  )
+  Ok(Config(
+    port:,
+    bind: lookup("TRACKER_BIND") |> result.unwrap("127.0.0.1"),
+    secret: bit_array.from_string(secret),
+    django_events_url: optional("DJANGO_EVENTS_URL"),
+    cors_origin: optional("TRACKER_CORS_ORIGIN"),
+    track_retention_days:,
+    db_path: case lookup("TRACKER_DB_PATH") {
+      Ok(path) if path != "" -> path
+      _ -> default_db_path
+    },
+    zoneinfo_dir: lookup("TRACKER_ZONEINFO_DIR")
+      |> result.unwrap("/usr/share/zoneinfo"),
+  ))
 }
 
 fn int_var(

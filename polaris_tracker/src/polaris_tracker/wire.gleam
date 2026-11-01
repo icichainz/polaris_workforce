@@ -16,6 +16,7 @@ import polaris_tracker/domain.{
 }
 import polaris_tracker/geo
 import polaris_tracker/presence.{type Presence}
+import polaris_tracker/sessions.{type Session}
 
 // ---- Decoders -------------------------------------------------------------
 
@@ -364,6 +365,40 @@ fn track_point_json(point: TrackPoint) -> Json {
         ),
       ])
   }
+}
+
+pub fn sessions_json(
+  site_id: Int,
+  date: String,
+  tz: String,
+  from: Int,
+  to: Int,
+  sessions: List(Session),
+) -> Json {
+  json.object([
+    #("site_id", json.int(site_id)),
+    #("date", json.string(date)),
+    #("tz", json.string(tz)),
+    #("from", json.string(clock.to_rfc3339(from))),
+    #("to", json.string(clock.to_rfc3339(to))),
+    #(
+      "sessions",
+      json.array(sessions, fn(session) {
+        json.object([
+          #("subject", person_json(session.person)),
+          #("started_at", json.string(clock.to_rfc3339(session.started_at))),
+          #(
+            "ended_at",
+            json.nullable(
+              option.map(session.ended_at, clock.to_rfc3339),
+              json.string,
+            ),
+          ),
+          #("zones", json.array(session.zones, json.string)),
+        ])
+      }),
+    ),
+  ])
 }
 
 pub fn ingest_result_json(result: IngestResult) -> Json {
