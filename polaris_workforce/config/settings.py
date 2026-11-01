@@ -51,7 +51,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    "django.contrib.staticfiles",
+    "apps.core.apps.StaticFilesConfig",  # django.contrib.staticfiles without static/src/
     # Third party
     "rest_framework",
     "drf_spectacular",
@@ -188,9 +188,13 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "files/media/"
 MEDIA_ROOT = Path(env_str("MEDIA_ROOT", BASE_DIR / "media"))
 
+# Static files get a content hash in their name (app.3f2a….css) when collected, so the
+# web server can let browsers keep them for a year (docker/nginx/default.conf) and a
+# deploy is picked up at once. Pages then need `collectstatic` to have run whenever
+# DEBUG is off; with DEBUG on (runserver) the plain names are used.
 STORAGES = {
     "default": {"BACKEND": "apps.core.storage.RandomNameStorage"},
-    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"},
 }
 
 # How a protected file reaches the client once the view has checked access:

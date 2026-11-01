@@ -46,6 +46,13 @@ checklist in `docs/security-review.md`.
 To run the whole platform (Django, scheduler, nginx, tracker) with Docker Compose, see
 [`docs/docker.md`](../docs/docker.md).
 
+Static files are collected with hashed names (`app.3f2a9c81d0e4.css`, Django's
+`ManifestStaticFilesStorage`): run `manage.py collectstatic` on every deploy, before the
+app serves pages with `DEBUG` off, or pages fail to render. Whatever web server you put
+in front, have it compress text responses (HTML, CSS, JS, JSON) and send hashed files
+with `Cache-Control: public, max-age=31536000, immutable`; `docker/nginx/default.conf`
+does both. Office pages are 5–10 times smaller compressed, which is most of the wait on
+mobile data.
 
 Besides the production checklist in `docs/security-review.md`, two commands must run
 from cron (as the app user, with the production environment) once messaging is on:
