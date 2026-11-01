@@ -233,7 +233,8 @@ class Message(models.Model):
         FAILED = "failed", _("Failed")
         SKIPPED = "skipped", _("Skipped")
 
-    company = company_field(related_name="messages")
+    # Not indexed on its own: the dedupe key and outbox indexes start with it.
+    company = company_field(related_name="messages", db_index=False)
     channel = models.CharField(
         _("channel"), max_length=10, choices=Channel.choices, default=Channel.SMS
     )

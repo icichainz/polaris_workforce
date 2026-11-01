@@ -25,6 +25,7 @@ class AttendanceDay(TimeStampedModel):
         verbose_name=_("site"),
         on_delete=models.PROTECT,
         related_name="attendance_days",
+        db_index=False,  # unique_attendance_day_per_site starts with it
     )
     date = models.DateField(_("date"))
     foreman = models.ForeignKey(
@@ -100,6 +101,7 @@ class AttendanceRecord(TimeStampedModel):
         verbose_name=_("attendance day"),
         on_delete=models.CASCADE,
         related_name="records",
+        db_index=False,  # unique_record_per_worker_per_day starts with it
     )
     worker = models.ForeignKey(
         "workers.Worker",
