@@ -81,6 +81,7 @@ class FakeTrackerTransport implements TrackerTransport {
 
   /// Airplane mode: every call fails with [NetworkException].
   bool offline = false;
+  int calls = 0;
 
   @override
   Future<IngestResult> postObservations({
@@ -88,6 +89,7 @@ class FakeTrackerTransport implements TrackerTransport {
     required String token,
     required List<Map<String, dynamic>> observations,
   }) async {
+    calls++;
     if (offline) throw const NetworkException('airplane mode');
     batches.add(observations);
     tokens.add(token);
@@ -184,9 +186,12 @@ Future<void> settle() async {
 
 /// A [TrackingClient] on fakes, with a movable clock.
 class TrackingRig {
-  TrackingRig({FakeTrackingRepository? api, DateTime? now})
-    : api = api ?? FakeTrackingRepository(fallback: tokenFor()),
-      now = now ?? trackingNow {
+  TrackingRig({
+    FakeTrackingRepository? api,
+    DateTime? now,
+    Duration uploadDelay = const Duration(hours: 1),
+  }) : api = api ?? FakeTrackingRepository(fallback: tokenFor()),
+       now = now ?? trackingNow {
     client = TrackingClient(
       api: this.api,
       tokens: tokens,
@@ -197,8 +202,8 @@ class TrackingRig {
       scanner: scanner,
       clock: () => SiteClock(now: () => this.now, timeZone: 'Africa/Lome'),
       now: () => this.now,
-      // Sends only when the test says so.
-      uploadDelay: const Duration(hours: 1),
+      // By default, sends only when the test says so.
+      uploadDelay: uploadDelay,
       kickSync: () => kicks++,
     );
   }

@@ -227,6 +227,11 @@ class TrackingClient {
   Timer? _hoursTimer;
   Timer? _uploadTimer;
   DateTime? _uploadDue;
+
+  /// After a failed upload: new observations do not make the phone retry
+  /// before the uploader's backoff is over (only the network coming back,
+  /// a new token or the app reopening do).
+  DateTime? _uploadNotBefore;
   int _tokenFailures = 0;
   DateTime? _lastAnswer;
   Future<TrackingToken?>? _refreshing;
@@ -301,7 +306,7 @@ class TrackingClient {
       _emit(_state.copyWith(phase: TrackingPhase.active, token: () => token));
       _scheduleRefresh(token);
       _apply();
-      _scheduleUpload(Duration.zero);
+      _scheduleUpload(Duration.zero, now: true);
       return token;
     } on ApiException catch (e) {
       if (_owner != owner) return null;
@@ -436,8 +441,15 @@ class TrackingClient {
       }),
     );
     if (accepted) {
+      // Accepting again while tracking (the notice reopened from the menu)
+      // changes nothing on the phone.
       _emit(
-        _state.copyWith(phase: TrackingPhase.consentPending, refused: false),
+        _state.copyWith(
+          phase: _state.phase == TrackingPhase.active
+              ? TrackingPhase.active
+              : TrackingPhase.consentPending,
+          refused: false,
+        ),
       );
     } else {
       await _turnOff(refused: true);
@@ -472,7 +484,7 @@ class TrackingClient {
     if (_state.phase != TrackingPhase.active && stale) {
       unawaited(refreshToken());
     } else if (_state.phase == TrackingPhase.active) {
-      _scheduleUpload(Duration.zero);
+      _scheduleUpload(Duration.zero, now: true);
     }
   }
 
@@ -494,7 +506,7 @@ class TrackingClient {
   void online() {
     if (_owner == null) return;
     if (_state.phase == TrackingPhase.active) {
-      _scheduleUpload(Duration.zero);
+      _scheduleUpload(Duration.zero, now: true);
     } else if (_state.phase == TrackingPhase.unknown ||
         _state.phase == TrackingPhase.consentPending) {
       unawaited(refreshToken());
@@ -651,9 +663,15 @@ class TrackingClient {
     _scheduleUpload(uploadDelay);
   }
 
-  void _scheduleUpload(Duration wait) {
+  void _scheduleUpload(Duration wait, {bool now = false}) {
     if (_owner == null || _disposed) return;
-    final due = _now().add(wait);
+    if (now) _uploadNotBefore = null;
+    final notBefore = _uploadNotBefore;
+    final at = _now();
+    if (notBefore != null && at.add(wait).isBefore(notBefore)) {
+      wait = notBefore.difference(at);
+    }
+    final due = at.add(wait);
     final current = _uploadDue;
     if (_uploadTimer != null && current != null && !due.isBefore(current)) {
       return;
@@ -671,6 +689,7 @@ class TrackingClient {
     _uploadTimer?.cancel();
     _uploadTimer = null;
     _uploadDue = null;
+    _uploadNotBefore = null;
   }
 
   /// Sends the queue now. Returns how it went (handy in tests).
@@ -688,7 +707,11 @@ class TrackingClient {
     if (_owner != owner) return report;
     _emit(_state.copyWith(queued: await observations.countObservations(owner)));
     if (report.outcome == UploadOutcome.retryLater) {
-      _scheduleUpload(report.retryIn ?? uploadDelay);
+      final wait = report.retryIn ?? uploadDelay;
+      _uploadNotBefore = _now().add(wait);
+      _scheduleUpload(wait);
+    } else {
+      _uploadNotBefore = null;
     }
     return report;
   }

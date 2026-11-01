@@ -182,6 +182,14 @@ void main() {
       expect(rig.state.consentNeeded, isFalse);
     });
 
+    test('accepting again while tracking keeps tracking', () async {
+      await rig.signIn();
+      await rig.client.answerConsent(accepted: true);
+      expect(rig.state.phase, TrackingPhase.active);
+      expect(rig.location.listening, isTrue);
+      expect((await rig.store.loadOutbox()).single.kind, OutboxKind.consent);
+    });
+
     test('a new answer replaces one not sent yet', () async {
       rig.api.fallback = consentRequired;
       await rig.signIn();
@@ -424,6 +432,29 @@ void main() {
       };
       expect(uuids, hasLength(240));
       expect(rig.transport.batches.every((b) => b.length <= 500), isTrue);
+    });
+
+    test('new observations do not cut the backoff short', () async {
+      final rig = TrackingRig(uploadDelay: const Duration(milliseconds: 20));
+      addTearDown(rig.dispose);
+      rig.transport.offline = true;
+      await rig.signIn();
+      await rig.client.record(
+        bleObservation7(siteId: 1, badge: 'a', at: trackingNow),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(rig.transport.calls, 1); // failed: next try in 2 s
+      await rig.client.record(
+        bleObservation7(siteId: 1, badge: 'b', at: trackingNow),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(rig.transport.calls, 1);
+      // The network is back: right away.
+      rig.transport.offline = false;
+      rig.client.online();
+      await settle();
+      expect(rig.transport.calls, 2);
+      expect(await rig.queued(), 0);
     });
 
     test('observations stay with their owner across sign-outs', () async {
