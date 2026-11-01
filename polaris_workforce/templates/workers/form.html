@@ -97,6 +97,7 @@
       <div class="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2">
         {% translate "Override payment method" as pm_label %}{% include "components/field.html" with field=form.payment_method label=pm_label %}
         {% translate "Override pay frequency" as pf_label %}{% include "components/field.html" with field=form.pay_frequency label=pf_label %}
+        {% translate "Override presence tracking" as tr_label %}{% include "components/field.html" with field=form.tracking_enabled label=tr_label %}
       </div>
     </div>
   </section>

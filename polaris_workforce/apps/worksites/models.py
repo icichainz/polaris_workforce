@@ -1,7 +1,7 @@
 """Construction sites and worker assignments."""
 
 from django.conf import settings
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -66,6 +66,34 @@ class Site(TimeStampedModel):
     overtime_multiplier = models.DecimalField(
         _("overtime multiplier"), max_digits=4, decimal_places=2, null=True, blank=True
     )
+    # Presence tracking (apps.presence); the geofence is checkin.SiteGeofence.
+    tracking_enabled = models.BooleanField(_("presence tracking"), null=True, blank=True)
+    presence_sightings_to_enter = models.PositiveSmallIntegerField(
+        _("sightings before arrival"),
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(20)],
+    )
+    presence_arrival_window_seconds = models.PositiveIntegerField(
+        _("arrival window (seconds)"),
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(10), MaxValueValidator(3600)],
+    )
+    presence_absence_to_leave_seconds = models.PositiveIntegerField(
+        _("absence before departure (seconds)"),
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(60), MaxValueValidator(86400)],
+    )
+    foreman_gps_interval_seconds = models.PositiveIntegerField(
+        _("foreman GPS interval (seconds)"),
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(10), MaxValueValidator(3600)],
+    )
+    tracking_start = models.TimeField(_("tracking starts"), null=True, blank=True)
+    tracking_end = models.TimeField(_("tracking ends"), null=True, blank=True)
 
     class Meta:
         verbose_name = _("site")

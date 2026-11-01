@@ -101,6 +101,9 @@ class Worker(TimeStampedModel):
     pay_frequency = models.CharField(  # noqa: DJ001 (None = inherit)
         _("pay frequency"), max_length=20, choices=PayFrequency.choices, null=True, blank=True
     )
+    # Presence tracking (apps.presence): off keeps the worker's BLE badge out of the
+    # tracker's site configs, so their sightings are dropped.
+    tracking_enabled = models.BooleanField(_("presence tracking"), null=True, blank=True)
 
     # Name, number and phone folded for search (apps.workers.search); set by save().
     search_text = models.CharField(_("search text"), max_length=500, blank=True, editable=False)

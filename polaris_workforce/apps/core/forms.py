@@ -52,6 +52,28 @@ def _time_field(label):
     )
 
 
+# Values as ``str(bool)``, so that a saved True / False shows as selected.
+SWITCH_CHOICES = [("True", _("On")), ("False", _("Off"))]
+
+
+def _switch_value(value) -> bool:
+    return value in (True, "True")
+
+
+def override_switch_field(label, inherit_label) -> forms.TypedChoiceField:
+    """An on / off override of a company (or site) switch: blank inherits it.
+
+    For the nullable ``BooleanField`` overrides on sites and workers (``tracking_enabled``).
+    """
+    return forms.TypedChoiceField(
+        label=label,
+        choices=[("", inherit_label), *SWITCH_CHOICES],
+        coerce=_switch_value,
+        empty_value=None,
+        required=False,
+    )
+
+
 class CompanySettingsForm(forms.ModelForm):
     """Every section of the Settings screen, bound to the ``CompanySettings`` row.
 
@@ -134,6 +156,8 @@ class CompanySettingsForm(forms.ModelForm):
         widget=forms.Textarea(attrs={"rows": 3, "placeholder": "2026-12-25 Christmas Day"}),
         help_text=_("One per line: the date (YYYY-MM-DD), then an optional name."),
     )
+    tracking_start = _time_field(_("Tracking starts"))
+    tracking_end = _time_field(_("Tracking ends"))
 
     class Meta:
         model = CompanySettings
@@ -171,6 +195,15 @@ class CompanySettingsForm(forms.ModelForm):
             # Working days & holidays
             "working_days",
             "public_holidays",
+            # Presence tracking
+            "tracking_enabled",
+            "tracking_start",
+            "tracking_end",
+            "foreman_gps_interval_seconds",
+            "presence_sightings_to_enter",
+            "presence_arrival_window_seconds",
+            "presence_absence_to_leave_seconds",
+            "track_retention_days",
         ]
         labels = {
             "language": _("App language"),
@@ -180,6 +213,7 @@ class CompanySettingsForm(forms.ModelForm):
             "attendance_mode": _("Who records attendance"),
             "record_times": _("Record arrival and departure times"),
             "require_correction_reason": _("Corrections after submission need a reason"),
+            "tracking_enabled": _("Track presence on the sites"),
         }
         widgets = {
             "attendance_mode": forms.RadioSelect,
@@ -224,6 +258,9 @@ class CompanySettingsForm(forms.ModelForm):
         late_after = cleaned.get("late_after")
         if start and late_after and late_after < start:
             self.add_error("late_after", _("Late after must not be before work starts."))
+        track_start, track_end = cleaned.get("tracking_start"), cleaned.get("tracking_end")
+        if track_start and track_end and track_end <= track_start:
+            self.add_error("tracking_end", _("Tracking must end after it starts."))
         deduction = cleaned.get("default_advance_deduction")
         decimals = cleaned.get("currency_decimals")
         if deduction is not None and decimals is not None:

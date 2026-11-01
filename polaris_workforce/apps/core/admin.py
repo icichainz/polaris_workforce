@@ -160,6 +160,22 @@ class CompanySettingsAdmin(AuditedAdmin):
             },
         ),
         (_("Advances"), {"fields": ("advance_limit_percent", "default_advance_deduction")}),
+        (
+            _("Presence tracking"),
+            {
+                "classes": ("collapse",),
+                "fields": (
+                    "tracking_enabled",
+                    "tracking_start",
+                    "tracking_end",
+                    "presence_sightings_to_enter",
+                    "presence_arrival_window_seconds",
+                    "presence_absence_to_leave_seconds",
+                    "foreman_gps_interval_seconds",
+                    "track_retention_days",
+                ),
+            },
+        ),
     )
     list_display = (
         "__str__",

@@ -21,11 +21,36 @@ SITE_OVERRIDABLE: frozenset[str] = frozenset(
         "roll_call_due",
         "overtime_after_hours",
         "overtime_multiplier",
+        # Presence tracking (apps.presence)
+        "tracking_enabled",
+        "presence_sightings_to_enter",
+        "presence_arrival_window_seconds",
+        "presence_absence_to_leave_seconds",
+        "foreman_gps_interval_seconds",
+        "tracking_start",
+        "tracking_end",
     }
 )
 
 # Names that a Worker may override (Worker has a nullable field with the same name).
-WORKER_OVERRIDABLE: frozenset[str] = frozenset({"payment_method", "pay_frequency"})
+WORKER_OVERRIDABLE: frozenset[str] = frozenset(
+    {"payment_method", "pay_frequency", "tracking_enabled"}
+)
+
+# The presence-tracking settings: changing one pushes the site configs to the tracker
+# (``apps.presence``). ``track_retention_days`` is company-wide only.
+TRACKING_SETTINGS: frozenset[str] = frozenset(
+    {
+        "tracking_enabled",
+        "presence_sightings_to_enter",
+        "presence_arrival_window_seconds",
+        "presence_absence_to_leave_seconds",
+        "foreman_gps_interval_seconds",
+        "tracking_start",
+        "tracking_end",
+        "track_retention_days",
+    }
+)
 
 _EXCLUDED_FIELDS = {"id", "company", "created_at", "updated_at"}
 

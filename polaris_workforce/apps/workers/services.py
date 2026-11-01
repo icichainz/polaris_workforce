@@ -43,6 +43,7 @@ WORKER_FIELDS = (
     "is_active",
     "payment_method",
     "pay_frequency",
+    "tracking_enabled",
     "emergency_contact_name",
     "emergency_contact_relationship",
     "emergency_contact_phone",

@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 
 from apps.core.choices import PayFrequency, PaymentMethod
+from apps.core.forms import SWITCH_CHOICES, override_switch_field
 from apps.workers.fields import MoneyField
 from apps.workers.forms import DateInput
 from apps.workers.models import Worker
@@ -55,6 +56,7 @@ class SiteSettingsForm(forms.ModelForm):
     payment_method = forms.TypedChoiceField(
         label=_("Payment method"), required=False, empty_value=None
     )
+    tracking_enabled = override_switch_field(_("Presence tracking"), _("Company default"))
 
     class Meta:
         model = Site
@@ -68,12 +70,21 @@ class SiteSettingsForm(forms.ModelForm):
             "roll_call_due",
             "overtime_after_hours",
             "overtime_multiplier",
+            "tracking_enabled",
+            "tracking_start",
+            "tracking_end",
+            "foreman_gps_interval_seconds",
+            "presence_sightings_to_enter",
+            "presence_arrival_window_seconds",
+            "presence_absence_to_leave_seconds",
         ]
         widgets = {
             "work_start": TimeInput(),
             "work_end": TimeInput(),
             "late_after": TimeInput(),
             "roll_call_due": TimeInput(),
+            "tracking_start": TimeInput(),
+            "tracking_end": TimeInput(),
         }
 
     def __init__(self, *args, company, **kwargs):
@@ -102,6 +113,27 @@ class SiteSettingsForm(forms.ModelForm):
             self.fields[name].help_text = _(
                 "Company default: %(value)s. Leave blank to inherit."
             ) % {"value": getattr(company, name).normalize()}
+        self.fields["tracking_enabled"].choices = [
+            (
+                "",
+                _("Company default (%(value)s)")
+                % {"value": _("On") if company.tracking_enabled else _("Off")},
+            ),
+            *SWITCH_CHOICES,
+        ]
+        for name in (
+            "tracking_start",
+            "tracking_end",
+            "foreman_gps_interval_seconds",
+            "presence_sightings_to_enter",
+            "presence_arrival_window_seconds",
+            "presence_absence_to_leave_seconds",
+        ):
+            value = getattr(company, name)
+            shown = value.strftime("%H:%M") if hasattr(value, "strftime") else value
+            self.fields[name].help_text = _(
+                "Company default: %(value)s. Leave blank to inherit."
+            ) % {"value": shown}
 
     def clean(self):
         cleaned = super().clean()
@@ -113,6 +145,10 @@ class SiteSettingsForm(forms.ModelForm):
         end = cleaned.get("work_end") or self.company.work_end
         if start and end and end <= start:
             self.add_error("work_end", _("Work must end after it starts."))
+        track_start = cleaned.get("tracking_start") or self.company.tracking_start
+        track_end = cleaned.get("tracking_end") or self.company.tracking_end
+        if track_start and track_end and track_end <= track_start:
+            self.add_error("tracking_end", _("Tracking must end after it starts."))
         return cleaned
 
     def changes(self) -> dict:

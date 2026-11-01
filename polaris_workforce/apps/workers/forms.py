@@ -5,6 +5,7 @@ from django.core.validators import FileExtensionValidator
 from django.utils.translation import gettext_lazy as _
 
 from apps.core.choices import PayFrequency, PaymentMethod, PayType
+from apps.core.forms import override_switch_field
 from apps.core.tenancy import current_company
 from apps.core.validators import validate_file_size
 from apps.worksites.models import Site
@@ -72,6 +73,7 @@ class WorkerForm(forms.ModelForm):
         required=False,
         empty_value=None,
     )
+    tracking_enabled = override_switch_field(_("Presence tracking"), _("Use the inherited value"))
 
     class Meta:
         model = Worker
@@ -85,6 +87,7 @@ class WorkerForm(forms.ModelForm):
             "is_active",
             "payment_method",
             "pay_frequency",
+            "tracking_enabled",
             "emergency_contact_name",
             "emergency_contact_relationship",
             "emergency_contact_phone",
