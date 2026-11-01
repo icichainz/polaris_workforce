@@ -14,7 +14,7 @@
 <section id="check-in-mismatches" aria-labelledby="mismatch-title" class="rounded-card border border-line bg-surface">
   <div class="flex flex-col gap-0.5 border-b border-line px-5 py-4">
     <h2 id="mismatch-title" class="font-display text-lg font-bold">{% translate "Roll call against check-ins" %}</h2>
-    <span class="text-[13px] text-steel">{% blocktranslate count counter=mismatches.days_checked %}Compared on the {{ counter }} site day where someone checked in. Days without any check-in are not compared.{% plural %}Compared on the {{ counter }} site days where someone checked in. Days without any check-in are not compared.{% endblocktranslate %}</span>
+    {% if mismatches.days_checked %}<span class="text-[13px] text-steel">{% blocktranslate count counter=mismatches.days_checked %}Compared on the {{ counter }} site day where someone checked in. Days without any check-in are not compared.{% plural %}Compared on the {{ counter }} site days where someone checked in. Days without any check-in are not compared.{% endblocktranslate %}</span>{% else %}<span class="text-[13px] text-steel">{% translate "Compared on the days a site used check-in." %}</span>{% endif %}
   </div>
   {% if mismatches.days_checked %}
   <div class="grid grid-cols-1 gap-4 px-5 py-4 sm:grid-cols-2">
@@ -38,7 +38,7 @@
           <td class="px-5 py-3"><a href="{% url 'checkin:site_day' item.site_id item.date %}" class="font-semibold">{{ item.date|date:_("D j M") }}</a><br><span class="text-xs text-steel">{{ item.site_name }}</span></td>
           <td class="px-4 py-3"><a href="{% url 'workers:detail' item.worker_id %}">{{ item.name }}</a></td>
           <td class="px-4 py-3">{% include "components/status_badge.html" with status=item.status only %}</td>
-          <td class="px-5 py-3">{% if item.kind == "absent_with_check_in" %}{% translate "Checked in" %}{% else %}<span class="font-semibold text-late-fg">{% translate "No check-in" %}</span>{% endif %}</td>
+          <td class="px-5 py-3">{% if item.kind == "absent_with_check_in" %}{% translate "Checked in" %}{% else %}<span class="font-semibold text-amber-text">{% translate "No check-in" %}</span>{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -72,10 +72,10 @@
         {% for row in foremen %}
         <tr class="border-t border-line-soft">
           <td class="px-5 py-3 font-semibold">{{ row.name|default:_("No foreman") }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ row.records }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ row.corrections }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{% if row.per_hundred is None %}—{% else %}{% number row.per_hundred %}{% endif %}</td>
-          <td class="px-5 py-3 text-right tabular-nums {% if row.after_approval %}font-semibold text-late-fg{% endif %}">{{ row.after_approval }}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{{ row.records }}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{{ row.corrections }}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{% if row.per_hundred is None %}—{% else %}{% number row.per_hundred %}{% endif %}</td>
+          <td class="px-5 py-3 text-right whitespace-nowrap tabular-nums {% if row.after_approval %}font-semibold text-amber-text{% endif %}">{{ row.after_approval }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -107,12 +107,12 @@
         {% for row in check_ins %}
         <tr class="border-t border-line-soft">
           <td class="px-5 py-3 font-semibold">{{ row.name }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ row.total }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{% if row.outside_area %}{{ row.outside_area }} <span class="text-xs text-steel">({{ row.outside_share }}%)</span>{% else %}—{% endif %}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ row.unknown_badge|default:"—" }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ row.revoked_badge|default:"—" }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ row.not_on_crew|default:"—" }}</td>
-          <td class="px-5 py-3 text-right tabular-nums">{% if row.manual %}{{ row.manual }} <span class="text-xs text-steel">({{ row.manual_share }}%)</span>{% else %}—{% endif %}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{{ row.total }}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{% if row.outside_area %}{{ row.outside_area }} <span class="text-xs text-steel">({{ row.outside_share }}%)</span>{% else %}—{% endif %}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{{ row.unknown_badge|default:"—" }}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{{ row.revoked_badge|default:"—" }}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{{ row.not_on_crew|default:"—" }}</td>
+          <td class="px-5 py-3 text-right whitespace-nowrap tabular-nums">{% if row.manual %}{{ row.manual }} <span class="text-xs text-steel">({{ row.manual_share }}%)</span>{% else %}—{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>

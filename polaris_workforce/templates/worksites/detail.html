@@ -99,14 +99,14 @@
       <span class="text-xs font-semibold uppercase tracking-[0.06em] text-rail-text">{% translate "Labour cost to date" %}</span>
       <span class="font-display text-[28px] font-bold leading-tight tabular-nums">{% money burn.spent currency=False %} <span class="text-base text-rail-text">{{ currency }}</span></span>
       {% if burn.budget %}
-      <span class="block h-1.5 overflow-hidden rounded-full bg-rail-line" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ burn.bar_percent }}" aria-label="{% translate 'Budget used' %}"><span class="block h-1.5 {% if burn.status == 'over' %}bg-absent-fg{% elif burn.status == 'at_risk' %}bg-late-fg{% else %}bg-present-fg{% endif %}" style="width: {{ burn.bar_percent }}%"></span></span>
+      <span class="block h-1.5 overflow-hidden rounded-full bg-rail-line" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ burn.bar_percent }}" aria-label="{% translate 'Budget used' %}"><span class="block h-1.5 {% if burn.status == 'over' %}bg-absent-fg{% elif burn.status == 'at_risk' %}bg-amber-500{% else %}bg-present-fg{% endif %}" style="width: {{ burn.bar_percent }}%"></span></span>
       <span class="text-[13px] text-rail-text">{% blocktranslate with budget=budget percent=burn.used_percent %}{{ percent }}% of the budget of {{ budget }}{% endblocktranslate %}</span>
       {% if burn.runs_out_on %}<span class="text-[13px] text-rail-text">{% blocktranslate with date=burn.runs_out_on|date:_("j M Y") %}At this pace, runs out on {{ date }}{% endblocktranslate %}{% if burn.planned_end %} · {% blocktranslate with date=burn.planned_end|date:_("j M Y") %}planned end {{ date }}{% endblocktranslate %}{% endif %}</span>{% endif %}
       <span>{% include "dashboard/_budget_status.html" with status=burn.status only %}</span>
       {% else %}
       <span class="text-[13px] text-rail-text">{% translate "Budget not set" %}</span>
       {% endif %}
-      <span class="text-[13px] text-rail-text">{% blocktranslate with cost=labour_cost %}This month: {{ cost }}{% endblocktranslate %} · <a href="{% url 'dashboard:reports' %}?site={{ site.pk }}#budgets" class="text-on-inverse underline hover:text-on-inverse">{% translate "Reports" %}</a></span>
+      <span class="text-[13px] text-rail-text">{% blocktranslate with cost=labour_cost currency=currency %}This month: {{ cost }} {{ currency }}{% endblocktranslate %} · <a href="{% url 'dashboard:reports' %}?site={{ site.pk }}#budgets" class="text-on-inverse underline hover:text-on-inverse">{% translate "Reports" %}</a></span>
     </section>
   </aside>
 </div>

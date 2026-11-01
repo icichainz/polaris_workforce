@@ -22,6 +22,7 @@ class BudgetWarningForm(forms.ModelForm):
         model = AnalyticsSettings
         fields = ["budget_warn_percent"]
         labels = {"budget_warn_percent": _("Warn at (% of the budget used)")}
+        help_texts = {"budget_warn_percent": ""}  # the section text says it
 
 
 class ReportFilterForm(forms.Form):

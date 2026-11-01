@@ -53,21 +53,21 @@
         <tr class="border-t border-line-soft">
           <td class="px-5 py-3"><a href="{% url 'payroll:cash_sheet' day.site_id day.date %}" class="font-semibold">{{ day.date|date:_("D j M") }}</a></td>
           <td class="px-4 py-3">{{ day.site_name }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{% money day.to_pay %}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{% money day.paid %}</td>
-          <td class="px-4 py-3 text-right tabular-nums {% if day.left_to_pay %}font-semibold text-late-fg{% endif %}">{% if day.left_to_pay %}{% money day.left_to_pay %}<br><span class="text-xs font-normal text-steel">{% blocktranslate count counter=day.unpaid_workers %}{{ counter }} unpaid{% plural %}{{ counter }} unpaid{% endblocktranslate %}</span>{% else %}—{% endif %}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{% if day.cash_issued %}{% money day.cash_issued %}{% else %}—{% endif %}</td>
-          <td class="px-5 py-3 text-right tabular-nums {% if day.cash_in_hand %}font-semibold text-late-fg{% endif %}">{% if day.cash_issued or day.cash_paid %}{% money day.cash_in_hand %}{% else %}—{% endif %}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{% money day.to_pay %}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{% money day.paid %}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums {% if day.left_to_pay %}font-semibold text-amber-text{% endif %}">{% if day.left_to_pay %}{% money day.left_to_pay %}<br><span class="text-xs font-normal text-steel">{% blocktranslate count counter=day.unpaid_workers %}{{ counter }} unpaid{% plural %}{{ counter }} unpaid{% endblocktranslate %}</span>{% else %}—{% endif %}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{% if day.cash_issued %}{% money day.cash_issued %}{% else %}—{% endif %}</td>
+          <td class="px-5 py-3 text-right whitespace-nowrap tabular-nums {% if day.cash_in_hand %}font-semibold text-amber-text{% endif %}">{% if day.cash_issued or day.cash_paid %}{% money day.cash_in_hand %}{% else %}—{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
       <tfoot><tr class="border-t-2 border-line bg-subtle">
         <th scope="row" colspan="2" class="px-5 py-3 text-left font-semibold">{% translate "Total" %}</th>
-        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money total.to_pay %}</td>
-        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money total.paid %}</td>
-        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money total.left_to_pay %}</td>
-        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money total.cash_issued %}</td>
-        <td class="px-5 py-3 text-right font-semibold tabular-nums">{% money total.cash_in_hand %}</td>
+        <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.to_pay %}</td>
+        <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.paid %}</td>
+        <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.left_to_pay %}</td>
+        <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.cash_issued %}</td>
+        <td class="px-5 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.cash_in_hand %}</td>
       </tr></tfoot>
     </table>
   </div>

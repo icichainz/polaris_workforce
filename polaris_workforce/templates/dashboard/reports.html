@@ -36,16 +36,16 @@
 </section>
 
 <section id="budgets" aria-labelledby="budgets-title" class="rounded-card border border-line bg-surface">
-  <div class="flex flex-wrap items-end justify-between gap-3 border-b border-line px-5 py-4">
+  <div class="flex flex-col gap-3 border-b border-line px-5 py-4">
     <div class="flex flex-col gap-0.5">
       <h2 id="budgets-title" class="font-display text-lg font-bold">{% translate "Site budgets" %}</h2>
       <span class="text-[13px] text-steel">{% blocktranslate with percent=warning.budget_warn_percent %}Labour cost to date against each site's budget. At risk: {{ percent }}% used, or the budget runs out before the planned end. Spending is projected from the last 4 weeks.{% endblocktranslate %}</span>
     </div>
     {% if warning_form %}
-    <form method="post" action="{% url 'dashboard:budget_warning' %}" class="flex items-end gap-2">
+    <form method="post" action="{% url 'dashboard:budget_warning' %}" class="flex flex-wrap items-end gap-2">
       {% csrf_token %}
       <input type="hidden" name="query" value="{{ query }}">
-      <div class="w-44">{% include "components/field.html" with field=warning_form.budget_warn_percent %}</div>
+      <div class="w-64">{% include "components/field.html" with field=warning_form.budget_warn_percent %}</div>
       {% translate "Save" as save_label %}
       {% include "components/button.html" with label=save_label type="submit" only %}
     </form>
@@ -67,11 +67,11 @@
         {% for item in budgets %}
         <tr class="border-t border-line-soft">
           <td class="px-5 py-3"><a href="{% url 'worksites:detail' item.site_id %}" class="font-semibold">{{ item.name }}</a>{% if item.planned_end %}<br><span class="text-xs text-steel">{% blocktranslate with date=item.planned_end|date:_("j M Y") %}Planned end {{ date }}{% endblocktranslate %}</span>{% endif %}</td>
-          <td class="w-48 px-4 py-3">{% if item.used_percent is None %}<span class="text-steel">—</span>{% else %}<span class="flex items-center gap-2"><span class="block h-1.5 w-24 overflow-hidden rounded-full bg-line-soft" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ item.bar_percent }}" aria-label="{% translate 'Budget used' %}"><span class="block h-1.5 {% if item.status == 'over' %}bg-absent-fg{% elif item.status == 'at_risk' %}bg-late-fg{% else %}bg-present-fg{% endif %}" style="width: {{ item.bar_percent }}%"></span></span><span class="font-semibold tabular-nums">{{ item.used_percent }}%</span></span>{% endif %}</td>
-          <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money item.spent %}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{% if item.budget %}{% money item.budget %}{% else %}<span class="text-steel">{% translate "Not set" %}</span>{% endif %}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{% if item.weekly_spend %}{% money item.weekly_spend %}{% else %}<span class="text-steel">—</span>{% endif %}</td>
-          <td class="px-4 py-3 tabular-nums">{% if item.runs_out_on %}{{ item.runs_out_on|date:_("j M Y") }}{% if item.days_before_end is not None and item.days_before_end > 0 %}<br><span class="text-xs font-semibold text-late-fg">{% blocktranslate count counter=item.days_before_end %}{{ counter }} day before the planned end{% plural %}{{ counter }} days before the planned end{% endblocktranslate %}</span>{% endif %}{% else %}<span class="text-steel">—</span>{% endif %}</td>
+          <td class="w-48 px-4 py-3">{% if item.used_percent is None %}<span class="text-steel">—</span>{% else %}<span class="flex items-center gap-2"><span class="block h-1.5 w-24 overflow-hidden rounded-full bg-line-soft" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ item.bar_percent }}" aria-label="{% translate 'Budget used' %}"><span class="block h-1.5 {% if item.status == 'over' %}bg-absent-fg{% elif item.status == 'at_risk' %}bg-amber-500{% else %}bg-present-fg{% endif %}" style="width: {{ item.bar_percent }}%"></span></span><span class="font-semibold tabular-nums">{{ item.used_percent }}%</span></span>{% endif %}</td>
+          <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money item.spent %}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{% if item.budget %}{% money item.budget %}{% else %}<span class="text-steel">{% translate "Not set" %}</span>{% endif %}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{% if item.weekly_spend %}{% money item.weekly_spend %}{% else %}<span class="text-steel">—</span>{% endif %}</td>
+          <td class="px-4 py-3 tabular-nums">{% if item.runs_out_on %}{{ item.runs_out_on|date:_("j M Y") }}{% if item.days_before_end is not None and item.days_before_end > 0 %}<br><span class="text-xs font-semibold text-amber-text">{% blocktranslate count counter=item.days_before_end %}{{ counter }} day before the planned end{% plural %}{{ counter }} days before the planned end{% endblocktranslate %}</span>{% endif %}{% else %}<span class="text-steel">—</span>{% endif %}</td>
           <td class="px-5 py-3">{% include "dashboard/_budget_status.html" with status=item.status only %}</td>
         </tr>
         {% endfor %}
@@ -143,26 +143,26 @@
         {% for row in costs.rows %}
         <tr class="border-t border-line-soft">
           <td class="px-5 py-3 font-semibold">{{ row.name }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{% money row.time_pay %}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{% if row.piece_work %}{% money row.piece_work %}{% else %}—{% endif %}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{% if row.bonuses %}{% money row.bonuses %}{% else %}—{% endif %}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{% if row.corrections %}{% money row.corrections %}{% else %}—{% endif %}</td>
-          <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money row.labour_cost %}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{% if row.employer %}{% money row.employer %}{% else %}—{% endif %}</td>
-          <td class="px-5 py-3 text-right tabular-nums">{% if row.overtime_hours %}{% number row.overtime_hours %}{% else %}—{% endif %}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{% money row.time_pay %}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{% if row.piece_work %}{% money row.piece_work %}{% else %}—{% endif %}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{% if row.bonuses %}{% money row.bonuses %}{% else %}—{% endif %}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{% if row.corrections %}{% money row.corrections %}{% else %}—{% endif %}</td>
+          <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money row.labour_cost %}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">{% if row.employer %}{% money row.employer %}{% else %}—{% endif %}</td>
+          <td class="px-5 py-3 text-right whitespace-nowrap tabular-nums">{% if row.overtime_hours %}{% number row.overtime_hours %}{% else %}—{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
       {% with total=costs.total %}
       <tfoot><tr class="border-t-2 border-line bg-subtle">
         <th scope="row" class="px-5 py-3 text-left font-semibold">{% translate "Total" %}</th>
-        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money total.time_pay %}</td>
-        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money total.piece_work %}</td>
-        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money total.bonuses %}</td>
-        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money total.corrections %}</td>
-        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money total.labour_cost %}</td>
-        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money total.employer %}</td>
-        <td class="px-5 py-3 text-right font-semibold tabular-nums">{% number total.overtime_hours %}</td>
+        <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.time_pay %}</td>
+        <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.piece_work %}</td>
+        <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.bonuses %}</td>
+        <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.corrections %}</td>
+        <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.labour_cost %}</td>
+        <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.employer %}</td>
+        <td class="px-5 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% number total.overtime_hours %}</td>
       </tr></tfoot>
       {% endwith %}
     </table>
