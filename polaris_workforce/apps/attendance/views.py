@@ -17,6 +17,7 @@ from rest_framework.exceptions import APIException, ValidationError
 
 from apps.accounts.permissions import Role, can_manage_site, role_required, scoped_sites
 from apps.core import dates
+from apps.core.htmx import wants_fragment
 
 from . import selectors, services
 from .forms import BulkApproveForm, DecisionForm
@@ -64,7 +65,7 @@ def approvals(request):
 
 def _done(request) -> HttpResponse:
     url = reverse("attendance:approvals")
-    if request.headers.get("HX-Request"):
+    if wants_fragment(request):
         response = HttpResponse(status=204)
         response["HX-Redirect"] = url
         return response

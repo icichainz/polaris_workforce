@@ -11,7 +11,7 @@
     {% translate "Issue missing badges" as issue_label %}{% include "components/button.html" with label=issue_label type="submit" only %}
   </form>
   {% endif %}
-  {% translate "Print badges" as print_label %}{% include "components/button.html" with label=print_label href=print_url variant="primary" only %}
+  {% translate "Print badges" as print_label %}{% include "components/button.html" with label=print_label href=print_url variant="primary" download=True only %}
 {% endblock %}
 
 {% block content %}
@@ -45,7 +45,7 @@
                 {% if row.badge %}{% translate "Reissue" as issue_label %}{% else %}{% translate "Issue" as issue_label %}{% endif %}{% include "components/button.html" with label=issue_label type="submit" only %}
               </form>
               {% if row.badge %}
-              {% url "checkin:badge_sheet" as sheet_url %}<a href="{{ sheet_url }}?worker={{ row.worker.pk }}" class="text-sm font-semibold">{% translate "Print" %}</a>
+              {% url "checkin:badge_sheet" as sheet_url %}<a href="{{ sheet_url }}?worker={{ row.worker.pk }}" hx-boost="false" class="text-sm font-semibold">{% translate "Print" %}</a>
               <form method="post" action="{% url 'checkin:badge_revoke' row.worker.pk %}" class="flex items-center gap-2">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
                 <label class="sr-only" for="reason-{{ row.worker.pk }}">{% translate "Reason" %}</label>
                 <input id="reason-{{ row.worker.pk }}" name="reason" maxlength="200" placeholder="{% translate 'Reason (lost, left…)' %}" class="h-10 w-44 rounded-control border border-line-strong bg-white px-3 text-sm">

@@ -26,7 +26,7 @@
     <section aria-labelledby="export-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4">
       <h2 id="export-title" class="font-display text-lg font-bold">{% translate "1 · Download the payment file" %}</h2>
       <p class="text-sm text-ink-700">{% translate "Upload it to the bank's or operator's business portal. The lines still waiting for confirmation are in it." %}</p>
-      <form method="post" action="{% url 'payouts:batch_export' batch.pk %}" class="flex flex-wrap items-end gap-3">
+      <form method="post" action="{% url 'payouts:batch_export' batch.pk %}" hx-boost="false" class="flex flex-wrap items-end gap-3">
         {% csrf_token %}
         <div class="w-64">{% include "components/field.html" with field=export_form.layout only %}</div>
         {% if batch.status == statuses.DRAFT %}{% translate "Download & mark exported" as label %}{% else %}{% translate "Download again" as label %}{% endif %}

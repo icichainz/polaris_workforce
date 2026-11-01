@@ -16,13 +16,21 @@ Blocks
 Context
   nav_active       optional URL name to highlight in the sidebar (sub-pages)
   (Set the title block too: {% block title %}{% translate "Workers" %} · Polaris Workforce{% endblock %})
+
+Navigation
+  Links and forms are boosted: htmx fetches the page and swaps the children of #main,
+  the sidebar stays on screen (static/js/app.js). Pages work the same without JS.
+  Put hx-boost="false" on a link or form that returns a file or leaves the office
+  layout (exports, print sheets, sign-out); button.html takes download=True for that.
+  Pages must not add <script> or <style> of their own: put behaviour in static/js/app.js.
 {% endcomment %}
 
 {% block body %}
 <a href="#main" class="sr-only rounded-control bg-amber-500 px-4 py-2 font-semibold text-ink focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50">{% translate "Skip to content" %}</a>
-<div class="flex min-h-screen flex-col lg:flex-row">
+<div id="nav-progress" hidden aria-hidden="true" class="pointer-events-none fixed inset-x-0 top-0 z-50 h-1 animate-pulse bg-amber-500"></div>
+<div hx-boost="true" class="flex min-h-screen flex-col lg:flex-row">
   {% include "components/sidebar.html" %}
-  <main id="main" class="min-w-0 grow px-4 pt-6 pb-14 sm:px-8 sm:pt-7">
+  <main id="main" data-app-shell class="min-w-0 grow px-4 pt-6 pb-14 outline-none sm:px-8 sm:pt-7">
     <div class="mx-auto flex max-w-[1200px] flex-col gap-6">
       {% block page_header %}
       <div class="flex flex-col gap-2">

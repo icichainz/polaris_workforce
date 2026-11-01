@@ -11,40 +11,6 @@
 {% endblock %}
 
 {% block content %}
-<script>
-  // Settings form state: unsaved-change count, currency warning, "every N days" field.
-  function polarisSettingsForm() {
-    return {
-      initial: {},
-      count: 0,
-      currencyChanged: false,
-      frequency: "",
-      snapshot() {
-        const values = {};
-        for (const [name, value] of new FormData(this.$el).entries()) {
-          if (name === "csrfmiddlewaretoken") continue;
-          (values[name] = values[name] || []).push(String(value));
-        }
-        return values;
-      },
-      differs(now, name) {
-        return JSON.stringify(now[name] || []) !== JSON.stringify(this.initial[name] || []);
-      },
-      init() {
-        this.initial = this.snapshot();
-        this.update();
-      },
-      update() {
-        const now = this.snapshot();
-        const names = new Set([...Object.keys(now), ...Object.keys(this.initial)]);
-        this.count = [...names].filter((name) => this.differs(now, name)).length;
-        this.currencyChanged = this.differs(now, "currency") || this.differs(now, "currency_decimals");
-        this.frequency = (now.pay_frequency || [""])[0];
-      },
-    };
-  }
-</script>
-
 {% if form.non_field_errors %}
   {% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}
 {% endif %}
@@ -62,7 +28,7 @@
     <a href="#holidays" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-white hover:text-ink">{% translate "Working days & holidays" %}</a>
   </nav>
 
-  <form method="post" novalidate x-data="polarisSettingsForm()" @input="update()" @change="update()" @reset="$nextTick(() => update())"
+  <form method="post" novalidate x-data="settingsForm" @input="update()" @change="update()" @reset="$nextTick(() => update())"
     class="flex min-w-0 grow flex-col gap-5">
     {% csrf_token %}
 

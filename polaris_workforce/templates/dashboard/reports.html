@@ -7,10 +7,10 @@
 {% block page_actions %}
   {% url "dashboard:reports_csv" as csv_url %}
   {% translate "Download CSV" as csv_label %}
-  {% if query %}{% with href=csv_url|add:"?"|add:query %}{% include "components/button.html" with label=csv_label href=href only %}{% endwith %}{% else %}{% include "components/button.html" with label=csv_label href=csv_url only %}{% endif %}
+  {% if query %}{% with href=csv_url|add:"?"|add:query %}{% include "components/button.html" with label=csv_label href=href download=True only %}{% endwith %}{% else %}{% include "components/button.html" with label=csv_label href=csv_url download=True only %}{% endif %}
   {% url "dashboard:reports_xlsx" as xlsx_url %}
   {% translate "Download Excel" as xlsx_label %}
-  {% if query %}{% with href=xlsx_url|add:"?"|add:query %}{% include "components/button.html" with label=xlsx_label href=href only %}{% endwith %}{% else %}{% include "components/button.html" with label=xlsx_label href=xlsx_url only %}{% endif %}
+  {% if query %}{% with href=xlsx_url|add:"?"|add:query %}{% include "components/button.html" with label=xlsx_label href=href download=True only %}{% endwith %}{% else %}{% include "components/button.html" with label=xlsx_label href=xlsx_url download=True only %}{% endif %}
 {% endblock %}
 
 {% block content %}

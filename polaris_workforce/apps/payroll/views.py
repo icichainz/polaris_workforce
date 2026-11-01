@@ -22,6 +22,7 @@ from apps.api.exceptions import PolarisAPIException
 from apps.api.idempotency import run_once
 from apps.core import dates
 from apps.core.choices import PayFrequency
+from apps.core.htmx import wants_fragment
 from apps.core.models import CompanySettings
 from apps.worksites.models import Site
 
@@ -288,7 +289,7 @@ def cash_sheet_pay(request, line_id):
             errors = _errors(exc)
     else:
         errors = [e for field_errors in form.errors.values() for e in field_errors]
-    if not request.headers.get("HX-Request"):
+    if not wants_fragment(request):
         for error in errors:
             messages.error(request, error)
         if not errors:
@@ -321,7 +322,7 @@ def payment_undo(request, payment_id):
         services.undo_payment(request.user, payment, reason)
     except (ValidationError, PolarisAPIException) as exc:
         errors = _errors(exc)
-    if request.headers.get("HX-Request"):
+    if wants_fragment(request):
         return _sheet_partial(request, site, line, errors=errors)
     for error in errors:
         messages.error(request, error)

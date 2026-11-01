@@ -44,7 +44,7 @@
     <ul class="m-0 flex list-none flex-col gap-1 p-0 text-[13px] text-ink-700">
       {% for column in columns %}<li><strong class="font-semibold">{{ column.label }}</strong>{% if column.required %} · {% translate "required" %}{% endif %}</li>{% endfor %}
     </ul>
-    <div>{% translate "Download the template (.xlsx)" as template_label %}{% url "workers:import_template" as template_url %}{% include "components/button.html" with label=template_label href=template_url only %}</div>
+    <div>{% translate "Download the template (.xlsx)" as template_label %}{% url "workers:import_template" as template_url %}{% include "components/button.html" with label=template_label href=template_url download=True only %}</div>
   </section>
 
   <section aria-labelledby="upload-title" class="flex min-w-0 flex-[1_1_300px] flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">

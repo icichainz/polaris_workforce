@@ -8,7 +8,7 @@
   {% if can_export %}
     {% url "dashboard:reports_csv" as csv_url %}
     {% translate "Export day" as export_label %}
-    {% with href=csv_url|add:export_query %}{% include "components/button.html" with label=export_label href=href only %}{% endwith %}
+    {% with href=csv_url|add:export_query %}{% include "components/button.html" with label=export_label href=href download=True only %}{% endwith %}
   {% endif %}
   {% if overview.awaiting %}
     {% url "attendance:approvals" as approvals_url %}

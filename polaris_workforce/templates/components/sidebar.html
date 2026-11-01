@@ -5,9 +5,13 @@ The active entry comes from the resolved URL name. A sub-page that belongs to an
 (e.g. a worker profile under Workers) passes nav_active="workers:list" in its context.
 Badges come from an optional `nav_badges` dict in the context (e.g. nav_badges.approvals).
 At phone width the sidebar stacks above the content and the nav collapses behind a
-Menu button (Alpine).
+Menu button (Alpine), which closes again when a page is opened.
+
+The sidebar stays on screen during boosted navigation (layouts/app.html). The <nav>
+carries hx-swap-oob, so each page response replaces it: active entry and badges stay
+current. Keep everything that changes from page to page inside that <nav>.
 {% endcomment %}{% with current=nav_active|default:request.resolver_match.view_name %}
-<div x-data="{ open: false }" class="flex flex-col gap-5 bg-ink px-3.5 py-4 text-rail-text lg:sticky lg:top-0 lg:h-screen lg:w-62 lg:shrink-0 lg:overflow-y-auto lg:py-5">
+<div x-data="{ open: false }" x-on:polaris-navigate.window="open = false" class="flex flex-col gap-5 bg-ink px-3.5 py-4 text-rail-text lg:sticky lg:top-0 lg:h-screen lg:w-62 lg:shrink-0 lg:overflow-y-auto lg:py-5">
   <div class="flex items-center justify-between gap-2">
     <a href="{% url 'dashboard:home' %}" class="flex items-center gap-2.5 rounded-control px-2 py-1 text-white no-underline hover:text-white">
       <span class="flex size-[34px] items-center justify-center rounded-[9px] bg-amber-500 text-ink">{% include "components/icon.html" with name="logo" class="size-5" stroke_width="2.2" only %}</span>
@@ -22,7 +26,7 @@ Menu button (Alpine).
 
   <div id="sidebar-nav" class="flex grow flex-col gap-5 max-lg:hidden" :class="{ 'max-lg:hidden': !open }">
     {% if company_switcher.is_platform_admin %}
-    <form method="post" action="{% url 'core:company_switch' %}" class="flex flex-col gap-1.5">
+    <form method="post" action="{% url 'core:company_switch' %}" hx-boost="false" class="flex flex-col gap-1.5">
       {% csrf_token %}
       <label for="company-switcher" class="px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-rail-label">{% translate "Company" %}</label>
       <select id="company-switcher" name="company" x-on:change="$el.form.submit()" class="h-11 rounded-control border border-rail-line bg-rail-raised px-3 text-sm font-medium text-white">
@@ -37,7 +41,7 @@ Menu button (Alpine).
       <span class="text-rail-text">{% include "components/icon.html" with name="chevron_down" class="size-4" only %}</span>
     </button>
 
-    <nav aria-label="{% translate 'Main' %}" class="flex flex-col gap-5">
+    <nav id="sidebar-main-nav" hx-swap-oob="true" aria-label="{% translate 'Main' %}" class="flex flex-col gap-5">
       <div class="flex flex-col gap-0.5">
         <p class="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-rail-label">{% translate "Overview" %}</p>
         {% translate "Today" as nav_label %}{% include "components/nav_link.html" with url_name="dashboard:home" label=nav_label icon="dashboard" current=current only %}
@@ -82,7 +86,7 @@ Menu button (Alpine).
     <div class="flex items-center gap-2.5 border-t border-rail-line p-2.5">
       <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-rail-line text-[13px] font-bold text-white" aria-hidden="true">{% if user.first_name or user.last_name %}{{ user.first_name|slice:":1"|upper }}{{ user.last_name|slice:":1"|upper }}{% else %}{{ user.username|slice:":2"|upper }}{% endif %}</span>
       <span class="flex min-w-0 grow flex-col leading-snug"><span class="truncate text-sm font-semibold text-white">{{ user.get_full_name|default:user.username }}</span><span class="text-xs text-rail-muted">{{ user.get_role_display }}</span></span>
-      <form method="post" action="{% url 'logout' %}">
+      <form method="post" action="{% url 'logout' %}" hx-boost="false">
         {% csrf_token %}
         <button type="submit" aria-label="{% translate 'Sign out' %}" title="{% translate 'Sign out' %}" class="flex size-10 items-center justify-center rounded-control text-rail-text hover:bg-rail-raised hover:text-white">{% include "components/icon.html" with name="sign_out" only %}</button>
       </form>

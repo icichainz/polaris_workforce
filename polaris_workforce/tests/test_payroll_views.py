@@ -196,6 +196,23 @@ def test_mark_paid_without_htmx_redirects(client, paid_day):
     assert Payment.objects.count() == 1
 
 
+def test_mark_paid_with_a_boosted_form_redirects(client, paid_day):
+    # hx-boost sends HX-Request too: a boosted form post is answered like a browser's.
+    site, manager, _foreman, yao, _afi = paid_day
+    client.force_login(manager)
+
+    response = client.post(
+        reverse("payroll:cash_sheet_pay", args=[line_of(site, MON, yao).pk]),
+        {"client_uuid": str(uuid.uuid4()), "proof_type": "signature"},
+        HTTP_HX_REQUEST="true",
+        HTTP_HX_BOOSTED="true",
+    )
+
+    assert response.status_code == 302
+    assert response.url == sheet_url(site)
+    assert Payment.objects.count() == 1
+
+
 def test_mark_paid_outside_scope_is_403(client, paid_day):
     site, _manager, _foreman, yao, _afi = paid_day
     _other, other_manager, _of = setup_site()

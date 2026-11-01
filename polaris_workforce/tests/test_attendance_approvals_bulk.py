@@ -185,6 +185,16 @@ def test_htmx_gets_a_redirect_header(world):
     assert response["HX-Redirect"] == reverse("attendance:approvals")
 
 
+def test_boosted_form_gets_a_plain_redirect(world):
+    response = Office(world["manager"]).post(
+        URL, {"days": [world["clean"][0].pk]}, HTTP_HX_REQUEST="true", HTTP_HX_BOOSTED="true"
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse("attendance:approvals")
+    assert "HX-Redirect" not in response
+
+
 def test_bulk_approve_needs_post(world):
     assert Office(world["manager"]).get(URL).status_code == 405
 
