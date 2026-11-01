@@ -29,6 +29,8 @@ dependencies:
   mobile_scanner: 7.0.1
   geolocator: 13.0.4
   device_info_plus: 10.1.2
+  # 1.34.5: the last single-package release (no federated plugin downloads).
+  flutter_blue_plus: 1.34.5
 
 dev_dependencies:
   flutter_test:
