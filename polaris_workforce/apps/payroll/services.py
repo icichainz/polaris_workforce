@@ -1264,8 +1264,10 @@ def _sheet_status(
 def sheet_status(site: Site, day: datetime.date) -> str:
     """The phone's ``payout_status`` for a site and pay day (read only, no refresh)."""
     company = CompanySettings.load()
-    periods = list(PayPeriod.objects.filter(site=site, end_date=day))
-    return _sheet_status(periods, _line_amounts(periods)[0], company_today(company), company)
+    periods = list(PayPeriod.objects.filter(site=site, end_date=day).select_related("site"))
+    amounts = _line_amounts(periods)
+    lines = [amount for period in periods for amount in amounts[period.pk]]
+    return _sheet_status(periods, lines, company_today(company), company)
 
 
 def _on_sheets(keys, site_field: str, date_field: str) -> Q:

@@ -115,3 +115,19 @@ def test_summaries_match_the_full_sheets_on_the_demo(settings, tmp_path):
         statuses = {s.status for s in services.cash_sheets(keys, today=today)}
         assert {"closed", "open"} <= statuses
         assert_same_as_full_sheets(keys, today)
+
+
+def test_the_phone_status_follows_the_payments(company, media):  # noqa: F811
+    # sheet_status (the phone's payout_status) must agree with the sheets: a ready sheet
+    # with a line still to pay is open, not paid.
+    site, _manager, foreman = setup_site()
+    yao, afi = hire(site), hire(site, 3500)
+    roll_call(site, MON, {yao: "present", afi: "present"})
+    services.cash_sheet(site, MON)
+    assert services.sheet_status(site, MON) == "open"
+
+    pay(foreman, line_of(site, MON, yao))
+    assert services.sheet_status(site, MON) == "open"
+
+    pay(foreman, line_of(site, MON, afi))
+    assert services.sheet_status(site, MON) == "paid"
