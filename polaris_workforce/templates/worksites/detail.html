@@ -1,5 +1,5 @@
 {% extends "worksites/_detail_base.html" %}
-{% load i18n polaris %}
+{% load i18n polaris presence_tags %}
 
 {% block tab_content %}
 <section aria-labelledby="week-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4">
@@ -83,6 +83,7 @@
       <div class="flex flex-wrap gap-3 text-sm font-semibold"><a href="{{ checkin.geofence_url }}">{% if checkin.geofence %}{% translate "Edit geofence" %}{% else %}{% translate "Set geofence" %}{% endif %}</a><a href="{{ checkin.badges_url }}">{% translate "Badges" %}</a></div>
     </section>
     {% endif %}
+    {% presence_site_card site %}
     {% if batches is not None %}
     <section id="site-payouts" aria-labelledby="payouts-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
       <h2 id="payouts-title" class="font-display text-base font-bold">{% translate "Transfer batches" %}</h2>
