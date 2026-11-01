@@ -1,8 +1,61 @@
 -module(polaris_tracker_ffi).
 -export([
     now_ms/0, get_env/1, ensure_parent_dir/1, read_file/1,
-    db_prepare/2, db_run/3, db_changes/1
+    db_prepare/2, db_run/3, db_changes/1,
+    registry_new/0, registry_remember/3, registry_prune_seen/2, registry_seen_size/1,
+    registry_put_config/3, registry_get_config/2, registry_count_configs/1,
+    registry_put_running/3, registry_get_running/2, registry_remove_running/2,
+    registry_clear_running/1
 ]).
+
+%% Shared ingest state (see registry.gleam): public ETS tables, owned by the
+%% process that created them, read and written by every HTTP handler.
+
+registry_new() ->
+    Seen = ets:new(polaris_seen, [set, public, {read_concurrency, true}, {write_concurrency, true}]),
+    Configs = ets:new(polaris_configs, [set, public, {read_concurrency, true}]),
+    Running = ets:new(polaris_running, [set, public, {read_concurrency, true}]),
+    {registry, Seen, Configs, Running}.
+
+registry_remember({registry, Seen, _, _}, Key, Now) ->
+    ets:insert_new(Seen, {Key, Now}).
+
+registry_prune_seen({registry, Seen, _, _}, Cutoff) ->
+    ets:select_delete(Seen, [{{'_', '$1'}, [{'<', '$1', Cutoff}], [true]}]).
+
+registry_seen_size({registry, Seen, _, _}) ->
+    ets:info(Seen, size).
+
+registry_put_config({registry, _, Configs, _}, SiteId, Config) ->
+    true = ets:insert(Configs, {SiteId, Config}),
+    nil.
+
+registry_get_config({registry, _, Configs, _}, SiteId) ->
+    case ets:lookup(Configs, SiteId) of
+        [{_, Config}] -> {ok, Config};
+        [] -> {error, nil}
+    end.
+
+registry_count_configs({registry, _, Configs, _}) ->
+    ets:info(Configs, size).
+
+registry_put_running({registry, _, _, Running}, SiteId, Site) ->
+    true = ets:insert(Running, {SiteId, Site}),
+    nil.
+
+registry_get_running({registry, _, _, Running}, SiteId) ->
+    case ets:lookup(Running, SiteId) of
+        [{_, Site}] -> {ok, Site};
+        [] -> {error, nil}
+    end.
+
+registry_remove_running({registry, _, _, Running}, SiteId) ->
+    true = ets:delete(Running, SiteId),
+    nil.
+
+registry_clear_running({registry, _, _, Running}) ->
+    true = ets:delete_all_objects(Running),
+    nil.
 
 read_file(Path) ->
     case file:read_file(Path) of

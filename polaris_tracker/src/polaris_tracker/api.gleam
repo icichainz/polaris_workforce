@@ -38,7 +38,8 @@ const day_query_timeout_ms = 60_000
 
 pub type Context {
   Context(
-    hub: Subject(hub.Message),
+    /// Ingest runs in the request's own process (see `hub`).
+    hub: hub.Hub,
     tracks: Subject(track_store.Message),
     broadcaster: Subject(broadcaster.Message),
     secret: BitArray,
@@ -72,7 +73,7 @@ pub fn handle(req: Request(BitArray), ctx: Context) -> Response(String) {
 // ---- Endpoints ----------------------------------------------------------------
 
 fn health(ctx: Context) -> Response(String) {
-  let sites = process.call(ctx.hub, call_timeout_ms, hub.CountSites)
+  let sites = hub.count_sites(ctx.hub)
   json_response(
     200,
     json.object([#("status", json.string("ok")), #("sites", json.int(sites))]),
@@ -94,13 +95,7 @@ fn post_observations(req: Request(BitArray), ctx: Context) -> Response(String) {
     list.length(observations) > max_phone_batch,
     batch_too_large(max_phone_batch),
   )
-  let result =
-    process.call(ctx.hub, call_timeout_ms, hub.IngestPhone(
-      foreman_id,
-      claims,
-      observations,
-      _,
-    ))
+  let result = hub.ingest_phone(ctx.hub, foreman_id, claims, observations)
   json_response(200, wire.ingest_result_json(result))
 }
 
@@ -123,15 +118,7 @@ fn post_gateway_sightings(
     list.length(sightings) > max_gateway_batch,
     batch_too_large(max_gateway_batch),
   )
-  case
-    process.call(ctx.hub, call_timeout_ms, hub.IngestGateway(
-      gateway_id,
-      site_id,
-      batch_id,
-      sightings,
-      _,
-    ))
-  {
+  case hub.ingest_gateway(ctx.hub, gateway_id, site_id, batch_id, sightings) {
     Ok(result) -> json_response(200, wire.ingest_result_json(result))
     Error(hub.UnknownSite) ->
       error(404, "site_not_configured", "The site has no tracking config.")
@@ -190,7 +177,7 @@ fn put_site_config(
   use _claims <- respond(authenticate(req, ctx, [token.Service]))
   use site_id <- respond(parse_site_id(site_id))
   use config <- respond(decode_body(req, wire.site_config_decoder()))
-  process.call(ctx.hub, call_timeout_ms, hub.ConfigureSite(site_id, config, _))
+  hub.configure_site(ctx.hub, site_id, config)
   response.new(204) |> response.set_body("")
 }
 
@@ -230,7 +217,7 @@ fn get_sessions(
     )),
   )
   use config <- respond(
-    process.call(ctx.hub, call_timeout_ms, hub.GetConfig(site_id, _))
+    hub.get_config(ctx.hub, site_id)
     |> result.replace_error(error(
       404,
       "site_not_configured",
@@ -287,9 +274,7 @@ pub fn authorize_site(
 
 /// The current presence on a site, as JSON.
 pub fn snapshot(ctx: Context, site_id: Int) -> Result(Json, Response(String)) {
-  let people = case
-    process.call(ctx.hub, call_timeout_ms, hub.FindSite(site_id, _))
-  {
+  let people = case hub.find_site(ctx.hub, site_id) {
     hub.NotConfigured -> Error(Nil)
     hub.Idle -> Ok([])
     hub.Running(subject) ->

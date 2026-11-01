@@ -17,6 +17,7 @@ import polaris_tracker/domain.{type PresenceEvent}
 import polaris_tracker/hub
 import polaris_tracker/outbox
 import polaris_tracker/presence
+import polaris_tracker/registry
 import polaris_tracker/site
 import polaris_tracker/token
 import polaris_tracker/track_store
@@ -73,22 +74,31 @@ fn start_stack() -> Stack {
     process.send(broadcaster.data, broadcaster.Publish(events))
     process.send(outbox.data, outbox.Enqueue(events))
   }
+  let registry = registry.new()
   let assert Ok(hub) =
     hub.start(
       hub.Args(
+        registry:,
         start_site: site.start,
-        record_track: fn(points) {
-          process.send(tracks.data, track_store.Record(points))
-        },
         publish:,
         clock: clock.now_ms,
         heartbeat_ms: 0,
+        prune_every_ms: 0,
       ),
       None,
     )
+  let ingest =
+    hub.Hub(
+      subject: hub.data,
+      registry:,
+      record_track: fn(points) {
+        process.send(tracks.data, track_store.Record(points))
+      },
+      clock: clock.now_ms,
+    )
   let ctx =
     api.Context(
-      hub: hub.data,
+      hub: ingest,
       tracks: tracks.data,
       broadcaster: broadcaster.data,
       secret: bit_array.from_string(secret),
@@ -156,8 +166,7 @@ fn ago(ms: Int) -> String {
 /// Waits until the site actor has handled everything sent to it so far,
 /// then lets time run and collects what reached the outbox.
 fn advance_and_flush(stack: Stack, by ms: Int) -> List(PresenceEvent) {
-  let assert hub.Running(site) =
-    process.call(stack.ctx.hub, 1000, hub.FindSite(3, _))
+  let assert hub.Running(site) = hub.find_site(stack.ctx.hub, 3)
   process.send(site, site.AdvanceTo(clock.now_ms() + ms))
   let _ = process.call(site, 1000, site.Snapshot)
   process.send(stack.outbox, outbox.Flush)
@@ -280,7 +289,7 @@ pub fn late_observations_only_go_to_the_track_test() {
     response.body,
     "\"accepted\":1,\"duplicates\":0,\"late\":1",
   )
-  assert process.call(stack.ctx.hub, 1000, hub.FindSite(3, _)) == hub.Idle
+  assert hub.find_site(stack.ctx.hub, 3) == hub.Idle
 }
 
 pub fn site_scoping_and_auth_test() {
