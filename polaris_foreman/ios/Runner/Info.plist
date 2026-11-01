@@ -22,7 +22,17 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Scan workers' QR badges, and take a photo of the worker at check-in or when receiving their pay.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Record where a badge was scanned, to check it was on the site.</string>
+	<string>Record where a badge was scanned, to check it was on the site, and, if you accepted location tracking, record your position during tracking hours to show which site you are on.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>If you accepted location tracking, record your position during tracking hours, also while Polaris is in the background, to show which site you are on.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Find workers' badges nearby while Polaris is open on a site, to suggest who is present.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<!-- Tracking hours: position updates continue in the background
+		     (blue status-bar indicator) once started in the foreground. -->
+		<string>location</string>
+	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Choose a photo as proof of payment.</string>
 	<key>CFBundleName</key>
