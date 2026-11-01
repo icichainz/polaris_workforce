@@ -14,6 +14,13 @@
  * page, we fetch the page again and swap it like a click: #main plus the sidebar <nav>.
  * The window scroll position of each page is remembered in memory for the way back.
  *
+ * Preloading: a boosted link starts loading when it is pressed (mousedown, touchstart)
+ * rather than when it is released (click), usually 100–200 ms earlier. The click then
+ * shows that response instead of asking again. It is kept in memory only, never in the
+ * browser cache (names and pay amounts), for one click within PRELOAD_TTL_MS; a touch
+ * that turns into a scroll drops it. Put data-preload="false" on a link (or a container)
+ * whose GET must only run on a real click.
+ *
  * Loaded before Alpine (both deferred) so Alpine.data() is registered on alpine:init.
  */
 (function () {
@@ -21,8 +28,11 @@
 
   const SHELL = '#main[data-app-shell]';
   const PROGRESS_DELAY_MS = 150;
+  const PRELOAD_TTL_MS = 5000;
   let progressTimer = null;
   let restoring = null; // AbortController of the Back / Forward fetch in flight
+  let preloaded = null; // {url, at, controller, page} of the link being pressed
+  let showing = null; // the preload whose page is about to be shown
   const scrollPositions = new Map(); // url → window.scrollY when the page was left
 
   function main() {
@@ -46,6 +56,24 @@
     window.location.assign(url);
   }
 
+  function fetchPage(url, signal, headers) {
+    // Resolves to {response, html}: the full page, as for a browser request (apps/core/htmx.py).
+    return fetch(url, { credentials: "same-origin", signal: signal, headers: headers }).then(
+      function (response) {
+        return response.text().then(function (html) {
+          return { response: response, html: html };
+        });
+      }
+    );
+  }
+
+  function showPage(area, html, scrollY) {
+    // Swap #main's children and the sidebar <nav> (out of band); the <title> follows.
+    window.htmx.swap(area, html, { swapStyle: "innerHTML" }, { select: SHELL + " > *" });
+    window.scrollTo(0, scrollY);
+    focusHeading(area);
+  }
+
   function showProgress(busy) {
     const bar = document.getElementById("nav-progress");
     const area = main();
@@ -60,7 +88,15 @@
   }
 
   document.addEventListener("htmx:beforeRequest", function (event) {
-    if (!event.detail.boosted || !main()) return;
+    const detail = event.detail;
+    const entry = takePreload(detail);
+    if (detail.boosted) showing = null; // A newer navigation wins.
+    if (entry) {
+      event.preventDefault(); // htmx sends nothing: the page is already on its way.
+      showPreloaded(entry);
+      return;
+    }
+    if (!detail.boosted || !main()) return;
     showProgress(true);
     window.dispatchEvent(new CustomEvent("polaris-navigate"));
   });
@@ -124,28 +160,27 @@
     if (restoring) restoring.abort();
     const controller = new AbortController();
     restoring = controller;
+    dropPreload();
+    showing = null;
     showProgress(true);
     window.dispatchEvent(new CustomEvent("polaris-navigate"));
 
-    fetch(url, {
-      credentials: "same-origin",
-      signal: controller.signal,
-      // The headers htmx sends for a history restore: the server answers with the full page.
-      headers: { "HX-Request": "true", "HX-History-Restore-Request": "true", "HX-Current-URL": url },
+    // The headers htmx sends for a history restore: the server answers with the full page.
+    fetchPage(url, controller.signal, {
+      "HX-Request": "true",
+      "HX-History-Restore-Request": "true",
+      "HX-Current-URL": url,
     })
-      .then(function (response) {
-        return response.text().then(function (html) {
-          if (controller.signal.aborted || window.location.href !== url) return;
-          const area = main();
-          const contentType = response.headers.get("Content-Type");
-          if (!area || response.redirected || !isOfficePage(contentType, html)) {
-            window.location.reload();
-            return;
-          }
-          window.htmx.swap(area, html, { swapStyle: "innerHTML" }, { select: SHELL + " > *" });
-          window.scrollTo(0, scrollPositions.get(url) || 0);
-          focusHeading(area);
-        });
+      .then(function (page) {
+        if (controller.signal.aborted || window.location.href !== url) return;
+        const area = main();
+        const response = page.response;
+        const contentType = response.headers.get("Content-Type");
+        if (!area || response.redirected || !isOfficePage(contentType, page.html)) {
+          window.location.reload();
+          return;
+        }
+        showPage(area, page.html, scrollPositions.get(url) || 0);
       })
       .catch(function (error) {
         if (error.name !== "AbortError") window.location.reload();
@@ -171,6 +206,117 @@
       }
     };
   });
+
+  // --- Preloading ----------------------------------------------------------------------
+
+  function preloadUrl(target) {
+    // The URL a press on ``target`` would open with a boosted navigation, or null.
+    const link = target instanceof Element ? target.closest("a[href]") : null;
+    if (!link || !main()) return null;
+    const boost = link.closest("[hx-boost]");
+    if (!boost || boost.getAttribute("hx-boost") !== "true") return null;
+    if (link.closest('[data-preload="false"]')) return null;
+    if (link.hasAttribute("download") || (link.target && link.target !== "_self")) return null;
+    if (["hx-get", "hx-post", "hx-put", "hx-patch", "hx-delete"].some((a) => link.hasAttribute(a))) {
+      return null; // An explicit htmx request, not a navigation.
+    }
+    const url = new URL(link.href, window.location.href);
+    if (url.origin !== window.location.origin || url.hash) return null;
+    return url.href;
+  }
+
+  function preload(url) {
+    if (preloaded && preloaded.url === url && Date.now() - preloaded.at < PRELOAD_TTL_MS) return;
+    dropPreload();
+    const controller = new AbortController();
+    // The headers of a boosted navigation, as htmx would send them for the click.
+    const page = fetchPage(url, controller.signal, {
+      "HX-Request": "true",
+      "HX-Boosted": "true",
+      "HX-Current-URL": window.location.href,
+    });
+    page.catch(function () {}); // Failed or dropped: the click is handled by htmx instead.
+    preloaded = { url: url, at: Date.now(), controller: controller, page: page };
+  }
+
+  function dropPreload() {
+    if (preloaded) preloaded.controller.abort();
+    preloaded = null;
+  }
+
+  function takePreload(detail) {
+    // The preload for the request htmx is about to send (a boosted GET of the same URL,
+    // pressed moments ago), or null. Any other request drops the preload: it may change
+    // what the preloaded page shows.
+    const entry = preloaded;
+    if (!entry) return null;
+    preloaded = null;
+    const verb = detail.requestConfig ? detail.requestConfig.verb : "";
+    const path = detail.pathInfo ? detail.pathInfo.finalRequestPath : null; // with GET values
+    const fresh = Date.now() - entry.at < PRELOAD_TTL_MS;
+    if (detail.boosted && verb === "get" && path && fresh && main()) {
+      if (new URL(path, window.location.href).href === entry.url) return entry;
+    }
+    entry.controller.abort();
+    return null;
+  }
+
+  function showPreloaded(entry) {
+    showing = entry;
+    showProgress(true);
+    window.dispatchEvent(new CustomEvent("polaris-navigate"));
+    entry.page
+      .then(function (page) {
+        if (showing !== entry) return; // Another page was opened meanwhile.
+        const area = main();
+        const response = page.response;
+        const url = response.url || entry.url; // after any redirect
+        if (!area || !isOfficePage(response.headers.get("Content-Type"), page.html)) {
+          loadPage(url); // Sign-in after a session expired, an error page…: a normal load.
+          return;
+        }
+        // As htmx does for a boosted click: remember the scroll, add the history entry.
+        scrollPositions.set(window.location.href, window.scrollY);
+        window.history.pushState({ htmx: true }, "", url);
+        showPage(area, page.html, 0);
+      })
+      .catch(function () {
+        if (showing === entry) loadPage(entry.url);
+      })
+      .finally(function () {
+        if (showing === entry) {
+          showing = null;
+          showProgress(false);
+        }
+      });
+  }
+
+  function pressedWithoutModifiers(event) {
+    return !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey);
+  }
+
+  document.addEventListener(
+    "mousedown",
+    function (event) {
+      if (event.button !== 0 || !pressedWithoutModifiers(event)) return;
+      const url = preloadUrl(event.target);
+      if (url) preload(url);
+    },
+    { capture: true, passive: true }
+  );
+
+  document.addEventListener(
+    "touchstart",
+    function (event) {
+      if (event.touches.length !== 1) return;
+      const url = preloadUrl(event.target);
+      if (url) preload(url);
+    },
+    { capture: true, passive: true }
+  );
+
+  // The finger moved: a scroll, not a tap.
+  document.addEventListener("touchmove", dropPreload, { capture: true, passive: true });
 
   document.addEventListener("alpine:init", function () {
     // Theme switch (components/theme_switch.html): show the theme at once; the form's

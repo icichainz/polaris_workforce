@@ -39,6 +39,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import reduce
 
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import F, Q, Sum
@@ -59,6 +60,7 @@ from apps.accounts.permissions import (
 from apps.api.exceptions import Conflict, Locked
 from apps.attendance.models import AttendanceCorrection, AttendanceDay, AttendanceRecord
 from apps.attendance.services import lock_day
+from apps.core import changes
 from apps.core.choices import PayType, ProofType
 from apps.core.dates import company_today
 from apps.core.models import AuditLog, CompanySettings
@@ -1127,6 +1129,65 @@ def sync_sheet(site: Site, day: datetime.date, **kwargs) -> list[PayPeriod]:
     return sync_site(site, day - datetime.timedelta(days=lookback), day, ending_on=day, **kwargs)
 
 
+# --- refreshing pay on read ---------------------------------------------------------------
+#
+# The screens that list every site's pay (Pay periods, Cash sheets) recompute it on read, a
+# safety net behind the services that recompute it on write. Most of the time nothing has
+# changed, and the recomputation costs dozens of queries per site, so it is skipped while
+# the company's change marker (apps.core.changes, moved by every AuditLog entry) and the
+# day are those of the site's last recomputation. A recomputation that changed something
+# wrote audit entries of its own (payroll.auto.…), which move the marker: the next read
+# recomputes once more, finds nothing to change, and the reads after it skip. Writes that
+# bypass the services and the audit log (Django admin, a shell) show after
+# READ_REFRESH_MAX_AGE seconds at the latest.
+
+READ_REFRESH_MAX_AGE = 300
+
+
+def _refresh_on_read(kind: str, site: Site, today: datetime.date, refresh) -> bool:
+    """Run ``refresh()`` unless nothing changed since the last ``kind`` refresh of ``site``.
+
+    True if it ran. The marker is read before the refresh: a change made during the
+    refresh moves it, and the next read refreshes again.
+    """
+    key = f"payroll:read-refresh:{kind}:{site.pk}"
+    marker = f"{changes.version(site.company_id)}|{today.isoformat()}"
+    if cache.get(key) == marker:
+        return False
+    refresh()
+    cache.set(key, marker, READ_REFRESH_MAX_AGE)
+    return True
+
+
+def sync_recent_on_read(
+    sites, today: datetime.date, days: int, *, company: CompanySettings | None = None
+) -> None:
+    """Bring the last ``days`` days of pay of the active ``sites`` up to date (Pay periods)."""
+    company = company or CompanySettings.load()
+    start = today - datetime.timedelta(days=days - 1)
+    for site in sites.filter(status=Site.Status.ACTIVE):
+        _refresh_on_read(
+            f"recent{days}",
+            site,
+            today,
+            lambda site=site: sync_site(site, start, today, today=today, company=company),
+        )
+
+
+def sync_sheets_on_read(
+    sites, today: datetime.date, *, company: CompanySettings | None = None
+) -> None:
+    """Bring today's cash sheet of the active ``sites`` up to date (Cash sheets)."""
+    company = company or CompanySettings.load()
+    for site in sites.filter(status=Site.Status.ACTIVE):
+        _refresh_on_read(
+            "sheet",
+            site,
+            today,
+            lambda site=site: sync_sheet(site, today, today=today, company=company),
+        )
+
+
 def on_attendance_changed(day: AttendanceDay, *, actor=None) -> None:
     """Hook for the attendance services: refresh pay after a day is approved or corrected."""
     sync_site(day.site, day.date, day.date, actor=actor)
@@ -1186,15 +1247,16 @@ class CashSheet:
 
 
 def _sheet_status(
-    periods: list[PayPeriod], lines: list[SheetLine], today, company: CompanySettings
+    periods: list[PayPeriod], amounts: list[tuple[int, int]], today, company: CompanySettings
 ) -> str:
+    """The sheet's status from its periods and ``(net, paid)`` per pay line."""
     if not periods:
         return SHEET_NOT_OPEN
     if all(p.is_locked for p in periods):
         return SHEET_CLOSED
     if not all(period_is_ready(p, today, company) for p in periods if not p.is_locked):
         return SHEET_NOT_OPEN
-    if all(line.is_paid for line in lines):
+    if all(paid >= net for net, paid in amounts):  # SheetLine.is_paid
         return SHEET_PAID
     return SHEET_OPEN
 
@@ -1203,13 +1265,41 @@ def sheet_status(site: Site, day: datetime.date) -> str:
     """The phone's ``payout_status`` for a site and pay day (read only, no refresh)."""
     company = CompanySettings.load()
     periods = list(PayPeriod.objects.filter(site=site, end_date=day))
-    lines = [
-        SheetLine(line=line, payment=None, paid=line.paid or 0)
-        for line in PayLine.objects.filter(period__in=periods).annotate(
-            paid=Sum("payments__amount")
-        )
-    ]
-    return _sheet_status(periods, lines, company_today(company), company)
+    return _sheet_status(periods, _line_amounts(periods)[0], company_today(company), company)
+
+
+def _on_sheets(keys, site_field: str, date_field: str) -> Q:
+    """Rows of any of the sheets ``keys`` ((site id, pay day) pairs)."""
+    return reduce(
+        operator.or_,
+        (Q(**{site_field: site_id, date_field: day}) for site_id, day in set(keys)),
+    )
+
+
+def _sheet_periods(keys) -> dict[tuple, list[PayPeriod]]:
+    """The periods of each sheet (all frequencies paid that day), oldest first."""
+    periods: dict[tuple, list[PayPeriod]] = defaultdict(list)
+    sheet_periods = (
+        PayPeriod.objects.filter(_on_sheets(keys, "site_id", "end_date"))
+        .select_related("site")  # period_is_ready reads it for every unlocked period
+        .order_by("start_date")
+    )
+    for period in sheet_periods:
+        periods[(period.site_id, period.end_date)].append(period)
+    return periods
+
+
+def _line_amounts(periods) -> dict[int, list[tuple[int, int]]]:
+    """``(net, paid)`` of every pay line of ``periods``, per period id (one query)."""
+    amounts: dict[int, list[tuple[int, int]]] = defaultdict(list)
+    rows = (
+        PayLine.objects.filter(period__in=list(periods))
+        .annotate(paid=Sum("payments__amount"))
+        .values_list("period_id", "net", "paid")
+    )
+    for period_id, net, paid in rows:
+        amounts[period_id].append((net, paid or 0))
+    return amounts
 
 
 def cash_sheet(
@@ -1249,14 +1339,9 @@ def cash_sheets(
     keys = [(site.pk, day) for site, day in sheets]
 
     def on_sheets(site_field: str, date_field: str) -> Q:
-        return reduce(
-            operator.or_,
-            (Q(**{site_field: site_id, date_field: day}) for site_id, day in set(keys)),
-        )
+        return _on_sheets(keys, site_field, date_field)
 
-    periods: dict[tuple, list[PayPeriod]] = defaultdict(list)
-    for period in PayPeriod.objects.filter(on_sheets("site_id", "end_date")).order_by("start_date"):
-        periods[(period.site_id, period.end_date)].append(period)
+    periods = _sheet_periods(keys)
     pay_lines = (
         PayLine.objects.filter(period__in=[p for group in periods.values() for p in group])
         .select_related("worker__trade", "period")
@@ -1315,12 +1400,73 @@ def cash_sheets(
                 ),
                 currency=first.currency if first else company.currency,
                 currency_decimals=first.currency_decimals if first else company.currency_decimals,
-                status=_sheet_status(sheet_periods, sheet_lines, today, company),
+                status=_sheet_status(
+                    sheet_periods, [(sl.line.net, sl.paid) for sl in sheet_lines], today, company
+                ),
                 absent=[
                     r.worker
                     for r in (absent.get(attendance_day.pk, []) if attendance_day else [])
                     if r.worker_id not in on_sheet
                 ],
+            )
+        )
+    return result
+
+
+@dataclass
+class CashSheetSummary:
+    """A cash sheet's totals and status, without its lines (the Cash sheets list)."""
+
+    site: Site
+    date: datetime.date
+    periods: list[PayPeriod]
+    reconciliation: engine.CashReconciliation
+    currency: str
+    currency_decimals: int
+    status: str = SHEET_NOT_OPEN
+
+
+def cash_sheet_summaries(
+    sheets: list[tuple[Site, datetime.date]],
+    *,
+    today: datetime.date | None = None,
+    company: CompanySettings | None = None,
+) -> list[CashSheetSummary]:
+    """The totals and status of ``cash_sheets(sheets)``, in order, for a page of sheets.
+
+    The same figures from the same rules (``engine.reconcile``, ``_sheet_status``), read
+    as ``(net, paid)`` per pay line and the cash issued per sheet: three queries, plus
+    the readiness check of each unlocked period, however many workers the sheets hold.
+    """
+    if not sheets:
+        return []
+    company = company or CompanySettings.load()
+    today = today or company_today(company)
+    keys = [(site.pk, day) for site, day in sheets]
+    periods = _sheet_periods(keys)
+    amounts = _line_amounts(p for group in periods.values() for p in group)
+    issued = {
+        (row["site_id"], row["date"]): row["total"]
+        for row in CashIssue.objects.filter(_on_sheets(keys, "site_id", "date"))
+        .values("site_id", "date")
+        .annotate(total=Sum("amount"))
+        .order_by()
+    }
+
+    result = []
+    for (site, day), key in zip(sheets, keys, strict=True):
+        sheet_periods = periods.get(key, [])
+        sheet_amounts = [a for p in sheet_periods for a in amounts.get(p.pk, [])]
+        first = sheet_periods[0] if sheet_periods else None
+        result.append(
+            CashSheetSummary(
+                site=site,
+                date=day,
+                periods=sheet_periods,
+                reconciliation=engine.reconcile(issued.get(key, 0), sheet_amounts),
+                currency=first.currency if first else company.currency,
+                currency_decimals=first.currency_decimals if first else company.currency_decimals,
+                status=_sheet_status(sheet_periods, sheet_amounts, today, company),
             )
         )
     return result

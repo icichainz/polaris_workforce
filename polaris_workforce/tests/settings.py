@@ -15,5 +15,11 @@ from config.settings import *  # noqa: E402, F403
 # Fast and isolated per test process; production uses the shared file-based cache.
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 
+# Tests never run collectstatic, so there is no manifest of hashed names to look up.
+STORAGES = {
+    **STORAGES,  # noqa: F405
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
 # The test client speaks plain HTTP; production redirects it to HTTPS.
 SECURE_SSL_REDIRECT = False

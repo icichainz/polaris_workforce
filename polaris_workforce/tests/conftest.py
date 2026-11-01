@@ -1,4 +1,5 @@
 import pytest
+from django.core.cache import cache
 from django.utils import translation
 
 from apps.core.tenancy import use_company
@@ -23,6 +24,14 @@ def _english_by_default():
     translation.activate("en")
     yield
     translation.deactivate()
+
+
+@pytest.fixture(autouse=True)
+def _empty_cache():
+    """Start every test with an empty cache: throttles, lockouts and the pay refresh
+    markers (``apps.payroll.services``) would otherwise leak between tests, which reuse
+    the same row ids."""
+    cache.clear()
 
 
 @pytest.fixture(autouse=True)
