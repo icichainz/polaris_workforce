@@ -69,6 +69,8 @@ INSTALLED_APPS = [
     "apps.messaging",
     "apps.portal",
     "apps.checkin",
+    # AI assistants (office API for the Polaris MCP server)
+    "apps.agents",
 ]
 
 MIDDLEWARE = [
@@ -269,7 +271,7 @@ REST_FRAMEWORK = {
     ],
     "EXCEPTION_HANDLER": "apps.api.exceptions.handler",
     "DEFAULT_PAGINATION_CLASS": "apps.api.pagination.StandardPagination",
-    "DEFAULT_THROTTLE_RATES": {"pin": "10/minute"},
+    "DEFAULT_THROTTLE_RATES": {"pin": "10/minute", "agent": "120/minute"},
     # Throttles key on the client IP. Without NUM_PROXIES, DRF trusts the whole
     # X-Forwarded-For header, which a client can rotate to dodge the PIN throttle.
     # 0: use REMOTE_ADDR. Behind N reverse proxies that set the header, use N.
@@ -283,14 +285,16 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Polaris Workforce API",
-    "VERSION": "1.2.0",
+    "VERSION": "1.3.0",
     "DESCRIPTION": (
         "Foreman phone API: PIN sign-in, crew lists, roll call, corrections, sync and "
         "cash payouts. Authenticate with `Authorization: Device <token>` from "
         "`POST /api/v1/auth/pin/`. Errors are `{code, message, details}`. Every phone "
         "write carries a `client_uuid` and is idempotent. Money is an integer in the "
         "currency's smallest unit, next to a `currency {code, decimals}` object. Dates "
-        "are ISO 8601, times `HH:MM`. Conventions: docs/api/README.md."
+        "are ISO 8601, times `HH:MM`. Conventions: docs/api/README.md.\n\n"
+        "The `office` endpoints serve AI assistants (the Polaris MCP server) and only "
+        "accept an agent token: `Authorization: Bearer pol_…`."
     ),
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
@@ -315,6 +319,13 @@ SPECTACULAR_SETTINGS = {
         {
             "name": "checkin",
             "description": "QR badges, kiosk phones, check-ins and roll-call suggestions (Wave 4).",
+        },
+        {
+            "name": "office",
+            "description": (
+                "Office API for AI assistants: read-only, plus approving or sending back a "
+                "roll call after a preview. Agent tokens only."
+            ),
         },
         {
             "name": "files",

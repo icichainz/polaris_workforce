@@ -1,0 +1,44 @@
+{% load i18n %}{% comment %}
+Agent tokens table. Context: tokens (AgentToken list), show_user (bool: add an owner column).
+{% endcomment %}{% if tokens %}
+<div class="overflow-x-auto rounded-control border border-line bg-surface">
+  <table class="w-full min-w-[680px] border-collapse text-sm">
+    <thead>
+      <tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Name" %}</th>
+        {% if show_user %}<th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "User" %}</th>{% endif %}
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Access" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Status" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Last used" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel"><span class="sr-only">{% translate "Actions" %}</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for token in tokens %}
+      <tr class="border-t border-line-soft" data-token="{{ token.pk }}">
+        <td class="px-4 py-3"><span class="font-semibold">{{ token.name }}</span><br><span class="text-xs text-steel tabular-nums">{{ token.prefix }}…</span></td>
+        {% if show_user %}<td class="px-4 py-3">{{ token.user.get_full_name|default:token.user.get_username }}</td>{% endif %}
+        <td class="px-4 py-3">{% if token.can_approve %}{% translate "Read and approve" %}{% else %}{% translate "Read only" %}{% endif %}</td>
+        <td class="px-4 py-3">
+          {% if token.revoked_at %}{% translate "Revoked" as status_label %}{% include "components/status_badge.html" with status="inactive" label=status_label only %}
+          {% elif token.is_expired %}{% translate "Expired" as status_label %}{% include "components/status_badge.html" with status="inactive" label=status_label only %}
+          {% else %}{% blocktranslate with date=token.expires_at|date:_("j M Y") asvar status_label %}Until {{ date }}{% endblocktranslate %}{% include "components/status_badge.html" with status="active" label=status_label only %}{% endif %}
+        </td>
+        <td class="px-4 py-3 tabular-nums">{% if token.last_used_at %}{{ token.last_used_at|date:_("j M Y") }}{% else %}—{% endif %}</td>
+        <td class="px-4 py-3 text-right">
+          {% if token.is_active %}
+          <form method="post" action="{% url 'agents:revoke' token.pk %}">
+            {% csrf_token %}
+            {% translate "Revoke" as revoke_label %}{% include "components/button.html" with label=revoke_label type="submit" variant="danger" only %}
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  {% translate "No tokens yet" as empty_title %}{% translate "Create one above, then paste it into the Polaris connector of Claude Desktop." as empty_message %}
+  {% include "components/empty_state.html" with icon="users" title=empty_title message=empty_message only %}
+{% endif %}

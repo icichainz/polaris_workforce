@@ -1,0 +1,45 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "AI assistant access" %} · Polaris Workforce{% endblock %}
+{% block page_title %}{% translate "AI assistant access" %}{% endblock %}
+{% block page_meta %}{% translate "Ask Claude about today’s roll calls, cash sheets and workers. Each token acts as you: your sites, your role." %}{% endblock %}
+
+{% block content %}
+{% if not allowed %}
+  {% translate "Pick a company first" as empty_title %}{% translate "Agent tokens belong to a user of a company. Sign in with your company account to create one." as empty_message %}
+  {% include "components/empty_state.html" with icon="users" title=empty_title message=empty_message only %}
+{% else %}
+<div class="flex flex-wrap items-start gap-6">
+  <section aria-labelledby="new-token-title" class="flex min-w-0 flex-[2_1_420px] flex-col gap-4 rounded-card border border-line bg-surface px-5 py-4.5">
+    <h2 id="new-token-title" class="font-display text-lg font-bold">{% translate "New token" %}</h2>
+    <form method="post" action="{% url 'agents:create' %}" class="flex flex-col gap-4" novalidate>
+      {% csrf_token %}
+      {% include "components/field.html" with field=form.name only %}
+      {% include "components/field.html" with field=form.lifetime_days only %}
+      {% if form.can_approve %}{% include "components/field.html" with field=form.can_approve only %}{% endif %}
+      <div>{% translate "Create token" as create_label %}{% include "components/button.html" with label=create_label type="submit" variant="primary" only %}</div>
+    </form>
+  </section>
+
+  <section aria-labelledby="rules-title" class="flex min-w-0 flex-[1_1_280px] flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
+    <h2 id="rules-title" class="font-display text-base font-bold">{% translate "What an assistant can do" %}</h2>
+    <p class="text-sm text-ink-700">{% translate "Read today’s overview, the roll calls waiting for approval, a site’s day, a cash sheet and a worker’s days and pay." %}</p>
+    <p class="text-sm text-ink-700">{% translate "With approval turned on: approve or send back a submitted roll call, only after showing you a preview." %}</p>
+    <p class="text-sm font-medium text-absent-fg">{% translate "Never: record a payment, issue cash, give an advance, or change workers, pay or settings." %}</p>
+  </section>
+</div>
+
+<section aria-labelledby="my-tokens-title" class="flex flex-col gap-4">
+  <h2 id="my-tokens-title" class="font-display text-lg font-bold">{% translate "Your tokens" %}</h2>
+  {% include "agents/_tokens.html" with tokens=my_tokens show_user=False %}
+</section>
+
+{% if other_tokens %}
+<section aria-labelledby="other-tokens-title" class="flex flex-col gap-4">
+  <h2 id="other-tokens-title" class="font-display text-lg font-bold">{% translate "Other people’s tokens" %}</h2>
+  {% include "agents/_tokens.html" with tokens=other_tokens show_user=True %}
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

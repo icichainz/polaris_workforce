@@ -62,7 +62,8 @@ SECRET = "Bravo"  # appears in site B's name, its worker's and its manager's nam
 #   "payouts":  bank & mobile-money payouts; site and company scoping checked in
 #               test_payouts_isolation.py (which builds its own batches)
 #   "own":      acts only on the user's own pending work (the import preview kept in the
-#               session); checked in test_workers_import.py
+#               session); checked in test_workers_import.py. AI assistant tokens: the
+#               user's own (an admin's: the company's); checked in test_agents_api.py
 OFFICE = {
     "dashboard:home": "list",
     "dashboard:reports": "list",
@@ -178,6 +179,10 @@ OFFICE = {
     "portal:office_worker": "b_get",
     "portal:office_set_pin": "b_post",
     "portal:office_revoke": "b_post",
+    # AI assistant access (agent tokens)
+    "agents:access": "own",
+    "agents:create": "own",
+    "agents:revoke": "own",
 }
 API = {
     "api:health": "public",
@@ -204,6 +209,16 @@ API = {
     "api:checkin:site-checkins": "b_get",
     "api:checkin:day-suggestions": "b_get",
     "api:checkin:file-photo": "b_get (404)",
+    # Office API for AI assistants: agent tokens only (test_site_a_agent_cannot_reach_site_b)
+    "api:office:me": "list",
+    "api:office:today": "list",
+    "api:office:approvals": "list",
+    "api:office:workers": "list",
+    "api:office:day": "b_get",
+    "api:office:cash-sheet": "b_get",
+    "api:office:worker": "b_get",
+    "api:office:decision-preview": "b_post",
+    "api:office:decisions": "b_post (confirmation of a site-B preview)",
 }
 JPEG = b"\xff\xd8\xff\xe0" + b"0" * 64
 PDF = b"%PDF-1.4\n" + b"0" * 64
@@ -708,3 +723,49 @@ def test_site_b_phone_is_not_signed_out_by_site_a(world):
     phone = Phone(a.phone_number, PIN)
     assert phone.logout().status_code == 204
     assert ForemanDevice.objects.get(pk=ids["device_b"]).revoked_at is None
+
+
+def _agent(user, can_approve=True):
+    from apps.agents.services import create_token
+
+    _token, raw = create_token(user, name="Claude", can_approve=can_approve)
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {raw}")
+    return client
+
+
+def test_site_a_agent_cannot_reach_site_b(world):
+    """The office API (AI assistants) with site A manager's token: every site-B object is
+    403, the lists hold nothing of site B, and a confirmation made by site B's manager
+    is useless to it. Site B's own manager reaches the same URLs (positive control)."""
+    a, b, ids = world
+    site, day, pending = ids["site"], ids["yesterday"].isoformat(), ids["pending_day"]
+    b_urls = [
+        ("get", f"/api/v1/office/sites/{site}/days/{day}/", {}),
+        ("get", f"/api/v1/office/sites/{site}/cash-sheets/{day}/", {}),
+        ("get", f"/api/v1/office/workers/{ids['worker']}/", {}),
+        ("get", "/api/v1/office/workers/", {"site": site}),
+        ("post", f"/api/v1/office/days/{pending}/decision-preview/", {"decision": "approve"}),
+    ]
+    own = _agent(b.manager)
+    for method, url, data in b_urls:
+        response = getattr(own, method)(url, data, format="json")
+        assert response.status_code == 200, (url, response.content)
+    b_confirmation = own.post(
+        f"/api/v1/office/days/{pending}/decision-preview/", {"decision": "approve"}, format="json"
+    ).json()["confirmation"]
+
+    client = _agent(a.manager)
+    before = _b_state(b)
+    for method, url, data in b_urls:
+        response = getattr(client, method)(url, data, format="json")
+        assert response.status_code == 403, (method, url, response.status_code)
+        assert response.json()["code"] == "permission_denied"
+    response = client.post("/api/v1/office/decisions/", {"confirmation": b_confirmation})
+    assert response.status_code == 400
+    lists = "".join(
+        str(client.get(f"/api/v1/office/{name}/").json())
+        for name in ("me", "today", "approvals", "workers")
+    )
+    assert SECRET not in lists
+    assert _b_state(b) == before

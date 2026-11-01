@@ -1,13 +1,11 @@
 openapi: 3.0.3
 info:
   title: Polaris Workforce API
-  version: 1.2.0
-  description: 'Foreman phone API: PIN sign-in, crew lists, roll call, corrections,
-    sync and cash payouts. Authenticate with `Authorization: Device <token>` from
-    `POST /api/v1/auth/pin/`. Errors are `{code, message, details}`. Every phone write
-    carries a `client_uuid` and is idempotent. Money is an integer in the currency''s
-    smallest unit, next to a `currency {code, decimals}` object. Dates are ISO 8601,
-    times `HH:MM`. Conventions: docs/api/README.md.'
+  version: 1.3.0
+  description: |-
+    Foreman phone API: PIN sign-in, crew lists, roll call, corrections, sync and cash payouts. Authenticate with `Authorization: Device <token>` from `POST /api/v1/auth/pin/`. Errors are `{code, message, details}`. Every phone write carries a `client_uuid` and is idempotent. Money is an integer in the currency's smallest unit, next to a `currency {code, decimals}` object. Dates are ISO 8601, times `HH:MM`. Conventions: docs/api/README.md.
+
+    The `office` endpoints serve AI assistants (the Polaris MCP server) and only accept an agent token: `Authorization: Bearer pol_…`.
 paths:
   /api/v1/auth/logout/:
     post:
@@ -721,6 +719,689 @@ paths:
                   summary: not_authenticated
           description: Missing, invalid or revoked device token. Sign in again with
             the PIN.
+  /api/v1/office/approvals/:
+    get:
+      operationId: office_approvals
+      description: Submitted days on the user's sites, oldest first, with what to
+        check.
+      summary: Roll calls waiting for approval
+      tags:
+      - office
+      security:
+      - AgentToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Approvals'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Throttled:
+                  value:
+                    code: throttled
+                    message: Request was throttled. Expected available in 42 seconds.
+                    details:
+                      retry_after: 42
+                  summary: throttled
+          description: Too many requests. Wait `details.retry_after` seconds (also
+            in `Retry-After`).
+  /api/v1/office/days/{day_id}/decision-preview/:
+    post:
+      operationId: office_day_decision_preview
+      description: Step 1 of 2. Checks that the decision can be taken and returns
+        the day as it will be decided, plus a `confirmation`. Nothing changes. Show
+        the preview to the person and send the confirmation only once they agree.
+        `reject` sends the day back to the foreman and needs a `note`. The confirmation
+        expires after 10 minutes.
+      summary: Preview approving or sending back a roll call
+      parameters:
+      - in: path
+        name: day_id
+        schema:
+          type: integer
+        description: Attendance day id.
+        required: true
+      tags:
+      - office
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionPreviewRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DecisionPreviewRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DecisionPreviewRequestRequest'
+        required: true
+      security:
+      - AgentToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionPreview'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ValidationError:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      client_uuid:
+                      - This field is required.
+                  summary: validation_error
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Conflict:
+                  value:
+                    code: conflict
+                    message: This client_uuid was already used for a different request.
+                    details:
+                      client_uuid: 6f1c2b9e-1d1a-4c55-9a52-3f0e8a9d7b10
+                  summary: conflict
+          description: The request conflicts with the current state.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Throttled:
+                  value:
+                    code: throttled
+                    message: Request was throttled. Expected available in 42 seconds.
+                    details:
+                      retry_after: 42
+                  summary: throttled
+          description: Too many requests. Wait `details.retry_after` seconds (also
+            in `Retry-After`).
+  /api/v1/office/decisions/:
+    post:
+      operationId: office_day_decision
+      description: 'Step 2 of 2. Approves or sends back the day exactly as previewed.
+        Fails with `409` if the roll call changed after the preview, and `400` if
+        the confirmation expired: preview again. Sending the same confirmation twice
+        answers the current day with `Idempotent-Replayed: true` instead of deciding
+        twice.'
+      summary: Carry out a previewed decision
+      tags:
+      - office
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionConfirmRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DecisionConfirmRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DecisionConfirmRequestRequest'
+        required: true
+      security:
+      - AgentToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ValidationError:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      client_uuid:
+                      - This field is required.
+                  summary: validation_error
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Conflict:
+                  value:
+                    code: conflict
+                    message: This client_uuid was already used for a different request.
+                    details:
+                      client_uuid: 6f1c2b9e-1d1a-4c55-9a52-3f0e8a9d7b10
+                  summary: conflict
+          description: The request conflicts with the current state.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Throttled:
+                  value:
+                    code: throttled
+                    message: Request was throttled. Expected available in 42 seconds.
+                    details:
+                      retry_after: 42
+                  summary: throttled
+          description: Too many requests. Wait `details.retry_after` seconds (also
+            in `Retry-After`).
+  /api/v1/office/me/:
+    get:
+      operationId: office_me
+      description: The office user behind the agent token, their company (currency,
+        time zone, today's date), what the token may do and the sites the user may
+        see.
+      summary: Who the token acts for
+      tags:
+      - office
+      security:
+      - AgentToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficeMe'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Throttled:
+                  value:
+                    code: throttled
+                    message: Request was throttled. Expected available in 42 seconds.
+                    details:
+                      retry_after: 42
+                  summary: throttled
+          description: Too many requests. Wait `details.retry_after` seconds (also
+            in `Retry-After`).
+  /api/v1/office/sites/{site_id}/cash-sheets/{date}/:
+    get:
+      operationId: office_cash_sheet
+      description: 'Who is paid how much, what was already paid and the cash reconciliation.
+        Read only: payments are recorded by the foreman with proof of receipt, never
+        here.'
+      summary: A site's cash sheet for a pay day
+      parameters:
+      - in: path
+        name: date
+        schema:
+          type: string
+          format: date
+        description: Work day, ISO 8601 `YYYY-MM-DD`, in the company time zone.
+        required: true
+      - in: path
+        name: site_id
+        schema:
+          type: integer
+        description: A site the signed-in foreman is assigned to (from `GET /me/`).
+        required: true
+      tags:
+      - office
+      security:
+      - AgentToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficeCashSheet'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Throttled:
+                  value:
+                    code: throttled
+                    message: Request was throttled. Expected available in 42 seconds.
+                    details:
+                      retry_after: 42
+                  summary: throttled
+          description: Too many requests. Wait `details.retry_after` seconds (also
+            in `Retry-After`).
+  /api/v1/office/sites/{site_id}/days/{date}/:
+    get:
+      operationId: office_day
+      description: Every worker's mark, arrival and departure, with the corrections
+        made after submission and the reason given. `status` is `not_started` (and
+        `day_id` null) when no roll call was taken.
+      summary: A site's roll call for a date
+      parameters:
+      - in: path
+        name: date
+        schema:
+          type: string
+          format: date
+        description: Work day, ISO 8601 `YYYY-MM-DD`, in the company time zone.
+        required: true
+      - in: path
+        name: site_id
+        schema:
+          type: integer
+        description: A site the signed-in foreman is assigned to (from `GET /me/`).
+        required: true
+      tags:
+      - office
+      security:
+      - AgentToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficeDay'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Throttled:
+                  value:
+                    code: throttled
+                    message: Request was throttled. Expected available in 42 seconds.
+                    details:
+                      retry_after: 42
+                  summary: throttled
+          description: Too many requests. Wait `details.retry_after` seconds (also
+            in `Retry-After`).
+  /api/v1/office/today/:
+    get:
+      operationId: office_today
+      description: 'The office dashboard: each active site''s roll call (status, counts,
+        cash to pay tonight), how many days wait for approval, and what needs attention.'
+      summary: Today on the sites
+      tags:
+      - office
+      security:
+      - AgentToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Today'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Throttled:
+                  value:
+                    code: throttled
+                    message: Request was throttled. Expected available in 42 seconds.
+                    details:
+                      retry_after: 42
+                  summary: throttled
+          description: Too many requests. Wait `details.retry_after` seconds (also
+            in `Retry-After`).
+  /api/v1/office/workers/:
+    get:
+      operationId: office_workers
+      description: Active workers the user may see, by name or number (`q`) and/or
+        by today's site. At most 25. No phone numbers or ID documents.
+      summary: Find workers
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+          maxLength: 100
+      - in: query
+        name: site
+        schema:
+          type: integer
+          minimum: 1
+      tags:
+      - office
+      security:
+      - AgentToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerList'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ValidationError:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      client_uuid:
+                      - This field is required.
+                  summary: validation_error
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Throttled:
+                  value:
+                    code: throttled
+                    message: Request was throttled. Expected available in 42 seconds.
+                    details:
+                      retry_after: 42
+                  summary: throttled
+          description: Too many requests. Wait `details.retry_after` seconds (also
+            in `Retry-After`).
+  /api/v1/office/workers/{worker_id}/:
+    get:
+      operationId: office_worker
+      description: 'Roll-call marks and pay lines between `from` and `to` (default:
+        the last 14 days; at most 62 days), on the user''s sites only, and what the
+        worker still owes on salary advances.'
+      summary: A worker's days and pay
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+      - in: path
+        name: worker_id
+        schema:
+          type: integer
+        description: Worker id.
+        required: true
+      tags:
+      - office
+      security:
+      - AgentToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerDetail'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ValidationError:
+                  value:
+                    code: validation_error
+                    message: Invalid input.
+                    details:
+                      client_uuid:
+                      - This field is required.
+                  summary: validation_error
+          description: The request is invalid; `details` maps each field to its errors.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NotAuthenticated:
+                  value:
+                    code: not_authenticated
+                    message: Invalid or revoked device token.
+                    details: {}
+                  summary: not_authenticated
+          description: Missing, invalid or revoked device token. Sign in again with
+            the PIN.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                PermissionDenied:
+                  value:
+                    code: permission_denied
+                    message: You do not have permission to perform this action.
+                    details: {}
+                  summary: permission_denied
+          description: Signed in, but not allowed (for example a site you are not
+            assigned to).
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                Throttled:
+                  value:
+                    code: throttled
+                    message: Request was throttled. Expected available in 42 seconds.
+                    details:
+                      retry_after: 42
+                  summary: throttled
+          description: Too many requests. Wait `details.retry_after` seconds (also
+            in `Retry-After`).
   /api/v1/payments/:
     post:
       operationId: payment_create
@@ -2610,6 +3291,54 @@ paths:
             the PIN.
 components:
   schemas:
+    Alert:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        severity:
+          $ref: '#/components/schemas/SeverityEnum'
+        site:
+          type: string
+        site_id:
+          type: integer
+          nullable: true
+        date:
+          type: string
+          format: date
+          nullable: true
+        count:
+          type: integer
+        person:
+          type: string
+        detail:
+          type: string
+        worker_id:
+          type: integer
+          nullable: true
+        day_id:
+          type: integer
+          nullable: true
+      required:
+      - count
+      - date
+      - day_id
+      - detail
+      - kind
+      - person
+      - severity
+      - site
+      - site_id
+      - worker_id
+    Approvals:
+      type: object
+      properties:
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/WaitingDay'
+      required:
+      - days
     AssignedSite:
       type: object
       properties:
@@ -2884,6 +3613,26 @@ components:
       - issued_at
       - payload_sha256
       - worker_id
+    Change:
+      type: object
+      properties:
+        field:
+          type: string
+        old:
+          type: string
+        new:
+          type: string
+        reason:
+          type: string
+        at:
+          type: string
+          description: '`HH:MM`, local time.'
+      required:
+      - at
+      - field
+      - new
+      - old
+      - reason
     CheckIn:
       type: object
       properties:
@@ -3318,6 +4067,66 @@ components:
         * `approved` - Approved
         * `rejected` - Rejected
         * `locked` - Locked
+    DecisionConfirmRequestRequest:
+      type: object
+      properties:
+        confirmation:
+          type: string
+          minLength: 1
+          maxLength: 4000
+      required:
+      - confirmation
+    DecisionEnum:
+      enum:
+      - approve
+      - reject
+      type: string
+      description: |-
+        * `approve` - approve
+        * `reject` - reject
+    DecisionPreview:
+      type: object
+      properties:
+        decision:
+          $ref: '#/components/schemas/DecisionEnum'
+        note:
+          type: string
+        day:
+          $ref: '#/components/schemas/OfficeDay'
+        confirmation:
+          type: string
+          description: Send it to the decision endpoint to carry out exactly this
+            decision.
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - confirmation
+      - day
+      - decision
+      - expires_at
+      - note
+    DecisionPreviewRequestRequest:
+      type: object
+      properties:
+        decision:
+          $ref: '#/components/schemas/DecisionEnum'
+        note:
+          type: string
+          description: 'Required to reject: what the foreman should check.'
+          maxLength: 1000
+      required:
+      - decision
+    DecisionResult:
+      type: object
+      properties:
+        decision:
+          $ref: '#/components/schemas/DecisionEnum'
+        day:
+          $ref: '#/components/schemas/OfficeDay'
+      required:
+      - day
+      - decision
     Device:
       type: object
       properties:
@@ -3445,6 +4254,18 @@ components:
           type: string
       required:
       - status
+    KindEnum:
+      enum:
+      - missing_roll_call
+      - corrections
+      - absent_streak
+      - unclosed_period
+      type: string
+      description: |-
+        * `missing_roll_call` - Roll call not submitted after its due time
+        * `corrections` - Records corrected after submission
+        * `absent_streak` - A worker absent several days in a row
+        * `unclosed_period` - A pay period past its end and not locked
     Kiosk:
       type: object
       properties:
@@ -3501,6 +4322,265 @@ components:
       - phone
       - role
       - sites
+    Money:
+      type: object
+      properties:
+        amount:
+          type: integer
+          description: Integer in the currency's smallest unit.
+        display:
+          type: string
+          description: Written the company's way, e.g. `350 000 XOF`.
+      required:
+      - amount
+      - display
+    OfficeCashLine:
+      type: object
+      properties:
+        worker:
+          $ref: '#/components/schemas/WorkerRef'
+        units:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          description: Days worked.
+        gross:
+          $ref: '#/components/schemas/Money'
+        advance_deduction:
+          $ref: '#/components/schemas/Money'
+        net:
+          $ref: '#/components/schemas/Money'
+        paid:
+          $ref: '#/components/schemas/Money'
+        is_paid:
+          type: boolean
+      required:
+      - advance_deduction
+      - gross
+      - is_paid
+      - net
+      - paid
+      - units
+      - worker
+    OfficeCashSheet:
+      type: object
+      properties:
+        site:
+          $ref: '#/components/schemas/SiteRef'
+        date:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/PayoutStatusEnum'
+        day_status:
+          $ref: '#/components/schemas/DayStatusEnum'
+        currency:
+          $ref: '#/components/schemas/Currency'
+        cash_issued:
+          $ref: '#/components/schemas/Money'
+        total_to_pay:
+          $ref: '#/components/schemas/Money'
+        paid_total:
+          $ref: '#/components/schemas/Money'
+        left_to_pay:
+          $ref: '#/components/schemas/Money'
+        cash_in_hand:
+          $ref: '#/components/schemas/Money'
+        line_count:
+          type: integer
+        paid_count:
+          type: integer
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfficeCashLine'
+        absent:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkerRef'
+      required:
+      - absent
+      - cash_in_hand
+      - cash_issued
+      - currency
+      - date
+      - day_status
+      - left_to_pay
+      - line_count
+      - lines
+      - paid_count
+      - paid_total
+      - site
+      - status
+      - total_to_pay
+    OfficeCompany:
+      type: object
+      properties:
+        name:
+          type: string
+        currency:
+          $ref: '#/components/schemas/Currency'
+        time_zone:
+          type: string
+        today:
+          type: string
+          format: date
+          description: Today in the company's time zone.
+      required:
+      - currency
+      - name
+      - time_zone
+      - today
+    OfficeDay:
+      type: object
+      properties:
+        day_id:
+          type: integer
+          nullable: true
+          description: Null before any roll call.
+        site:
+          $ref: '#/components/schemas/SiteRef'
+        date:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/DayStatusEnum'
+        foreman:
+          type: string
+        submitted_at:
+          type: string
+          nullable: true
+        approved_at:
+          type: string
+          nullable: true
+        approved_by:
+          type: string
+        rejection_note:
+          type: string
+        foreman_note:
+          type: string
+        counts:
+          $ref: '#/components/schemas/DayCounts'
+        flags:
+          type: array
+          items:
+            type: string
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfficeRecord'
+        may_decide:
+          type: boolean
+          description: Submitted, so it can be approved or sent back.
+      required:
+      - approved_at
+      - approved_by
+      - counts
+      - date
+      - day_id
+      - flags
+      - foreman
+      - foreman_note
+      - may_decide
+      - records
+      - rejection_note
+      - site
+      - status
+      - submitted_at
+    OfficeMe:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/OfficeUser'
+        company:
+          $ref: '#/components/schemas/OfficeCompany'
+        token:
+          $ref: '#/components/schemas/OfficeToken'
+        sites:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfficeSite'
+          description: The sites this user may see.
+      required:
+      - company
+      - sites
+      - token
+      - user
+    OfficeRecord:
+      type: object
+      properties:
+        worker:
+          $ref: '#/components/schemas/WorkerRef'
+        status:
+          $ref: '#/components/schemas/AttendanceStatusEnum'
+        arrival:
+          type: string
+          nullable: true
+        departure:
+          type: string
+          nullable: true
+        note:
+          type: string
+        corrected:
+          type: boolean
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Change'
+          description: Corrections made after submission.
+        paid_note:
+          type: string
+          description: Set when the worker was already paid for this day.
+      required:
+      - arrival
+      - changes
+      - corrected
+      - departure
+      - note
+      - paid_note
+      - status
+      - worker
+    OfficeSite:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        status:
+          type: string
+      required:
+      - id
+      - name
+      - status
+    OfficeToken:
+      type: object
+      properties:
+        name:
+          type: string
+        can_approve:
+          type: boolean
+          description: This token may approve or send back roll calls (after a preview).
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - can_approve
+      - expires_at
+      - name
+    OfficeUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRoleEnum'
+      required:
+      - id
+      - name
+      - role
     PayTypeEnum:
       enum:
       - daily
@@ -3972,6 +5052,24 @@ components:
       - late_after
       - site_id
       - suggestions
+    SeverityEnum:
+      enum:
+      - danger
+      - warning
+      type: string
+      description: |-
+        * `danger` - Danger
+        * `warning` - Warning
+    SiteRef:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+      - id
+      - name
     SourceEnum:
       enum:
       - foreman_scan
@@ -4037,6 +5135,107 @@ components:
       - records
       - server_time
       - since
+    Today:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        now:
+          type: string
+          description: Local time, ISO 8601.
+        is_working_day:
+          type: boolean
+        totals:
+          $ref: '#/components/schemas/TodayTotals'
+        sites:
+          type: array
+          items:
+            $ref: '#/components/schemas/TodaySite'
+        waiting_for_approval:
+          type: integer
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+      required:
+      - alerts
+      - date
+      - is_working_day
+      - now
+      - sites
+      - totals
+      - waiting_for_approval
+    TodaySite:
+      type: object
+      properties:
+        site:
+          $ref: '#/components/schemas/SiteRef'
+        foreman:
+          type: string
+        day_id:
+          type: integer
+          nullable: true
+        status:
+          $ref: '#/components/schemas/DayStatusEnum'
+        roll_call_due:
+          type: string
+          description: '`HH:MM`.'
+        overdue:
+          type: boolean
+          description: The roll call is late (not yet submitted).
+        expected:
+          type: integer
+        present:
+          type: integer
+        absent:
+          type: integer
+        half:
+          type: integer
+        late:
+          type: integer
+        cash_tonight:
+          allOf:
+          - $ref: '#/components/schemas/Money'
+          nullable: true
+      required:
+      - absent
+      - cash_tonight
+      - day_id
+      - expected
+      - foreman
+      - half
+      - late
+      - overdue
+      - present
+      - roll_call_due
+      - site
+      - status
+    TodayTotals:
+      type: object
+      properties:
+        expected:
+          type: integer
+        present:
+          type: integer
+        absent:
+          type: integer
+        half:
+          type: integer
+          description: Half days.
+        late:
+          type: integer
+        cash_tonight:
+          allOf:
+          - $ref: '#/components/schemas/Money'
+          description: Cash to pay out tonight on every active site.
+      required:
+      - absent
+      - cash_tonight
+      - expected
+      - half
+      - late
+      - present
     UserProfile:
       type: object
       properties:
@@ -4075,7 +5274,218 @@ components:
         * `site_manager` - Site manager
         * `foreman` - Foreman
         * `accountant` - Accountant
+    WaitingDay:
+      type: object
+      properties:
+        day_id:
+          type: integer
+        site:
+          $ref: '#/components/schemas/SiteRef'
+        date:
+          type: string
+          format: date
+        foreman:
+          type: string
+        submitted_at:
+          type: string
+          nullable: true
+          description: Local time, ISO 8601.
+        counts:
+          $ref: '#/components/schemas/DayCounts'
+        flags:
+          type: array
+          items:
+            type: string
+          description: 'Why to look twice: corrections, a roll call that synced late.'
+      required:
+      - counts
+      - date
+      - day_id
+      - flags
+      - foreman
+      - site
+      - submitted_at
+    WorkerDay:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        site:
+          $ref: '#/components/schemas/SiteRef'
+        day_status:
+          $ref: '#/components/schemas/DayStatusEnum'
+        status:
+          $ref: '#/components/schemas/AttendanceStatusEnum'
+        arrival:
+          type: string
+          nullable: true
+        departure:
+          type: string
+          nullable: true
+        note:
+          type: string
+        corrected:
+          type: boolean
+      required:
+      - arrival
+      - corrected
+      - date
+      - day_status
+      - departure
+      - note
+      - site
+      - status
+    WorkerDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        number:
+          type: string
+          description: Employee number.
+        trade:
+          type: string
+          description: Empty when the worker has no trade.
+        active:
+          type: boolean
+        site:
+          allOf:
+          - $ref: '#/components/schemas/SiteRef'
+          nullable: true
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkerDay'
+        pay:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkerPay'
+        advance_balance:
+          allOf:
+          - $ref: '#/components/schemas/Money'
+          description: Still owed on open salary advances.
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+      required:
+      - active
+      - advance_balance
+      - days
+      - from
+      - id
+      - name
+      - number
+      - pay
+      - site
+      - to
+      - trade
+    WorkerList:
+      type: object
+      properties:
+        workers:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkerMatch'
+      required:
+      - workers
+    WorkerMatch:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        number:
+          type: string
+          description: Employee number.
+        trade:
+          type: string
+          description: Empty when the worker has no trade.
+        site:
+          allOf:
+          - $ref: '#/components/schemas/SiteRef'
+          nullable: true
+          description: Where the worker is assigned today.
+      required:
+      - id
+      - name
+      - number
+      - site
+      - trade
+    WorkerPay:
+      type: object
+      properties:
+        site:
+          $ref: '#/components/schemas/SiteRef'
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        period_status:
+          type: string
+        units:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+        gross:
+          $ref: '#/components/schemas/Money'
+        advance_deduction:
+          $ref: '#/components/schemas/Money'
+        statutory_deductions:
+          $ref: '#/components/schemas/Money'
+        other_deductions:
+          $ref: '#/components/schemas/Money'
+        adjustment:
+          $ref: '#/components/schemas/Money'
+        net:
+          $ref: '#/components/schemas/Money'
+        paid:
+          $ref: '#/components/schemas/Money'
+      required:
+      - adjustment
+      - advance_deduction
+      - end_date
+      - gross
+      - net
+      - other_deductions
+      - paid
+      - period_status
+      - site
+      - start_date
+      - statutory_deductions
+      - units
+    WorkerRef:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        number:
+          type: string
+          description: Employee number.
+        trade:
+          type: string
+          description: Empty when the worker has no trade.
+      required:
+      - id
+      - name
+      - number
+      - trade
   securitySchemes:
+    AgentToken:
+      type: http
+      scheme: bearer
+      description: 'Agent token from the office screen *AI assistant access*, sent
+        as `Authorization: Bearer pol_…`. Opens only `/api/v1/office/`.'
     DeviceToken:
       type: apiKey
       in: header
@@ -4100,5 +5510,8 @@ tags:
 - name: checkin
   description: QR badges, kiosk phones, check-ins and roll-call suggestions (Wave
     4).
+- name: office
+  description: 'Office API for AI assistants: read-only, plus approving or sending
+    back a roll call after a preview. Agent tokens only.'
 - name: files
   description: Worker photos and payment proofs; send the Authorization header.

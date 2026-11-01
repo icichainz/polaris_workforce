@@ -155,6 +155,7 @@ def _office_pages(s):
         "accounts:users": reverse("accounts:users"),
         "accounts:user_create": reverse("accounts:user_create"),
         "accounts:user_edit": reverse("accounts:user_edit", args=[foreman.pk]),
+        "agents:access": reverse("agents:access"),
     }
 
 
@@ -208,6 +209,7 @@ EXPECTED_FR = {
     "accounts:users": ["Utilisateurs et rôles", "Ce que chaque rôle peut faire"],
     "accounts:user_create": ["Inviter un utilisateur", "Coordonnées et rôle"],
     "accounts:user_edit": ["Définir le code PIN", "Téléphones"],
+    "agents:access": ["Accès des assistants IA", "Nouveau jeton", "Ce qu’un assistant peut faire"],
 }
 SIDEBAR_FR = ["Aujourd’hui", "Validations", "Feuilles de caisse", "Périodes de paie", "Rapports"]
 
