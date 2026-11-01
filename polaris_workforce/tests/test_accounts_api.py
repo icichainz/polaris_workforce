@@ -5,6 +5,7 @@ from datetime import timedelta
 
 import pytest
 from django.core.cache import cache
+from django.db import IntegrityError
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -13,8 +14,10 @@ from apps.accounts import services
 from apps.accounts.models import ForemanDevice, User
 from apps.api.authentication import hash_device_token
 from apps.core.models import AuditLog
+from apps.core.tenancy import use_company
 from apps.worksites.models import Site
 from tests.factories import (
+    CompanyFactory,
     CompanySettingsFactory,
     ForemanFactory,
     SiteFactory,
@@ -111,6 +114,32 @@ def test_pin_is_never_stored_in_clear(company, foreman):
 
 def test_phone_matches_whatever_the_spacing(company, foreman):
     assert sign_in(phone="+228 90-11-22-33").status_code == 200
+
+
+def test_the_phone_is_looked_up_without_reading_every_user(
+    company, foreman, django_assert_num_queries
+):
+    for _ in range(5):
+        ForemanFactory()
+
+    with django_assert_num_queries(1):
+        found = services.users_with_phone("+228 90 11-22-33")
+
+    assert found == [foreman]
+    assert services.users_with_phone("+228 90 11 22 33", exclude_pk=foreman.pk) == []
+
+
+def test_two_users_cannot_share_a_phone_even_in_two_companies(company, foreman):
+    with use_company(CompanyFactory()), pytest.raises(IntegrityError):
+        ForemanFactory(phone="+22890112233")
+
+
+def test_the_normalised_phone_follows_a_changed_phone(company, foreman):
+    foreman.phone = "+228 97 00 00 01"
+    foreman.save(update_fields=["phone"])
+
+    assert sign_in(phone="+22897000001").status_code == 200
+    assert sign_in().status_code != 200
 
 
 def test_sign_in_again_on_same_device_replaces_the_token(company, foreman):

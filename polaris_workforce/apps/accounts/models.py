@@ -11,6 +11,8 @@ from django.utils.translation import gettext_lazy as _
 from apps.core.choices import Language
 from apps.core.models import company_field
 
+from .phones import normalize_phone
+
 
 class User(AbstractUser):
     """Someone who signs in: office staff or a foreman.
@@ -31,6 +33,10 @@ class User(AbstractUser):
 
     role = models.CharField(_("role"), max_length=20, choices=Role.choices, default=Role.FOREMAN)
     phone = models.CharField(_("phone"), max_length=32, blank=True)
+    # ``phone`` as the phone sign-in looks it up (``phones.normalize_phone``); set by save().
+    phone_normalized = models.CharField(
+        _("phone (normalised)"), max_length=32, blank=True, editable=False
+    )
     # Blank means "use CompanySettings.language".
     language = models.CharField(_("language"), max_length=2, choices=Language.choices, blank=True)
 
@@ -51,10 +57,23 @@ class User(AbstractUser):
                     "Choose a company: only platform admins (superusers) have none."
                 ),
             ),
+            # Across companies: the phone signs in with phone + PIN, without a company.
+            models.UniqueConstraint(
+                fields=["phone_normalized"],
+                condition=~models.Q(phone_normalized=""),
+                name="unique_user_phone",
+                violation_error_message=_("Another user already has this phone number."),
+            ),
         ]
 
     def __str__(self) -> str:
         return self.get_full_name() or self.username
+
+    def save(self, *args, update_fields=None, **kwargs):
+        self.phone_normalized = normalize_phone(self.phone)
+        if update_fields is not None and "phone" in update_fields:
+            update_fields = {*update_fields, "phone_normalized"}
+        super().save(*args, update_fields=update_fields, **kwargs)
 
     @property
     def has_pin(self) -> bool:

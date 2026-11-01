@@ -6,7 +6,6 @@ Views and API views stay thin and call these functions. Every security-relevant 
 """
 
 import hashlib
-import re
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import cache
@@ -26,6 +25,7 @@ from apps.worksites.models import Site
 
 from .models import ForemanDevice, User
 from .permissions import has_role
+from .phones import normalize_phone
 
 Role = User.Role
 
@@ -78,26 +78,20 @@ class PinLocked(SignInError):
 # --- Phones and PINs -------------------------------------------------------------------
 
 
-def normalize_phone(phone: str) -> str:
-    """Digits only, keeping a leading ``+``: ``"+228 90-11 22 33"`` → ``"+22890112233"``."""
-    phone = (phone or "").strip()
-    digits = re.sub(r"\D", "", phone)
-    return f"+{digits}" if phone.startswith("+") and digits else digits
-
-
 def users_with_phone(phone: str, *, exclude_pk=None):
     """Users whose phone matches once both sides are normalised (spaces, dashes…).
 
-    Deliberately across every company: phone numbers are unique installation-wide, so
-    ``POST /auth/pin/`` finds the user (and so the company) from the number alone.
+    Deliberately across every company: phone numbers are unique installation-wide (a
+    constraint on ``User.phone_normalized``), so ``POST /auth/pin/`` finds the user (and
+    so the company) from the number alone.
     """
     wanted = normalize_phone(phone)
     if not wanted:
         return []
-    candidates = User.objects.exclude(phone="")
+    candidates = User.objects.filter(phone_normalized=wanted)
     if exclude_pk is not None:
         candidates = candidates.exclude(pk=exclude_pk)
-    return [user for user in candidates if normalize_phone(user.phone) == wanted]
+    return list(candidates)
 
 
 def is_weak_pin(pin: str) -> bool:
