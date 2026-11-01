@@ -16,6 +16,7 @@ import polaris_tracker/config.{type Config}
 import polaris_tracker/django
 import polaris_tracker/hub
 import polaris_tracker/outbox
+import polaris_tracker/registry
 import polaris_tracker/server
 import polaris_tracker/site
 import polaris_tracker/track_store
@@ -29,6 +30,8 @@ const flush_every_ms = 5000
 const outbox_batch_size = 500
 
 const prune_every_ms = 3_600_000
+
+const dedupe_prune_every_ms = 600_000
 
 pub fn main() -> Nil {
   case config.load() {
@@ -47,9 +50,13 @@ pub fn main() -> Nil {
 /// The supervision tree, in start order. With `RestForOne`, a crashed child
 /// restarts with every child after it: if the hub restarts, the site actors
 /// and the HTTP server restart too, so nothing holds a stale reference.
-/// Site configs are lost on a hub restart; Django's periodic resync pushes
-/// them again.
+///
+/// The shared ingest state (site configs, running site actors, dedupe keys;
+/// see `registry`) belongs to the caller, so it survives any restart inside
+/// the tree. Site configs are lost only when the whole tracker restarts;
+/// Django's periodic resync pushes them again.
 pub fn start(config: Config) -> actor.StartResult(supervisor.Supervisor) {
+  let registry = registry.new()
   let broadcaster_name = process.new_name("polaris_tracker_broadcaster")
   let outbox_name = process.new_name("polaris_tracker_outbox")
   let tracks_name = process.new_name("polaris_tracker_tracks")
@@ -69,28 +76,37 @@ pub fn start(config: Config) -> actor.StartResult(supervisor.Supervisor) {
   }
   let hub_args =
     hub.Args(
+      registry:,
       start_site: fn(args) {
         factory_supervisor.get_by_name(sites_name)
         |> factory_supervisor.start_child(args)
       },
-      record_track: fn(person, points) {
-        process.send(
-          process.named_subject(tracks_name),
-          track_store.Record(person, points),
-        )
-      },
       publish:,
       clock: clock.now_ms,
       heartbeat_ms:,
+      prune_every_ms: dedupe_prune_every_ms,
+    )
+  let ingest =
+    hub.Hub(
+      subject: process.named_subject(hub_name),
+      registry:,
+      record_track: fn(points) {
+        process.send(
+          process.named_subject(tracks_name),
+          track_store.Record(points),
+        )
+      },
+      clock: clock.now_ms,
     )
   let ctx =
     api.Context(
-      hub: process.named_subject(hub_name),
+      hub: ingest,
       tracks: process.named_subject(tracks_name),
       broadcaster: process.named_subject(broadcaster_name),
       secret: config.secret,
       cors_origin: config.cors_origin,
       clock: clock.now_ms,
+      zoneinfo_dir: config.zoneinfo_dir,
     )
 
   supervisor.new(supervisor.RestForOne)
@@ -101,13 +117,20 @@ pub fn start(config: Config) -> actor.StartResult(supervisor.Supervisor) {
   )
   |> supervisor.add(
     supervision.worker(fn() {
-      outbox.Args(deliver:, flush_every_ms:, batch_size: outbox_batch_size)
+      outbox.Args(
+        db_path: config.db_path,
+        deliver:,
+        flush_every_ms:,
+        batch_size: outbox_batch_size,
+        clock: clock.now_ms,
+      )
       |> outbox.start(Some(outbox_name))
     }),
   )
   |> supervisor.add(
     supervision.worker(fn() {
       track_store.Args(
+        db_path: config.db_path,
         retention_ms: config.track_retention_days * 86_400_000,
         prune_every_ms:,
         clock: clock.now_ms,

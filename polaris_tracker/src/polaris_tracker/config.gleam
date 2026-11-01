@@ -15,8 +15,16 @@ pub type Config {
     /// Origin of the office dashboard, when it is served from another origin.
     cors_origin: Option(String),
     track_retention_days: Int,
+    /// The tracker's own SQLite file (tracks and outbox), or `:memory:`.
+    db_path: String,
+    /// Compiled IANA time zones, for the `tz` of the sessions endpoint.
+    zoneinfo_dir: String,
   )
 }
+
+/// Where the SQLite file goes when `TRACKER_DB_PATH` is not set, relative to
+/// the working directory.
+pub const default_db_path = "var/tracker.sqlite3"
 
 const dev_secret = "dev-only-insecure-tracker-secret"
 
@@ -50,6 +58,12 @@ pub fn from_env(
     django_events_url: optional("DJANGO_EVENTS_URL"),
     cors_origin: optional("TRACKER_CORS_ORIGIN"),
     track_retention_days:,
+    db_path: case lookup("TRACKER_DB_PATH") {
+      Ok(path) if path != "" -> path
+      _ -> default_db_path
+    },
+    zoneinfo_dir: lookup("TRACKER_ZONEINFO_DIR")
+      |> result.unwrap("/usr/share/zoneinfo"),
   ))
 }
 
@@ -73,8 +87,13 @@ fn get_env(name: String) -> Result(String, Nil)
 
 /// One line for the startup log.
 pub fn describe_sink(config: Config) -> String {
-  case config.django_events_url {
+  let sink = case config.django_events_url {
     Some(url) -> "posting presence events to " <> url
     None -> "DJANGO_EVENTS_URL not set: logging presence events only"
   }
+  let store = case config.db_path {
+    ":memory:" -> "storing tracks and the outbox in memory (TRACKER_DB_PATH)"
+    path -> "storing tracks and the outbox in " <> path
+  }
+  sink <> "; " <> store
 }

@@ -59,8 +59,15 @@ pub type SiteConfig {
     gateways: List(Gateway),
     /// Only badges of workers with tracking enabled are pushed.
     badges: List(Badge),
+    /// User ids of the foremen who may be tracked here: assigned to the site
+    /// and with the current consent notice accepted. Missing means nobody.
+    foremen: List(Int),
     rules: presence.Rules,
   )
+}
+
+pub fn tracks_foreman(config: SiteConfig, foreman_id: Int) -> Bool {
+  list.contains(config.foremen, foreman_id)
 }
 
 pub fn find_worker(config: SiteConfig, badge_id: String) -> Result(Int, Nil) {
@@ -120,6 +127,9 @@ pub type TrackPoint {
     accuracy_m: Float,
     /// The site whose geofence contains the fix, if any.
     site_id: Option(Int),
+    /// The company of the device token that sent the fix. Off-site points
+    /// are only shown to `travel` tokens of this company.
+    company: Int,
   )
   BlePoint(
     at: Int,

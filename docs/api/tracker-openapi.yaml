@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Polaris presence tracker API
-  version: 0.1.0
+  version: 0.2.0
   summary: Live presence and movement traces for workers and foremen.
   description: |
     The tracker (`polaris_tracker/`, Gleam on the BEAM) receives BLE sightings from fixed
@@ -13,20 +13,48 @@ info:
 
     **Authentication.** Every endpoint except `/health` takes a JWT (HS256) issued by
     Django and signed with the secret shared by Django and the tracker
-    (`TRACKER_SHARED_SECRET`). Required claims: `sub`, `kind`, `aud` (`polaris-tracker`)
-    and `exp` (Unix seconds); optional `sites` (site ids) and `all_sites` (admins).
-    The `kind` decides which endpoints a token may call:
+    (`TRACKER_SHARED_SECRET`). Encoding: header `{"alg":"HS256","typ":"JWT"}`, JSON
+    segments base64url-encoded **without padding** (what Python's `base64`, `hmac` and
+    `json.dumps(..., separators=(",", ":"))` produce; the tracker verifies the bytes as
+    sent, so other JSON spacing is accepted too). Only `HS256` is accepted.
+
+    Claims, version 2:
+
+    | claim | type | meaning |
+    | --- | --- | --- |
+    | `sub` | string | Who the token is for (table below). |
+    | `kind` | `device`, `gateway`, `dashboard`, `service` | Which endpoints it may call. |
+    | `company` | integer > 0 | The Django company. **Required for every kind except `service`**; a missing or `0` company gives `401 invalid_token`. Absent on service tokens. |
+    | `sites` | integer[] | The only sites the token reaches. Always explicit: an admin's token lists all of the company's sites. Absent means `[]`. |
+    | `travel` | boolean | May see off-site GPS points (travel) of its own `company` (company admins). Absent means `false`. |
+    | `aud` | string | `polaris-tracker` for tokens sent to the tracker. |
+    | `exp` | integer | Unix seconds. |
+
+    `all_sites` (version 1) is no longer read: a token carrying it gets nothing from it.
+
+    Django writes the keys in the order of the table, as compact JSON: `company` except on
+    service tokens, `sites` as a sorted list without repeats, and `travel` always (its own
+    service tokens carry `"sites":[],"travel":false` and no `company`). The tracker
+    accepts any order and spacing, and the absent claims above.
 
     | kind | sub | endpoints |
     | --- | --- | --- |
     | `device` | `foreman:<user id>` | `POST /v1/observations`, `GET /v1/sites/{id}/presence` |
     | `gateway` | `gateway:<gateway id>`, exactly one site in `sites` | `POST /v1/gateways/sightings` |
     | `dashboard` | `user:<user id>` | presence, live stream, tracks |
-    | `service` | `service:django` | `PUT /internal/sites/{id}/config` |
+    | `service` | `service:django` | `PUT /internal/sites/{id}/config`, `GET /internal/sites/{id}/sessions` |
 
-    **Site scoping.** A token only reaches the sites in its `sites` claim, unless
-    `all_sites` is true. Off-site GPS points (travel between sites) are returned only to
-    `all_sites` tokens.
+    **Tokens the tracker sends to Django** (`POST /api/v1/presence/events/`): `kind =
+    service`, `sub = service:tracker`, `aud = polaris-django`, `exp` 300 s ahead (minted
+    per call), and no `company`, `sites` or `travel` claim. Payload, byte for byte:
+    `{"sub":"service:tracker","kind":"service","aud":"polaris-django","exp":<n>}`.
+
+    **Site scoping.** A token only reaches the sites in its `sites` claim; `service`
+    tokens reach every site. Site ids are global, so Django must only list sites of the
+    token's company. GPS fixes are stored with the `company` of the device token that sent
+    them; off-site points (travel between sites, `site_id: null`) are returned only to
+    tokens with `travel = true` **and the same `company`**. A device's fix inside the
+    geofence of a site that is not in its token counts as off site.
 
     **Idempotency.** Every phone observation carries a `client_uuid` and every gateway
     batch a `batch_id`. Repeating one is acknowledged as a duplicate and changes nothing.
@@ -93,6 +121,18 @@ paths:
         that site; farther than `radius + accuracy_m` counts as outside and closes an open
         visit early; anything in between is stored in the track only.
 
+        A fix only counts where the site's config lists the foreman in `foremen` (assigned
+        there and the current consent notice accepted):
+
+        - inside the geofence of a site that lists him: stored for that site and applied
+          to its presence;
+        - inside the geofence of a site in the token that does **not** list him: dropped;
+        - outside every geofence (travel): stored as off-site only if at least one site in
+          the token lists him; dropped otherwise.
+
+        A dropped fix is acknowledged in `rejected` with `not_tracked` and never stored.
+        A new config without the foreman stops this at once.
+
         **BLE sightings** must name a site in the token's `sites`, and a badge assigned on
         that site.
 
@@ -150,7 +190,10 @@ paths:
       description: |
         Token kind: `gateway`, with `sub` = `gateway:<gateway id>` and exactly one site in
         `sites`. The gateway must be listed in that site's config; removing it from the
-        config revokes it. Site and zone come from the config, not from the payload.
+        config revokes it. Gateway ids are opaque strings (Django uses
+        `gw-<site>-<generation>`, for example `gw-12-3`; issuing a new token raises the
+        generation, so the old token's id leaves the config). Site and zone come from the
+        config, not from the payload.
 
         The whole batch is idempotent on `batch_id`: a repeated batch returns
         `accepted: 0` and every sighting counted in `duplicates`.
@@ -310,8 +353,9 @@ paths:
       description: |
         Token kind: `dashboard`. Returns the points with `from <= at < to`, oldest first,
         filtered by the token's sites: BLE points and on-site GPS points of the token's
-        sites, plus off-site GPS points (travel) only for `all_sites` tokens. Points are
-        kept for `TRACK_RETENTION_DAYS` (30 by default).
+        sites, plus off-site GPS points (travel) only for `travel` tokens of the company
+        whose device recorded them. Points are kept for `TRACK_RETENTION_DAYS` (30 by
+        default).
       parameters:
         - name: kind
           in: path
@@ -396,8 +440,10 @@ paths:
         `resolve_setting` (company → site).
 
         Only badges of workers with `tracking_enabled` are included, so sightings of other
-        workers are rejected as `unknown_badge` and never stored. Setting
-        `tracking_enabled: false` stops all ingest for the site.
+        workers are rejected as `unknown_badge` and never stored. Likewise only foremen
+        listed in `foremen` (assigned to the site, consent accepted) are tracked by GPS;
+        Django pushes the config again when a consent changes, and the new list applies to
+        the next fix. Setting `tracking_enabled: false` stops all ingest for the site.
       parameters:
         - $ref: "#/components/parameters/SiteId"
       requestBody:
@@ -427,6 +473,7 @@ paths:
                   worker_id: 12
                 - badge_id: BDG-0A22
                   worker_id: 31
+              foremen: [5, 9]
               rules:
                 sightings_to_enter: 2
                 arrival_window_seconds: 300
@@ -442,6 +489,97 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /internal/sites/{site_id}/sessions:
+    get:
+      tags: [Internal]
+      operationId: getSiteSessions
+      summary: A day's presence sessions, recomputed from the stored track
+      description: |
+        Token kind: `service` (Django's nightly reconciliation). Replays the site's stored
+        track for one local day through the same state machine as live presence
+        (`presence.replay`), with the site's **current** rules and geofence, so late data
+        that was stored but never applied live is counted. Django compares the result with
+        the sessions it built from events and corrects them.
+
+        **Points used**: BLE sightings on the site (gateways and phones), and every GPS fix
+        of the foremen who had at least one fix on the site that day; their fixes are
+        classified again against the current geofence (inside = seen, clearly outside =
+        left early, in between = ignored). Without a geofence, only fixes stored with this
+        site count.
+
+        **Local day**: `date` in the zone `tz` runs from the first instant whose local date
+        is `date` (normally local midnight) up to, not including, the first instant of the
+        next local date; `from` and `to` in the response give those bounds in UTC. A day is
+        24 h except on daylight-saving changes (23 or 25 h); when midnight itself is skipped
+        the day starts at the transition. Points with `from <= at < to` are replayed, then
+        time runs until `min(now, to + absence_to_leave_seconds)`: a visit that went silent
+        before midnight ends at its last sighting, and `ended_at` is null only for a visit
+        that may still be going on now (today). A visit across midnight is cut into one
+        session per day.
+      parameters:
+        - $ref: "#/components/parameters/SiteId"
+        - name: date
+          in: query
+          required: true
+          description: The local day, `YYYY-MM-DD`.
+          schema:
+            type: string
+            format: date
+          example: "2026-10-31"
+        - name: tz
+          in: query
+          required: true
+          description: |
+            An IANA time zone name (`Africa/Lome`, `Europe/Paris`), read from the tracker's
+            zoneinfo (`TRACKER_ZONEINFO_DIR`, default `/usr/share/zoneinfo`), or a fixed UTC
+            offset: `Z`, `UTC`, `±HH`, `±HHMM`, `±HH:MM`. Encode `+` as `%2B` (an unencoded
+            `+` decodes to a space, which the tracker also reads as `+`).
+          schema:
+            type: string
+          example: Africa/Lome
+      responses:
+        "200":
+          description: The sessions of the day, oldest first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionDay"
+              example:
+                site_id: 3
+                date: "2026-10-31"
+                tz: Africa/Lome
+                from: "2026-10-31T00:00:00Z"
+                to: "2026-11-01T00:00:00Z"
+                sessions:
+                  - subject: { kind: foreman, id: 5 }
+                    started_at: "2026-10-31T06:58:12Z"
+                    ended_at: "2026-10-31T11:42:05Z"
+                    zones: []
+                  - subject: { kind: worker, id: 12 }
+                    started_at: "2026-10-31T07:02:40Z"
+                    ended_at: "2026-10-31T16:48:31Z"
+                    zones: [A, B]
+                  - subject: { kind: worker, id: 31 }
+                    started_at: "2026-10-31T13:05:00Z"
+                    ended_at: null
+                    zones: [B]
+        "400":
+          description: "`date` is not `YYYY-MM-DD` (`invalid_date`), or `tz` is neither a known IANA zone nor an offset (`invalid_tz`)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: invalid_tz
+                message: "`tz` must be an IANA time zone (Africa/Lome) or a UTC offset (+01:00)."
+                details: {}
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/SiteNotConfigured"
 
 components:
   securitySchemes:
@@ -517,6 +655,7 @@ components:
         badge_id:
           type: string
           minLength: 1
+          description: Opaque; compared trimmed and lower case, as Django stores it (a phone reports iBeacons as `ib:<uuid>:<major>:<minor>`).
         rssi:
           type: integer
           description: Signal strength in dBm.
@@ -528,6 +667,7 @@ components:
         badge_id:
           type: string
           minLength: 1
+          description: Opaque; compared trimmed and lower case, as Django stores it (a phone reports iBeacons as `ib:<uuid>:<major>:<minor>`).
         at:
           type: string
           format: date-time
@@ -568,6 +708,7 @@ components:
             - site_not_configured
             - tracking_disabled
             - unknown_badge
+            - not_tracked
         message:
           type: string
 
@@ -720,6 +861,53 @@ components:
           type: string
           enum: [gateway, phone]
 
+    SessionDay:
+      type: object
+      required: [site_id, date, tz, from, to, sessions]
+      properties:
+        site_id:
+          type: integer
+        date:
+          type: string
+          format: date
+          description: As requested.
+        tz:
+          type: string
+          description: As requested.
+        from:
+          type: string
+          format: date-time
+          description: Start of the local day, in UTC (included).
+        to:
+          type: string
+          format: date-time
+          description: Start of the next local day, in UTC (excluded).
+        sessions:
+          type: array
+          description: Ordered by `started_at`, then subject.
+          items:
+            $ref: "#/components/schemas/Session"
+
+    Session:
+      type: object
+      required: [subject, started_at, ended_at, zones]
+      properties:
+        subject:
+          $ref: "#/components/schemas/Subject"
+        started_at:
+          type: string
+          format: date-time
+          description: The first sighting of the visit (like `entered`).
+        ended_at:
+          type: [string, "null"]
+          format: date-time
+          description: The last sighting (like `left`); null while the visit may still be going on.
+        zones:
+          type: array
+          description: Zones visited, in order of first visit; empty for GPS and phone-BLE presence.
+          items:
+            type: string
+
     SiteConfig:
       type: object
       required: [tracking_enabled, rules]
@@ -753,6 +941,7 @@ components:
               id:
                 type: string
                 minLength: 1
+                description: Opaque, for example `gw-12-3`; the gateway token's `sub` is `gateway:<id>`.
               zone_id:
                 type: [string, "null"]
         badges:
@@ -766,8 +955,19 @@ components:
               badge_id:
                 type: string
                 minLength: 1
+                description: Trimmed and lower-cased on arrival, like sighted badge ids.
               worker_id:
                 type: integer
+        foremen:
+          type: array
+          default: []
+          description: |
+            User ids of the foremen who may be tracked on this site: assigned to it and with
+            the current consent notice accepted. Omitted means nobody. GPS fixes of other
+            foremen are dropped (`not_tracked`).
+          items:
+            type: integer
+          example: [5, 9]
         rules:
           type: object
           required: [sightings_to_enter, arrival_window_seconds, absence_to_leave_seconds]

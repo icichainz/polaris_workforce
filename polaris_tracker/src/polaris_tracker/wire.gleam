@@ -16,6 +16,7 @@ import polaris_tracker/domain.{
 }
 import polaris_tracker/geo
 import polaris_tracker/presence.{type Presence}
+import polaris_tracker/sessions.{type Session}
 
 // ---- Decoders -------------------------------------------------------------
 
@@ -35,7 +36,7 @@ fn observation_decoder() -> Decoder(Observation) {
     }
     "ble" -> {
       use site_id <- decode.field("site_id", decode.int)
-      use badge_id <- decode.field("badge_id", non_empty_string())
+      use badge_id <- decode.field("badge_id", badge_id_decoder())
       use rssi <- decode.field("rssi", decode.int)
       decode.success(PhoneBle(client_uuid:, at:, site_id:, badge_id:, rssi:))
     }
@@ -55,7 +56,7 @@ pub fn gateway_batch_decoder() -> Decoder(#(String, List(GatewaySighting))) {
 }
 
 fn sighting_decoder() -> Decoder(GatewaySighting) {
-  use badge_id <- decode.field("badge_id", non_empty_string())
+  use badge_id <- decode.field("badge_id", badge_id_decoder())
   use at <- decode.field("at", timestamp())
   use rssi <- decode.field("rssi", decode.int)
   decode.success(GatewaySighting(badge_id:, at:, rssi:))
@@ -79,6 +80,8 @@ pub fn site_config_decoder() -> Decoder(SiteConfig) {
     [],
     decode.list(badge_decoder()),
   )
+  // Nobody is tracked until Django says so.
+  use foremen <- decode.optional_field("foremen", [], decode.list(decode.int))
   use rules <- decode.field("rules", rules_decoder())
   decode.success(SiteConfig(
     tracking_enabled:,
@@ -86,6 +89,7 @@ pub fn site_config_decoder() -> Decoder(SiteConfig) {
     zones:,
     gateways:,
     badges:,
+    foremen:,
     rules:,
   ))
 }
@@ -113,7 +117,7 @@ fn gateway_decoder() -> Decoder(domain.Gateway) {
 }
 
 fn badge_decoder() -> Decoder(domain.Badge) {
-  use badge_id <- decode.field("badge_id", non_empty_string())
+  use badge_id <- decode.field("badge_id", badge_id_decoder())
   use worker_id <- decode.field("worker_id", decode.int)
   decode.success(Badge(badge_id:, worker_id:))
 }
@@ -130,6 +134,56 @@ fn rules_decoder() -> Decoder(presence.Rules) {
     arrival_window_ms: arrival_window * 1000,
     absence_to_leave_ms: absence_to_leave * 1000,
   ))
+}
+
+/// The inverse of `presence_event_json`, for events read back from the
+/// outbox table.
+pub fn presence_event_decoder() -> Decoder(PresenceEvent) {
+  use event_id <- decode.field("event_id", non_empty_string())
+  use site_id <- decode.field("site_id", decode.int)
+  use person <- decode.field("subject", person_decoder())
+  use kind <- decode.field("type", decode.string)
+  use at <- decode.field("at", timestamp())
+  use zone_id <- decode.field("zone_id", decode.optional(decode.string))
+  use from_zone_id <- decode.field(
+    "from_zone_id",
+    decode.optional(decode.string),
+  )
+  use reason <- decode.field("reason", decode.optional(decode.string))
+  let event = fn(change) {
+    decode.success(domain.PresenceEvent(event_id:, site_id:, person:, change:))
+  }
+  case kind, zone_id, reason {
+    "entered", _, _ -> event(presence.Entered(zone: zone_id, at:))
+    "moved_zone", Some(to), _ ->
+      event(presence.MovedZone(from: from_zone_id, to:, at:))
+    "left", _, Some("timeout") ->
+      event(presence.Left(zone: zone_id, at:, reason: presence.Timeout))
+    "left", _, Some("left_geofence") ->
+      event(presence.Left(zone: zone_id, at:, reason: presence.LeftGeofence))
+    _, _, _ ->
+      decode.failure(
+        domain.PresenceEvent(
+          event_id:,
+          site_id:,
+          person:,
+          change: presence.Entered(zone: None, at:),
+        ),
+        "presence event",
+      )
+  }
+}
+
+pub fn person_decoder() -> Decoder(Person) {
+  use kind <- decode.field("kind", {
+    use text <- decode.then(decode.string)
+    case domain.kind_from_string(text) {
+      Ok(kind) -> decode.success(kind)
+      Error(Nil) -> decode.failure(domain.Worker, "worker or foreman")
+    }
+  })
+  use id <- decode.field("id", decode.int)
+  decode.success(domain.Person(kind:, id:))
 }
 
 fn position_decoder() -> Decoder(geo.LatLng) {
@@ -177,6 +231,20 @@ fn positive_int() -> Decoder(Int) {
   case value > 0 {
     True -> decode.success(value)
     False -> decode.failure(value, "integer > 0")
+  }
+}
+
+/// Badge ids are opaque strings (a phone reports `ib:<uuid>:<major>:<minor>`),
+/// compared the way Django stores them: trimmed and lower case.
+pub fn normalize_badge_id(badge_id: String) -> String {
+  badge_id |> string.trim |> string.lowercase
+}
+
+fn badge_id_decoder() -> Decoder(String) {
+  use value <- decode.then(decode.string)
+  case normalize_badge_id(value) {
+    "" -> decode.failure(value, "non-empty badge id")
+    badge_id -> decode.success(badge_id)
   }
 }
 
@@ -289,7 +357,7 @@ pub fn track_json(
 
 fn track_point_json(point: TrackPoint) -> Json {
   case point {
-    GpsPoint(at:, position:, accuracy_m:, site_id:) ->
+    GpsPoint(at:, position:, accuracy_m:, site_id:, ..) ->
       json.object([
         #("type", json.string("gps")),
         #("at", json.string(clock.to_rfc3339(at))),
@@ -314,6 +382,40 @@ fn track_point_json(point: TrackPoint) -> Json {
         ),
       ])
   }
+}
+
+pub fn sessions_json(
+  site_id: Int,
+  date: String,
+  tz: String,
+  from: Int,
+  to: Int,
+  sessions: List(Session),
+) -> Json {
+  json.object([
+    #("site_id", json.int(site_id)),
+    #("date", json.string(date)),
+    #("tz", json.string(tz)),
+    #("from", json.string(clock.to_rfc3339(from))),
+    #("to", json.string(clock.to_rfc3339(to))),
+    #(
+      "sessions",
+      json.array(sessions, fn(session) {
+        json.object([
+          #("subject", person_json(session.person)),
+          #("started_at", json.string(clock.to_rfc3339(session.started_at))),
+          #(
+            "ended_at",
+            json.nullable(
+              option.map(session.ended_at, clock.to_rfc3339),
+              json.string,
+            ),
+          ),
+          #("zones", json.array(session.zones, json.string)),
+        ])
+      }),
+    ),
+  ])
 }
 
 pub fn ingest_result_json(result: IngestResult) -> Json {

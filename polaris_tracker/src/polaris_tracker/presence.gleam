@@ -105,12 +105,9 @@ pub fn step(
           [],
         )
       }
-    OnSite(zone:, last_seen:, ..), SeenOutside(at) if at >= last_seen -> #(
-      Away,
-      [
-        Left(zone:, at: last_seen, reason: LeftGeofence),
-      ],
-    )
+    OnSite(zone:, last_seen:, ..), SeenOutside(at) if at >= last_seen -> #(Away, [
+      Left(zone:, at: last_seen, reason: LeftGeofence),
+    ])
     OnSite(zone:, last_seen:, ..), Tick(now)
       if now - last_seen > rules.absence_to_leave_ms
     -> #(Away, [Left(zone:, at: last_seen, reason: Timeout)])

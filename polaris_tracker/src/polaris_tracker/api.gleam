@@ -18,9 +18,11 @@ import polaris_tracker/broadcaster
 import polaris_tracker/clock
 import polaris_tracker/domain.{type TrackPoint, BlePoint, GpsPoint, Person}
 import polaris_tracker/hub
+import polaris_tracker/sessions
 import polaris_tracker/site
 import polaris_tracker/token
 import polaris_tracker/track_store
+import polaris_tracker/tz
 import polaris_tracker/wire
 
 pub const max_phone_batch = 500
@@ -31,14 +33,20 @@ const max_track_range_ms = 604_800_000
 
 const call_timeout_ms = 5000
 
+/// Reading a whole day of a busy site can take longer.
+const day_query_timeout_ms = 60_000
+
 pub type Context {
   Context(
-    hub: Subject(hub.Message),
+    /// Ingest runs in the request's own process (see `hub`).
+    hub: hub.Hub,
     tracks: Subject(track_store.Message),
     broadcaster: Subject(broadcaster.Message),
     secret: BitArray,
     cors_origin: Option(String),
     clock: fn() -> Int,
+    /// Compiled IANA time zones (`/usr/share/zoneinfo`).
+    zoneinfo_dir: String,
   )
 }
 
@@ -55,6 +63,8 @@ pub fn handle(req: Request(BitArray), ctx: Context) -> Response(String) {
       get_track(req, ctx, kind, id)
     http.Put, ["internal", "sites", site_id, "config"] ->
       put_site_config(req, ctx, site_id)
+    http.Get, ["internal", "sites", site_id, "sessions"] ->
+      get_sessions(req, ctx, site_id)
     _, _ -> error(404, "not_found", "No such endpoint.")
   }
   |> with_cors(ctx.cors_origin)
@@ -63,7 +73,7 @@ pub fn handle(req: Request(BitArray), ctx: Context) -> Response(String) {
 // ---- Endpoints ----------------------------------------------------------------
 
 fn health(ctx: Context) -> Response(String) {
-  let sites = process.call(ctx.hub, call_timeout_ms, hub.CountSites)
+  let sites = hub.count_sites(ctx.hub)
   json_response(
     200,
     json.object([#("status", json.string("ok")), #("sites", json.int(sites))]),
@@ -85,13 +95,7 @@ fn post_observations(req: Request(BitArray), ctx: Context) -> Response(String) {
     list.length(observations) > max_phone_batch,
     batch_too_large(max_phone_batch),
   )
-  let result =
-    process.call(ctx.hub, call_timeout_ms, hub.IngestPhone(
-      foreman_id,
-      claims,
-      observations,
-      _,
-    ))
+  let result = hub.ingest_phone(ctx.hub, foreman_id, claims, observations)
   json_response(200, wire.ingest_result_json(result))
 }
 
@@ -114,15 +118,7 @@ fn post_gateway_sightings(
     list.length(sightings) > max_gateway_batch,
     batch_too_large(max_gateway_batch),
   )
-  case
-    process.call(ctx.hub, call_timeout_ms, hub.IngestGateway(
-      gateway_id,
-      site_id,
-      batch_id,
-      sightings,
-      _,
-    ))
-  {
+  case hub.ingest_gateway(ctx.hub, gateway_id, site_id, batch_id, sightings) {
     Ok(result) -> json_response(200, wire.ingest_result_json(result))
     Error(hub.UnknownSite) ->
       error(404, "site_not_configured", "The site has no tracking config.")
@@ -181,8 +177,70 @@ fn put_site_config(
   use _claims <- respond(authenticate(req, ctx, [token.Service]))
   use site_id <- respond(parse_site_id(site_id))
   use config <- respond(decode_body(req, wire.site_config_decoder()))
-  process.call(ctx.hub, call_timeout_ms, hub.ConfigureSite(site_id, config, _))
+  hub.configure_site(ctx.hub, site_id, config)
   response.new(204) |> response.set_body("")
+}
+
+/// `GET /internal/sites/{site_id}/sessions?date=YYYY-MM-DD&tz=…`: the day's
+/// sessions recomputed from the stored track (`sessions.recompute`), for
+/// Django's nightly reconciliation. The local day is defined in `tz`.
+fn get_sessions(
+  req: Request(BitArray),
+  ctx: Context,
+  site_id: String,
+) -> Response(String) {
+  use _claims <- respond(authenticate(req, ctx, [token.Service]))
+  use site_id <- respond(parse_site_id(site_id))
+  let query = request.get_query(req) |> result.unwrap([])
+  use #(date_text, date) <- respond(
+    {
+      use text <- result.try(list.key_find(query, "date"))
+      use date <- result.map(tz.parse_date(text))
+      #(text, date)
+    }
+    |> result.replace_error(error(
+      400,
+      "invalid_date",
+      "`date` must be a day as YYYY-MM-DD.",
+    )),
+  )
+  use #(tz_text, zone) <- respond(
+    {
+      use text <- result.try(list.key_find(query, "tz"))
+      use zone <- result.map(tz.load(text, ctx.zoneinfo_dir))
+      #(text, zone)
+    }
+    |> result.replace_error(error(
+      400,
+      "invalid_tz",
+      "`tz` must be an IANA time zone (Africa/Lome) or a UTC offset (+01:00).",
+    )),
+  )
+  use config <- respond(
+    hub.get_config(ctx.hub, site_id)
+    |> result.replace_error(error(
+      404,
+      "site_not_configured",
+      "The site has no tracking config.",
+    )),
+  )
+  let #(from_s, to_s) = tz.day_bounds(zone, date)
+  let #(from, to) = #(from_s * 1000, to_s * 1000)
+  let points =
+    process.call(ctx.tracks, day_query_timeout_ms, track_store.SiteDay(
+      site_id,
+      from,
+      to,
+      _,
+    ))
+  // A visit still going on now stays open; on a past day, time runs on past
+  // midnight long enough for the last visits to time out.
+  let until = int.min(ctx.clock(), to + config.rules.absence_to_leave_ms)
+  let found = sessions.recompute(points, site_id:, config:, until:)
+  json_response(
+    200,
+    wire.sessions_json(site_id, date_text, tz_text, from, to, found),
+  )
 }
 
 // ---- Shared with the live stream ---------------------------------------------
@@ -216,9 +274,7 @@ pub fn authorize_site(
 
 /// The current presence on a site, as JSON.
 pub fn snapshot(ctx: Context, site_id: Int) -> Result(Json, Response(String)) {
-  let people = case
-    process.call(ctx.hub, call_timeout_ms, hub.FindSite(site_id, _))
-  {
+  let people = case hub.find_site(ctx.hub, site_id) {
     hub.NotConfigured -> Error(Nil)
     hub.Idle -> Ok([])
     hub.Running(subject) ->
@@ -352,7 +408,9 @@ fn decode_body(
   })
 }
 
-fn track_range(req: Request(BitArray)) -> Result(#(Int, Int), Response(String)) {
+fn track_range(
+  req: Request(BitArray),
+) -> Result(#(Int, Int), Response(String)) {
   let query = request.get_query(req) |> result.unwrap([])
   let parse = fn(name) {
     list.key_find(query, name) |> result.try(clock.parse_rfc3339)
@@ -375,12 +433,14 @@ fn track_range(req: Request(BitArray)) -> Result(#(Int, Int), Response(String)) 
   }
 }
 
-/// Off-site travel is only visible to tokens that see every site.
+/// Points on a site follow site scoping; off-site travel is only visible to
+/// `travel` tokens of the company whose device recorded it.
 fn visible_to(claims: token.Claims, point: TrackPoint) -> Bool {
   case point {
     GpsPoint(site_id: Some(site_id), ..) ->
       token.can_access_site(claims, site_id)
-    GpsPoint(site_id: None, ..) -> claims.all_sites
+    GpsPoint(site_id: None, company:, ..) ->
+      token.can_see_travel(claims, company)
     BlePoint(site_id:, ..) -> token.can_access_site(claims, site_id)
   }
 }

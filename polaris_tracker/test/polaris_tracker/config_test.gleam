@@ -16,6 +16,7 @@ pub fn debug_allows_dev_secret_test() {
   assert config.port == 4100
   assert config.bind == "127.0.0.1"
   assert config.django_events_url == None
+  assert config.db_path == "var/tracker.sqlite3"
 }
 
 pub fn values_from_env_test() {
@@ -26,8 +27,10 @@ pub fn values_from_env_test() {
         #("TRACKER_PORT", "9000"),
         #("DJANGO_EVENTS_URL", "http://localhost:8000/api/v1/presence/events/"),
         #("TRACK_RETENTION_DAYS", "14"),
+        #("TRACKER_DB_PATH", "/data/tracker.sqlite3"),
       ]),
     )
+  assert config.db_path == "/data/tracker.sqlite3"
   assert config.secret == bit_array.from_string("s3cret")
   assert config.port == 9000
   assert config.track_retention_days == 14

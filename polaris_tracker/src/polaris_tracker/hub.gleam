@@ -1,9 +1,15 @@
-//// The hub routes observations to site actors.
+//// Ingest: from validated observations to track points and site actors.
 ////
-//// It holds every site's config (pushed by Django), starts a site actor the
-//// first time a site sees activity, drops repeated `client_uuid`s and gateway
-//// batches (rule 7), records every accepted point in the track store, and
-//// decides which GPS fixes count as being on a site.
+//// Ingest runs in the caller's process (each HTTP request has its own), not
+//// in one shared actor: site configs, running site actors and dedupe keys
+//// are in the shared `registry` (ETS). Each batch drops repeated
+//// `client_uuid`s and gateway batch ids (rule 7), decides which GPS fixes
+//// count as being on a site, hands its points to the track store in one
+//// message, and sends the presence signals straight to the site actors.
+////
+//// The hub actor itself only does what must be serialized: starting a site's
+//// actor the first time the site sees activity (so there is never two),
+//// noticing when one stops, and pruning old dedupe keys.
 
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Name, type Pid, type Subject}
@@ -11,6 +17,7 @@ import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
+import gleam/result
 import polaris_tracker/domain.{
   type GatewaySighting, type IngestResult, type Observation, type Person,
   type PresenceEvent, type SiteConfig, type TrackPoint, BlePoint, Foreman,
@@ -19,35 +26,26 @@ import polaris_tracker/domain.{
 }
 import polaris_tracker/geo
 import polaris_tracker/presence
+import polaris_tracker/registry.{type Registry}
 import polaris_tracker/site
 import polaris_tracker/token
 
 /// Observations dated further in the future than this are rejected.
 const max_clock_skew_ms = 300_000
 
-/// Remembered `client_uuid`s and batch ids are kept for this long.
-const dedupe_window_ms = 172_800_000
+/// Remembered `client_uuid`s and batch ids are kept at least this long.
+pub const dedupe_window_ms = 172_800_000
 
-/// The dedupe table is pruned once it holds this many entries.
-const dedupe_prune_at = 200_000
+const call_timeout_ms = 5000
 
 pub type Message {
-  ConfigureSite(site_id: Int, config: SiteConfig, reply: Subject(Nil))
-  IngestPhone(
-    foreman_id: Int,
-    claims: token.Claims,
-    observations: List(Observation),
-    reply: Subject(IngestResult),
-  )
-  IngestGateway(
-    gateway_id: String,
+  /// Starts the site's actor unless it is running, and replies with it.
+  EnsureRunning(
     site_id: Int,
-    batch_id: String,
-    sightings: List(GatewaySighting),
-    reply: Subject(Result(IngestResult, GatewayError)),
+    reply: Subject(Result(Subject(site.Message), Nil)),
   )
-  FindSite(site_id: Int, reply: Subject(SiteStatus))
-  CountSites(reply: Subject(Int))
+  /// Forgets dedupe keys older than the window.
+  PruneSeen
   SiteDown(process.Down)
 }
 
@@ -65,25 +63,29 @@ pub type GatewayError {
 
 pub type Args {
   Args(
+    registry: Registry,
     start_site: fn(site.Args) -> actor.StartResult(Subject(site.Message)),
-    record_track: fn(Person, List(TrackPoint)) -> Nil,
     publish: fn(List(PresenceEvent)) -> Nil,
     clock: fn() -> Int,
     heartbeat_ms: Int,
+    /// How often old dedupe keys are pruned; 0 disables the timer.
+    prune_every_ms: Int,
+  )
+}
+
+/// What the HTTP handlers hold: ingest runs in their own process.
+pub type Hub {
+  Hub(
+    subject: Subject(Message),
+    registry: Registry,
+    /// Called once per ingested batch with every point it accepted.
+    record_track: fn(List(#(Person, TrackPoint))) -> Nil,
+    clock: fn() -> Int,
   )
 }
 
 type State {
-  State(
-    args: Args,
-    configs: Dict(Int, SiteConfig),
-    running: Dict(Int, RunningSite),
-    seen: Dict(String, Int),
-  )
-}
-
-type RunningSite {
-  RunningSite(subject: Subject(site.Message), pid: Pid)
+  State(args: Args, monitored: Dict(Pid, Int), self: Subject(Message))
 }
 
 pub fn start(
@@ -92,11 +94,14 @@ pub fn start(
 ) -> actor.StartResult(Subject(Message)) {
   let builder =
     actor.new_with_initialiser(1000, fn(self) {
+      // Site actors from before a restart are gone (they restart with us).
+      registry.clear_running(args.registry)
+      schedule_prune(self, args.prune_every_ms)
       let selector =
         process.new_selector()
         |> process.select(self)
         |> process.select_monitors(SiteDown)
-      State(args:, configs: dict.new(), running: dict.new(), seen: dict.new())
+      State(args:, monitored: dict.new(), self:)
       |> actor.initialised
       |> actor.selecting(selector)
       |> actor.returning(self)
@@ -110,91 +115,178 @@ pub fn start(
   |> actor.start
 }
 
-fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
+fn handle_message(
+  state: State,
+  message: Message,
+) -> actor.Next(State, Message) {
+  let registry = state.args.registry
   case message {
-    ConfigureSite(site_id:, config:, reply:) -> {
-      case dict.get(state.running, site_id) {
-        Ok(running) -> process.send(running.subject, site.Configure(config))
-        Error(Nil) -> Nil
+    EnsureRunning(site_id:, reply:) ->
+      case registry.get_running(registry, site_id) {
+        Ok(running) -> {
+          process.send(reply, Ok(running))
+          actor.continue(state)
+        }
+        Error(Nil) -> {
+          let #(state, started) = start_site(state, site_id)
+          process.send(reply, started)
+          actor.continue(state)
+        }
       }
-      process.send(reply, Nil)
-      actor.continue(
-        State(..state, configs: dict.insert(state.configs, site_id, config)),
-      )
-    }
 
-    IngestPhone(foreman_id:, claims:, observations:, reply:) -> {
-      let now = state.args.clock()
-      let #(state, tally) =
-        list.fold(observations, #(state, empty_tally()), fn(acc, observation) {
-          let #(state, tally) = acc
-          ingest_phone(state, foreman_id, claims, observation, now, tally)
-        })
-      process.send(reply, finish(tally))
+    PruneSeen -> {
+      schedule_prune(state.self, state.args.prune_every_ms)
+      let _ =
+        registry.prune_seen(registry, state.args.clock() - dedupe_window_ms)
       actor.continue(state)
     }
 
-    IngestGateway(gateway_id:, site_id:, batch_id:, sightings:, reply:) -> {
-      let #(state, result) =
-        ingest_gateway(state, gateway_id, site_id, batch_id, sightings)
-      process.send(reply, result)
-      actor.continue(state)
-    }
-
-    FindSite(site_id:, reply:) -> {
-      let status = case
-        dict.get(state.running, site_id),
-        dict.has_key(state.configs, site_id)
-      {
-        Ok(running), _ -> Running(running.subject)
-        Error(Nil), True -> Idle
-        Error(Nil), False -> NotConfigured
+    SiteDown(process.ProcessDown(pid:, ..)) ->
+      case dict.get(state.monitored, pid) {
+        Ok(site_id) -> {
+          registry.remove_running(registry, site_id)
+          actor.continue(
+            State(..state, monitored: dict.delete(state.monitored, pid)),
+          )
+        }
+        Error(Nil) -> actor.continue(state)
       }
-      process.send(reply, status)
-      actor.continue(state)
-    }
-
-    CountSites(reply:) -> {
-      process.send(reply, dict.size(state.configs))
-      actor.continue(state)
-    }
-
-    SiteDown(process.ProcessDown(pid:, ..)) -> {
-      let running = dict.filter(state.running, fn(_, site) { site.pid != pid })
-      actor.continue(State(..state, running:))
-    }
     SiteDown(process.PortDown(..)) -> actor.continue(state)
   }
 }
 
+fn start_site(
+  state: State,
+  site_id: Int,
+) -> #(State, Result(Subject(site.Message), Nil)) {
+  case registry.get_config(state.args.registry, site_id) {
+    Error(Nil) -> #(state, Error(Nil))
+    Ok(config) -> {
+      let args =
+        site.Args(
+          site_id:,
+          config:,
+          publish: state.args.publish,
+          clock: state.args.clock,
+          heartbeat_ms: state.args.heartbeat_ms,
+        )
+      case state.args.start_site(args) {
+        Ok(started) -> {
+          let _monitor = process.monitor(started.pid)
+          registry.put_running(state.args.registry, site_id, started.data)
+          let monitored = dict.insert(state.monitored, started.pid, site_id)
+          #(State(..state, monitored:), Ok(started.data))
+        }
+        Error(_) -> #(state, Error(Nil))
+      }
+    }
+  }
+}
+
+fn schedule_prune(self: Subject(Message), every_ms: Int) -> Nil {
+  case every_ms > 0 {
+    True -> {
+      process.send_after(self, every_ms, PruneSeen)
+      Nil
+    }
+    False -> Nil
+  }
+}
+
+// ---- Sites ------------------------------------------------------------------
+
+/// Stores a site's config; a running site actor uses it at once.
+pub fn configure_site(hub: Hub, site_id: Int, config: SiteConfig) -> Nil {
+  registry.put_config(hub.registry, site_id, config)
+  case registry.get_running(hub.registry, site_id) {
+    Ok(running) -> process.send(running, site.Configure(config))
+    Error(Nil) -> Nil
+  }
+}
+
+pub fn find_site(hub: Hub, site_id: Int) -> SiteStatus {
+  case
+    registry.get_running(hub.registry, site_id),
+    registry.get_config(hub.registry, site_id)
+  {
+    Ok(running), _ -> Running(running)
+    Error(Nil), Ok(_) -> Idle
+    Error(Nil), Error(Nil) -> NotConfigured
+  }
+}
+
+/// The site's current config, as last pushed by Django.
+pub fn get_config(hub: Hub, site_id: Int) -> Result(SiteConfig, Nil) {
+  registry.get_config(hub.registry, site_id)
+}
+
+pub fn count_sites(hub: Hub) -> Int {
+  registry.count_configs(hub.registry)
+}
+
 // ---- Phones -----------------------------------------------------------------
 
-fn ingest_phone(
-  state: State,
+/// A batch from a foreman's phone, ingested in the caller's process.
+pub fn ingest_phone(
+  hub: Hub,
+  foreman_id: Int,
+  claims: token.Claims,
+  observations: List(Observation),
+) -> IngestResult {
+  let now = hub.clock()
+  let #(tally, points) =
+    list.fold(observations, #(empty_tally(), []), fn(acc, observation) {
+      let #(tally, points) = acc
+      ingest_phone_item(
+        hub,
+        foreman_id,
+        claims,
+        observation,
+        now,
+        tally,
+        points,
+      )
+    })
+  record(hub, points)
+  finish(tally)
+}
+
+fn ingest_phone_item(
+  hub: Hub,
   foreman_id: Int,
   claims: token.Claims,
   observation: Observation,
   now: Int,
   tally: Tally,
-) -> #(State, Tally) {
+  points: Points,
+) -> #(Tally, Points) {
   let ref = domain.observation_ref(observation)
-  let rejected = check_phone_observation(state, claims, observation, now)
-  case rejected {
-    Some(#(code, message)) -> #(state, reject(tally, ref, code, message))
-    None -> {
+  let checked = case check_phone_observation(hub, claims, observation, now) {
+    Some(rejection) -> Error(rejection)
+    None ->
+      case observation {
+        GpsFix(..) ->
+          plan_gps(hub, foreman_id, claims, observation)
+          |> result.map(Some)
+          |> result.replace_error(#(
+            "not_tracked",
+            "This foreman is not tracked here (not assigned, no consent, or tracking off).",
+          ))
+        PhoneBle(..) -> Ok(None)
+      }
+  }
+  case checked {
+    Error(#(code, message)) -> #(reject(tally, ref, code, message), points)
+    Ok(plan) -> {
       let key = "foreman:" <> int.to_string(foreman_id) <> ":" <> ref
-      case remember(state, key, now) {
-        #(state, False) -> #(
-          state,
-          Tally(..tally, duplicates: tally.duplicates + 1),
-        )
-        #(state, True) -> {
-          let #(state, late) = case observation {
-            GpsFix(..) ->
-              ingest_gps(state, foreman_id, claims, observation, now)
-            PhoneBle(..) -> ingest_phone_ble(state, observation, now)
+      case registry.remember(hub.registry, key, now) {
+        False -> #(Tally(..tally, duplicates: tally.duplicates + 1), points)
+        True -> {
+          let #(point, late) = case plan {
+            Some(plan) -> apply_gps(hub, foreman_id, plan, now)
+            None -> ingest_phone_ble(hub, observation, now)
           }
-          #(state, accept(tally, late))
+          #(accept(tally, late), [point, ..points])
         }
       }
     }
@@ -203,7 +295,7 @@ fn ingest_phone(
 
 /// Returns the rejection code and message, if any.
 fn check_phone_observation(
-  state: State,
+  hub: Hub,
   claims: token.Claims,
   observation: Observation,
   now: Int,
@@ -215,7 +307,7 @@ fn check_phone_observation(
     PhoneBle(site_id:, badge_id:, ..) ->
       case
         token.can_access_site(claims, site_id),
-        dict.get(state.configs, site_id)
+        registry.get_config(hub.registry, site_id)
       {
         False, _ ->
           Some(#("site_not_allowed", "This device is not assigned to the site."))
@@ -233,20 +325,39 @@ fn check_phone_observation(
   }
 }
 
-/// Stores the fix and feeds the sites it says something about. Returns
-/// whether it was too old to change live presence.
-fn ingest_gps(
-  state: State,
+/// What a GPS fix does, decided before it is accepted.
+type GpsPlan {
+  GpsPlan(
+    at: Int,
+    point: TrackPoint,
+    /// The site whose geofence contains the fix and that tracks this foreman.
+    inside: Option(#(Int, SiteConfig)),
+    /// Sites tracking this foreman whose geofence the fix is clearly outside.
+    outside: List(Int),
+  )
+}
+
+/// A fix counts only where the site's config lists the foreman (assigned
+/// and consented; see `SiteConfig.foremen`):
+///
+/// - inside the geofence of such a site: stored for that site and fed to it;
+/// - inside the geofence of a site in the token that does not track him:
+///   dropped, so his whereabouts on that site are never recorded;
+/// - outside every geofence: stored as off-site travel if at least one site in
+///   the token tracks him, dropped otherwise.
+///
+/// `Error(Nil)` means dropped (`not_tracked`).
+fn plan_gps(
+  hub: Hub,
   foreman_id: Int,
   claims: token.Claims,
   observation: Observation,
-  now: Int,
-) -> #(State, Bool) {
+) -> Result(GpsPlan, Nil) {
   let assert GpsFix(at:, position:, accuracy_m:, ..) = observation
-  let person = Person(Foreman, foreman_id)
+  let sites = tracked_sites(hub, claims)
+  let tracks = fn(config) { domain.tracks_foreman(config, foreman_id) }
   let placements =
-    tracked_sites(state, claims)
-    |> list.filter_map(fn(entry) {
+    list.filter_map(sites, fn(entry) {
       let #(site_id, config) = entry
       case config.geofence {
         Some(fence) ->
@@ -257,94 +368,130 @@ fn ingest_gps(
   let inside =
     list.find_map(placements, fn(placement) {
       case placement {
-        #(site_id, config, geo.Inside) -> Ok(#(site_id, config))
+        #(site_id, config, geo.Inside) ->
+          case tracks(config) {
+            True -> Ok(#(site_id, config))
+            False -> Error(Nil)
+          }
         _ -> Error(Nil)
       }
     })
-  state.args.record_track(person, [
-    GpsPoint(at:, position:, accuracy_m:, site_id: case inside {
-      Ok(#(site_id, _)) -> Some(site_id)
-      Error(Nil) -> None
-    }),
-  ])
+  let inside_untracked =
+    list.any(placements, fn(placement) {
+      placement.2 == geo.Inside && !tracks(placement.1)
+    })
+  let tracked_somewhere = list.any(sites, fn(entry) { tracks(entry.1) })
+  let outside =
+    list.filter_map(placements, fn(placement) {
+      case placement.2 == geo.Outside && tracks(placement.1) {
+        True -> Ok(placement.0)
+        False -> Error(Nil)
+      }
+    })
+  let point = fn(site_id) {
+    GpsPoint(at:, position:, accuracy_m:, site_id:, company: claims.company)
+  }
+  case inside, inside_untracked, tracked_somewhere {
+    Ok(#(site_id, config)), _, _ ->
+      Ok(GpsPlan(
+        at:,
+        point: point(Some(site_id)),
+        inside: Some(#(site_id, config)),
+        outside:,
+      ))
+    Error(Nil), False, True ->
+      Ok(GpsPlan(at:, point: point(None), inside: None, outside:))
+    _, _, _ -> Error(Nil)
+  }
+}
 
+/// Feeds the sites the fix says something about. Returns the point to store
+/// and whether it was too old to change live presence.
+fn apply_gps(
+  hub: Hub,
+  foreman_id: Int,
+  plan: GpsPlan,
+  now: Int,
+) -> #(#(Person, TrackPoint), Bool) {
+  let person = Person(Foreman, foreman_id)
   // A fix outside a site only matters to a site that is already running.
-  list.each(placements, fn(placement) {
-    case placement, dict.get(state.running, placement.0) {
-      #(_, _, geo.Outside), Ok(running) ->
+  list.each(plan.outside, fn(site_id) {
+    case registry.get_running(hub.registry, site_id) {
+      Ok(running) ->
         process.send(
-          running.subject,
-          site.Observe(person, presence.SeenOutside(at)),
+          running,
+          site.Observe(person, presence.SeenOutside(plan.at)),
         )
-      _, _ -> Nil
+      Error(Nil) -> Nil
     }
   })
-
-  case inside {
-    Ok(#(site_id, config)) ->
-      case is_late(config, at, now) {
-        True -> #(state, True)
-        False -> #(
-          observe(state, site_id, person, presence.Seen(zone: None, at:)),
-          False,
-        )
+  let late = case plan.inside {
+    Some(#(site_id, config)) ->
+      case is_late(config, plan.at, now) {
+        True -> True
+        False -> {
+          observe(hub, site_id, person, presence.Seen(zone: None, at: plan.at))
+          False
+        }
       }
-    Error(Nil) -> #(state, False)
+    None -> False
   }
+  #(#(person, plan.point), late)
 }
 
 fn ingest_phone_ble(
-  state: State,
+  hub: Hub,
   observation: Observation,
   now: Int,
-) -> #(State, Bool) {
+) -> #(#(Person, TrackPoint), Bool) {
   let assert PhoneBle(at:, site_id:, badge_id:, rssi:, ..) = observation
   // Checked in `check_phone_observation`.
-  let assert Ok(config) = dict.get(state.configs, site_id)
+  let assert Ok(config) = registry.get_config(hub.registry, site_id)
   let assert Ok(worker_id) = domain.find_worker(config, badge_id)
   let person = Person(Worker, worker_id)
-  state.args.record_track(person, [
-    BlePoint(at:, site_id:, zone_id: None, rssi:, source: FromPhone),
-  ])
-  case is_late(config, at, now) {
-    True -> #(state, True)
-    False -> #(
-      observe(state, site_id, person, presence.Seen(zone: None, at:)),
-      False,
-    )
+  let point = BlePoint(at:, site_id:, zone_id: None, rssi:, source: FromPhone)
+  let late = case is_late(config, at, now) {
+    True -> True
+    False -> {
+      observe(hub, site_id, person, presence.Seen(zone: None, at:))
+      False
+    }
   }
+  #(#(person, point), late)
 }
 
-/// The sites a device token may report on, with tracking switched on.
-fn tracked_sites(state: State, claims: token.Claims) -> List(#(Int, SiteConfig)) {
-  state.configs
-  |> dict.to_list
-  |> list.filter(fn(entry) {
-    let #(site_id, config) = entry
-    config.tracking_enabled && token.can_access_site(claims, site_id)
+/// The sites in the device token, with tracking switched on.
+fn tracked_sites(hub: Hub, claims: token.Claims) -> List(#(Int, SiteConfig)) {
+  claims.sites
+  |> list.unique
+  |> list.filter_map(fn(site_id) {
+    case registry.get_config(hub.registry, site_id) {
+      Ok(config) if config.tracking_enabled -> Ok(#(site_id, config))
+      _ -> Error(Nil)
+    }
   })
 }
 
 // ---- Gateways ---------------------------------------------------------------
 
-fn ingest_gateway(
-  state: State,
+/// A batch from a fixed gateway, ingested in the caller's process.
+pub fn ingest_gateway(
+  hub: Hub,
   gateway_id: String,
   site_id: Int,
   batch_id: String,
   sightings: List(GatewaySighting),
-) -> #(State, Result(IngestResult, GatewayError)) {
-  let now = state.args.clock()
-  case dict.get(state.configs, site_id) {
-    Error(Nil) -> #(state, Error(UnknownSite))
+) -> Result(IngestResult, GatewayError) {
+  let now = hub.clock()
+  case registry.get_config(hub.registry, site_id) {
+    Error(Nil) -> Error(UnknownSite)
     Ok(config) ->
       case domain.find_gateway(config, gateway_id) {
-        Error(Nil) -> #(state, Error(UnknownGateway))
+        Error(Nil) -> Error(UnknownGateway)
         Ok(gateway) -> {
           let key = "gateway:" <> gateway_id <> ":" <> batch_id
-          case remember(state, key, now) {
-            #(state, False) -> #(
-              state,
+          case registry.remember(hub.registry, key, now) {
+            False ->
               Ok(
                 IngestResult(
                   accepted: 0,
@@ -352,23 +499,24 @@ fn ingest_gateway(
                   late: 0,
                   rejected: [],
                 ),
-              ),
-            )
-            #(state, True) -> {
-              let #(state, tally) =
-                list.fold(sightings, #(state, empty_tally()), fn(acc, sighting) {
-                  let #(state, tally) = acc
+              )
+            True -> {
+              let #(tally, points) =
+                list.fold(sightings, #(empty_tally(), []), fn(acc, sighting) {
+                  let #(tally, points) = acc
                   ingest_sighting(
-                    state,
+                    hub,
                     site_id,
                     config,
                     gateway,
                     sighting,
                     now,
                     tally,
+                    points,
                   )
                 })
-              #(state, Ok(finish(tally)))
+              record(hub, points)
+              Ok(finish(tally))
             }
           }
         }
@@ -377,14 +525,15 @@ fn ingest_gateway(
 }
 
 fn ingest_sighting(
-  state: State,
+  hub: Hub,
   site_id: Int,
   config: SiteConfig,
   gateway: domain.Gateway,
   sighting: GatewaySighting,
   now: Int,
   tally: Tally,
-) -> #(State, Tally) {
+  points: Points,
+) -> #(Tally, Points) {
   let ref = sighting.badge_id
   case
     sighting.at > now + max_clock_skew_ms,
@@ -392,102 +541,84 @@ fn ingest_sighting(
     domain.find_worker(config, sighting.badge_id)
   {
     True, _, _ -> #(
-      state,
       reject(
         tally,
         ref,
         "future_timestamp",
         "The sighting is dated in the future.",
       ),
+      points,
     )
     False, False, _ -> #(
-      state,
       reject(tally, ref, "tracking_disabled", "Tracking is off for this site."),
+      points,
     )
     False, True, Error(Nil) -> #(
-      state,
       reject(
         tally,
         ref,
         "unknown_badge",
         "The badge is not assigned on this site.",
       ),
+      points,
     )
     False, True, Ok(worker_id) -> {
       let person = Person(Worker, worker_id)
-      state.args.record_track(person, [
+      let point =
         BlePoint(
           at: sighting.at,
           site_id:,
           zone_id: gateway.zone_id,
           rssi: sighting.rssi,
           source: FromGateway,
-        ),
-      ])
-      case is_late(config, sighting.at, now) {
-        True -> #(state, accept(tally, True))
-        False -> #(
+        )
+      let late = is_late(config, sighting.at, now)
+      case late {
+        True -> Nil
+        False ->
           observe(
-            state,
+            hub,
             site_id,
             person,
             presence.Seen(zone: gateway.zone_id, at: sighting.at),
-          ),
-          accept(tally, False),
-        )
+          )
       }
+      #(accept(tally, late), [#(person, point), ..points])
     }
   }
 }
 
 // ---- Helpers ----------------------------------------------------------------
 
-/// Sends a signal to a site actor, starting it if needed.
+/// Points of the batch being ingested, newest first.
+type Points =
+  List(#(Person, TrackPoint))
+
+/// Hands the batch's points to the track store in one message (one
+/// transaction there).
+fn record(hub: Hub, points: Points) -> Nil {
+  case points {
+    [] -> Nil
+    _ -> hub.record_track(list.reverse(points))
+  }
+}
+
+/// Sends a signal to a site actor, asking the hub to start it if needed.
 fn observe(
-  state: State,
+  hub: Hub,
   site_id: Int,
   person: Person,
   signal: presence.Signal,
-) -> State {
-  let #(state, subject) = ensure_running(state, site_id)
-  case subject {
-    Some(subject) -> process.send(subject, site.Observe(person, signal))
-    // The site actor could not start; the point is still in the track.
-    None -> Nil
+) -> Nil {
+  let running = case registry.get_running(hub.registry, site_id) {
+    Ok(running) -> Ok(running)
+    Error(Nil) ->
+      process.call(hub.subject, call_timeout_ms, EnsureRunning(site_id, _))
   }
-  state
-}
-
-fn ensure_running(
-  state: State,
-  site_id: Int,
-) -> #(State, Option(Subject(site.Message))) {
-  case dict.get(state.running, site_id), dict.get(state.configs, site_id) {
-    Ok(running), _ -> #(state, Some(running.subject))
-    Error(Nil), Error(Nil) -> #(state, None)
-    Error(Nil), Ok(config) -> {
-      let args =
-        site.Args(
-          site_id:,
-          config:,
-          publish: state.args.publish,
-          clock: state.args.clock,
-          heartbeat_ms: state.args.heartbeat_ms,
-        )
-      case state.args.start_site(args) {
-        Ok(started) -> {
-          let _monitor = process.monitor(started.pid)
-          let running =
-            dict.insert(
-              state.running,
-              site_id,
-              RunningSite(subject: started.data, pid: started.pid),
-            )
-          #(State(..state, running:), Some(started.data))
-        }
-        Error(_) -> #(state, None)
-      }
-    }
+  case running {
+    Ok(running) -> process.send(running, site.Observe(person, signal))
+    // The site actor could not start; the point is still in the track.
+    Error(Nil) -> Nil
   }
 }
 
@@ -495,21 +626,6 @@ fn ensure_running(
 /// the track; the nightly replay corrects sessions from there.
 fn is_late(config: SiteConfig, at: Int, now: Int) -> Bool {
   now - at > config.rules.absence_to_leave_ms
-}
-
-/// Records a dedupe key. Returns `False` when it was already known.
-fn remember(state: State, key: String, now: Int) -> #(State, Bool) {
-  case dict.has_key(state.seen, key) {
-    True -> #(state, False)
-    False -> {
-      let seen = case dict.size(state.seen) >= dedupe_prune_at {
-        True ->
-          dict.filter(state.seen, fn(_, at) { now - at < dedupe_window_ms })
-        False -> state.seen
-      }
-      #(State(..state, seen: dict.insert(seen, key, now)), True)
-    }
-  }
 }
 
 type Tally {
