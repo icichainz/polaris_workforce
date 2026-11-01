@@ -24,12 +24,26 @@ class TimeInput(forms.TimeInput):
 
 
 class SiteForm(forms.ModelForm):
-    labour_budget = MoneyField(label=_("Labour budget"), required=False)
+    labour_budget = MoneyField(
+        label=_("Labour budget"), required=False, help_text=_("For the whole site.")
+    )
 
     class Meta:
         model = Site
-        fields = ["name", "address", "status", "started_on", "manager", "foremen"]
-        widgets = {"started_on": DateInput(), "foremen": forms.CheckboxSelectMultiple}
+        fields = [
+            "name",
+            "address",
+            "status",
+            "started_on",
+            "planned_end_date",
+            "manager",
+            "foremen",
+        ]
+        widgets = {
+            "started_on": DateInput(),
+            "planned_end_date": DateInput(),
+            "foremen": forms.CheckboxSelectMultiple,
+        }
 
     def __init__(self, *args, decimals: int, **kwargs):
         super().__init__(*args, **kwargs)

@@ -1,0 +1,146 @@
+{% extends "layouts/app.html" %}
+{% load i18n polaris %}
+
+{% block title %}{% translate "Checks" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% blocktranslate with start=start|date:_("j M Y") end=end|date:_("j M Y") %}{{ start }} – {{ end }}{% endblocktranslate %}{% endblock %}
+{% block page_title %}{% translate "Reports" %}{% endblock %}
+
+{% block content %}
+{% include "dashboard/_report_tabs.html" with tab=tab query=query only %}
+{% include "dashboard/_report_filters.html" with form=form period=period only %}
+{% translate "These are things to look at, not proof of a fault: a phone left at home, a family sharing a number or a late correction can each have a good reason." as intro %}
+{% include "components/alert.html" with variant="info" message=intro only %}
+
+<section id="check-in-mismatches" aria-labelledby="mismatch-title" class="rounded-card border border-line bg-surface">
+  <div class="flex flex-col gap-0.5 border-b border-line px-5 py-4">
+    <h2 id="mismatch-title" class="font-display text-lg font-bold">{% translate "Roll call against check-ins" %}</h2>
+    <span class="text-[13px] text-steel">{% blocktranslate count counter=mismatches.days_checked %}Compared on the {{ counter }} site day where someone checked in. Days without any check-in are not compared.{% plural %}Compared on the {{ counter }} site days where someone checked in. Days without any check-in are not compared.{% endblocktranslate %}</span>
+  </div>
+  {% if mismatches.days_checked %}
+  <div class="grid grid-cols-1 gap-4 px-5 py-4 sm:grid-cols-2">
+    {% translate "Marked worked, no check-in" as worked_label %}
+    {% include "components/stat_tile.html" with label=worked_label value=mismatches.worked_without_check_in only %}
+    {% translate "Marked absent, checked in" as absent_label %}
+    {% include "components/stat_tile.html" with label=absent_label value=mismatches.absent_with_check_in only %}
+  </div>
+  {% if mismatches.items %}
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-160 border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Day" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Roll call" %}</th>
+        <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Check-in" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for item in mismatches.items %}
+        <tr class="border-t border-line-soft">
+          <td class="px-5 py-3"><a href="{% url 'checkin:site_day' item.site_id item.date %}" class="font-semibold">{{ item.date|date:_("D j M") }}</a><br><span class="text-xs text-steel">{{ item.site_name }}</span></td>
+          <td class="px-4 py-3"><a href="{% url 'workers:detail' item.worker_id %}">{{ item.name }}</a></td>
+          <td class="px-4 py-3">{% include "components/status_badge.html" with status=item.status only %}</td>
+          <td class="px-5 py-3">{% if item.kind == "absent_with_check_in" %}{% translate "Checked in" %}{% else %}<span class="font-semibold text-late-fg">{% translate "No check-in" %}</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if mismatches.count > mismatches.items|length %}<p class="border-t border-line-soft px-5 py-3 text-[13px] text-steel">{% blocktranslate with shown=mismatches.items|length total=mismatches.count %}The {{ shown }} most recent of {{ total }}. Pick a site or a shorter period to see the rest.{% endblocktranslate %}</p>{% endif %}
+  {% else %}
+  <p class="border-t border-line-soft px-5 py-6 text-center text-sm text-steel">{% translate "The roll call matches the check-ins." %}</p>
+  {% endif %}
+  {% else %}
+  <p class="px-5 py-8 text-center text-sm text-steel">{% translate "Nobody checked in during this period." %}</p>
+  {% endif %}
+</section>
+
+<section id="corrections" aria-labelledby="corrections-title" class="rounded-card border border-line bg-surface">
+  <div class="flex flex-col gap-0.5 border-b border-line px-5 py-4">
+    <h2 id="corrections-title" class="font-display text-lg font-bold">{% translate "Corrections per foreman" %}</h2>
+    <span class="text-[13px] text-steel">{% translate "Changes to the records of each foreman's roll calls after they submitted them, and how many were made once the day was approved." %}</span>
+  </div>
+  {% if foremen %}
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-160 border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Foreman" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Records" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Corrections" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Per 100 records" %}</th>
+        <th scope="col" class="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "After approval" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for row in foremen %}
+        <tr class="border-t border-line-soft">
+          <td class="px-5 py-3 font-semibold">{{ row.name|default:_("No foreman") }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.records }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.corrections }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{% if row.per_hundred is None %}—{% else %}{% number row.per_hundred %}{% endif %}</td>
+          <td class="px-5 py-3 text-right tabular-nums {% if row.after_approval %}font-semibold text-late-fg{% endif %}">{{ row.after_approval }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="px-5 py-8 text-center text-sm text-steel">{% translate "No correction in this period." %}</p>
+  {% endif %}
+</section>
+
+<section id="check-in-flags" aria-labelledby="flags-title" class="rounded-card border border-line bg-surface">
+  <div class="flex flex-col gap-0.5 border-b border-line px-5 py-4">
+    <h2 id="flags-title" class="font-display text-lg font-bold">{% translate "Check-in flags per site" %}</h2>
+    <span class="text-[13px] text-steel">{% translate "Scans outside the site's area, unknown or revoked badges, workers not on the crew, and check-ins typed in by hand." %}</span>
+  </div>
+  {% if check_ins %}
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-200 border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Check-ins" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Outside the area" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Unknown badge" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Revoked badge" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Not on the crew" %}</th>
+        <th scope="col" class="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Typed in" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for row in check_ins %}
+        <tr class="border-t border-line-soft">
+          <td class="px-5 py-3 font-semibold">{{ row.name }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.total }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{% if row.outside_area %}{{ row.outside_area }} <span class="text-xs text-steel">({{ row.outside_share }}%)</span>{% else %}—{% endif %}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.unknown_badge|default:"—" }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.revoked_badge|default:"—" }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.not_on_crew|default:"—" }}</td>
+          <td class="px-5 py-3 text-right tabular-nums">{% if row.manual %}{{ row.manual }} <span class="text-xs text-steel">({{ row.manual_share }}%)</span>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="px-5 py-8 text-center text-sm text-steel">{% translate "Nobody checked in during this period." %}</p>
+  {% endif %}
+</section>
+
+{% if shared_accounts is not None %}
+<section id="shared-accounts" aria-labelledby="shared-title" class="rounded-card border border-line bg-surface">
+  <div class="flex flex-col gap-0.5 border-b border-line px-5 py-4">
+    <h2 id="shared-title" class="font-display text-lg font-bold">{% translate "Payout accounts shared by several workers" %}</h2>
+    <span class="text-[13px] text-steel">{% translate "Active workers paid to the same mobile money number or bank account, whatever the period. Only admins see this." %}</span>
+  </div>
+  {% if shared_accounts %}
+  <ul class="m-0 flex list-none flex-col p-0">
+    {% for group in shared_accounts %}
+    <li class="flex flex-col gap-1 border-t border-line-soft px-5 py-3 first:border-t-0">
+      <span class="text-sm"><span class="font-semibold tabular-nums">{{ group.account }}</span> <span class="text-steel">· {% if group.method == "mobile_money" %}{% translate "Mobile money" %}{% else %}{% translate "Bank transfer" %}{% endif %}</span></span>
+      <span class="text-sm">{% for person in group.workers %}<a href="{% url 'workers:detail' person.worker_id %}">{{ person.name }}</a> <span class="text-xs text-steel">{{ person.number }}</span>{% if not forloop.last %} · {% endif %}{% endfor %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="px-5 py-8 text-center text-sm text-steel">{% translate "No payout account is shared." %}</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,3 @@
+{% load i18n %}{% comment %}
+The heading of an age bucket (apps.analytics.services UNPAID_AGES, ADVANCE_AGES). Context: `key`.
+{% endcomment %}{% if key == "1-7" %}{% translate "1–7 days" %}{% elif key == "8-30" %}{% translate "8–30 days" %}{% elif key == "31+" %}{% translate "Over 30 days" %}{% elif key == "0-30" %}{% translate "Up to 30 days" %}{% elif key == "31-90" %}{% translate "31–90 days" %}{% elif key == "91+" %}{% translate "Over 90 days" %}{% endif %}

@@ -132,6 +132,10 @@ def _office_pages(s):
         "dashboard:home": reverse("dashboard:home"),
         "dashboard:reports": reverse("dashboard:reports")
         + f"?period=custom&start={MON.isoformat()}&end={TUE.isoformat()}",
+        "dashboard:reports_cash": reverse("dashboard:reports_cash")
+        + f"?period=custom&start={MON.isoformat()}&end={TUE.isoformat()}",
+        "dashboard:reports_checks": reverse("dashboard:reports_checks")
+        + f"?period=custom&start={MON.isoformat()}&end={TUE.isoformat()}",
         "core:settings": reverse("core:settings"),
         "core:audit_log": reverse("core:audit_log"),
         "attendance:approvals": reverse("attendance:approvals"),
@@ -185,7 +189,20 @@ def _english_phrases() -> list[str]:
 # Per page: phrases that must show in French (beyond the shared sidebar).
 EXPECTED_FR = {
     "dashboard:home": ["Aujourd’hui sur les chantiers", "Chiffres clés"],
-    "dashboard:reports": ["Taux de présence", "Présences par ouvrier", "Télécharger le CSV"],
+    "dashboard:reports": [
+        "Taux de présence",
+        "Présences par ouvrier",
+        "Télécharger le CSV",
+        "Budgets des chantiers",
+        "De quoi se compose le coût main-d’œuvre",
+    ],
+    "dashboard:reports_cash": ["Caisse et avances", "Feuilles de caisse", "Avances dues"],
+    "dashboard:reports_checks": [
+        "Contrôles",
+        "Appel comparé aux pointages",
+        "Corrections par chef d’équipe",
+        "Comptes de paiement partagés par plusieurs ouvriers",
+    ],
     "core:settings": ["Règles de paie", "Jours ouvrés et jours fériés", "Devise"],
     "core:audit_log": ["Journal d’audit", "Qui a modifié quoi, quand et pourquoi"],
     "attendance:approvals": ["Validations", "Appels envoyés par les chefs d’équipe"],

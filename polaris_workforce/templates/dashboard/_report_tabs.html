@@ -1,0 +1,8 @@
+{% load i18n %}{% comment %}
+Links between the reports tabs, keeping the filters. Context: `tab` ("cost" | "cash" |
+"checks"), `query` (the report filters, already limited to them).
+{% endcomment %}<nav aria-label="{% translate 'Report pages' %}" class="flex flex-wrap gap-1 self-start rounded-card bg-segment p-1">
+  <a href="{% url 'dashboard:reports' %}{% if query %}?{{ query }}{% endif %}"{% if tab == "cost" %} aria-current="page"{% endif %} class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if tab == 'cost' %}bg-surface text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Cost and attendance" %}</a>
+  <a href="{% url 'dashboard:reports_cash' %}{% if query %}?{{ query }}{% endif %}"{% if tab == "cash" %} aria-current="page"{% endif %} class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if tab == 'cash' %}bg-surface text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Cash and advances" %}</a>
+  <a href="{% url 'dashboard:reports_checks' %}{% if query %}?{{ query }}{% endif %}"{% if tab == "checks" %} aria-current="page"{% endif %} class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if tab == 'checks' %}bg-surface text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Checks" %}</a>
+</nav>

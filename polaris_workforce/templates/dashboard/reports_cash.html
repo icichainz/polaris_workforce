@@ -1,0 +1,107 @@
+{% extends "layouts/app.html" %}
+{% load i18n polaris %}
+
+{% block title %}{% translate "Cash and advances" %} · Polaris Workforce{% endblock %}
+{% block page_subtitle %}{% blocktranslate with start=start|date:_("j M Y") end=end|date:_("j M Y") %}{{ start }} – {{ end }}{% endblocktranslate %}{% endblock %}
+{% block page_title %}{% translate "Reports" %}{% endblock %}
+
+{% block content %}
+{% include "dashboard/_report_tabs.html" with tab=tab query=query only %}
+{% include "dashboard/_report_filters.html" with form=form period=period only %}
+
+{% with total=cash.total %}
+<section aria-labelledby="cash-figures-title" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  <h2 id="cash-figures-title" class="sr-only">{% translate "Key figures" %}</h2>
+  {% translate "To pay" as to_pay_label %}
+  {% money total.to_pay as to_pay_value %}
+  {% blocktranslate count counter=total.workers asvar to_pay_caption %}{{ counter }} pay line on the cash sheets{% plural %}{{ counter }} pay lines on the cash sheets{% endblocktranslate %}
+  {% include "components/stat_tile.html" with label=to_pay_label value=to_pay_value caption=to_pay_caption dark=True only %}
+  {% translate "Paid" as paid_label %}
+  {% money total.paid as paid_value %}
+  {% translate "Cash, bank transfer and mobile money" as paid_caption %}
+  {% include "components/stat_tile.html" with label=paid_label value=paid_value caption=paid_caption only %}
+  {% translate "Left to pay" as left_label %}
+  {% money total.left_to_pay as left_value %}
+  {% blocktranslate count counter=total.unpaid_workers asvar left_caption %}{{ counter }} pay line without a payment{% plural %}{{ counter }} pay lines without a payment{% endblocktranslate %}
+  {% include "components/stat_tile.html" with label=left_label value=left_value caption=left_caption only %}
+  {% translate "Cash not paid out" as hand_label %}
+  {% money total.cash_in_hand as hand_value %}
+  {% money total.cash_issued as issued_value %}
+  {% blocktranslate with issued=issued_value asvar hand_caption %}Of {{ issued }} cash issued: to hand back or explain{% endblocktranslate %}
+  {% include "components/stat_tile.html" with label=hand_label value=hand_value caption=hand_caption only %}
+</section>
+
+<section id="cash-sheets" aria-labelledby="sheets-title" class="rounded-card border border-line bg-surface">
+  <div class="flex flex-col gap-0.5 border-b border-line px-5 py-4">
+    <h2 id="sheets-title" class="font-display text-lg font-bold">{% translate "Cash sheets" %}</h2>
+    <span class="text-[13px] text-steel">{% translate "Every pay day of the period. Cash not paid out = cash issued − cash payments." %}</span>
+  </div>
+  {% if cash.days %}
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-200 border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Pay day" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "To pay" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Paid" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Left to pay" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Cash issued" %}</th>
+        <th scope="col" class="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Cash not paid out" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for day in cash.days %}
+        <tr class="border-t border-line-soft">
+          <td class="px-5 py-3"><a href="{% url 'payroll:cash_sheet' day.site_id day.date %}" class="font-semibold">{{ day.date|date:_("D j M") }}</a></td>
+          <td class="px-4 py-3">{{ day.site_name }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{% money day.to_pay %}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{% money day.paid %}</td>
+          <td class="px-4 py-3 text-right tabular-nums {% if day.left_to_pay %}font-semibold text-late-fg{% endif %}">{% if day.left_to_pay %}{% money day.left_to_pay %}<br><span class="text-xs font-normal text-steel">{% blocktranslate count counter=day.unpaid_workers %}{{ counter }} unpaid{% plural %}{{ counter }} unpaid{% endblocktranslate %}</span>{% else %}—{% endif %}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{% if day.cash_issued %}{% money day.cash_issued %}{% else %}—{% endif %}</td>
+          <td class="px-5 py-3 text-right tabular-nums {% if day.cash_in_hand %}font-semibold text-late-fg{% endif %}">{% if day.cash_issued or day.cash_paid %}{% money day.cash_in_hand %}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr class="border-t-2 border-line bg-subtle">
+        <th scope="row" colspan="2" class="px-5 py-3 text-left font-semibold">{% translate "Total" %}</th>
+        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money total.to_pay %}</td>
+        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money total.paid %}</td>
+        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money total.left_to_pay %}</td>
+        <td class="px-4 py-3 text-right font-semibold tabular-nums">{% money total.cash_issued %}</td>
+        <td class="px-5 py-3 text-right font-semibold tabular-nums">{% money total.cash_in_hand %}</td>
+      </tr></tfoot>
+    </table>
+  </div>
+  {% else %}
+  <p class="px-5 py-8 text-center text-sm text-steel">{% translate "No cash sheet in this period." %}</p>
+  {% endif %}
+</section>
+{% endwith %}
+
+<div class="flex flex-col gap-5 xl:flex-row xl:items-start">
+  <section id="unpaid" aria-labelledby="unpaid-title" class="min-w-0 rounded-card border border-line bg-surface xl:basis-1/2">
+    <div class="flex flex-col gap-0.5 border-b border-line px-5 py-4">
+      <h2 id="unpaid-title" class="font-display text-lg font-bold">{% translate "Pay still owed" %}</h2>
+      <span class="text-[13px] text-steel">{% blocktranslate with date=today|date:_("j M Y") %}On {{ date }}, by days since the pay day, any period. Closed and locked cash sheets are left out.{% endblocktranslate %}</span>
+    </div>
+    {% if unpaid_sites %}
+    {% translate "No site" as none_label %}
+    {% include "dashboard/_age_table.html" with rows=unpaid_sites total=unpaid_total none_label=none_label kind="pay" only %}
+    {% else %}
+    <p class="px-5 py-8 text-center text-sm text-steel">{% translate "Everyone was paid after their pay day." %}</p>
+    {% endif %}
+  </section>
+
+  <section id="advances" aria-labelledby="advances-title" class="min-w-0 rounded-card border border-line bg-surface xl:basis-1/2">
+    <div class="flex flex-col gap-0.5 border-b border-line px-5 py-4">
+      <h2 id="advances-title" class="font-display text-lg font-bold">{% translate "Advances owed" %}</h2>
+      <span class="text-[13px] text-steel">{% blocktranslate with date=today|date:_("j M Y") %}On {{ date }}, by the worker's site today and days since the advance was given.{% endblocktranslate %} <a href="{% url 'payroll:advances' %}" class="font-semibold">{% translate "Open advances" %}</a></span>
+    </div>
+    {% if advance_sites %}
+    {% translate "On no site today" as none_label %}
+    {% include "dashboard/_age_table.html" with rows=advance_sites total=advance_total none_label=none_label kind="advance" only %}
+    {% else %}
+    <p class="px-5 py-8 text-center text-sm text-steel">{% translate "No advance is owed." %}</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

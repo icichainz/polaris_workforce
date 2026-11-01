@@ -54,7 +54,8 @@ def test_office_pages_render_with_active_sidebar_entry(signed_in_client, url_nam
 
     assert response.status_code == 200
     assert f'href="{path}" aria-current="page"' in html
-    assert html.count('aria-current="page"') == 1
+    # The sidebar entry, plus the current tab on pages with tabs (Reports).
+    assert html.count('aria-current="page"') == (2 if url_name == "dashboard:reports" else 1)
     # Every sidebar entry links somewhere that resolves.
     for _, other_path in OFFICE_URLS:
         assert f'href="{other_path}"' in html

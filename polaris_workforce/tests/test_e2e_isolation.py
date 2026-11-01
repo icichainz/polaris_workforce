@@ -70,6 +70,9 @@ OFFICE = {
     "dashboard:reports": "list",
     "dashboard:reports_csv": "list",
     "dashboard:reports_xlsx": "list",
+    "dashboard:reports_cash": "list",
+    "dashboard:reports_checks": "list",
+    "dashboard:budget_warning": "own",  # the admin's own company; test_analytics_views.py
     "dashboard:components": "debug",
     "core:settings": "admin",
     "core:audit_log": "admin",
@@ -609,6 +612,8 @@ def _list_pages(ids):
         "dashboard:reports": (reverse("dashboard:reports"), {**span, "site": ids["site"]}),
         "dashboard:reports_csv": (reverse("dashboard:reports_csv"), span),
         "dashboard:reports_xlsx": (reverse("dashboard:reports_xlsx"), span),
+        "dashboard:reports_cash": (reverse("dashboard:reports_cash"), span),
+        "dashboard:reports_checks": (reverse("dashboard:reports_checks"), span),
         "attendance:approvals": (reverse("attendance:approvals"), {}),
         "payroll:cash_sheets": (reverse("payroll:cash_sheets"), {"site": ids["site"]}),
         "payroll:periods": (reverse("payroll:periods"), {"site": ids["site"], "status": "all"}),

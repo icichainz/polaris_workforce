@@ -297,6 +297,9 @@ def save_site(site: Site, *, actor=None, foremen=None) -> Site:
                 "manager_id": site.manager_id,
                 "foremen": sorted(site.foremen.values_list("pk", flat=True)),
                 "labour_budget": site.labour_budget,
+                "planned_end_date": (
+                    site.planned_end_date.isoformat() if site.planned_end_date else None
+                ),
             },
         )
     return site

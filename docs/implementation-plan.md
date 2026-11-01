@@ -567,3 +567,30 @@ keeps its meaning (off by settings).
 Lead merges P2 → P1 → P6, then wave 2, and updates `docs/presence-tracking.md`,
 `docker-compose.yml` (`DJANGO_EVENTS_URL`, tracker data volume) and the CLAUDE.md
 Gleam version.
+
+---
+
+## 15. Analytics (branch `feat/analytics`)
+
+**Owner decisions (2026-11-01):** first slice = cost control and money/integrity
+(below); foreman scorecard and piece-work productivity come next. A site gets an optional
+**planned end date**; `labour_budget` is the budget for the **whole site** and is compared
+with the **labour cost** (gross + corrections, as in Reports), employer cost shown beside it.
+Runs alongside the presence wave: both add a `worksites` migration, so whichever merges
+second regenerates its own (rule 2).
+
+| Part | Owns | Builds |
+| --- | --- | --- |
+| **Site end date** | `apps/worksites/` (model field, migration, form, `save_site` audit, detail card) | `Site.planned_end_date` (optional); budget help text "for the whole site"; the site page's budget card shows cost to date, % used and projected run-out instead of this month's cost beside the whole budget |
+| **Analytics services** | new app `apps/analytics/` (models, migrations, services, admin) | `AnalyticsSettings` per company (`budget_warn_percent`, default 90); **budget burn** per site (cost to date, spend over the last 28 days, projected run-out date, status: no budget / not enough data / on track / at risk / over); **cost breakdown** per site (time pay, piece work, bonuses, corrections, employer contributions, overtime hours); **previous-period comparison** (same number of days just before); **cash over a range** (per site and day: issued, to pay, paid, left, short); **unpaid pay** by age (0–7, 8–30, 31+ days after pay day); **advances owed** by site and age; **checks**: shared payout numbers (admins only), roll call vs check-ins on sites that use check-in, corrections after approval per foreman, check-in flags per site. Every function takes the user's scoped sites; fixed query counts |
+| **Screens** | `apps/dashboard/` (views, urls, templates `dashboard/`) | Reports: change vs previous period on the tiles, *Site budgets*, *Cost breakdown*, *Cash and advances* sections; a *Checks* page (`/reports/checks/`, admins and accountants; site managers see their sites, without shared payout numbers); Today: "budget at risk / over" in Needs attention |
+
+**Read live, no rollup table (measured):** on 300 000 pay lines (20 sites × 50 workers ×
+300 days) budgets take ~100 ms, a year's cost breakdown ~250 ms, a month of cash sheets
+~40 ms, pay still owed ~5 ms (it reads only periods not paid out). Add a rollup step
+(`apps.precompute.services.register`) in `apps/analytics/` only if real data gets slower.
+
+Not in this slice: stoppage and Sunday/holiday pay as their own cost lines (pay lines keep
+them inside each day's amount; needs `apps/payroll` to store the split), the office API /
+MCP tool for budgets (contract change, after the screens), foreman scorecard, piece-work
+productivity.

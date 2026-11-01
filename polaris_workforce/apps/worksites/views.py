@@ -25,6 +25,7 @@ from apps.accounts.permissions import (
     role_required,
     scoped_sites,
 )
+from apps.analytics.services import site_budgets
 from apps.attendance.models import AttendanceDay, AttendanceRecord
 from apps.core import dates
 from apps.core.models import CompanySettings
@@ -294,6 +295,7 @@ def site_detail(request, pk):
             "labour_cost": money(labour_cost, currency=False),
             "currency": company.currency,
             "budget": money(site.labour_budget) if site.labour_budget is not None else None,
+            "burn": site_budgets([site], today=today)[0],
             **_wave4_links(request.user, site, today),
         }
     )

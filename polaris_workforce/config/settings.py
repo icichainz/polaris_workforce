@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "apps.precompute",
     # Presence tracking: BLE badges, gateways, sessions; talks to polaris_tracker
     "apps.presence",
+    "apps.analytics",
 ]
 
 MIDDLEWARE = [

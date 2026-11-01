@@ -1,0 +1,24 @@
+{% load i18n %}{% comment %}
+The reports filter bar: period, site and (with `with_trade`) trade. Context: `form`
+(ReportFilterForm), `period`.
+{% endcomment %}<form method="get" x-data="{ period: '{{ period|escapejs }}' }" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-surface px-4 py-3.5">
+  <fieldset class="m-0 border-0 p-0">
+    <legend class="sr-only">{% translate "Period" %}</legend>
+    <div class="flex gap-1 rounded-card bg-segment p-1">
+      {% for radio in form.period %}
+      <label for="{{ radio.id_for_label }}" class="flex h-8.5 items-center rounded-[7px] px-3 text-[13px] font-semibold text-ink-700 has-checked:bg-surface has-checked:text-ink has-focus-visible:outline-3 has-focus-visible:outline-amber-500">
+        <input type="radio" name="{{ radio.data.name }}" value="{{ radio.data.value }}" id="{{ radio.id_for_label }}" x-model="period"{% if radio.data.value == period %} checked{% endif %} class="sr-only"> {{ radio.choice_label }}
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <div class="flex flex-wrap items-end gap-3" x-show="period === 'custom'"{% if period != "custom" %} x-cloak{% endif %}>
+    <div class="w-40">{% include "components/field.html" with field=form.start %}</div>
+    <div class="w-40">{% include "components/field.html" with field=form.end %}</div>
+  </div>
+  <div class="w-full sm:w-56">{% include "components/field.html" with field=form.site %}</div>
+  {% if with_trade %}<div class="w-full sm:w-48">{% include "components/field.html" with field=form.trade %}</div>{% endif %}
+  {% translate "Show" as show_label %}
+  {% include "components/button.html" with label=show_label type="submit" only %}
+</form>
+{% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}

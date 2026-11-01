@@ -1,0 +1,26 @@
+{% load i18n polaris %}{% comment %}
+Amounts by age, one row per site. Context: `rows` (list of SiteAges), `total` (AgeBuckets),
+`none_label` (the name of the row without a site), `kind` ("pay" | "advance").
+{% endcomment %}<div class="overflow-x-auto">
+  <table class="w-full min-w-160 border-collapse text-sm">
+    <thead><tr class="bg-subtle text-left">
+      <th scope="col" class="px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+      {% for key in total.keys %}<th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% include "dashboard/_age_label.html" with key=key only %}</th>{% endfor %}
+      <th scope="col" class="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Total" %}</th>
+    </tr></thead>
+    <tbody>
+      {% for row in rows %}
+      <tr class="border-t border-line-soft">
+        <td class="px-5 py-3 font-semibold">{% if row.site_id %}{{ row.name }}{% else %}{{ none_label }}{% endif %}</td>
+        {% for key, amount, count in row.ages.cells %}<td class="px-4 py-3 text-right tabular-nums">{% if count %}{% money amount %}<br><span class="text-xs text-steel">{% if kind == "advance" %}{% blocktranslate count counter=count %}{{ counter }} advance{% plural %}{{ counter }} advances{% endblocktranslate %}{% else %}{% blocktranslate count counter=count %}{{ counter }} pay line{% plural %}{{ counter }} pay lines{% endblocktranslate %}{% endif %}</span>{% else %}—{% endif %}</td>{% endfor %}
+        <td class="px-5 py-3 text-right font-semibold tabular-nums">{% money row.ages.total %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr class="border-t-2 border-line bg-subtle">
+      <th scope="row" class="px-5 py-3 text-left font-semibold">{% translate "Total" %}</th>
+      {% for key, amount, count in total.cells %}<td class="px-4 py-3 text-right font-semibold tabular-nums">{% money amount %}</td>{% endfor %}
+      <td class="px-5 py-3 text-right font-semibold tabular-nums">{% money total.total %}</td>
+    </tr></tfoot>
+  </table>
+</div>

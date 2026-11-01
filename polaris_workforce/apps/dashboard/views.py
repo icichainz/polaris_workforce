@@ -1,21 +1,35 @@
-"""Office views: the "Today" dashboard, reports and the CSV export."""
+"""Office views: the "Today" dashboard, reports (cost, cash and advances, checks) and
+the exports."""
 
 import io
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode
 
 from django import forms
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.http import require_POST
 
-from apps.accounts.permissions import Role, has_role, role_required, scoped_sites
+from apps.accounts.permissions import (
+    Role,
+    company_workers,
+    has_role,
+    is_admin,
+    role_required,
+    scoped_sites,
+)
+from apps.analytics import services as analytics
+from apps.analytics.models import AnalyticsSettings
 from apps.core.dates import company_now, company_tz
 from apps.core.models import CompanySettings
+from apps.workers.services import scoped_workers
 
-from .forms import ReportFilterForm
+from .forms import FILTER_FIELDS, BudgetWarningForm, ReportFilterForm
 from .reports import XLSX_CONTENT_TYPE, build_report, write_csv, write_xlsx
 from .services import today_overview
 
@@ -38,34 +52,133 @@ def home(request):
         return render(request, "dashboard/home.html", context)
 
 
-def _report_context(request):
+def _filters(request):
+    """The company, the filter form and the sites it selects (the user's sites, or the
+    one site picked among them)."""
     company = CompanySettings.load()
     sites = scoped_sites(request.user)
     form = ReportFilterForm(
         request.GET or None, sites=sites.order_by("name"), today=company_now(company).date()
     )
-    start, end = form.date_range()
     site = form.selected("site")
-    report = build_report(
-        [site] if site else sites, start, end, trade=form.selected("trade"), company=company
-    )
+    return company, form, [site] if site else sites
+
+
+def _report_context(request):
+    company, form, sites = _filters(request)
+    start, end = form.date_range()
+    report = build_report(sites, start, end, trade=form.selected("trade"), company=company)
     return company, form, report
+
+
+def _filter_query(query: str) -> str:
+    """``query`` with the report filters only."""
+    return urlencode([(key, value) for key, value in parse_qsl(query) if key in FILTER_FIELDS])
+
+
+def _page_context(request, company, form, tab: str) -> dict:
+    """What every reports tab shows: the filters and the links between the tabs."""
+    return {
+        "form": form,
+        "company_settings": company,
+        "query": _filter_query(request.GET.urlencode()),
+        "period": form.selected("period") or "month",
+        "tab": tab,
+    }
 
 
 @role_required(*REPORT_ROLES)
 def reports(request):
-    company, form, report = _report_context(request)
-    return render(
-        request,
-        "dashboard/reports.html",
+    company, form, sites = _filters(request)
+    start, end = form.date_range()
+    trade = form.selected("trade")
+    report = build_report(sites, start, end, trade=trade, company=company)
+    previous_start, previous_end = analytics.previous_range(start, end)
+    previous = build_report(sites, previous_start, previous_end, trade=trade, company=company)
+    today = company_now(company).date()
+    warning = AnalyticsSettings.load()
+    context = _page_context(request, company, form, "cost")
+    context.update(
         {
-            "form": form,
             "report": report,
-            "company_settings": company,
-            "query": request.GET.urlencode(),
-            "period": form.selected("period") or "month",
-        },
+            "previous_start": previous_start,
+            "previous_end": previous_end,
+            "changes": analytics.report_changes(report, previous),
+            "budgets": analytics.site_budgets(
+                sites, today=today, settings=warning, with_spend_only=True
+            ),
+            "costs": analytics.cost_breakdown(sites, start, end, trade=trade),
+            "warning": warning,
+            "warning_form": BudgetWarningForm(instance=warning) if is_admin(request.user) else None,
+        }
     )
+    return render(request, "dashboard/reports.html", context)
+
+
+@role_required(Role.ADMIN)
+@require_POST
+def budget_warning(request):
+    """Set the company's budget warning (admins; the form sits on the Reports page)."""
+    form = BudgetWarningForm(request.POST, instance=AnalyticsSettings.load())
+    if form.is_valid():
+        analytics.save_settings(form.instance, actor=request.user)
+        messages.success(request, _("Budget warning saved."))
+    else:
+        for error in form.errors.get("budget_warn_percent", []):
+            messages.error(request, error)
+    query = _filter_query(request.POST.get("query", ""))
+    return redirect(reverse("dashboard:reports") + (f"?{query}" if query else "") + "#budgets")
+
+
+@role_required(*REPORT_ROLES)
+def reports_cash(request):
+    """Cash and advances: every cash sheet of the period, unpaid pay and advances by age."""
+    company, form, sites = _filters(request)
+    start, end = form.date_range()
+    today = company_now(company).date()
+    site = form.selected("site")
+    unpaid_sites, unpaid_total = analytics.unpaid_by_age(sites, today=today)
+    workers = scoped_workers(request.user, today)
+    advance_sites, advance_total = analytics.advances_by_age(workers, today=today, site=site)
+    context = _page_context(request, company, form, "cash")
+    context.update(
+        {
+            "start": start,
+            "end": end,
+            "today": today,
+            "cash": analytics.cash_by_day(sites, start, end),
+            "unpaid_sites": unpaid_sites,
+            "unpaid_total": unpaid_total,
+            "advance_sites": advance_sites,
+            "advance_total": advance_total,
+        }
+    )
+    return render(request, "dashboard/reports_cash.html", context)
+
+
+@role_required(*REPORT_ROLES)
+def reports_checks(request):
+    """Integrity checks: the roll call against check-ins, corrections per foreman and
+    check-in flags. Shared payout accounts for admins only: a site manager could be part
+    of what that check looks for."""
+    company, form, sites = _filters(request)
+    start, end = form.date_range()
+    context = _page_context(request, company, form, "checks")
+    context.update(
+        {
+            "start": start,
+            "end": end,
+            "mismatches": analytics.check_in_mismatches(sites, start, end),
+            "foremen": analytics.corrections_by_foreman(sites, start, end),
+            "check_ins": analytics.check_in_flags(sites, start, end),
+            "shared_accounts": (
+                analytics.shared_payout_accounts(company_workers(request.user))
+                if is_admin(request.user)
+                else None
+            ),
+        }
+    )
+    return render(request, "dashboard/reports_checks.html", context)
 
 
 @role_required(*REPORT_ROLES)
