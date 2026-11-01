@@ -141,7 +141,7 @@ class SessionController extends Notifier<SessionState> {
     await tokens.write(resp.token);
     final me = await repos.auth.me();
     await tokens.writePinCheck(pinCheck(await deviceId(), me.phone, pin));
-    await _refreshDeviceRole();
+    await refreshDeviceRole();
     // Writes queued before a logout or a 401 are sent once the same foreman
     // is back (the server accepts them with the new token). Another foreman
     // signing in does not take over a non-empty outbox.
@@ -165,7 +165,7 @@ class SessionController extends Notifier<SessionState> {
 
   /// `GET /checkin/device/` right after sign-in: a kiosk phone opens its
   /// kiosk screen at once. Offline or a 1.1 server: the last known role.
-  Future<void> _refreshDeviceRole() async {
+  Future<void> refreshDeviceRole() async {
     try {
       final device = await ref.read(repositoriesProvider).checkin.device();
       await _store.setValue(

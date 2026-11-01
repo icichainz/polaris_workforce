@@ -570,6 +570,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get mockOfflineOff => 'Mock : en ligne';
 
   @override
+  String mockKioskOn(String site) {
+    return 'Démo : ce téléphone est maintenant la borne de $site. Appui long sur le nom du chantier pour l’arrêter.';
+  }
+
+  @override
+  String get mockKioskOff => 'Démo : mode borne arrêté.';
+
+  @override
   String kindCheckIn(String date) {
     return 'Pointage · $date';
   }

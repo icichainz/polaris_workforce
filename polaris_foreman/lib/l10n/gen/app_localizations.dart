@@ -1016,6 +1016,18 @@ abstract class AppLocalizations {
   /// **'Mock: online'**
   String get mockOfflineOff;
 
+  /// No description provided for @mockKioskOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo: this phone is now the kiosk of {site}. Long-press the site name to end it.'**
+  String mockKioskOn(String site);
+
+  /// No description provided for @mockKioskOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo: kiosk mode ended.'**
+  String get mockKioskOff;
+
   /// No description provided for @kindCheckIn.
   ///
   /// In en, this message translates to:

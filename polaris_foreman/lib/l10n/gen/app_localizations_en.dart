@@ -568,6 +568,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mockOfflineOff => 'Mock: online';
 
   @override
+  String mockKioskOn(String site) {
+    return 'Demo: this phone is now the kiosk of $site. Long-press the site name to end it.';
+  }
+
+  @override
+  String get mockKioskOff => 'Demo: kiosk mode ended.';
+
+  @override
   String kindCheckIn(String date) {
     return 'Check-in · $date';
   }

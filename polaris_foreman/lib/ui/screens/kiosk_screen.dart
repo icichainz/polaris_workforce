@@ -68,6 +68,18 @@ class _KioskScreenState extends ConsumerState<KioskScreen>
     });
   }
 
+  /// Mock builds: what the office's "End kiosk mode" does. The router goes
+  /// back to Today once the device role is refreshed.
+  Future<void> _endDemoKiosk() async {
+    final mock = ref.read(mockBackendProvider);
+    if (mock == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final text = context.l10n.mockKioskOff;
+    mock.setKiosk(null);
+    await ref.read(sessionProvider.notifier).refreshDeviceRole();
+    messenger.showSnackBar(SnackBar(content: Text(text)));
+  }
+
   Future<void> _exit() async {
     final l = context.l10n;
     final ok = await askForemanPin(context, ref);
@@ -135,14 +147,20 @@ class _KioskScreenState extends ConsumerState<KioskScreen>
                             fontSize: 13,
                           ),
                         ),
-                        Text(
-                          _kiosk.siteName,
-                          key: const Key('kioskSite'),
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: PColors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 22,
+                        GestureDetector(
+                          // Mock builds only: end the demo kiosk mode.
+                          onLongPress: ref.watch(mockBackendProvider) == null
+                              ? null
+                              : _endDemoKiosk,
+                          child: Text(
+                            _kiosk.siteName,
+                            key: const Key('kioskSite'),
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: PColors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 22,
+                            ),
                           ),
                         ),
                       ],

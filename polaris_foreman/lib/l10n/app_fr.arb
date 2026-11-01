@@ -153,6 +153,8 @@
   "kindPayment": "Paiement · {date}",
   "mockOfflineOn": "Mock : hors ligne",
   "mockOfflineOff": "Mock : en ligne",
+  "mockKioskOn": "Démo : ce téléphone est maintenant la borne de {site}. Appui long sur le nom du chantier pour l’arrêter.",
+  "mockKioskOff": "Démo : mode borne arrêté.",
   "kindCheckIn": "Pointage · {date}",
   "scanBadges": "Scanner les badges",
   "scanBadgesCount": "Scanner les badges · {count} aujourd’hui",

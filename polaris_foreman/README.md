@@ -66,7 +66,9 @@ server lives in memory: restart the app and its data is fresh again.
 - **Photos**: worker photos are fetched with the device token, cached on disk
   and revalidated with `If-None-Match`; initials meanwhile.
 - Mock builds: "Simulate a scan" on the scan and kiosk screens (no badge to
-  show an emulator's camera). Kiosk mode in the mock: `MockBackend.setKiosk`.
+  show an emulator's camera). Kiosk mode in the mock: **long-press the site name** on
+  Today to make the phone that site's kiosk (as the office's Kiosk phones page would);
+  long-press the site name on the kiosk screen to end it. Real builds ignore both.
 - Fonts: Inter and Archivo are bundled (`assets/fonts/`, OFL), static
   instances of the dashboard's self-hosted variable WOFF2 files.
 

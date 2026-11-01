@@ -44,9 +44,16 @@ class TodayScreen extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: InkWell(
+                        key: const Key('todaySite'),
                         onTap: (me?.sites.length ?? 0) > 1
                             ? () => _chooseSite(context, ref, me!.sites)
                             : null,
+                        // Mock builds only: try kiosk mode without the office.
+                        onLongPress:
+                            ref.watch(mockBackendProvider) == null ||
+                                site == null
+                            ? null
+                            : () => _demoKiosk(context, ref, site),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -138,6 +145,23 @@ class TodayScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Mock builds: what the office does on the Kiosk phones page — make this
+  /// phone the kiosk of [site]. The router then opens the kiosk screen; a
+  /// long press on the kiosk's site name ends it again.
+  Future<void> _demoKiosk(
+    BuildContext context,
+    WidgetRef ref,
+    AssignedSite site,
+  ) async {
+    final mock = ref.read(mockBackendProvider);
+    if (mock == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final text = context.l10n.mockKioskOn(site.name);
+    mock.setKiosk(site.id);
+    await ref.read(sessionProvider.notifier).refreshDeviceRole();
+    messenger.showSnackBar(SnackBar(content: Text(text)));
   }
 
   Future<void> _chooseSite(

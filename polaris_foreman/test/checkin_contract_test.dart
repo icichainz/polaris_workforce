@@ -336,21 +336,12 @@ void main() {
         '200',
         'Suggestions',
       );
+      // The two examples tell one story (API 1.2 docs): every check-in behind
+      // the suggestions is in the list example.
       final events = [
         for (final c in checkins)
           if (c.counted)
             CheckInEvent(c.workerId!, c.direction, DateTime.parse(c.at)),
-        // Worker 44 of the example (not in the list example).
-        CheckInEvent(
-          44,
-          CheckInDirection.checkIn,
-          DateTime.utc(2026, 10, 31, 7, 5, 2),
-        ),
-        CheckInEvent(
-          44,
-          CheckInDirection.checkOut,
-          DateTime.utc(2026, 10, 31, 11, 30),
-        ),
       ];
       final got = suggestFromEvents(
         events,

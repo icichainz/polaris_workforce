@@ -141,6 +141,56 @@ void main() {
     expect(find.byKey(const Key('openRollCall')), findsOneWidget);
   });
 
+  testWidgets('demo build: long-press the site name to try kiosk mode', (
+    tester,
+  ) async {
+    final h = await Harness.create();
+    await seedCrew(h, site);
+    await pumpAt(
+      tester,
+      h,
+      location: '/today',
+      appRouter: true,
+      overrides: [
+        mockBackendProvider.overrideWithValue(h.backend),
+        fakeScanner(const []),
+      ],
+    );
+    expect(find.byKey(const Key('openRollCall')), findsOneWidget);
+
+    await tester.longPress(find.byKey(const Key('todaySite')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('kioskSite')), findsOneWidget);
+    expect(
+      (await h.backend.checkInDevice(await h.token())).kiosk?.siteId,
+      site,
+    );
+
+    // …and the same gesture on the kiosk screen ends it.
+    await tester.longPress(find.byKey(const Key('kioskSite')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('kioskSite')), findsNothing);
+    expect(find.byKey(const Key('openRollCall')), findsOneWidget);
+    expect((await h.backend.checkInDevice(await h.token())).kiosk, isNull);
+  });
+
+  testWidgets('real build: the long-press does nothing', (tester) async {
+    final h = await Harness.create();
+    await seedCrew(h, site);
+    await pumpAt(
+      tester,
+      h,
+      location: '/today',
+      appRouter: true,
+      overrides: [fakeScanner(const [])],
+    );
+
+    await tester.longPress(find.byKey(const Key('todaySite')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('kioskSite')), findsNothing);
+    expect((await h.backend.checkInDevice(await h.token())).kiosk, isNull);
+  });
+
   testWidgets('roll call → scan badges → the scan pre-fills the mark', (
     tester,
   ) async {
