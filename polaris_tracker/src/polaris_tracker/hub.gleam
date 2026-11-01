@@ -110,7 +110,10 @@ pub fn start(
   |> actor.start
 }
 
-fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
+fn handle_message(
+  state: State,
+  message: Message,
+) -> actor.Next(State, Message) {
   case message {
     ConfigureSite(site_id:, config:, reply:) -> {
       case dict.get(state.running, site_id) {
@@ -322,7 +325,10 @@ fn ingest_phone_ble(
 }
 
 /// The sites a device token may report on, with tracking switched on.
-fn tracked_sites(state: State, claims: token.Claims) -> List(#(Int, SiteConfig)) {
+fn tracked_sites(
+  state: State,
+  claims: token.Claims,
+) -> List(#(Int, SiteConfig)) {
   state.configs
   |> dict.to_list
   |> list.filter(fn(entry) {

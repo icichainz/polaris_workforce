@@ -122,13 +122,16 @@ pub fn company_is_required_except_for_service_test() {
 // Vectors from `base64`, `hashlib`, `hmac` and
 // `json.dumps(..., separators=(",", ":"))`, secret `test-secret`.
 
-const python_device = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmb3JlbWFuOjUiLCJraW5kIjoiZGV2aWNlIiwiY29tcGFueSI6Nywic2l0ZXMiOlszLDRdLCJ0cmF2ZWwiOnRydWUsImF1ZCI6InBvbGFyaXMtdHJhY2tlciIsImV4cCI6MTgwMDAwMDA2MH0.Fum_hqYaTWHH03QSa-w20W38fEdjKgi6mRMevhtiwCU"
+const python_device =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmb3JlbWFuOjUiLCJraW5kIjoiZGV2aWNlIiwiY29tcGFueSI6Nywic2l0ZXMiOlszLDRdLCJ0cmF2ZWwiOnRydWUsImF1ZCI6InBvbGFyaXMtdHJhY2tlciIsImV4cCI6MTgwMDAwMDA2MH0.Fum_hqYaTWHH03QSa-w20W38fEdjKgi6mRMevhtiwCU"
 
-const python_service = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzZXJ2aWNlOnRyYWNrZXIiLCJraW5kIjoic2VydmljZSIsImF1ZCI6InBvbGFyaXMtZGphbmdvIiwiZXhwIjoxODAwMDAwMzAwfQ.JDl4G181VuyXyZ1kx1nBPSuVOpAtiDnBkCmlmMyZjiU"
+const python_service =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzZXJ2aWNlOnRyYWNrZXIiLCJraW5kIjoic2VydmljZSIsImF1ZCI6InBvbGFyaXMtZGphbmdvIiwiZXhwIjoxODAwMDAwMzAwfQ.JDl4G181VuyXyZ1kx1nBPSuVOpAtiDnBkCmlmMyZjiU"
 
 /// The same, with `json.dumps`'s default separators (spaces after `,` and
 /// `:`): still accepted, since the signature covers the bytes as sent.
-const python_spaced = "eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJzdWIiOiAidXNlcjo5IiwgImtpbmQiOiAiZGFzaGJvYXJkIiwgImNvbXBhbnkiOiA3LCAic2l0ZXMiOiBbM10sICJ0cmF2ZWwiOiBmYWxzZSwgImF1ZCI6ICJwb2xhcmlzLXRyYWNrZXIiLCAiZXhwIjogMTgwMDAwMDA2MH0.jPG_ZU5ER2JisQ3qLjAKpq_5IyixT0biOwtH4iBTjtM"
+const python_spaced =
+  "eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJzdWIiOiAidXNlcjo5IiwgImtpbmQiOiAiZGFzaGJvYXJkIiwgImNvbXBhbnkiOiA3LCAic2l0ZXMiOiBbM10sICJ0cmF2ZWwiOiBmYWxzZSwgImF1ZCI6ICJwb2xhcmlzLXRyYWNrZXIiLCAiZXhwIjogMTgwMDAwMDA2MH0.jPG_ZU5ER2JisQ3qLjAKpq_5IyixT0biOwtH4iBTjtM"
 
 pub fn python_token_verifies_test() {
   assert verify(python_device) == Ok(token.Claims(..claims(), travel: True))

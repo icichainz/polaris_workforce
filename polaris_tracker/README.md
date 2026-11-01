@@ -28,10 +28,13 @@ TRACKER_DEBUG=1 gleam run             # http://127.0.0.1:4100, dev secret, event
 | `TRACKER_CORS_ORIGIN` | unset | Dashboard origin, when served from another origin |
 | `TRACK_RETENTION_DAYS` | `30` | Must match Django's `track_retention_days` setting |
 
-**Gleam version.** Dependencies are pinned to releases that build with Gleam 1.12 (the
-version on the dev machine and in CI): mist 5 / glisten 8, `gleam_stdlib` < 0.68,
-`gleam_json` 3.0, `exception` 2.1.0, `gleeunit` 1.6. After upgrading Gleam to 1.14 or
-later, relax those pins in `gleam.toml` and move to mist 6.
+**Gleam version.** Gleam ≥ 1.14 is required (`gleam = ">= 1.14.0"` in `gleam.toml`);
+built and tested with **Gleam 1.19.2 on Erlang/OTP 28**. The old pins for Gleam 1.12
+are gone: mist 6.0 / glisten 9, `gleam_stdlib` 1.0, `gleam_json` 3.1, `gleeunit` 1.11
+(exact versions in `manifest.toml`). Gleam 1.12 can no longer build the project. On the
+dev machine the 1.19.2 release binary lives in `~/.local/opt/gleam-1.19.2/` (Homebrew's
+`gleam` formula would also upgrade Erlang to OTP 29); put it first on `PATH` or call it by
+full path.
 
 ## Layout
 

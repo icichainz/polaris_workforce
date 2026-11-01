@@ -51,7 +51,10 @@ pub fn start(
   |> actor.start
 }
 
-fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
+fn handle_message(
+  state: State,
+  message: Message,
+) -> actor.Next(State, Message) {
   case message {
     Enqueue(events:) ->
       actor.continue(State(..state, queue: list.append(state.queue, events)))

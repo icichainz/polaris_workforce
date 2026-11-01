@@ -56,7 +56,10 @@ pub fn start(args: Args) -> actor.StartResult(Subject(Message)) {
   |> actor.start
 }
 
-fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
+fn handle_message(
+  state: State,
+  message: Message,
+) -> actor.Next(State, Message) {
   case message {
     Observe(person:, signal:) -> actor.continue(apply(state, person, signal))
     Configure(config:) -> actor.continue(State(..state, config:))
@@ -99,7 +102,11 @@ fn advance(state: State, now: Int) -> State {
   })
 }
 
-fn publish(state: State, person: Person, changes: List(presence.Change)) -> Nil {
+fn publish(
+  state: State,
+  person: Person,
+  changes: List(presence.Change),
+) -> Nil {
   case changes {
     [] -> Nil
     _ ->

@@ -352,7 +352,9 @@ fn decode_body(
   })
 }
 
-fn track_range(req: Request(BitArray)) -> Result(#(Int, Int), Response(String)) {
+fn track_range(
+  req: Request(BitArray),
+) -> Result(#(Int, Int), Response(String)) {
   let query = request.get_query(req) |> result.unwrap([])
   let parse = fn(name) {
     list.key_find(query, name) |> result.try(clock.parse_rfc3339)

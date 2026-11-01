@@ -22,7 +22,8 @@ import polaris_tracker/track_store
 
 const secret = "test-secret"
 
-const site_config = "{
+const site_config =
+  "{
   \"tracking_enabled\": true,
   \"geofence\": {\"lat\": 6.1319, \"lng\": 1.2228, \"radius_m\": 150},
   \"zones\": [{\"id\": \"B\", \"name\": \"Block B\"}],
