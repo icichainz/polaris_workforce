@@ -195,7 +195,7 @@ def cash_sheets(request):
     )
     page = Paginator(groups, PAGE_SIZE).get_page(request.GET.get("page"))
     site_by_id = {s.pk: s for s in sites}
-    sheets = services.cash_sheets(
+    sheets = services.cash_sheet_summaries(
         [(site_by_id[g["site_id"]], g["end_date"]) for g in page], today=today, company=company
     )
     return render(
