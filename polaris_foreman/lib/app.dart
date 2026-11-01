@@ -6,6 +6,8 @@ import 'l10n/gen/app_localizations.dart';
 import 'state/providers.dart';
 import 'state/session.dart';
 import 'theme/app_theme.dart';
+import 'tracking/consent_screen.dart';
+import 'tracking/tracking_providers.dart';
 import 'ui/screens/kiosk_screen.dart';
 import 'ui/screens/payout_screen.dart';
 import 'ui/screens/pin_screen.dart';
@@ -22,17 +24,27 @@ final appRoutes = <RouteBase>[
   GoRoute(path: '/payout', builder: (_, _) => const PayoutScreen()),
   GoRoute(path: '/scan', builder: (_, _) => const ScanScreen()),
   GoRoute(path: '/kiosk', builder: (_, _) => const KioskScreen()),
+  GoRoute(
+    path: trackingConsentRoute,
+    builder: (_, _) => const TrackingConsentScreen(),
+  ),
 ];
 
 /// Where the app may be: signed out → the PIN screen; a kiosk phone → only
-/// the kiosk screen; a foreman phone → anything but the kiosk screen.
+/// the kiosk screen; a foreman phone → anything but the kiosk screen. When
+/// the tracking notice must be answered ([consent]), Today opens it (other
+/// screens are left alone: never in the middle of a roll call or payout).
 String? appRedirect({
   required bool signedIn,
   required bool kiosk,
   required String location,
+  bool consent = false,
 }) {
   if (!signedIn) return location == '/pin' ? null : '/pin';
   if (kiosk) return location == '/kiosk' ? null : '/kiosk';
+  if (consent && (location == '/today' || location == '/pin')) {
+    return trackingConsentRoute;
+  }
   if (location == '/pin' || location == '/kiosk') return '/today';
   return null;
 }
@@ -48,6 +60,10 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.listen(kioskProvider, (a, b) {
     if (a?.siteId != b?.siteId) refresh.ping();
   });
+  ref.listen(
+    trackingProvider.select((s) => s.consentNeeded),
+    (_, _) => refresh.ping(),
+  );
   final router = GoRouter(
     initialLocation: '/today',
     refreshListenable: refresh,
@@ -55,6 +71,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       signedIn: ref.read(sessionProvider) is SignedIn,
       kiosk: ref.read(kioskProvider) != null,
       location: state.matchedLocation,
+      consent: ref.read(trackingProvider).consentNeeded,
     ),
     routes: appRoutes,
   );
@@ -78,6 +95,7 @@ class PolarisApp extends ConsumerWidget {
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       routerConfig: ref.watch(routerProvider),
+      builder: (context, child) => TrackingLifecycle(child: child!),
     );
   }
 }

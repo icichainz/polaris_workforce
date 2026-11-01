@@ -7,12 +7,13 @@ import 'package:sqflite/sqflite.dart';
 import '../models/models.dart';
 import 'local_store.dart';
 
-/// [LocalStore] on the phone's SQLite database (sqflite).
-class SqfliteLocalStore implements LocalStore {
+/// [LocalStore] on the phone's SQLite database (sqflite), with the
+/// tracking observations ([ObservationStore]) in the same file.
+class SqfliteLocalStore implements LocalStore, ObservationStore {
   SqfliteLocalStore._(this._db);
 
-  /// 2: check-ins (contract 1.2).
-  static const _schemaVersion = 2;
+  /// 2: check-ins (contract 1.2). 3: tracking observations.
+  static const _schemaVersion = 3;
 
   final Database _db;
   final _changes = StreamController<void>.broadcast();
@@ -32,6 +33,11 @@ class SqfliteLocalStore implements LocalStore {
       onUpgrade: (db, from, to) async {
         if (from < 2) {
           for (final sql in _checkinSchema) {
+            await db.execute(sql);
+          }
+        }
+        if (from < 3) {
+          for (final sql in _observationSchema) {
             await db.execute(sql);
           }
         }
@@ -74,12 +80,23 @@ class SqfliteLocalStore implements LocalStore {
         'attempts INTEGER NOT NULL, state TEXT NOT NULL, error_code TEXT, '
         'error_message TEXT, next_attempt_at TEXT)',
     ..._checkinSchema,
+    ..._observationSchema,
   ];
 
   static const _checkinSchema = [
     'CREATE TABLE checkins (client_uuid TEXT PRIMARY KEY, site_id INTEGER '
         'NOT NULL, date TEXT NOT NULL, at TEXT NOT NULL, json TEXT NOT NULL)',
     'CREATE INDEX checkins_day ON checkins (site_id, date)',
+  ];
+
+  /// Tracking observations waiting for the tracker (`id` keeps the order
+  /// they were taken in).
+  static const _observationSchema = [
+    'CREATE TABLE observations (id INTEGER PRIMARY KEY AUTOINCREMENT, '
+        'client_uuid TEXT NOT NULL UNIQUE, owner TEXT NOT NULL, '
+        'at TEXT NOT NULL, json TEXT NOT NULL)',
+    'CREATE INDEX observations_owner ON observations (owner, id)',
+    'CREATE INDEX observations_at ON observations (at)',
   ];
 
   void _changed() {
@@ -486,6 +503,96 @@ class SqfliteLocalStore implements LocalStore {
               : DateTime.parse(r['next_attempt_at'] as String),
         ),
     ];
+  }
+
+  // --------------------------------------------------------- observations
+  // No `_changed()`: observations do not concern the screens.
+
+  @override
+  Future<void> addObservations(Iterable<QueuedObservation> items) async {
+    final batch = _db.batch();
+    for (final o in items) {
+      batch.insert('observations', {
+        'client_uuid': o.clientUuid,
+        'owner': o.owner,
+        'at': o.at,
+        'json': jsonEncode(o.json),
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
+    await batch.commit(noResult: true);
+  }
+
+  @override
+  Future<List<QueuedObservation>> nextObservations(
+    String owner,
+    int limit,
+  ) async {
+    final rows = await _db.query(
+      'observations',
+      where: 'owner = ?',
+      whereArgs: [owner],
+      orderBy: 'id',
+      limit: limit,
+    );
+    return [
+      for (final r in rows)
+        QueuedObservation(
+          clientUuid: r['client_uuid'] as String,
+          owner: r['owner'] as String,
+          at: r['at'] as String,
+          json: jsonDecode(r['json'] as String) as Map<String, dynamic>,
+        ),
+    ];
+  }
+
+  @override
+  Future<void> removeObservations(Iterable<String> clientUuids) async {
+    final ids = clientUuids.toList();
+    // SQLite allows 999 parameters per statement.
+    for (var i = 0; i < ids.length; i += 500) {
+      final chunk = ids.sublist(i, i + 500 > ids.length ? ids.length : i + 500);
+      await _db.delete(
+        'observations',
+        where: 'client_uuid IN (${List.filled(chunk.length, '?').join(',')})',
+        whereArgs: chunk,
+      );
+    }
+  }
+
+  @override
+  Future<int> countObservations([String? owner]) async {
+    final rows = owner == null
+        ? await _db.rawQuery('SELECT COUNT(*) AS n FROM observations')
+        : await _db.rawQuery(
+            'SELECT COUNT(*) AS n FROM observations WHERE owner = ?',
+            [owner],
+          );
+    return rows.first['n'] as int;
+  }
+
+  @override
+  Future<int> pruneObservations({
+    required String before,
+    int? keepAtMost,
+  }) async {
+    var n = await _db.delete(
+      'observations',
+      where: 'at < ?',
+      whereArgs: [before],
+    );
+    if (keepAtMost != null) {
+      n += await _db.rawDelete(
+        'DELETE FROM observations WHERE id NOT IN '
+        '(SELECT id FROM observations ORDER BY id DESC LIMIT ?)',
+        [keepAtMost],
+      );
+    }
+    return n;
+  }
+
+  @override
+  Future<void> clearObservations(String owner) async {
+    await _db.delete('observations', where: 'owner = ?', whereArgs: [owner]);
   }
 
   @override

@@ -93,6 +93,11 @@ class SyncService {
 
   /// New suggestions for a site's day are on the phone (pre-fill them).
   Future<void> Function(int siteId, String date)? onSuggestions;
+
+  /// Sends a queued tracking consent answer (`POST /tracking/consent/`;
+  /// `lib/tracking/`). Unset: the entry waits, as for a server without the
+  /// endpoint.
+  Future<void> Function(OutboxEntry entry)? sendConsent;
   final Duration pollInterval;
 
   /// Days whose draft the server wrote from check-ins (`self_check_in`,
@@ -303,6 +308,19 @@ class SyncService {
 
   Future<void> _send(OutboxEntry e) async {
     switch (e.kind) {
+      case OutboxKind.consent:
+        final send = sendConsent;
+        if (send == null) {
+          throw const ApiException(
+            501,
+            ApiError(
+              code: ErrorCodes.notImplemented,
+              message: 'Tracking is not available.',
+            ),
+          );
+        }
+        await send(e);
+        await store.deleteOutbox(e.id!);
       case OutboxKind.checkin:
         await _sendCheckIn(e);
       case OutboxKind.records:

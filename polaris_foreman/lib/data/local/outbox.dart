@@ -2,8 +2,10 @@ import '../models/models.dart';
 
 /// Kinds of queued writes, in the order the server needs them:
 /// check-ins → records → submit → corrections → payments (records may be
-/// built from suggestions, which need the check-ins on the server).
+/// built from suggestions, which need the check-ins on the server). A
+/// tracking consent answer goes first: it depends on nothing.
 enum OutboxKind {
+  consent('consent', -1),
   checkin('checkin', 0),
   records('records', 1),
   submit('submit', 2),
@@ -43,6 +45,11 @@ enum OutboxState {
 ///   proof_path}`.
 /// * `checkin`: a `POST /checkins/` body plus `photo_path` (the compressed
 ///   photo, kept until the server has the check-in).
+/// * `consent`: a `POST /tracking/consent/` body `{client_uuid, accepted,
+///   text_version}` (site 0, the day it was answered).
+///
+/// Tracking observations (GPS fixes, badge sightings) are not entries: they
+/// have their own table ([ObservationStore]).
 class OutboxEntry {
   const OutboxEntry({
     this.id,

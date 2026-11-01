@@ -686,5 +686,154 @@
   "kioskPinTitle": "Foreman PIN",
   "@kioskPinTitle": {},
   "kioskPinWrong": "Wrong PIN",
-  "@kioskPinWrong": {}
+  "@kioskPinWrong": {},
+  "kindConsent": "Tracking answer · {date}",
+  "@kindConsent": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "trackingConsentTitle": "Location tracking",
+  "@trackingConsentTitle": {},
+  "trackingConsentIntro": "Your company uses Polaris to know who is on its sites. Read how it works, then choose.",
+  "@trackingConsentIntro": {},
+  "trackingConsentWhenTitle": "When",
+  "@trackingConsentWhenTitle": {},
+  "trackingConsentWhenHours": "Only during tracking hours, {start}–{end} (site time), and only while you are signed in on this phone. Outside those hours nothing is recorded.",
+  "@trackingConsentWhenHours": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "trackingConsentWhenGeneric": "Only during the tracking hours set by your company, and only while you are signed in on this phone. Outside those hours nothing is recorded.",
+  "@trackingConsentWhenGeneric": {},
+  "trackingConsentWhatTitle": "What is recorded",
+  "@trackingConsentWhatTitle": {},
+  "trackingConsentWhatText": "The phone’s position {every}, with its accuracy, and the workers’ badges the phone picks up nearby while the app is open on a site. Never your calls, messages, photos or other apps.",
+  "@trackingConsentWhatText": {
+    "placeholders": {
+      "every": {
+        "type": "String"
+      }
+    }
+  },
+  "trackingEveryMinutes": "{count, plural, =1{about every minute} other{about every {count} minutes}}",
+  "@trackingEveryMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "trackingEverySeconds": "about every {count} seconds",
+  "@trackingEverySeconds": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "trackingEveryGeneric": "at regular intervals",
+  "@trackingEveryGeneric": {},
+  "trackingConsentKeepTitle": "How long it is kept",
+  "@trackingConsentKeepTitle": {},
+  "trackingConsentKeepDays": "Raw positions are deleted after {days} days. Arrival and departure times are kept like attendance.",
+  "@trackingConsentKeepDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "trackingConsentKeepGeneric": "Raw positions are deleted after the period set by your company (30 days unless it changed it). Arrival and departure times are kept like attendance.",
+  "@trackingConsentKeepGeneric": {},
+  "trackingConsentWhoTitle": "Who sees it",
+  "@trackingConsentWhoTitle": {},
+  "trackingConsentWhoText": "Site managers see who is on their own sites. Trips between sites are visible to company administrators only. You can ask the office for your own history.",
+  "@trackingConsentWhoText": {},
+  "trackingConsentUseTitle": "What it is used for",
+  "@trackingConsentUseTitle": {},
+  "trackingConsentUseText": "Presence only suggests attendance: the roll call is still confirmed by a person. It is not used to discipline anyone automatically.",
+  "@trackingConsentUseText": {},
+  "trackingConsentChoice": "You can refuse: the app works the same, without tracking. You can change your answer later.",
+  "@trackingConsentChoice": {},
+  "trackingConsentAccept": "Accept",
+  "@trackingConsentAccept": {},
+  "trackingConsentRefuse": "Refuse",
+  "@trackingConsentRefuse": {},
+  "trackingConsentVersion": "Notice version {version}",
+  "@trackingConsentVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "trackingConsentSaved": "Answer saved. It is sent as soon as the phone is online.",
+  "@trackingConsentSaved": {},
+  "trackingConsentNeeded": "Location tracking: read the notice",
+  "@trackingConsentNeeded": {},
+  "trackingMenu": "Location tracking",
+  "@trackingMenu": {},
+  "trackingOn": "Location on",
+  "@trackingOn": {},
+  "trackingPaused": "Location paused",
+  "@trackingPaused": {},
+  "trackingOff": "Location off",
+  "@trackingOff": {},
+  "trackingOnDetail": "Your position is recorded during tracking hours, {start}–{end} (site time).",
+  "@trackingOnDetail": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "trackingPausedDetail": "Outside tracking hours ({start}–{end}, site time): nothing is recorded.",
+  "@trackingPausedDetail": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "trackingOffDetail": "Location is off or not allowed for Polaris: turn it on in the phone’s settings.",
+  "@trackingOffDetail": {},
+  "trackingBadgesDetail": "Looking for workers’ badges on this site while the app is open.",
+  "@trackingBadgesDetail": {},
+  "trackingQueued": "{count, plural, =0{Everything is sent.} =1{1 record waiting to be sent.} other{{count} records waiting to be sent.}}",
+  "@trackingQueued": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "trackingMocked": "{count, plural, =1{1 position from a fake-location app was ignored.} other{{count} positions from a fake-location app were ignored.}}",
+  "@trackingMocked": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "trackingReadNotice": "Read the notice",
+  "@trackingReadNotice": {},
+  "trackingBackgroundTitle": "Polaris: location on",
+  "@trackingBackgroundTitle": {},
+  "trackingBackgroundText": "Your position is recorded during tracking hours.",
+  "@trackingBackgroundText": {}
 }

@@ -16,6 +16,10 @@ import 'data/repositories/mock/mock_repositories.dart';
 import 'data/repositories/mock/mock_seed.dart';
 import 'state/providers.dart';
 import 'state/session.dart';
+import 'tracking/mock_tracking.dart';
+import 'tracking/tracking_api.dart';
+import 'tracking/tracking_providers.dart';
+import 'tracking/tracking_token_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,6 +55,25 @@ Future<void> main() async {
           onUnauthorized: () =>
               container.read(sessionProvider.notifier).expired(),
         );
+  // Presence tracking (`lib/tracking/`): Django's token and consent
+  // endpoints with the device token, and the tracker service.
+  final TrackingRepository tracking;
+  final TrackerTransport tracker;
+  if (mock != null) {
+    tracking = MockTrackingRepository(mock, tokens.read);
+    tracker = MockTrackerTransport(mock);
+  } else {
+    tracking = HttpTrackingApi(
+      ApiClient(
+        baseUrl: AppConfig.apiBaseUrl,
+        token: tokens.read,
+        language: () => container.read(localeProvider).languageCode,
+        onUnauthorized: () =>
+            container.read(sessionProvider.notifier).expired(),
+      ),
+    );
+    tracker = HttpTrackerTransport();
+  }
   final session = await loadSession(store, await tokens.read());
   // A kiosk phone opens on its kiosk screen, even offline.
   final rawDevice = await store.getValue(StoreKeys.checkinDevice);
@@ -68,9 +91,16 @@ Future<void> main() async {
       initialLocaleProvider.overrideWithValue(language),
       initialSiteIdProvider.overrideWithValue(siteId),
       initialCheckInDeviceProvider.overrideWithValue(device),
+      trackingRepositoryProvider.overrideWithValue(tracking),
+      trackerTransportProvider.overrideWithValue(tracker),
+      trackingTokenStoreProvider.overrideWithValue(SecureTrackingTokenStore()),
+      observationStoreProvider.overrideWithValue(store),
     ],
   );
   if (session is SignedIn) container.read(syncServiceProvider).start();
+  // Follows the session from now on (token after sign-in, dropped on
+  // sign-out).
+  container.read(trackingProvider);
 
   runApp(
     UncontrolledProviderScope(container: container, child: const PolarisApp()),

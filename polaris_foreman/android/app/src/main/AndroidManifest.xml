@@ -8,6 +8,23 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-feature android:name="android.hardware.location.gps" android:required="false"/>
+    <!-- Presence tracking (lib/tracking/): GPS during tracking hours keeps
+         running with the app in the background through geolocator's
+         foreground service (type location, with a notification). It is
+         started while the app is open, so the while-in-use permission is
+         enough: no ACCESS_BACKGROUND_LOCATION. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+    <!-- Workers' BLE badges (flutter_blue_plus), scanned while the app is open
+         on a site. No neverForLocation flag: Android filters beacons out of
+         scans that set it, and badges are beacons (fine location above). -->
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
+    <!-- flutter_blue_plus asks for it with the scan (some phones need it). -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <!-- Android 11 and older. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30"/>
     <application
         android:label="Polaris"
         android:name="${applicationName}"

@@ -72,6 +72,62 @@ server lives in memory: restart the app and its data is fresh again.
 - Fonts: Inter and Archivo are bundled (`assets/fonts/`, OFL), static
   instances of the dashboard's self-hosted variable WOFF2 files.
 
+## Presence tracking (`lib/tracking/`)
+
+Contracts: `../docs/api/presence-django-openapi.yaml` (token, consent) and
+`../docs/api/tracker-openapi.yaml` (observations); design
+`../docs/presence-tracking.md` §8 and §10, plan §14.
+
+- **Token:** after PIN sign-in the phone calls `POST /tracking/token/`, keeps
+  the answer in secure storage (with the foreman it belongs to), refreshes it
+  30 min before `expires_at` (half way for short tokens) and after a tracker
+  `401`, and drops it on sign-out or a `401` from Django. Offline, a saved
+  token keeps collection going with its settings; with no token yet nothing
+  is collected. `403 tracking_disabled`: no tracking UI at all (token and
+  queue dropped). A server without the endpoint (`404`) is retried like
+  offline.
+- **Consent:** `403 consent_required` opens the notice from Today (never in
+  the middle of another screen): when, what, how long, who sees it, what
+  for, that refusing is fine (EN/FR, `consentTextVersion`). The answer is an
+  outbox entry (`OutboxKind.consent`, `POST /tracking/consent/` with its
+  `client_uuid`), so it works offline. Refusing drops the token and the
+  queue; the Today menu offers the notice again (to accept, or to withdraw).
+- **GPS:** only while signed in, not on a kiosk phone, inside
+  `tracking_hours` on the site's clock (company time zone), about every
+  `gps_interval_seconds` (never below 10 s). Mock locations (Android
+  `isMocked`) are dropped. Started in the foreground; on Android it keeps
+  going in the background in geolocator's foreground service (a
+  notification, while-in-use permission, no `ACCESS_BACKGROUND_LOCATION`); on
+  iOS through background location updates (blue indicator). Limits: if the
+  hours start while the app is in the background, recording starts the next
+  time it is opened; swiping the app away or aggressive battery savers stop
+  it.
+- **BLE badges:** scanned with flutter_blue_plus while the app is in the
+  foreground on a site of the token, inside tracking hours; each badge is
+  reported at most once per 30 s per site, with its rssi. The badge id comes
+  from **one function**, `decodeBadgeId` in `lib/tracking/badge_decoder.dart`
+  (hardware undecided): today iBeacon →
+  `ib:<proximity uuid, lower case>:<major>:<minor>`. iPhones cannot see
+  iBeacon frames through a Bluetooth scan (iOS strips them); choose a badge
+  that also advertises something else, or decode another frame there.
+- **Offline:** each observation gets a `client_uuid` and its device time and
+  goes into the `observations` table of the phone's database (schema 3; not
+  the `outbox` table: too many, another server, no banner count). Sent to
+  `<tracker_url>/v1/observations` in batches of at most 500, oldest first;
+  answered items (accepted, duplicates, rejected) are removed; `401` → new
+  token, same batch; `413` → smaller batches; `400` → split until the bad
+  item is alone (dropped); offline/5xx/429 → backoff. Kept at most 7 days
+  and 50 000 items. Observations belong to the foreman who took them and
+  wait for them to sign in again.
+- **Status:** a small pill under the sync banner (Location on / paused /
+  off); tap for details and the notice.
+- Mock builds: the first token request asks for consent; then tokens for
+  the foreman's sites, 06:00–19:00, one fix a minute, and a tracker that
+  accepts everything (offline with the mock's offline switch).
+- Live smoke: add `--tracking` (and `--tracker-url http://127.0.0.1:4100`
+  for a local tracker) to `tool/live_smoke.dart`; it answers 404 until the
+  Django presence app is merged.
+
 ## Check
 
 ```sh
@@ -91,6 +147,8 @@ flutter gen-l10n                   # after editing lib/l10n/*.arb
   crew cache, days, records, payout sheets and lines, payments, outbox.
 - `lib/services/` — roll call, payout and `SyncService` (outbox drain + pull).
 - `lib/state/` — Riverpod providers and the session.
+- `lib/tracking/` — presence tracking: token, consent, GPS/BLE collection,
+  observation uploads, the notice and the status pill.
 - `lib/ui/` — screens (PIN, Today, Roll call, Review & submit, Cash payout).
 - `lib/l10n/` — `app_en.arb`, `app_fr.arb` (generated code in `gen/`).
 

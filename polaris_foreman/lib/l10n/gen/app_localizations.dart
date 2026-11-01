@@ -1255,6 +1255,228 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wrong PIN'**
   String get kioskPinWrong;
+
+  /// No description provided for @kindConsent.
+  ///
+  /// In en, this message translates to:
+  /// **'Tracking answer · {date}'**
+  String kindConsent(String date);
+
+  /// No description provided for @trackingConsentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Location tracking'**
+  String get trackingConsentTitle;
+
+  /// No description provided for @trackingConsentIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Your company uses Polaris to know who is on its sites. Read how it works, then choose.'**
+  String get trackingConsentIntro;
+
+  /// No description provided for @trackingConsentWhenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When'**
+  String get trackingConsentWhenTitle;
+
+  /// No description provided for @trackingConsentWhenHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Only during tracking hours, {start}–{end} (site time), and only while you are signed in on this phone. Outside those hours nothing is recorded.'**
+  String trackingConsentWhenHours(String start, String end);
+
+  /// No description provided for @trackingConsentWhenGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Only during the tracking hours set by your company, and only while you are signed in on this phone. Outside those hours nothing is recorded.'**
+  String get trackingConsentWhenGeneric;
+
+  /// No description provided for @trackingConsentWhatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What is recorded'**
+  String get trackingConsentWhatTitle;
+
+  /// No description provided for @trackingConsentWhatText.
+  ///
+  /// In en, this message translates to:
+  /// **'The phone’s position {every}, with its accuracy, and the workers’ badges the phone picks up nearby while the app is open on a site. Never your calls, messages, photos or other apps.'**
+  String trackingConsentWhatText(String every);
+
+  /// No description provided for @trackingEveryMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{about every minute} other{about every {count} minutes}}'**
+  String trackingEveryMinutes(int count);
+
+  /// No description provided for @trackingEverySeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'about every {count} seconds'**
+  String trackingEverySeconds(int count);
+
+  /// No description provided for @trackingEveryGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'at regular intervals'**
+  String get trackingEveryGeneric;
+
+  /// No description provided for @trackingConsentKeepTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How long it is kept'**
+  String get trackingConsentKeepTitle;
+
+  /// No description provided for @trackingConsentKeepDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw positions are deleted after {days} days. Arrival and departure times are kept like attendance.'**
+  String trackingConsentKeepDays(int days);
+
+  /// No description provided for @trackingConsentKeepGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw positions are deleted after the period set by your company (30 days unless it changed it). Arrival and departure times are kept like attendance.'**
+  String get trackingConsentKeepGeneric;
+
+  /// No description provided for @trackingConsentWhoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Who sees it'**
+  String get trackingConsentWhoTitle;
+
+  /// No description provided for @trackingConsentWhoText.
+  ///
+  /// In en, this message translates to:
+  /// **'Site managers see who is on their own sites. Trips between sites are visible to company administrators only. You can ask the office for your own history.'**
+  String get trackingConsentWhoText;
+
+  /// No description provided for @trackingConsentUseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What it is used for'**
+  String get trackingConsentUseTitle;
+
+  /// No description provided for @trackingConsentUseText.
+  ///
+  /// In en, this message translates to:
+  /// **'Presence only suggests attendance: the roll call is still confirmed by a person. It is not used to discipline anyone automatically.'**
+  String get trackingConsentUseText;
+
+  /// No description provided for @trackingConsentChoice.
+  ///
+  /// In en, this message translates to:
+  /// **'You can refuse: the app works the same, without tracking. You can change your answer later.'**
+  String get trackingConsentChoice;
+
+  /// No description provided for @trackingConsentAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get trackingConsentAccept;
+
+  /// No description provided for @trackingConsentRefuse.
+  ///
+  /// In en, this message translates to:
+  /// **'Refuse'**
+  String get trackingConsentRefuse;
+
+  /// No description provided for @trackingConsentVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Notice version {version}'**
+  String trackingConsentVersion(String version);
+
+  /// No description provided for @trackingConsentSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer saved. It is sent as soon as the phone is online.'**
+  String get trackingConsentSaved;
+
+  /// No description provided for @trackingConsentNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Location tracking: read the notice'**
+  String get trackingConsentNeeded;
+
+  /// No description provided for @trackingMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Location tracking'**
+  String get trackingMenu;
+
+  /// No description provided for @trackingOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Location on'**
+  String get trackingOn;
+
+  /// No description provided for @trackingPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Location paused'**
+  String get trackingPaused;
+
+  /// No description provided for @trackingOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Location off'**
+  String get trackingOff;
+
+  /// No description provided for @trackingOnDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Your position is recorded during tracking hours, {start}–{end} (site time).'**
+  String trackingOnDetail(String start, String end);
+
+  /// No description provided for @trackingPausedDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Outside tracking hours ({start}–{end}, site time): nothing is recorded.'**
+  String trackingPausedDetail(String start, String end);
+
+  /// No description provided for @trackingOffDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is off or not allowed for Polaris: turn it on in the phone’s settings.'**
+  String get trackingOffDetail;
+
+  /// No description provided for @trackingBadgesDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for workers’ badges on this site while the app is open.'**
+  String get trackingBadgesDetail;
+
+  /// No description provided for @trackingQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Everything is sent.} =1{1 record waiting to be sent.} other{{count} records waiting to be sent.}}'**
+  String trackingQueued(int count);
+
+  /// No description provided for @trackingMocked.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 position from a fake-location app was ignored.} other{{count} positions from a fake-location app were ignored.}}'**
+  String trackingMocked(int count);
+
+  /// No description provided for @trackingReadNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the notice'**
+  String get trackingReadNotice;
+
+  /// No description provided for @trackingBackgroundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Polaris: location on'**
+  String get trackingBackgroundTitle;
+
+  /// No description provided for @trackingBackgroundText.
+  ///
+  /// In en, this message translates to:
+  /// **'Your position is recorded during tracking hours.'**
+  String get trackingBackgroundText;
 }
 
 class _AppLocalizationsDelegate

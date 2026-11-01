@@ -14,6 +14,11 @@
 //
 // Every JSON answer is also checked against its schema in
 // ../docs/api/openapi.yaml. Exit code 0 when every step passed.
+//
+// `--tracking` (either phase) adds presence tracking: the tracker token,
+// the consent when asked (and its replay), then one GPS fix to the tracker
+// twice (`--tracker-url http://127.0.0.1:4100` to override the token's
+// URL). It answers 404 until the Django presence app is merged.
 import 'dart:convert';
 import 'dart:io';
 
@@ -21,6 +26,9 @@ import 'package:http/http.dart' as http;
 import 'package:polaris_foreman/data/models/models.dart';
 import 'package:polaris_foreman/data/repositories/http/http_repositories.dart';
 import 'package:polaris_foreman/data/repositories/repositories.dart';
+import 'package:polaris_foreman/tracking/observations.dart';
+import 'package:polaris_foreman/tracking/tracking_api.dart';
+import 'package:polaris_foreman/tracking/tracking_models.dart';
 import 'package:uuid/uuid.dart';
 
 import '../test/support/openapi.dart';
@@ -168,6 +176,9 @@ Future<void> main(List<String> args) async {
     'proofs ${me.company.payments.acceptedProofs.map((p) => p.wire)} '
     '(file for ${me.company.payments.fileRequiredFor.map((p) => p.wire)})',
   );
+  if (args.contains('--tracking')) {
+    await trackingSmoke(base, () async => token, arg);
+  }
   final site = me.sites.first;
   final crew = (await step(
     'GET sites/${site.id}/crew/',
@@ -423,4 +434,104 @@ Future<void> main(List<String> args) async {
   check(true, '$checked answers checked against openapi.yaml');
   stdout.writeln(failures == 0 ? 'ALL PASSED' : '$failures FAILED');
   exit(failures == 0 ? 0 : 1);
+}
+
+/// `--tracking`: presence tracking (docs/api/presence-django-openapi.yaml).
+/// Until the Django `presence` app (feat/presence-django) is merged the
+/// server answers 404 here: expected, and reported as such. With a token,
+/// one GPS fix goes to the tracker twice (`--tracker-url` overrides the
+/// token's `tracker_url`, e.g. `http://127.0.0.1:4100` for a local
+/// `TRACKER_DEBUG=1 gleam run`); the second is a duplicate. Not checked
+/// against openapi.yaml (the presence endpoints are not merged into it yet).
+Future<void> trackingSmoke(
+  String base,
+  Future<String?> Function() token,
+  String Function(String, String) arg,
+) async {
+  final api = HttpTrackingApi(
+    ApiClient(baseUrl: base, token: token, language: () => 'en'),
+  );
+
+  /// The token, or the error code (`not_found` for a server without the
+  /// endpoint).
+  Future<(TrackingToken?, String?)> fetch() async {
+    try {
+      final t = await api.token();
+      check(
+        true,
+        'POST tracking/token/ → sites ${t.sites}, ${t.trackerUrl}, '
+        'every ${t.gpsIntervalSeconds} s, ${t.hours}, until ${t.expiresAt}',
+      );
+      return (t, null);
+    } on ApiException catch (e) {
+      return (null, e.statusCode == 404 ? 'not_found' : e.code);
+    } catch (e) {
+      check(false, 'POST tracking/token/: $e');
+      return (null, 'error');
+    }
+  }
+
+  var (t, code) = await fetch();
+  if (code == TrackingErrors.consentRequired) {
+    check(true, 'POST tracking/token/ → 403 consent_required');
+    final request = ConsentRequest(
+      clientUuid: const Uuid().v4(),
+      accepted: true,
+      textVersion: consentTextVersion,
+    );
+    final first = await step(
+      'POST tracking/consent/',
+      () => api.consent(request),
+    );
+    final again = await step(
+      'POST tracking/consent/ again (same client_uuid)',
+      () => api.consent(request),
+    );
+    check(
+      first != null && again != null && first.at == again.at,
+      'the consent replay returns the original answer',
+    );
+    (t, code) = await fetch();
+  }
+  switch (code) {
+    case null || 'error':
+      break;
+    case 'not_found':
+      check(
+        false,
+        'POST tracking/token/ → 404: the Django tracking endpoints are not '
+        'on this server yet (feat/presence-django not merged)',
+      );
+    case TrackingErrors.trackingDisabled:
+      check(true, 'POST tracking/token/ → 403 tracking_disabled (settings)');
+    default:
+      check(false, 'POST tracking/token/ → $code');
+  }
+  if (t == null) return;
+
+  final tracker = HttpTrackerTransport();
+  final url = arg('tracker-url', t.trackerUrl);
+  final fix = gpsObservation(
+    owner: 'smoke',
+    fix: TrackingFix(
+      latitude: 6.132,
+      longitude: 1.2228,
+      accuracyM: 12,
+      at: DateTime.now(),
+    ),
+  );
+  for (final label in ['', ' again (duplicate)']) {
+    await step('POST $url/v1/observations$label', () async {
+      final r = await tracker.postObservations(
+        trackerUrl: url,
+        token: t!.token,
+        observations: [fix.json],
+      );
+      stdout.writeln(
+        '      accepted ${r.accepted}, duplicates ${r.duplicates}, '
+        'late ${r.late}, rejected ${r.rejected.map((x) => x.code)}',
+      );
+      return r;
+    });
+  }
 }

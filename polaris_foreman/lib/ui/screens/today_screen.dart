@@ -8,6 +8,9 @@ import '../../services/payout_service.dart';
 import '../../state/providers.dart';
 import '../../state/session.dart';
 import '../../theme/tokens.dart';
+import '../../tracking/consent_screen.dart';
+import '../../tracking/tracking_indicator.dart';
+import '../../tracking/tracking_providers.dart';
 import '../widgets.dart';
 
 /// Today (MobileHome artboard): dark header with date and site, sync banner,
@@ -93,6 +96,8 @@ class TodayScreen extends ConsumerWidget {
                       onSelected: (v) async {
                         if (v == 'lang') {
                           ref.read(localeProvider.notifier).toggle();
+                        } else if (v == 'tracking') {
+                          context.push(trackingConsentRoute);
                         } else if (v == 'out') {
                           await _confirmSignOut(context, ref);
                         }
@@ -102,6 +107,11 @@ class TodayScreen extends ConsumerWidget {
                           value: 'lang',
                           child: Text(l.switchLanguage),
                         ),
+                        if (consentOpenable(ref.read(trackingProvider)))
+                          PopupMenuItem(
+                            value: 'tracking',
+                            child: Text(l.trackingMenu),
+                          ),
                         PopupMenuItem(value: 'out', child: Text(l.signOut)),
                       ],
                       child: InitialsAvatar(
@@ -115,6 +125,7 @@ class TodayScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 14),
                 const SyncBanner(),
+                const TrackingIndicatorPill(),
               ],
             ),
           ),

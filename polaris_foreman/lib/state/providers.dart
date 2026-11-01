@@ -17,6 +17,7 @@ import '../services/photo_cache.dart';
 import '../services/proof_capture.dart';
 import '../services/roll_call_service.dart';
 import '../services/sync_service.dart';
+import '../tracking/tracking_providers.dart';
 import 'session.dart';
 
 // ------------------------------------------------- overridden in main()/tests
@@ -171,6 +172,8 @@ final Provider<SyncService> syncServiceProvider = Provider<SyncService>((ref) {
   service.onSuggestions = (siteId, date) async {
     await ref.read(checkInServiceProvider).applySuggestions(siteId, date);
   };
+  service.sendConsent = (e) =>
+      ref.read(trackingProvider.notifier).sendConsent(e);
   ref.listen(siteClockProvider, (_, c) => service.clock = c);
   // Sync while signed in; stop (outbox kept) when signed out.
   ref.listen(sessionProvider, (_, s) {
