@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 
+from apps.core.admin import AuditedAdmin
+
 from .models import PayRate, Trade, Worker, WorkerDocument
 
 
@@ -19,7 +21,7 @@ class TradeAdmin(admin.ModelAdmin):
 
 
 @admin.register(Worker)
-class WorkerAdmin(admin.ModelAdmin):
+class WorkerAdmin(AuditedAdmin):
     list_display = ("number", "last_name", "first_name", "company", "trade", "phone", "is_active")
     list_filter = ("company", "is_active", "id_document_type")
     search_fields = ("number", "first_name", "last_name", "phone", "id_document_number")
@@ -71,7 +73,7 @@ class WorkerDocumentAdmin(admin.ModelAdmin):
 
 
 @admin.register(PayRate)
-class PayRateAdmin(admin.ModelAdmin):
+class PayRateAdmin(AuditedAdmin):
     list_display = ("worker", "pay_type", "amount", "effective_from")
     list_filter = ("pay_type", "effective_from")
     search_fields = ("worker__number", "worker__first_name", "worker__last_name")

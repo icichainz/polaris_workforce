@@ -71,6 +71,8 @@ INSTALLED_APPS = [
     "apps.checkin",
     # AI assistants (office API for the Polaris MCP server)
     "apps.agents",
+    # Figures rebuilt only where something changed (refresh_precomputed)
+    "apps.precompute",
 ]
 
 MIDDLEWARE = [

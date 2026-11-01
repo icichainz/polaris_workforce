@@ -1,5 +1,7 @@
 from django.contrib import admin
 
+from apps.core.admin import AuditedAdmin
+
 from .models import AttendanceCorrection, AttendanceDay, AttendanceRecord
 
 
@@ -19,7 +21,7 @@ class AttendanceCorrectionInline(admin.TabularInline):
 
 
 @admin.register(AttendanceDay)
-class AttendanceDayAdmin(admin.ModelAdmin):
+class AttendanceDayAdmin(AuditedAdmin):
     list_display = ("date", "site", "foreman", "status", "submitted_at", "approved_by")
     list_filter = ("status", "site", "date")
     search_fields = ("site__name", "foreman__username", "foreman__last_name", "foreman_note")
@@ -30,7 +32,7 @@ class AttendanceDayAdmin(admin.ModelAdmin):
 
 
 @admin.register(AttendanceRecord)
-class AttendanceRecordAdmin(admin.ModelAdmin):
+class AttendanceRecordAdmin(AuditedAdmin):
     list_display = ("day", "worker", "status", "arrival", "departure", "recorded_at")
     list_filter = ("status", "day__site", "day__date")
     search_fields = ("worker__number", "worker__first_name", "worker__last_name", "client_uuid")
@@ -40,7 +42,7 @@ class AttendanceRecordAdmin(admin.ModelAdmin):
 
 
 @admin.register(AttendanceCorrection)
-class AttendanceCorrectionAdmin(admin.ModelAdmin):
+class AttendanceCorrectionAdmin(AuditedAdmin):
     list_display = ("created_at", "record", "field", "old_value", "new_value", "corrected_by")
     list_filter = ("field", "created_at")
     search_fields = ("record__worker__number", "record__worker__last_name", "reason")

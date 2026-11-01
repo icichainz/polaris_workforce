@@ -71,6 +71,22 @@ from cron (as the app user, with the production environment) once messaging is o
   phone number to the `polaris.messaging` log. Set a log retention, or a real provider,
   before go-live (see the security review).
 
+Pay and the figures built from it are rebuilt in the background, only where something
+changed (`apps/precompute`). Run, always:
+
+```cron
+*/5 * * * *  cd /srv/polaris/polaris_workforce && .venv/bin/python manage.py refresh_precomputed
+30 0 * * *   cd /srv/polaris/polaris_workforce && .venv/bin/python manage.py refresh_precomputed --sweep
+```
+
+- `refresh_precomputed` (every 5 minutes) rebuilds the sites a change marked out of date,
+  and each active site once a new day starts. Without it the screens still show correct
+  figures (they rebuild a marked site before reading it), only the first read after a
+  change is slower.
+- `--sweep` (nightly) rebuilds every open pay period and lists, in the
+  `polaris.precompute` warnings and the admin's refresh runs, anything that changed
+  without a mark: a write that bypassed the services and the audit log.
+
 ## CSS (Tailwind v4)
 
 The compiled stylesheet `static/css/app.css` is committed, so the app runs without
