@@ -129,18 +129,27 @@ def ensure_fresh(
     *,
     today: datetime.date | None = None,
     company: CompanySettings | None = None,
+    state: tuple[Stale | None, datetime.date | None] | None = None,
 ) -> bool:
     """Rebuild ``site`` now if what a screen is about to read is out of date: a mark that
     covers ``start``–``end`` (``None``: any date), or a new day since the last rebuild.
-    True if it rebuilt."""
+    True if it rebuilt. ``state``: the site's, when read with others (``states``)."""
     company = company or CompanySettings.load(site.company_id)
     today = today or company_today(company)
-    stale = Stale.objects.filter(site=site).first()
-    fresh_on = Freshness.objects.filter(site=site).values_list("fresh_on", flat=True).first()
+    stale, fresh_on = state if state is not None else states([site.pk])[site.pk]
     if fresh_on == today and (stale is None or not _overlaps(stale, start, end)):
         return False
     refresh_site(site, today=today, company=company, stale=stale, fresh_on=fresh_on)
     return True
+
+
+def states(site_ids) -> dict[int, tuple[Stale | None, datetime.date | None]]:
+    """``(mark, fresh_on)`` of each site, read together (a list screen checks every site
+    it shows: pass each one's to ``ensure_fresh(state=…)``)."""
+    site_ids = list(site_ids)
+    stale_rows = {row.site_id: row for row in Stale.objects.filter(site_id__in=site_ids)}
+    fresh = dict(Freshness.objects.filter(site_id__in=site_ids).values_list("site_id", "fresh_on"))
+    return {pk: (stale_rows.get(pk), fresh.get(pk)) for pk in site_ids}
 
 
 def refresh_site(

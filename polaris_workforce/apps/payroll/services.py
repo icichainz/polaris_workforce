@@ -67,7 +67,7 @@ from apps.core.validators import UPLOAD_VALIDATORS
 from apps.precompute import services as precompute
 from apps.workers.models import PayRate, Worker
 from apps.worksites.models import Site, SiteAssignment
-from apps.worksites.services import crew_ids_by_date
+from apps.worksites.services import crew_ids_by_site_and_date
 
 from . import engine
 from .models import (
@@ -1031,16 +1031,6 @@ def paid_corrections(day: AttendanceDay) -> dict[int, PaidCorrection]:
     return found
 
 
-def _days_with_expected_crew(period: PayPeriod, company: CompanySettings) -> set[datetime.date]:
-    """Working days of the period on which active workers are assigned to the site.
-
-    The crew rule is ``apps.worksites.services.crew_ids_by_date`` (dates inclusive).
-    """
-    working_days = set(company.working_days or [])
-    crews = crew_ids_by_date(period.site, period.start_date, period.end_date)
-    return {day for day, crew in crews.items() if crew and day.isoweekday() in working_days}
-
-
 def period_is_ready(
     period: PayPeriod, today: datetime.date, company: CompanySettings | None = None
 ) -> bool:
@@ -1049,17 +1039,54 @@ def period_is_ready(
     A working day on which crew is expected needs its roll call; a day without one blocks
     the period (on a holiday the foreman submits the day with everyone absent).
     """
-    if today < period.end_date:
-        return False
+    return periods_ready([period], today, company)[period.pk]
+
+
+def periods_ready(
+    periods, today: datetime.date, company: CompanySettings | None = None
+) -> dict[int, bool]:
+    """``period_is_ready`` of each period, per period id: the roll calls and the crews of
+    every site are read together (two queries, however many periods)."""
+    periods = list(periods)
+    ready = {period.pk: False for period in periods}
+    due = [period for period in periods if today >= period.end_date]
+    if not due:
+        return ready
     company = company or CompanySettings.load()
-    days = dict(
-        AttendanceDay.objects.filter(
-            site=period.site, date__gte=period.start_date, date__lte=period.end_date
-        ).values_list("date", "status")
+    spans: dict[int, tuple[datetime.date, datetime.date]] = {}
+    for period in due:
+        start, end = spans.get(period.site_id, (period.start_date, period.end_date))
+        spans[period.site_id] = (min(start, period.start_date), max(end, period.end_date))
+    on_spans = reduce(
+        operator.or_,
+        (Q(site_id=site, date__gte=start, date__lte=end) for site, (start, end) in spans.items()),
     )
-    if not days or not set(days.values()) <= set(PAYABLE_DAY_STATUSES):
-        return False
-    return _days_with_expected_crew(period, company) <= set(days)
+    statuses: dict[int, dict[datetime.date, str]] = defaultdict(dict)
+    for site_id, date, status in AttendanceDay.objects.filter(on_spans).values_list(
+        "site_id", "date", "status"
+    ):
+        statuses[site_id][date] = status
+    crews = crew_ids_by_site_and_date(spans)
+    working_days = set(company.working_days or [])
+    payable = set(PAYABLE_DAY_STATUSES)
+    for period in due:
+        days = {
+            date: status
+            for date, status in statuses[period.site_id].items()
+            if period.start_date <= date <= period.end_date
+        }
+        if not days or not set(days.values()) <= payable:
+            continue
+        # Working days on which active workers are assigned to the site need a roll call.
+        expected = {
+            date
+            for date, crew in crews[period.site_id].items()
+            if period.start_date <= date <= period.end_date
+            and crew
+            and date.isoweekday() in working_days
+        }
+        ready[period.pk] = expected <= set(days)
+    return ready
 
 
 def update_period_status(
@@ -1199,9 +1226,10 @@ def ensure_pay_fresh(
     *,
     today: datetime.date | None = None,
     company: CompanySettings | None = None,
+    state=None,
 ) -> bool:
     """Recompute ``site``'s pay first if it is out of date between ``start`` and ``end``."""
-    return precompute.ensure_fresh(site, start, end, today=today, company=company)
+    return precompute.ensure_fresh(site, start, end, today=today, company=company, state=state)
 
 
 def ensure_sheet_fresh(
@@ -1210,11 +1238,12 @@ def ensure_sheet_fresh(
     *,
     today: datetime.date | None = None,
     company: CompanySettings | None = None,
+    state=None,
 ) -> bool:
     """Recompute the pay of ``site``'s cash sheet of ``day`` first if it is out of date."""
     company = company or CompanySettings.load(site.company_id)
     start = day - datetime.timedelta(days=_sheet_lookback(site, company))
-    return ensure_pay_fresh(site, start, day, today=today, company=company)
+    return ensure_pay_fresh(site, start, day, today=today, company=company, state=state)
 
 
 def sync_recent_on_read(
@@ -1223,8 +1252,10 @@ def sync_recent_on_read(
     """Bring the last ``days`` days of pay of the active ``sites`` up to date (Pay periods)."""
     company = company or CompanySettings.load()
     start = today - datetime.timedelta(days=days - 1)
-    for site in sites.filter(status=Site.Status.ACTIVE):
-        ensure_pay_fresh(site, start, today, today=today, company=company)
+    active = list(sites.filter(status=Site.Status.ACTIVE))
+    states = precompute.states(site.pk for site in active)
+    for site in active:
+        ensure_pay_fresh(site, start, today, today=today, company=company, state=states[site.pk])
 
 
 def sync_sheets_on_read(
@@ -1232,8 +1263,10 @@ def sync_sheets_on_read(
 ) -> None:
     """Bring today's cash sheet of the active ``sites`` up to date (Cash sheets)."""
     company = company or CompanySettings.load()
-    for site in sites.filter(status=Site.Status.ACTIVE):
-        ensure_sheet_fresh(site, today, today=today, company=company)
+    active = list(sites.filter(status=Site.Status.ACTIVE))
+    states = precompute.states(site.pk for site in active)
+    for site in active:
+        ensure_sheet_fresh(site, today, today=today, company=company, state=states[site.pk])
 
 
 def on_attendance_changed(day: AttendanceDay, *, actor=None) -> None:
@@ -1295,14 +1328,15 @@ class CashSheet:
 
 
 def _sheet_status(
-    periods: list[PayPeriod], amounts: list[tuple[int, int]], today, company: CompanySettings
+    periods: list[PayPeriod], amounts: list[tuple[int, int]], ready: dict[int, bool]
 ) -> str:
-    """The sheet's status from its periods and ``(net, paid)`` per pay line."""
+    """The sheet's status from its periods, ``(net, paid)`` per pay line and whether each
+    period is ready (``periods_ready``)."""
     if not periods:
         return SHEET_NOT_OPEN
     if all(p.is_locked for p in periods):
         return SHEET_CLOSED
-    if not all(period_is_ready(p, today, company) for p in periods if not p.is_locked):
+    if not all(ready[p.pk] for p in periods if not p.is_locked):
         return SHEET_NOT_OPEN
     if all(paid >= net for net, paid in amounts):  # SheetLine.is_paid
         return SHEET_PAID
@@ -1317,10 +1351,8 @@ def sheet_status(site: Site, day: datetime.date) -> str:
 def sheet_statuses(
     keys, *, today: datetime.date | None = None, company: CompanySettings | None = None
 ) -> dict[tuple[int, datetime.date], str]:
-    """``sheet_status`` of each ``(site id, pay day)``, read together (phone sync, day lists).
-
-    Two queries, plus the readiness check of each unlocked period.
-    """
+    """``sheet_status`` of each ``(site id, pay day)``, read together (phone sync, day lists):
+    four queries, however many sheets."""
     keys = list(dict.fromkeys(keys))
     if not keys:
         return {}
@@ -1328,12 +1360,19 @@ def sheet_statuses(
     today = today or company_today(company)
     periods = _sheet_periods(keys)
     amounts = _line_amounts(p for group in periods.values() for p in group)
+    ready = _unlocked_ready(periods, today, company)
     statuses = {}
     for key in keys:
         sheet_periods = periods.get(key, [])
         lines = [a for p in sheet_periods for a in amounts.get(p.pk, [])]
-        statuses[key] = _sheet_status(sheet_periods, lines, today, company)
+        statuses[key] = _sheet_status(sheet_periods, lines, ready)
     return statuses
+
+
+def _unlocked_ready(periods: dict, today, company) -> dict[int, bool]:
+    """``periods_ready`` of the unlocked periods of ``_sheet_periods``' sheets."""
+    unlocked = [p for group in periods.values() for p in group if not p.is_locked]
+    return periods_ready(unlocked, today, company)
 
 
 def _on_sheets(keys, site_field: str, date_field: str) -> Q:
@@ -1419,6 +1458,7 @@ def cash_sheets(
         return _on_sheets(keys, site_field, date_field)
 
     periods = _sheet_periods(keys)
+    ready = _unlocked_ready(periods, today, company)
     pay_lines = (
         PayLine.objects.filter(period__in=[p for group in periods.values() for p in group])
         .select_related("worker__trade", "period__site")
@@ -1478,7 +1518,7 @@ def cash_sheets(
                 currency=first.currency if first else company.currency,
                 currency_decimals=first.currency_decimals if first else company.currency_decimals,
                 status=_sheet_status(
-                    sheet_periods, [(sl.line.net, sl.paid) for sl in sheet_lines], today, company
+                    sheet_periods, [(sl.line.net, sl.paid) for sl in sheet_lines], ready
                 ),
                 absent=[
                     r.worker
@@ -1522,6 +1562,7 @@ def cash_sheet_summaries(
     keys = [(site.pk, day) for site, day in sheets]
     periods = _sheet_periods(keys)
     amounts = _line_amounts(p for group in periods.values() for p in group)
+    ready = _unlocked_ready(periods, today, company)
     issued = {
         (row["site_id"], row["date"]): row["total"]
         for row in CashIssue.objects.filter(_on_sheets(keys, "site_id", "date"))
@@ -1543,7 +1584,7 @@ def cash_sheet_summaries(
                 reconciliation=engine.reconcile(issued.get(key, 0), sheet_amounts),
                 currency=first.currency if first else company.currency,
                 currency_decimals=first.currency_decimals if first else company.currency_decimals,
-                status=_sheet_status(sheet_periods, sheet_amounts, today, company),
+                status=_sheet_status(sheet_periods, sheet_amounts, ready),
             )
         )
     return result

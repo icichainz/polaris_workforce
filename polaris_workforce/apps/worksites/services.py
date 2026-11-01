@@ -98,6 +98,32 @@ def crew_ids_by_date(
     return result
 
 
+def crew_ids_by_site_and_date(
+    spans: dict[int, tuple[datetime.date, datetime.date]],
+) -> dict[int, dict[datetime.date, set[int]]]:
+    """``crew_ids_by_date`` of several sites, each over its own ``(start, end)``, in one
+    query: ``{site_id: {date: {worker_id, …}}}``."""
+    if not spans:
+        return {}
+    first = min(start for start, _end in spans.values())
+    last = max(end for _start, end in spans.values())
+    rows = list(
+        SiteAssignment.objects.overlapping(first, last)
+        .filter(site_id__in=list(spans), worker__is_active=True)
+        .values_list("site_id", "worker_id", "start_date", "end_date")
+    )
+    result = {}
+    for site_id, (start, end) in spans.items():
+        on_site = [(w, s, e) for site, w, s, e in rows if site == site_id]
+        dates = {}
+        day = start
+        while day <= end:
+            dates[day] = {w for w, s, e in on_site if s <= day and (e is None or e >= day)}
+            day += ONE_DAY
+        result[site_id] = dates
+    return result
+
+
 def assignment_on(worker: Worker, date: datetime.date) -> SiteAssignment | None:
     """The worker's assignment covering ``date`` (the latest one if several overlap)."""
     return worker.assignments.active_on(date).select_related("site").order_by("-start_date").first()

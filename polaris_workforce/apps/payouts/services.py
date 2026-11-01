@@ -356,13 +356,13 @@ def candidates(
             payroll.sync_sheet(active, pay_date, today=today, company=company)
         else:
             payroll.ensure_sheet_fresh(active, pay_date, today=today, company=company)
-    periods = [
-        p
-        for p in PayPeriod.objects.filter(site__in=sites, end_date=pay_date)
+    unlocked = list(
+        PayPeriod.objects.filter(site__in=sites, end_date=pay_date)
         .exclude(status=PayPeriod.Status.LOCKED)
         .select_related("site")
-        if payroll.period_is_ready(p, today, company)
-    ]
+    )
+    ready = payroll.periods_ready(unlocked, today, company)
+    periods = [p for p in unlocked if ready[p.pk]]
     lines = (
         PayLine.objects.filter(period__in=periods)
         .exclude(payout_lines__status__in=ACTIVE_LINE_STATUSES)

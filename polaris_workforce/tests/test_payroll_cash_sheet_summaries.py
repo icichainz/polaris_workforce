@@ -131,3 +131,63 @@ def test_the_phone_status_follows_the_payments(company, media):  # noqa: F811
 
     pay(foreman, line_of(site, MON, afi))
     assert services.sheet_status(site, MON) == "paid"
+
+
+def _ready_the_old_way(period, today, settings_) -> bool:
+    """``period_is_ready`` as it was, one period at a time (the reference)."""
+    from apps.attendance.models import AttendanceDay
+    from apps.worksites.services import crew_ids_by_date
+
+    if today < period.end_date:
+        return False
+    days = dict(
+        AttendanceDay.objects.filter(
+            site=period.site, date__gte=period.start_date, date__lte=period.end_date
+        ).values_list("date", "status")
+    )
+    if not days or not set(days.values()) <= set(services.PAYABLE_DAY_STATUSES):
+        return False
+    working = set(settings_.working_days or [])
+    crews = crew_ids_by_date(period.site, period.start_date, period.end_date)
+    expected = {day for day, crew in crews.items() if crew and day.isoweekday() in working}
+    return expected <= set(days)
+
+
+@pytest.mark.django_db
+def test_readiness_read_together_matches_one_period_at_a_time(settings, tmp_path):
+    from apps.core.models import CompanySettings
+
+    settings.MEDIA_ROOT = tmp_path
+    friday = datetime.datetime(2026, 10, 30, 10, 0, tzinfo=datetime.UTC)
+    real_now = datetime.datetime.now
+    started = real_now(datetime.UTC)
+    with mock.patch(
+        "django.utils.timezone.now", side_effect=lambda: friday + (real_now(datetime.UTC) - started)
+    ):
+        call_command("seed_demo", password="demo-pass-123", verbosity=0)
+        company_id = PayPeriod.objects.values_list("site__company_id", flat=True).first()
+        company = CompanySettings.load(company_id)
+        periods = list(PayPeriod.objects.filter(site__company_id=company_id))
+        assert len(periods) > 10
+        for today in (friday.date(), friday.date() - datetime.timedelta(days=3)):
+            together = services.periods_ready(periods, today, company)
+            assert together == {p.pk: _ready_the_old_way(p, today, company) for p in periods}
+        assert any(together.values()) and not all(together.values())
+
+
+def test_readiness_queries_do_not_grow_with_the_periods(company):  # noqa: F811
+    site, _m, _f = setup_site()
+    other, _m, _f = setup_site()
+    yao, kofi = hire(site), hire(other)
+    for day in (MON, TUE):
+        roll_call(site, day, {yao: "present"})
+        roll_call(other, day, {kofi: "present"})
+        services.cash_sheet(site, day)
+        services.cash_sheet(other, day)
+    periods = list(PayPeriod.objects.all())
+    assert len(periods) == 4
+
+    with CaptureQueriesContext(connection) as queries:
+        ready = services.periods_ready(periods, TUE)
+    assert all(ready.values())
+    assert len(queries) <= 3  # settings, roll calls, crews
