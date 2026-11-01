@@ -139,6 +139,13 @@ def test_sign_ins_and_the_systems_own_recomputation_mark_nothing(company):  # no
     assert not Stale.objects.exists()
 
 
+def test_presence_tracking_marks_nothing(company):  # noqa: F811
+    site, *_ = setup_site()
+    for action in ("presence.badge.assign", "presence.zone.create", "presence.consent.accept"):
+        AuditLog.record(actor=None, action=action, target=site)
+    assert not Stale.objects.exists()
+
+
 def test_a_change_that_rolls_back_leaves_no_mark(company):  # noqa: F811
     site, *_ = setup_site()
     with pytest.raises(RuntimeError), transaction.atomic():

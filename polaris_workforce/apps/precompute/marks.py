@@ -77,8 +77,10 @@ IGNORED = frozenset(
     }
 )
 
-# The system's own recomputation (``payroll.auto.…``): never an input.
-IGNORED_PREFIXES = ("payroll.auto.",)
+# The system's own recomputation (``payroll.auto.…``): never an input. Presence tracking
+# (``presence.…``: badges, zones, gateways, consent) never changes attendance or pay; an
+# accepted roll-call suggestion is audited as an attendance change.
+IGNORED_PREFIXES = ("payroll.auto.", "presence.")
 
 COMPANY = frozenset(
     {
