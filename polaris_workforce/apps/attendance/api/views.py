@@ -43,6 +43,18 @@ from .serializers import (
 MAX_DAYS_IN_RANGE = 31
 WRITE_PERMISSIONS = [IsAuthenticated, IsForeman]
 
+# Kodjo had no check-in; the foreman accepts what presence saw (seen from 07:31, still on
+# site: late), the suggestion of ``apps/checkin/api/examples.py``.
+ACCEPTED_PRESENCE = {
+    "client_uuid": ex.RECORDS[3]["client_uuid"],
+    "worker_id": ex.KODJO["id"],
+    "status": "late",
+    "arrival": "07:31",
+    "departure": None,
+    "note": "",
+    "from_suggestion": ["presence"],
+}
+
 
 class _RangeQueryBase(serializers.Serializer):
     def validate(self, attrs):
@@ -181,7 +193,13 @@ class RecordBatchView(APIView):
             "crew that day: `400 validation_error`, with one entry per batch item in "
             "`details.records` (`{}` for items without errors, also after the last "
             "error). A `client_uuid` already used for another worker or day: "
-            "`409 conflict`."
+            "`409 conflict`.\n\n"
+            "**From a suggestion (1.5).** A mark taken from `GET .../suggestions/` — "
+            "pre-filled from check-ins, or a presence suggestion the foreman accepted — "
+            "carries `from_suggestion` with that suggestion's `sources`. It is the same "
+            "upsert (the record's own `client_uuid`, same idempotency); the audit entry of "
+            "the batch records it per worker. Presence never marks attendance by itself: "
+            "only this write, made by the foreman, does."
         ),
         parameters=[SITE_ID, DATE],
         request=RecordBatchSerializer,
@@ -245,6 +263,11 @@ class RecordBatchView(APIView):
                         for r in ex.RECORDS
                     ]
                 },
+            ),
+            OpenApiExample(
+                "Accepted presence suggestion",
+                request_only=True,
+                value={"records": [ACCEPTED_PRESENCE]},
             ),
             OpenApiExample(
                 "Saved", response_only=True, value={**ex.DRAFT_DAY, "records": ex.RECORDS}

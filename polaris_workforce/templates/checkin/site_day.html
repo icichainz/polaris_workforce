@@ -20,14 +20,15 @@
 
 <section aria-labelledby="suggestions-title" class="flex flex-col gap-3">
   <h2 id="suggestions-title" class="font-display text-xl font-bold">{% translate "Roll-call suggestions" %}</h2>
-  <p class="text-sm text-ink-700">{% blocktranslate with late=result.late_after|time:"H:i" %}From the check-ins that count, crew only. Late after {{ late }}; an out before 12:00 is a half day.{% endblocktranslate %}</p>
+  <p class="text-sm text-ink-700">{% blocktranslate with late=result.late_after|time:"H:i" %}From the check-ins that count, crew only. Late after {{ late }}; an out before 12:00 is a half day.{% endblocktranslate %}{% if presence_shown %} {% translate "Where tracking is on, presence is shown too: check-ins win when both exist, and the foreman confirms every mark." %}{% endif %}</p>
   {% if suggestions %}
   <div class="overflow-x-auto rounded-control border border-line bg-surface">
-    <table class="w-full min-w-[560px] border-collapse text-sm">
+    <table class="w-full min-w-[720px] border-collapse text-sm">
       <thead><tr class="bg-subtle text-left">
         <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
         <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Suggested" %}</th>
         <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "In · Out" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Presence" %}</th>
         <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Scans" %}</th>
       </tr></thead>
       <tbody>
@@ -36,6 +37,7 @@
           <td class="px-4 py-3">{% if item.worker %}<span class="font-semibold">{{ item.worker.full_name }}</span><br><span class="text-xs text-steel">{{ item.worker.number }}</span>{% else %}#{{ item.s.worker_id }}{% endif %}</td>
           <td class="px-4 py-3">{% if item.s.status %}{% include "components/status_badge.html" with status=item.s.status only %}{% else %}{% include "components/status_badge.html" with status="not_recorded" only %}{% endif %}</td>
           <td class="px-4 py-3 tabular-nums">{{ item.s.arrival|time:"H:i"|default:"—" }} · {{ item.s.departure|time:"H:i"|default:"—" }}</td>
+          <td class="px-4 py-3">{% if item.s.presence %}{% include "components/presence_seen.html" with presence=item.s.presence only %}{% else %}<span class="text-steel">—</span>{% endif %}</td>
           <td class="px-4 py-3 text-right tabular-nums">{{ item.s.checkin_count }}</td>
         </tr>
         {% endfor %}

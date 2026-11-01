@@ -775,3 +775,53 @@ def test_site_a_agent_cannot_reach_site_b(world):
     )
     assert SECRET not in lists
     assert _b_state(b) == before
+
+
+def test_site_b_presence_never_reaches_site_a(world):
+    """Presence (1.5) in the roll-call suggestions and the office screens: site B's worker
+    seen on site B — and even seen on site A, where he is not on the crew — never shows
+    in site A's suggestions, approvals or check-in day; site B sees it (positive control)."""
+    from django.utils import timezone
+
+    from apps.core.models import CompanySettings
+    from apps.presence.models import PresenceSession
+
+    a, b, ids = world
+    settings = CompanySettings.load()
+    settings.tracking_enabled = True
+    settings.save()
+    today = ids["today"]
+    start = timezone.now() - datetime.timedelta(minutes=20)
+    for site in (b.site, a.site):
+        PresenceSession.objects.create(
+            site=site,
+            subject_kind="worker",
+            subject_id=ids["worker"],
+            local_date=today,
+            started_at=start,
+            zones=[SECRET],
+            last_event_at=start,
+            event_count=1,
+        )
+
+    url = "/api/v1/sites/{}/days/{}/suggestions/"
+    own = Phone(b.phone_number, PIN).client.get(url.format(b.site.pk, today)).json()
+    assert [s["presence"]["zones"] for s in own["suggestions"] if s["presence"]] == [[SECRET]]
+    seen_on_b = Office(b.manager).get(reverse("checkin:site_day", args=[b.site.pk, today]))
+    assert SECRET in page_text(seen_on_b)
+
+    phone = Phone(a.phone_number, PIN)
+    assert phone.client.get(url.format(b.site.pk, today)).status_code == 403
+    mine = phone.client.get(url.format(a.site.pk, today)).json()
+    assert ids["worker"] not in [s["worker_id"] for s in mine["suggestions"]]
+    assert SECRET not in str(mine)
+
+    office = Office(a.manager)
+    for page in (
+        reverse("checkin:site_day", args=[a.site.pk, today]),
+        reverse("attendance:approvals"),
+    ):
+        response = office.get(page)
+        assert response.status_code == 200
+        assert SECRET not in page_text(response), page
+    assert office.get(reverse("checkin:site_day", args=[b.site.pk, today])).status_code == 403

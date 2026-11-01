@@ -282,6 +282,15 @@ def paid_notes(day: AttendanceDay) -> dict[int, str]:
     }
 
 
+def day_presence(day: AttendanceDay, worker_ids) -> dict:
+    """``{worker id: PresenceSeen}``: what presence tracking saw of these workers on the
+    day's site (tracked workers only; ``apps.checkin.selectors.presence_by_worker``)."""
+    # Imported here: the check-in selectors import the attendance models.
+    from apps.checkin.selectors import presence_by_worker
+
+    return presence_by_worker(day.site, day.date, worker_ids)
+
+
 def approval_detail(day: AttendanceDay, tz) -> dict:
     """Everything the Approvals detail panel shows for one day."""
     paid = paid_notes(day)
@@ -290,6 +299,7 @@ def approval_detail(day: AttendanceDay, tz) -> dict:
         .prefetch_related("corrections")
         .order_by("worker__last_name", "worker__first_name", "worker_id")
     )
+    presence = day_presence(day, [record.worker_id for record in records])
     rows = []
     for record in records:
         worker = record.worker
@@ -313,6 +323,7 @@ def approval_detail(day: AttendanceDay, tz) -> dict:
                 "times": f"{_clock(record.arrival)} · {_clock(record.departure)}",
                 "changes": changes,
                 "paid_note": paid.get(record.worker_id, ""),
+                "presence": presence.get(record.worker_id),
             }
         )
     sent, synced = _times(day, tz)

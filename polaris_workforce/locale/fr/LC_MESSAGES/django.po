@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Polaris Workforce\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-01 22:48+0000\n"
+"POT-Creation-Date: 2026-11-01 23:48+0000\n"
 "PO-Revision-Date: 2026-10-31 18:00+0000\n"
 "Last-Translator: Polaris Workforce\n"
 "Language-Team: French\n"
@@ -212,7 +212,7 @@ msgstr ""
 
 #: apps/accounts/models.py:112 apps/agents/models.py:26
 #: apps/messaging/models.py:168 apps/messaging/models.py:244
-#: apps/presence/models.py:303
+#: apps/presence/models.py:314
 msgid "user"
 msgstr "utilisateur"
 
@@ -317,11 +317,11 @@ msgstr "Code PIN défini. Communiquez le code PIN à %(name)s."
 msgid "The phone was signed out."
 msgstr "Le téléphone a été déconnecté."
 
-#: apps/agents/api/views.py:173 apps/attendance/api/views.py:52
+#: apps/agents/api/views.py:173 apps/attendance/api/views.py:64
 msgid "Must be on or before 'to'."
 msgstr "Doit être le même jour que « to » ou avant."
 
-#: apps/agents/api/views.py:176 apps/attendance/api/views.py:55
+#: apps/agents/api/views.py:176 apps/attendance/api/views.py:67
 #, python-format
 msgid "At most %(n)s days at a time."
 msgstr "Au plus %(n)s jours à la fois."
@@ -449,7 +449,7 @@ msgstr ""
 "Seul un appel envoyé peut être validé ou renvoyé. Statut de celui-ci : "
 "%(status)s."
 
-#: apps/agents/services.py:205 apps/attendance/services.py:322
+#: apps/agents/services.py:205 apps/attendance/services.py:347
 msgid "Tell the foreman what to check."
 msgstr "Indiquez au chef d’équipe ce qu’il doit vérifier."
 
@@ -535,7 +535,8 @@ msgstr "Suivi de présence : acceptez d’abord l’avis de suivi."
 
 #: apps/api/enums.py:24
 msgid "Presence tracking is off for you (settings or your answer)."
-msgstr "Le suivi de présence est désactivé pour vous (réglages ou votre réponse)."
+msgstr ""
+"Le suivi de présence est désactivé pour vous (réglages ou votre réponse)."
 
 #: apps/api/enums.py:25
 msgid "The HTTP method is not allowed on this path."
@@ -641,7 +642,7 @@ msgstr "Clôturé"
 #: apps/api/enums.py:69 apps/messaging/forms.py:50 apps/payroll/payslip.py:120
 #: apps/workers/admin.py:56 apps/workers/forms.py:172
 #: templates/accounts/user_form.html:92 templates/agents/_tokens.html:11
-#: templates/attendance/_approval_detail.html:60
+#: templates/attendance/_approval_detail.html:61
 #: templates/components/data_table.html:29 templates/core/companies.html:17
 #: templates/messaging/messages.html:48 templates/payouts/batch.html:70
 #: templates/payouts/batches.html:30 templates/payouts/layouts.html:19
@@ -660,7 +661,7 @@ msgid "Departure"
 msgstr "Départ"
 
 #: apps/api/enums.py:72 apps/dashboard/views.py:107 apps/payroll/forms.py:85
-#: apps/payroll/forms.py:281 templates/attendance/_approval_detail.html:62
+#: apps/payroll/forms.py:281 templates/attendance/_approval_detail.html:63
 msgid "Note"
 msgstr "Note"
 
@@ -682,7 +683,7 @@ msgid "Closed by the office"
 msgstr "Clôturée par le bureau"
 
 #: apps/api/enums.py:84 apps/core/choices.py:53 apps/workers/forms.py:35
-#: templates/checkin/badge_sheet.html:27 templates/checkin/site_day.html:62
+#: templates/checkin/badge_sheet.html:27 templates/checkin/site_day.html:64
 msgid "Photo"
 msgstr "Photo"
 
@@ -729,7 +730,7 @@ msgstr ""
 "client_uuid renvoie le résultat d’origine au lieu d’appliquer l’écriture "
 "deux fois."
 
-#: apps/api/idempotency.py:102 apps/attendance/services.py:262
+#: apps/api/idempotency.py:102 apps/attendance/services.py:287
 msgid "This client_uuid was already used for a different request."
 msgstr "Ce client_uuid a déjà été utilisé pour une autre requête."
 
@@ -747,11 +748,11 @@ msgstr "Sélectionnez au moins une journée."
 msgid "Select at most %(max)s days at a time."
 msgstr "Sélectionnez au plus %(max)s journées à la fois."
 
-#: apps/attendance/forms.py:47 templates/attendance/_approval_detail.html:96
+#: apps/attendance/forms.py:47 templates/attendance/_approval_detail.html:97
 msgid "Approve day"
 msgstr "Valider la journée"
 
-#: apps/attendance/forms.py:47 templates/attendance/_approval_detail.html:95
+#: apps/attendance/forms.py:47 templates/attendance/_approval_detail.html:96
 msgid "Send back"
 msgstr "Renvoyer"
 
@@ -777,16 +778,18 @@ msgstr "p. ex. Kodjo a été vu sur le chantier — merci de vérifier"
 #: apps/precompute/models.py:100 apps/precompute/models.py:137
 #: apps/precompute/models.py:169 apps/precompute/models.py:192
 #: apps/presence/models.py:42 apps/presence/models.py:77
-#: apps/presence/models.py:213 apps/presence/models.py:257
-#: apps/presence/models.py:333 apps/workers/views.py:187
-#: apps/worksites/models.py:99 apps/worksites/models.py:129
+#: apps/presence/models.py:213 apps/presence/models.py:265
+#: apps/presence/models.py:344 apps/presence/models.py:373
+#: apps/workers/views.py:187 apps/worksites/models.py:99
+#: apps/worksites/models.py:129
 msgid "site"
 msgstr "chantier"
 
 #: apps/attendance/models.py:30 apps/checkin/models.py:224
 #: apps/payroll/models.py:267 apps/payroll/models.py:701
 #: apps/payroll/models.py:759 apps/payroll/models.py:799
-#: apps/precompute/models.py:171 apps/presence/models.py:264
+#: apps/precompute/models.py:171 apps/presence/models.py:272
+#: apps/presence/models.py:378
 msgid "date"
 msgstr "date"
 
@@ -838,7 +841,7 @@ msgstr "note du chef d’équipe"
 
 #: apps/attendance/models.py:68 apps/attendance/models.py:118
 #: apps/attendance/models.py:158 apps/checkin/models.py:272
-#: apps/payroll/models.py:326 apps/presence/models.py:311
+#: apps/payroll/models.py:326 apps/presence/models.py:322
 msgid "client UUID"
 msgstr "UUID client"
 
@@ -948,63 +951,63 @@ msgstr[0] "Synchronisé %(n)s h après l’envoi"
 msgstr[1] "Synchronisé %(n)s h après l’envoi"
 msgstr[2] "Synchronisé %(n)s h après l’envoi"
 
-#: apps/attendance/services.py:72 apps/attendance/services.py:266
-#: apps/attendance/services.py:427
+#: apps/attendance/services.py:73 apps/attendance/services.py:291
+#: apps/attendance/services.py:452
 msgid "This day is locked and cannot be changed."
 msgstr "Cette journée est clôturée et ne peut pas être modifiée."
 
-#: apps/attendance/services.py:74
+#: apps/attendance/services.py:75
 #, python-format
 msgid "This day cannot go from %(current)s to %(target)s."
 msgstr "Cette journée ne peut pas passer de %(current)s à %(target)s."
 
-#: apps/attendance/services.py:115
+#: apps/attendance/services.py:116
 msgid "You cannot take the roll call for a future day."
 msgstr "Vous ne pouvez pas faire l’appel d’un jour futur."
 
-#: apps/attendance/services.py:166
+#: apps/attendance/services.py:171
 msgid "This client_uuid was already used for another record."
 msgstr "Ce client_uuid a déjà été utilisé pour une autre fiche."
 
-#: apps/attendance/services.py:175
+#: apps/attendance/services.py:180
 msgid "This worker is not on the crew of this site that day."
 msgstr "Cet ouvrier ne fait pas partie de l’équipe de ce chantier ce jour-là."
 
-#: apps/attendance/services.py:214
+#: apps/attendance/services.py:219
 msgid "This day was already submitted: change records with a correction."
 msgstr ""
 "Cette journée a déjà été envoyée : modifiez les fiches par une correction."
 
-#: apps/attendance/services.py:268
+#: apps/attendance/services.py:293
 msgid "This day was already submitted."
 msgstr "Cette journée a déjà été envoyée."
 
-#: apps/attendance/services.py:272
+#: apps/attendance/services.py:297
 msgid "Mark every worker on the crew before submitting."
 msgstr "Marquez chaque ouvrier de l’équipe avant d’envoyer."
 
-#: apps/attendance/services.py:368
+#: apps/attendance/services.py:393
 msgid "Not a valid attendance status."
 msgstr "Statut de présence invalide."
 
-#: apps/attendance/services.py:378
+#: apps/attendance/services.py:403
 msgid "Use the 24-hour format HH:MM."
 msgstr "Utilisez le format 24 heures HH:MM."
 
-#: apps/attendance/services.py:422
+#: apps/attendance/services.py:447
 msgid "Give a reason for the correction."
 msgstr "Indiquez le motif de la correction."
 
-#: apps/attendance/services.py:424
+#: apps/attendance/services.py:449
 msgid "This field cannot be corrected."
 msgstr "Ce champ ne peut pas être corrigé."
 
-#: apps/attendance/services.py:430
+#: apps/attendance/services.py:455
 msgid "This day is not submitted yet: change the record directly."
 msgstr ""
 "Cette journée n’est pas encore envoyée : modifiez directement la fiche."
 
-#: apps/attendance/services.py:436
+#: apps/attendance/services.py:461
 msgid "The record already has this value."
 msgstr "La fiche a déjà cette valeur."
 
@@ -1043,7 +1046,7 @@ msgstr "vous ne pouvez pas valider les journées de ce chantier"
 msgid "not waiting for approval (%(status)s)"
 msgstr "pas en attente de validation (%(status)s)"
 
-#: apps/attendance/views.py:166 apps/presence/models.py:320
+#: apps/attendance/views.py:166 apps/presence/models.py:331
 msgid "refused"
 msgstr "refusé"
 
@@ -1109,11 +1112,19 @@ msgstr "Envoyez soit badge, soit worker_id."
 msgid "Send latitude and longitude together."
 msgstr "Envoyez la latitude et la longitude ensemble."
 
-#: apps/checkin/api/views.py:58 apps/checkin/services.py:283
+#: apps/checkin/api/serializers.py:145
+msgid "Counted check-ins of the worker"
+msgstr "Pointages comptés de l’ouvrier"
+
+#: apps/checkin/api/serializers.py:146
+msgid "Presence tracking (badge or phone seen on site)"
+msgstr "Suivi de présence (badge ou téléphone vu sur le chantier)"
+
+#: apps/checkin/api/views.py:59 apps/checkin/services.py:283
 msgid "This phone is a kiosk for another site."
 msgstr "Ce téléphone est la borne d’un autre chantier."
 
-#: apps/checkin/api/views.py:160
+#: apps/checkin/api/views.py:161
 msgid "Unknown worker."
 msgstr "Ouvrier inconnu."
 
@@ -1329,7 +1340,7 @@ msgid "direction"
 msgstr "sens"
 
 #: apps/checkin/models.py:226 apps/presence/models.py:223
-#: apps/presence/models.py:310
+#: apps/presence/models.py:321
 msgid "at"
 msgstr "heure"
 
@@ -1341,7 +1352,7 @@ msgstr "Heure du téléphone au moment du scan du badge."
 msgid "received at"
 msgstr "reçu le"
 
-#: apps/checkin/models.py:228
+#: apps/checkin/models.py:228 apps/presence/models.py:282
 msgid "source"
 msgstr "source"
 
@@ -1435,51 +1446,51 @@ msgstr "Hors périmètre"
 msgid "Duplicate (< 5 min)"
 msgstr "Doublon (< 5 min)"
 
-#: apps/checkin/views.py:285
+#: apps/checkin/views.py:286
 #, python-format
 msgid "New badge for %(name)s; the old one no longer works."
 msgstr "Nouveau badge pour %(name)s ; l’ancien ne fonctionne plus."
 
-#: apps/checkin/views.py:288
+#: apps/checkin/views.py:289
 #, python-format
 msgid "Badge issued for %(name)s."
 msgstr "Badge émis pour %(name)s."
 
-#: apps/checkin/views.py:299
+#: apps/checkin/views.py:300
 #, python-format
 msgid "%(name)s has no active badge."
 msgstr "%(name)s n’a pas de badge actif."
 
-#: apps/checkin/views.py:302
+#: apps/checkin/views.py:303
 #, python-format
 msgid "Badge of %(name)s revoked."
 msgstr "Badge de %(name)s révoqué."
 
-#: apps/checkin/views.py:315
+#: apps/checkin/views.py:316
 #, python-format
 msgid "%(count)s badges issued for %(site)s."
 msgstr "Badges émis pour %(site)s : %(count)s."
 
-#: apps/checkin/views.py:377
+#: apps/checkin/views.py:378
 msgid "Pick a site this foreman works on."
 msgstr "Choisissez un chantier où travaille ce chef d’équipe."
 
-#: apps/checkin/views.py:386
+#: apps/checkin/views.py:387
 #, python-format
 msgid "%(device)s is now the kiosk of %(site)s."
 msgstr "%(device)s est désormais la borne de %(site)s."
 
-#: apps/checkin/views.py:404
+#: apps/checkin/views.py:405
 #, python-format
 msgid "%(device)s is an ordinary foreman phone again."
 msgstr "%(device)s est de nouveau un téléphone de chef d’équipe ordinaire."
 
-#: apps/checkin/views.py:436
+#: apps/checkin/views.py:437
 #, python-format
 msgid "Geofence removed for %(site)s."
 msgstr "Périmètre supprimé pour %(site)s."
 
-#: apps/checkin/views.py:441
+#: apps/checkin/views.py:442
 #, python-format
 msgid "Geofence saved for %(site)s."
 msgstr "Périmètre enregistré pour %(site)s."
@@ -2135,7 +2146,10 @@ msgstr "suivi de présence"
 msgid ""
 "Badges and the foremen's phones report who is on site. Check the data-"
 "protection rules of your country before turning it on."
-msgstr "Les badges et les téléphones des chefs d’équipe indiquent qui est sur le chantier. Vérifiez les règles de protection des données de votre pays avant de l’activer."
+msgstr ""
+"Les badges et les téléphones des chefs d’équipe indiquent qui est sur le "
+"chantier. Vérifiez les règles de protection des données de votre pays avant "
+"de l’activer."
 
 #: apps/core/models.py:300 apps/worksites/models.py:72
 msgid "sightings before arrival"
@@ -2143,7 +2157,9 @@ msgstr "détections avant arrivée"
 
 #: apps/core/models.py:303
 msgid "How many times a person must be seen before they count as arrived."
-msgstr "Nombre de fois qu’une personne doit être détectée avant d’être comptée comme arrivée."
+msgstr ""
+"Nombre de fois qu’une personne doit être détectée avant d’être comptée comme "
+"arrivée."
 
 #: apps/core/models.py:306 apps/worksites/models.py:78
 msgid "arrival window (seconds)"
@@ -2179,7 +2195,9 @@ msgstr "conserver les traces de déplacement (jours)"
 
 #: apps/core/models.py:328
 msgid "Raw positions are deleted after this; presence sessions are kept."
-msgstr "Les positions brutes sont ensuite supprimées ; les sessions de présence sont conservées."
+msgstr ""
+"Les positions brutes sont ensuite supprimées ; les sessions de présence sont "
+"conservées."
 
 #: apps/core/models.py:332 apps/core/models.py:333
 msgid "company settings"
@@ -2324,9 +2342,9 @@ msgstr "Matricule de l’ouvrier"
 #: apps/payroll/forms.py:103 apps/payroll/forms.py:270
 #: apps/payroll/forms.py:276 apps/payroll/forms.py:291
 #: apps/payroll/payslip.py:101 apps/presence/models.py:27
-#: templates/attendance/_approval_detail.html:59
+#: templates/attendance/_approval_detail.html:60
 #: templates/checkin/badges.html:31 templates/checkin/site_day.html:28
-#: templates/checkin/site_day.html:57 templates/components/data_table.html:28
+#: templates/checkin/site_day.html:59 templates/components/data_table.html:28
 #: templates/dashboard/reports.html:143 templates/messaging/recipients.html:59
 #: templates/payouts/accounts.html:20 templates/payouts/batch.html:67
 #: templates/payouts/prepare.html:24 templates/payroll/advances.html:26
@@ -2694,7 +2712,7 @@ msgstr "fournisseur"
 msgid "provider message ID"
 msgstr "identifiant du message chez le fournisseur"
 
-#: apps/messaging/models.py:268
+#: apps/messaging/models.py:268 apps/presence/models.py:384
 msgid "attempts"
 msgstr "tentatives"
 
@@ -3626,7 +3644,7 @@ msgstr "%(task)s · %(quantity)s %(unit)s × %(rate)s"
 
 #. Translators: date formats use Django's |date syntax. French writes "N" (the
 #. abbreviated month with its dot, "oct.") where English writes "M" ("Oct").
-#: apps/payroll/labels.py:89 templates/attendance/_approval_detail.html:13
+#: apps/payroll/labels.py:89 templates/attendance/_approval_detail.html:14
 #: templates/attendance/approvals.html:40
 #: templates/attendance/approvals.html:46 templates/dashboard/home.html:42
 #: templates/dashboard/home.html:129 templates/dashboard/home.html:137
@@ -4729,7 +4747,7 @@ msgstr "fraîcheur"
 msgid "full sweep"
 msgstr "contrôle complet"
 
-#: apps/precompute/models.py:70 apps/presence/models.py:265
+#: apps/precompute/models.py:70 apps/presence/models.py:273
 msgid "started at"
 msgstr "démarré le"
 
@@ -4897,11 +4915,11 @@ msgstr "Non détecté pendant `absence_to_leave_seconds`"
 msgid "A GPS fix clearly outside the site"
 msgstr "Une position GPS nettement hors du chantier"
 
-#: apps/presence/api/views.py:36 apps/presence/services.py:151
+#: apps/presence/api/views.py:36 apps/presence/services.py:152
 msgid "Accept the tracking notice first."
 msgstr "Acceptez d’abord l’avis de suivi."
 
-#: apps/presence/api/views.py:42 apps/presence/services.py:136
+#: apps/presence/api/views.py:42 apps/presence/services.py:137
 msgid "Tracking is not enabled for you."
 msgstr "Le suivi n’est pas activé pour vous."
 
@@ -4911,7 +4929,9 @@ msgstr "Jeton du service de suivi invalide ou expiré."
 
 #: apps/presence/models.py:33
 msgid "Use letters, digits, - and _ only, e.g. A, GATE or BLOCK-B."
-msgstr "Utilisez uniquement des lettres, des chiffres, - et _, par ex. A, PORTAIL ou BLOC-B."
+msgstr ""
+"Utilisez uniquement des lettres, des chiffres, - et _, par ex. A, PORTAIL ou "
+"BLOC-B."
 
 #: apps/presence/models.py:47
 msgid "code"
@@ -4919,7 +4939,9 @@ msgstr "code"
 
 #: apps/presence/models.py:50
 msgid "Short and unique on the site, e.g. A or GATE. The tracker's zone id."
-msgstr "Court et unique sur le chantier, par ex. A ou PORTAIL. C’est l’identifiant de zone du service de suivi."
+msgstr ""
+"Court et unique sur le chantier, par ex. A ou PORTAIL. C’est l’identifiant "
+"de zone du service de suivi."
 
 #: apps/presence/models.py:55 apps/presence/models.py:83
 #: apps/presence/models.py:224
@@ -5002,11 +5024,11 @@ msgstr "identifiant de l’événement"
 msgid "site ID sent"
 msgstr "identifiant de chantier reçu"
 
-#: apps/presence/models.py:220 apps/presence/models.py:262
+#: apps/presence/models.py:220 apps/presence/models.py:270
 msgid "subject kind"
 msgstr "type de personne"
 
-#: apps/presence/models.py:221 apps/presence/models.py:263
+#: apps/presence/models.py:221 apps/presence/models.py:271
 msgid "subject ID"
 msgstr "identifiant de la personne"
 
@@ -5026,92 +5048,145 @@ msgstr "événement de présence"
 msgid "presence events"
 msgstr "événements de présence"
 
-#: apps/presence/models.py:266
+#: apps/presence/models.py:259
+msgid "Live events"
+msgstr "Événements en direct"
+
+#: apps/presence/models.py:260
+msgid "Nightly replay"
+msgstr "Recalcul de nuit"
+
+#: apps/presence/models.py:274
 msgid "ended at"
 msgstr "terminé le"
 
-#: apps/presence/models.py:267
+#: apps/presence/models.py:275
 msgid "end reason"
 msgstr "motif de fin"
 
-#: apps/presence/models.py:269
+#: apps/presence/models.py:277
 msgid "zones visited"
 msgstr "zones visitées"
 
-#: apps/presence/models.py:269
+#: apps/presence/models.py:277
 msgid "Zone codes, in order."
 msgstr "Codes des zones, dans l’ordre."
 
-#: apps/presence/models.py:271
+#: apps/presence/models.py:279
 msgid "last event at"
 msgstr "dernier événement le"
 
-#: apps/presence/models.py:272
+#: apps/presence/models.py:280
 msgid "events"
 msgstr "événements"
 
-#: apps/presence/models.py:275
+#: apps/presence/models.py:286
 msgid "presence session"
 msgstr "session de présence"
 
-#: apps/presence/models.py:276
+#: apps/presence/models.py:287
 msgid "presence sessions"
 msgstr "sessions de présence"
 
-#: apps/presence/models.py:308 apps/presence/models.py:320
+#: apps/presence/models.py:319 apps/presence/models.py:331
 msgid "accepted"
 msgstr "accepté"
 
-#: apps/presence/models.py:309
+#: apps/presence/models.py:320
 msgid "notice version"
 msgstr "version de l’avis"
 
-#: apps/presence/models.py:314
+#: apps/presence/models.py:325
 msgid "tracking consent"
 msgstr "consentement au suivi"
 
-#: apps/presence/models.py:315
+#: apps/presence/models.py:326
 msgid "tracking consents"
 msgstr "consentements au suivi"
 
-#: apps/presence/models.py:337
+#: apps/presence/models.py:348
 msgid "tracking on at the last push"
 msgstr "suivi activé au dernier envoi"
 
-#: apps/presence/models.py:338
+#: apps/presence/models.py:349 apps/presence/models.py:382
 msgid "last attempt"
 msgstr "dernière tentative"
 
-#: apps/presence/models.py:339
+#: apps/presence/models.py:350
 msgid "last success"
 msgstr "dernier succès"
 
-#: apps/presence/models.py:340
+#: apps/presence/models.py:351 apps/presence/models.py:383
 msgid "last error"
 msgstr "dernière erreur"
 
-#: apps/presence/models.py:343
+#: apps/presence/models.py:354
 msgid "tracker sync"
 msgstr "synchronisation du service de suivi"
 
-#: apps/presence/models.py:344
+#: apps/presence/models.py:355
 msgid "tracker syncs"
 msgstr "synchronisations du service de suivi"
 
-#: apps/presence/services.py:146
+#: apps/presence/models.py:379
+msgid "day starts"
+msgstr "début de la journée"
+
+#: apps/presence/models.py:380
+msgid "day ends"
+msgstr "fin de la journée"
+
+#: apps/presence/models.py:381
+msgid "reconciled at"
+msgstr "rapproché le"
+
+#: apps/presence/models.py:385
+msgid "visits added"
+msgstr "passages ajoutés"
+
+#: apps/presence/models.py:386
+msgid "visits changed"
+msgstr "passages modifiés"
+
+#: apps/presence/models.py:387
+msgid "visits removed"
+msgstr "passages supprimés"
+
+#: apps/presence/models.py:388
+msgid "visits unchanged"
+msgstr "passages inchangés"
+
+#: apps/presence/models.py:390
+msgid "visits ignored"
+msgstr "passages ignorés"
+
+#: apps/presence/models.py:392
+msgid "Visits of people the site's company does not know."
+msgstr "Passages de personnes que l’entreprise du chantier ne connaît pas."
+
+#: apps/presence/models.py:396
+msgid "presence reconciliation"
+msgstr "rapprochement de présence"
+
+#: apps/presence/models.py:397
+msgid "presence reconciliations"
+msgstr "rapprochements de présence"
+
+#: apps/presence/services.py:147
 msgid "You declined tracking. Accept the notice to turn it on."
 msgstr "Vous avez refusé le suivi. Acceptez l’avis pour l’activer."
 
-#: apps/presence/services.py:208
+#: apps/presence/services.py:209
 #, python-format
 msgid "The notice has changed: show version %(version)s and ask again."
-msgstr "L’avis a changé : affichez la version %(version)s et demandez à nouveau."
+msgstr ""
+"L’avis a changé : affichez la version %(version)s et demandez à nouveau."
 
-#: apps/presence/services.py:387
+#: apps/presence/services.py:388
 msgid "Enter the badge ID (64 characters at most)."
 msgstr "Saisissez l’identifiant du badge (64 caractères au plus)."
 
-#: apps/presence/services.py:401
+#: apps/presence/services.py:402
 #, python-format
 msgid "This badge is already given to %(worker)s."
 msgstr "Ce badge est déjà attribué à %(worker)s."
@@ -6353,32 +6428,32 @@ msgstr ""
 msgid "Done"
 msgstr "Terminé"
 
-#: templates/attendance/_approval_detail.html:15
+#: templates/attendance/_approval_detail.html:16
 #, python-format
 msgid "Submitted by %(foreman)s at %(sent)s · synced %(synced)s"
 msgstr "Envoyé par %(foreman)s à %(sent)s · synchronisé à %(synced)s"
 
-#: templates/attendance/_approval_detail.html:15
+#: templates/attendance/_approval_detail.html:16
 #, python-format
 msgid "Submitted by %(foreman)s at %(sent)s"
 msgstr "Envoyé par %(foreman)s à %(sent)s"
 
-#: templates/attendance/_approval_detail.html:21
+#: templates/attendance/_approval_detail.html:22
 #, python-format
 msgid "%(sent)s · synced %(synced)s"
 msgstr "%(sent)s · synchronisé à %(synced)s"
 
-#: templates/attendance/_approval_detail.html:25
+#: templates/attendance/_approval_detail.html:26
 msgid "Highlighted rows below show the original value and the reason."
 msgstr ""
 "Les lignes en surbrillance ci-dessous montrent la valeur d’origine et le "
 "motif."
 
-#: templates/attendance/_approval_detail.html:32
+#: templates/attendance/_approval_detail.html:33
 msgid "Already paid."
 msgstr "Déjà payé."
 
-#: templates/attendance/_approval_detail.html:33
+#: templates/attendance/_approval_detail.html:34
 #, python-format
 msgid ""
 "%(n)s worker was paid for this day before the correction: approving moves "
@@ -6396,39 +6471,39 @@ msgstr[2] ""
 "%(n)s ouvriers ont été payés pour ce jour avant la correction : valider "
 "reporte les différences sur leur prochaine paie (voir les lignes ci-dessous)."
 
-#: templates/attendance/_approval_detail.html:38
+#: templates/attendance/_approval_detail.html:39
 msgid "Foreman’s note:"
 msgstr "Note du chef d’équipe :"
 
-#: templates/attendance/_approval_detail.html:41
+#: templates/attendance/_approval_detail.html:42
 msgid "Sent back:"
 msgstr "Renvoyé :"
 
-#: templates/attendance/_approval_detail.html:46
+#: templates/attendance/_approval_detail.html:47
 #, python-format
 msgid "%(n)s on the crew"
 msgstr "%(n)s dans l’équipe"
 
-#: templates/attendance/_approval_detail.html:51
+#: templates/attendance/_approval_detail.html:52
 #, python-format
 msgid "%(n)s not marked"
 msgstr "%(n)s non marqué(s)"
 
-#: templates/attendance/_approval_detail.html:61
+#: templates/attendance/_approval_detail.html:62
 #: templates/checkin/site_day.html:30 templates/components/data_table.html:30
 msgid "In · Out"
 msgstr "Arr. · Dép."
 
-#: templates/attendance/_approval_detail.html:76
+#: templates/attendance/_approval_detail.html:77
 msgid "Changed after submission:"
 msgstr "Modifié après l’envoi :"
 
-#: templates/attendance/_approval_detail.html:76
+#: templates/attendance/_approval_detail.html:77
 #, python-format
 msgid "%(field)s was %(old)s → %(new)s."
 msgstr "%(field)s était %(old)s → %(new)s."
 
-#: templates/attendance/_approval_detail.html:83
+#: templates/attendance/_approval_detail.html:84
 msgid "No workers were marked on this day."
 msgstr "Aucun ouvrier n’a été marqué ce jour-là."
 
@@ -6493,7 +6568,7 @@ msgid "No other day is waiting."
 msgstr "Aucune autre journée en attente."
 
 #: templates/checkin/_tabs.html:4 templates/checkin/site_day.html:4
-#: templates/checkin/site_day.html:51
+#: templates/checkin/site_day.html:53
 msgid "Check-ins"
 msgstr "Pointages"
 
@@ -6800,60 +6875,73 @@ msgstr ""
 "D’après les pointages qui comptent, équipe uniquement. Retard après "
 "%(late)s ; une sortie avant 12:00 compte comme une demi-journée."
 
+#: templates/checkin/site_day.html:23
+msgid ""
+"Where tracking is on, presence is shown too: check-ins win when both exist, "
+"and the foreman confirms every mark."
+msgstr ""
+"Là où le suivi est activé, la présence détectée est affichée aussi : les "
+"pointages l’emportent quand il y a les deux, et le chef d’équipe confirme "
+"chaque marque."
+
 #: templates/checkin/site_day.html:29
 msgid "Suggested"
 msgstr "Suggéré"
 
 #: templates/checkin/site_day.html:31
+msgid "Presence"
+msgstr "Présence"
+
+#: templates/checkin/site_day.html:32
 msgid "Scans"
 msgstr "Scans"
 
-#: templates/checkin/site_day.html:46
+#: templates/checkin/site_day.html:48
 msgid "No suggestions for this day."
 msgstr "Aucune suggestion pour ce jour."
 
-#: templates/checkin/site_day.html:56
+#: templates/checkin/site_day.html:58
 msgid "Time"
 msgstr "Heure"
 
-#: templates/checkin/site_day.html:58
+#: templates/checkin/site_day.html:60
 msgid "Direction"
 msgstr "Sens"
 
-#: templates/checkin/site_day.html:59
+#: templates/checkin/site_day.html:61
 msgid "Source"
 msgstr "Source"
 
-#: templates/checkin/site_day.html:60
+#: templates/checkin/site_day.html:62
 msgid "GPS"
 msgstr "GPS"
 
-#: templates/checkin/site_day.html:61
+#: templates/checkin/site_day.html:63
 msgid "Flags"
 msgstr "Signalements"
 
-#: templates/checkin/site_day.html:68
+#: templates/checkin/site_day.html:70
 msgid "Unknown"
 msgstr "Inconnu"
 
-#: templates/checkin/site_day.html:71
+#: templates/checkin/site_day.html:73
 #, python-format
 msgid "%(d)s m from the site"
 msgstr "À %(d)s m du chantier"
 
-#: templates/checkin/site_day.html:72
+#: templates/checkin/site_day.html:74
 msgid "Draft updated"
 msgstr "Brouillon mis à jour"
 
-#: templates/checkin/site_day.html:73
+#: templates/checkin/site_day.html:75
 msgid "Check-in photo"
 msgstr "Photo du pointage"
 
-#: templates/checkin/site_day.html:80
+#: templates/checkin/site_day.html:82
 msgid "No check-ins"
 msgstr "Aucun pointage"
 
-#: templates/checkin/site_day.html:80
+#: templates/checkin/site_day.html:82
 msgid "Nobody checked in on this site that day."
 msgstr "Personne n’a pointé sur ce chantier ce jour-là."
 
@@ -6876,6 +6964,24 @@ msgstr "Utiliser la valeur par défaut"
 #: templates/components/inherited_setting.html:20
 msgid "Override"
 msgstr "Personnaliser"
+
+#: templates/components/presence_seen.html:11
+#, python-format
+msgid "Seen %(start)s–%(end)s"
+msgstr "Vu %(start)s–%(end)s"
+
+#: templates/components/presence_seen.html:11
+#, python-format
+msgid "Seen since %(start)s, still on site"
+msgstr "Vu depuis %(start)s, toujours sur le chantier"
+
+#: templates/components/presence_seen.html:11
+#, python-format
+msgid "zone %(zones)s"
+msgid_plural "zones %(zones)s"
+msgstr[0] "zone %(zones)s"
+msgstr[1] "zones %(zones)s"
+msgstr[2] "zones %(zones)s"
 
 #: templates/components/sidebar.html:23
 msgid "Menu"
@@ -7184,7 +7290,11 @@ msgid ""
 "BLE badges and the foremen’s phones show who is on site. Presence only "
 "suggests attendance: the foreman still confirms the roll call. Sites and "
 "workers can turn it off for themselves."
-msgstr "Les badges BLE et les téléphones des chefs d’équipe indiquent qui est sur le chantier. Le suivi ne fait que proposer les présences : le chef d’équipe confirme toujours l’appel. Chaque chantier et chaque ouvrier peut le désactiver."
+msgstr ""
+"Les badges BLE et les téléphones des chefs d’équipe indiquent qui est sur le "
+"chantier. Le suivi ne fait que proposer les présences : le chef d’équipe "
+"confirme toujours l’appel. Chaque chantier et chaque ouvrier peut le "
+"désactiver."
 
 #: templates/core/settings.html:175
 msgid "No unsaved changes"
@@ -9940,55 +10050,3 @@ msgstr "Enregistrer les paramètres du chantier"
 #: templates/worksites/settings.html:59
 msgid "In effect now"
 msgstr "En vigueur actuellement"
-
-#: apps/presence/models.py
-msgid "Live events"
-msgstr "Événements en direct"
-
-#: apps/presence/models.py
-msgid "Nightly replay"
-msgstr "Recalcul de nuit"
-
-#: apps/presence/models.py
-msgid "day starts"
-msgstr "début de la journée"
-
-#: apps/presence/models.py
-msgid "day ends"
-msgstr "fin de la journée"
-
-#: apps/presence/models.py
-msgid "reconciled at"
-msgstr "rapproché le"
-
-#: apps/presence/models.py
-msgid "visits added"
-msgstr "passages ajoutés"
-
-#: apps/presence/models.py
-msgid "visits changed"
-msgstr "passages modifiés"
-
-#: apps/presence/models.py
-msgid "visits removed"
-msgstr "passages supprimés"
-
-#: apps/presence/models.py
-msgid "visits unchanged"
-msgstr "passages inchangés"
-
-#: apps/presence/models.py
-msgid "visits ignored"
-msgstr "passages ignorés"
-
-#: apps/presence/models.py
-msgid "Visits of people the site's company does not know."
-msgstr "Passages de personnes que l’entreprise du chantier ne connaît pas."
-
-#: apps/presence/models.py
-msgid "presence reconciliation"
-msgstr "rapprochement de présence"
-
-#: apps/presence/models.py
-msgid "presence reconciliations"
-msgstr "rapprochements de présence"

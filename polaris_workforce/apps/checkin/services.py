@@ -416,6 +416,7 @@ def _update_draft(checkin: CheckIn, user, *, today: datetime.date) -> bool:
         ),
         "worker_id": checkin.worker_id,
         "note": record.note if record else "",
+        "from_suggestion": [selectors.SOURCE_CHECKIN],  # in the audit entry
     }
     for name in ("status", "arrival", "departure"):
         value = getattr(new, name)

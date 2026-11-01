@@ -12,14 +12,33 @@ that count (known worker, no badge problem), in the company's time zone:
   an ``in`` after ``late_after`` (the site's, else the company's) → ``late``;
   any other ``in`` → ``present``.
 * Only an ``out``: departure only, ``status`` ``None`` (the foreman decides).
-* No check-in: no suggestion.
+* No check-in: no suggestion from check-ins.
+
+Presence (``suggest_from_presence``), per crew worker seen on the site that day by the
+tracker (``apps.presence``) **and** with ``tracking_enabled`` resolved on for the site
+and the worker: ``seen_from`` = first sighting, ``seen_until`` = last sighting (``None``
+while still on site), in the company's time zone, minutes; then
+
+* time on site inside working hours (``work_start``–``work_end``, the site's, else the
+  company's) less than ``half_day_units`` of those hours → ``half_day``; an open session
+  counts as if the worker stays until ``work_end``;
+* else first sighting after ``late_after`` → ``late``;
+* else ``present``.
+
+A worker with both: the check-ins win (``status``, ``arrival``, ``departure`` as above),
+the presence is shown next to them (``presence``), ``sources`` lists both. Presence
+alone: ``status``/``arrival``/``departure`` from the presence, no check-in fields.
+Presence never marks attendance: a suggestion is only written to the roll call by the
+foreman (or by check-ins in ``self_check_in`` mode, ``worker_suggestion``, which never
+looks at presence).
 """
 
 from __future__ import annotations
 
 import datetime
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
+from decimal import Decimal
 
 from apps.accounts.models import ForemanDevice
 from apps.attendance.models import AttendanceDay, AttendanceRecord
@@ -113,6 +132,25 @@ def flags_for(checkin: CheckIn) -> list[str]:
 # --- suggestions --------------------------------------------------------------------------
 
 
+SOURCE_CHECKIN = "checkin"
+SOURCE_PRESENCE = "presence"
+SOURCES = [SOURCE_CHECKIN, SOURCE_PRESENCE]
+
+
+@dataclass(frozen=True)
+class PresenceSeen:
+    """What the tracker saw of one worker on the site that day (every visit folded)."""
+
+    first_seen_at: datetime.datetime
+    last_seen_at: datetime.datetime | None  # None while still on site
+    open: bool
+    seen_from: datetime.time
+    seen_until: datetime.time | None
+    zones: list[str]
+    visits: int
+    status: str  # AttendanceRecord.Status value: what the presence alone suggests
+
+
 @dataclass(frozen=True)
 class Suggestion:
     worker_id: int
@@ -122,6 +160,19 @@ class Suggestion:
     first_in_at: datetime.datetime | None
     last_out_at: datetime.datetime | None
     checkin_count: int
+    sources: tuple[str, ...] = (SOURCE_CHECKIN,)
+    presence: PresenceSeen | None = None
+
+
+@dataclass(frozen=True)
+class DayRules:
+    """The settings the suggestion rules read, resolved for one site (company → site)."""
+
+    late_after: datetime.time
+    work_start: datetime.time
+    work_end: datetime.time
+    half_day_units: Decimal
+    tz: object = field(compare=False)
 
 
 def _minute(moment: datetime.datetime, tz) -> datetime.time:
@@ -158,6 +209,61 @@ def suggest(checkins, late_after: datetime.time, tz) -> Suggestion | None:
     )
 
 
+def _minutes(value: datetime.time) -> int:
+    return value.hour * 60 + value.minute
+
+
+def presence_status(seen_from: datetime.time, seen_until: datetime.time | None, rules) -> str:
+    """The status a presence alone suggests (rules in the module docstring)."""
+    start, end = _minutes(rules.work_start), _minutes(rules.work_end)
+    hours = end - start
+    if hours > 0:
+        last = _minutes(seen_until) if seen_until is not None else end
+        on_site = max(0, min(last, end) - max(_minutes(seen_from), start))
+        if on_site < rules.half_day_units * hours:
+            return Status.HALF_DAY
+    if seen_from > rules.late_after:
+        return Status.LATE
+    return Status.PRESENT
+
+
+def suggest_from_presence(row, rules: DayRules) -> PresenceSeen:
+    """``PresenceSeen`` of one ``apps.presence.selectors.DaySession``."""
+    seen_from = _minute(row.first_seen_at, rules.tz)
+    seen_until = None if row.last_seen_at is None else _minute(row.last_seen_at, rules.tz)
+    return PresenceSeen(
+        first_seen_at=row.first_seen_at,
+        last_seen_at=row.last_seen_at,
+        open=row.open,
+        seen_from=seen_from,
+        seen_until=seen_until,
+        zones=list(row.zones),
+        visits=row.visits,
+        status=presence_status(seen_from, seen_until, rules),
+    )
+
+
+def combine(worker_id: int, checkins: Suggestion | None, presence: PresenceSeen | None):
+    """One worker's suggestion from check-ins, presence or both (check-ins win)."""
+    if checkins is not None:
+        if presence is None:
+            return checkins
+        return replace(checkins, sources=(SOURCE_CHECKIN, SOURCE_PRESENCE), presence=presence)
+    if presence is None:
+        return None
+    return Suggestion(
+        worker_id=worker_id,
+        status=presence.status,
+        arrival=presence.seen_from,
+        departure=presence.seen_until,
+        first_in_at=None,
+        last_out_at=None,
+        checkin_count=0,
+        sources=(SOURCE_PRESENCE,),
+        presence=presence,
+    )
+
+
 @dataclass
 class DaySuggestions:
     site: object
@@ -175,17 +281,52 @@ def site_rules(site):
     return settings, company_tz(settings), late_after
 
 
+def day_rules(site, settings: CompanySettings | None = None) -> DayRules:
+    settings = settings or CompanySettings.load(site.company_id)
+
+    def get(name):
+        return resolve_setting(name, site=site, company=settings)
+
+    return DayRules(
+        late_after=get("late_after"),
+        work_start=get("work_start"),
+        work_end=get("work_end"),
+        half_day_units=Decimal(get("half_day_units")),
+        tz=company_tz(settings),
+    )
+
+
+def presence_by_worker(
+    site, date: datetime.date, worker_ids, settings: CompanySettings | None = None
+) -> dict[int, PresenceSeen]:
+    """``{worker id: PresenceSeen}`` for the tracked workers among ``worker_ids`` seen on
+    ``site`` on ``date`` (for the office screens and the suggestions)."""
+    from apps.presence.selectors import workers_day_presence
+
+    settings = settings or CompanySettings.load(site.company_id)
+    rows = workers_day_presence(site, date, worker_ids, settings)
+    if not rows:
+        return {}
+    rules = day_rules(site, settings)
+    return {worker_id: suggest_from_presence(row, rules) for worker_id, row in rows.items()}
+
+
 def day_suggestions(site, date: datetime.date) -> DaySuggestions:
-    """One suggestion per crew worker with check-ins, by worker id."""
+    """One suggestion per crew worker with check-ins or a presence, by worker id."""
     settings, tz, late_after = site_rules(site)
     crew = crew_ids(site, date)
     by_worker: dict[int, list[CheckIn]] = defaultdict(list)
     for checkin in CheckIn.objects.filter(site=site, date=date, worker_id__in=crew):
         by_worker[checkin.worker_id].append(checkin)
+    from_checkins = {
+        worker_id: found
+        for worker_id, checkins in by_worker.items()
+        if (found := suggest(checkins, late_after, tz)) is not None
+    }
+    presence = presence_by_worker(site, date, crew, settings)
     suggestions = [
-        suggestion
-        for worker_id in sorted(by_worker)
-        if (suggestion := suggest(by_worker[worker_id], late_after, tz)) is not None
+        combine(worker_id, from_checkins.get(worker_id), presence.get(worker_id))
+        for worker_id in sorted(set(from_checkins) | set(presence))
     ]
     day = AttendanceDay.objects.filter(site=site, date=date).only("status").first()
     return DaySuggestions(
@@ -199,7 +340,8 @@ def day_suggestions(site, date: datetime.date) -> DaySuggestions:
 
 
 def worker_suggestion(site, date, worker_id, *, exclude_pk=None) -> Suggestion | None:
-    """The suggestion for one worker (optionally ignoring one check-in)."""
+    """The suggestion for one worker from check-ins only (optionally ignoring one
+    check-in): what ``self_check_in`` mode writes on the draft. Never presence."""
     _settings, tz, late_after = site_rules(site)
     checkins = CheckIn.objects.filter(site=site, date=date, worker_id=worker_id)
     if exclude_pk is not None:

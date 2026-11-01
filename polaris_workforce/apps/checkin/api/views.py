@@ -39,6 +39,7 @@ from .serializers import (
     RollCallSuggestionsSerializer,
     badge_hash_payload,
     checkin_payload,
+    suggestion_payload,
 )
 
 TAGS = ["checkin"]
@@ -219,16 +220,32 @@ class SuggestionsView(APIView):
     @extend_schema(
         tags=TAGS,
         operation_id="site_day_suggestions",
-        summary="Roll-call suggestions from check-ins",
+        summary="Roll-call suggestions from check-ins and presence",
         description=(
-            "One suggestion per crew worker with counted check-ins (workers without any "
-            "are not listed: no suggestion). Rules, in the company time zone: "
-            "`arrival` = first `in`, `departure` = last `out`; an `in` and an `out` "
-            "before 12:00, or an `in` at or after 12:00 → `half_day`; first `in` after "
-            "`late_after` → `late`; else `present`. Only an `out` → `status: null`.\n\n"
-            "The phone pre-fills the roll call with them (modes `both` and "
-            "`self_check_in`); the foreman confirms and submits as usual with "
-            "`PUT .../records/`. `day_status` says whether the day can still change."
+            "One suggestion per crew worker with counted check-ins or a presence (workers "
+            "with neither are not listed: no suggestion), by worker id. `sources` says "
+            "which (1.5).\n\n"
+            "**Check-ins** (company time zone): `arrival` = first `in`, `departure` = "
+            "last `out`; an `in` and an `out` before 12:00, or an `in` at or after 12:00 "
+            "→ `half_day`; first `in` after `late_after` → `late`; else `present`. Only "
+            "an `out` → `status: null`.\n\n"
+            "**Presence** (1.5), only where `tracking_enabled` resolves on for the site "
+            "and the worker: `presence` = `{first_seen_at, last_seen_at (null while still "
+            "on site), open, seen_from, seen_until, zones, visits, status}`. Its `status`: "
+            "time on site inside working hours (`work_start`–`work_end`; an open session "
+            "counts until `work_end`) less than `half_day_units` of those hours → "
+            "`half_day`; else first sighting after `late_after` → `late`; else "
+            "`present`.\n\n"
+            "**Both:** the check-ins win — `status`, `arrival`, `departure`, `first_in_at`, "
+            "`last_out_at` and `checkin_count` mean what they meant in 1.4 — and "
+            "`presence` is shown next to them. **Presence only:** `status`, `arrival` "
+            "(`seen_from`) and `departure` (`seen_until`) come from the presence, the "
+            "check-in fields are `null`/`0`.\n\n"
+            "The phone pre-fills the roll call with check-in suggestions (modes `both` "
+            "and `self_check_in`). Presence never marks attendance: the phone shows "
+            '"seen 07:12–16:48, zone B" and the foreman accepts it, which goes through '
+            "`PUT .../records/` with `from_suggestion: [presence]` (audited). "
+            "`day_status` says whether the day can still change."
         ),
         parameters=[SITE_ID, DATE],
         responses={200: RollCallSuggestionsSerializer, **error_responses(401, 403, 404)},
@@ -245,18 +262,7 @@ class SuggestionsView(APIView):
                     "attendance_mode": result.attendance_mode,
                     "late_after": result.late_after,
                     "day_status": result.day_status,
-                    "suggestions": [
-                        {
-                            "worker_id": s.worker_id,
-                            "status": s.status,
-                            "arrival": s.arrival,
-                            "departure": s.departure,
-                            "first_in_at": s.first_in_at,
-                            "last_out_at": s.last_out_at,
-                            "checkin_count": s.checkin_count,
-                        }
-                        for s in result.suggestions
-                    ],
+                    "suggestions": [suggestion_payload(s) for s in result.suggestions],
                 }
             ).data
         )
