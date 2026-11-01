@@ -1,0 +1,14 @@
+{% load i18n %}{% comment %}
+The last push of a site's config to the tracker. Parameters: sync (selectors.SyncStatus),
+detail (true: the time and the error under the badge).
+{% endcomment %}<span class="flex flex-col items-start gap-1">
+  {% if sync.state == "ok" %}{% translate "Sent" as sync_label %}{% include "components/status_badge.html" with status="approved" label=sync_label only %}
+  {% elif sync.state == "failed" %}{% translate "Last push failed" as sync_label %}{% include "components/status_badge.html" with status="rejected" label=sync_label only %}
+  {% elif sync.state == "never" %}{% translate "Not sent yet" as sync_label %}{% include "components/status_badge.html" with status="draft" label=sync_label only %}
+  {% else %}{% translate "No tracker" as sync_label %}{% include "components/status_badge.html" with status="inactive" label=sync_label only %}{% endif %}
+  {% if detail %}
+    {% if sync.state == "failed" %}<span class="text-xs text-steel">{% blocktranslate with when=sync.last_attempt_at|date:"j M H:i" %}Tried {{ when }}{% endblocktranslate %}{% if sync.error %} · <span class="font-mono">{{ sync.error }}</span>{% endif %}</span>{% endif %}
+    {% if sync.last_success_at %}<span class="text-xs text-steel">{% blocktranslate with when=sync.last_success_at|date:"j M H:i" %}Last sent {{ when }}{% endblocktranslate %}</span>{% endif %}
+    {% if sync.state == "not_configured" %}<span class="text-xs text-steel">{% translate "This server has no tracker address (TRACKER_URL): changes are saved here only." %}</span>{% endif %}
+  {% endif %}
+</span>

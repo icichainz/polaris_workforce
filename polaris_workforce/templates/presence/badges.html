@@ -1,0 +1,60 @@
+{% extends "layouts/app.html" %}
+{% load i18n tz %}
+
+{% block title %}{% translate "BLE badges" %} · Polaris Workforce{% endblock %}
+{% block page_title %}{% translate "BLE badges" %}{% endblock %}
+{% block page_meta %}{% translate "Radio badges (lanyard or helmet tags) that gateways and the foremen’s phones pick up. One badge per worker; a badge is recognised on every site of the company." %}{% endblock %}
+{% block page_actions %}
+  {% translate "Print the notice" as notice_label %}{% url "presence:notice" as notice_url %}{% include "components/button.html" with label=notice_label href=notice_url download=True only %}
+{% endblock %}
+
+{% block content %}{% timezone time_zone %}
+{% include "presence/_tabs.html" with active="badges" only %}
+
+<form method="get" class="flex flex-wrap items-end gap-3" role="search">
+  <div class="w-full sm:w-72">{% include "components/field.html" with field=form.q %}</div>
+  <div class="w-full sm:w-56">{% include "components/field.html" with field=form.site %}</div>
+  {% translate "Filter" as filter_label %}{% include "components/button.html" with label=filter_label type="submit" only %}
+</form>
+
+<section aria-label="{% translate 'BLE badges' %}" class="flex flex-col gap-2">
+  <p class="text-sm text-ink-700">{% blocktranslate count n=rows|length with with_badge=with_badge %}With a badge: {{ with_badge }} of {{ n }} worker.{% plural %}With a badge: {{ with_badge }} of {{ n }} workers.{% endblocktranslate %}{% if rows|length >= limit %} {% blocktranslate with limit=limit %}Only the first {{ limit }} are shown: search to narrow the list.{% endblocktranslate %}{% endif %}</p>
+  {% if rows %}
+  <div class="overflow-x-auto rounded-control border border-line bg-surface">
+    <table class="w-full min-w-[680px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Badge ID" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Since" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel"><span class="sr-only">{% translate "Actions" %}</span></th>
+      </tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3"><a href="{% url 'workers:detail' row.worker.pk %}" class="font-semibold">{{ row.worker.full_name }}</a><br><span class="text-xs text-steel">{{ row.worker.number }}{% if row.worker.trade %} · {{ row.worker.trade.name }}{% endif %}</span></td>
+          <td class="px-4 py-3">{% if row.badge %}<span class="break-all font-mono text-[13px]">{{ row.badge.badge_id }}</span>{% else %}<span class="text-steel">{% translate "No badge" %}</span>{% endif %}</td>
+          <td class="px-4 py-3 tabular-nums">{% if row.badge %}{{ row.badge.active_from|date:"j M Y" }}{% else %}—{% endif %}</td>
+          <td class="px-4 py-3">
+            <span class="flex flex-wrap items-center justify-end gap-3">
+              <a href="{% url 'presence:worker_badge' row.worker.pk %}" class="font-semibold">{% if row.badge %}{% translate "Change" %}{% else %}{% translate "Give a badge" %}{% endif %}<span class="sr-only"> · {{ row.worker.full_name }}</span></a>
+              {% if row.badge %}
+              <form method="post" action="{% url 'presence:badge_end' row.badge.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                {% blocktranslate with name=row.worker.full_name asvar end_confirm %}Take back the badge of {{ name }}? It is no longer recognised.{% endblocktranslate %}
+                <button type="submit" onclick="return confirm(this.dataset.confirm)" data-confirm="{{ end_confirm }}" class="text-sm font-semibold text-absent-fg hover:underline">{% translate "End" %}<span class="sr-only"> · {{ row.worker.full_name }}</span></button>
+              </form>
+              {% endif %}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    {% translate "No workers" as empty_title %}{% translate "No active worker matches." as empty_message %}
+    {% include "components/empty_state.html" with icon="workers" title=empty_title message=empty_message only %}
+  {% endif %}
+</section>
+{% endtimezone %}{% endblock %}

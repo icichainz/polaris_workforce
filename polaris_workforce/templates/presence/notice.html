@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% load i18n %}{% comment %}
+Printed notice for BLE badge holders (docs/presence-tracking.md §10), in English or French
+(?lang=), on A4 or US Letter (?paper=), with the tracking hours of the company or of one
+site (?site=). One page, with a line for the worker to sign. Same wording as the notice
+the foremen accept in the phone app, adapted to badges. Print with the browser.
+{% endcomment %}
+
+{% block title %}{% translate "Notice for badge holders" %} · Polaris Workforce{% endblock %}
+{% block theme %}light{% endblock %}{# paper: always the light theme #}
+{% block head %}{% if paper == "letter" %}<style>@page { size: letter; margin: 16mm; }</style>{% else %}<style>@page { size: A4; margin: 16mm; }</style>{% endif %}{% endblock %}
+
+{% block body %}
+<form method="get" class="flex flex-wrap items-end justify-between gap-3 border-b border-line bg-white px-4 py-3 print:hidden">
+  <div class="flex flex-wrap items-end gap-3">
+    <div class="w-40">{% include "components/field.html" with field=form.lang %}</div>
+    <div class="w-40">{% include "components/field.html" with field=form.paper %}</div>
+    <div class="w-56">{% include "components/field.html" with field=form.site %}</div>
+    {% translate "Apply" as apply_label %}{% include "components/button.html" with label=apply_label type="submit" only %}
+  </div>
+  <div class="flex gap-2">
+    {% translate "Back to badges" as back_label %}{% url "presence:badges" as back_url %}{% include "components/button.html" with label=back_label href=back_url only %}
+    <button type="button" onclick="window.print()" class="inline-flex h-10 items-center justify-center rounded-control bg-amber-500 px-4 text-sm font-semibold text-on-primary hover:brightness-95">{% translate "Print" %}</button>
+  </div>
+</form>
+
+<main class="bg-white">
+  <article lang="{{ lang }}" class="mx-auto flex max-w-[180mm] flex-col gap-[5mm] px-4 py-8 text-[10.5pt] leading-relaxed text-ink print:px-0 print:py-0">
+    <header class="flex flex-col gap-[1mm] border-b border-line-strong pb-[3mm]">
+      <p class="text-[8pt] font-semibold uppercase tracking-[0.08em] text-steel">{{ company_name }}</p>
+      <h1 class="font-display text-[20pt] font-extrabold leading-tight">{% translate "Presence tracking on our sites" %}</h1>
+      <p>{% blocktranslate with company=company_name %}{{ company }} uses Polaris to know who is on its sites. Your badge helps with that. Here is how it works, what is recorded and what you can ask.{% endblocktranslate %}</p>
+    </header>
+
+    <section class="flex flex-col gap-[1mm] break-inside-avoid">
+      <h2 class="font-display text-[12pt] font-bold">{% translate "When" %}</h2>
+      <p>{% blocktranslate with start=start|time:"H:i" end=end|time:"H:i" %}Only during tracking hours, {{ start }}–{{ end }} (site time), and only on the company’s sites. Outside those hours nothing is recorded.{% endblocktranslate %}{% if site %} {% blocktranslate with site=site.name %}These are the hours of {{ site }}.{% endblocktranslate %}{% endif %}</p>
+    </section>
+
+    <section class="flex flex-col gap-[1mm] break-inside-avoid">
+      <h2 class="font-display text-[12pt] font-bold">{% translate "What is recorded" %}</h2>
+      <p>{% translate "Your badge sends a short radio signal (Bluetooth Low Energy). Receivers fixed on the site and the foremen’s phones note when they pick it up, and in which part of the site. That gives your arrival and departure times." %}</p>
+      <p>{% translate "The badge has no GPS, no microphone and no camera. It is not followed outside the sites." %}</p>
+    </section>
+
+    <section class="flex flex-col gap-[1mm] break-inside-avoid">
+      <h2 class="font-display text-[12pt] font-bold">{% translate "How long it is kept" %}</h2>
+      <p>{% blocktranslate count days=retention_days %}The raw sightings are deleted after {{ days }} day. Arrival and departure times are kept like attendance.{% plural %}The raw sightings are deleted after {{ days }} days. Arrival and departure times are kept like attendance.{% endblocktranslate %}</p>
+    </section>
+
+    <section class="flex flex-col gap-[1mm] break-inside-avoid">
+      <h2 class="font-display text-[12pt] font-bold">{% translate "Who sees it" %}</h2>
+      <p>{% translate "Site managers see who is on their own sites. Company administrators see all the sites. Nobody else." %}</p>
+    </section>
+
+    <section class="flex flex-col gap-[1mm] break-inside-avoid">
+      <h2 class="font-display text-[12pt] font-bold">{% translate "What it is used for" %}</h2>
+      <p>{% translate "Presence only suggests attendance: the roll call is still confirmed by your foreman. It is never used to discipline anyone automatically." %}</p>
+    </section>
+
+    <section class="flex flex-col gap-[1mm] break-inside-avoid">
+      <h2 class="font-display text-[12pt] font-bold">{% translate "What you can ask" %}</h2>
+      <ul class="flex list-disc flex-col gap-[1mm] pl-[6mm]">
+        <li>{% translate "Your own presence history: the office exports it from your worker profile." %}</li>
+        <li>{% translate "Not to be tracked: tell the office. Tracking is then turned off for you and your badge is no longer read. Your attendance is taken by the foreman as before." %}</li>
+        <li>{% translate "If you lose your badge, tell the office at once: it is turned off." %}</li>
+      </ul>
+    </section>
+
+    <section class="mt-[4mm] flex flex-col gap-[3mm] rounded-[2mm] border border-line-strong p-[4mm] break-inside-avoid" aria-label="{% translate 'Acknowledgement' %}">
+      <p class="font-semibold">{% translate "I have received and read this notice." %}</p>
+      <div class="grid grid-cols-3 gap-[6mm] pt-[6mm] text-[8.5pt] text-steel">
+        <span class="border-t border-ink pt-[1mm]">{% translate "Name" %}</span>
+        <span class="border-t border-ink pt-[1mm]">{% translate "Date" %}</span>
+        <span class="border-t border-ink pt-[1mm]">{% translate "Signature" %}</span>
+      </div>
+    </section>
+
+    <footer class="text-[8pt] text-steel">{% blocktranslate with version=version %}Notice version {{ version }}{% endblocktranslate %} · {{ company_name }}</footer>
+  </article>
+</main>
+{% endblock %}

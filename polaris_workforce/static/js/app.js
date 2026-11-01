@@ -357,6 +357,33 @@
   document.addEventListener("htmx:afterSettle", markAllScrollMore);
 
   document.addEventListener("alpine:init", function () {
+    // Page module: a page whose behaviour is too big for this file (the presence live
+    // map) puts x-data="pageModule" data-module="{% static '….js' %}" on its root. The
+    // ES module is imported once and its mount(element) called; the function mount
+    // returns runs when the page is left (boosted navigation replaces #main, and Alpine
+    // calls destroy()), so streams and timers do not outlive their page.
+    window.Alpine.data("pageModule", function () {
+      return {
+        unmount: null,
+        init() {
+          const el = this.$el;
+          import(el.dataset.module)
+            .then((module) => {
+              if (!el.isConnected) return;
+              const unmount = module.mount(el);
+              this.unmount = typeof unmount === "function" ? unmount : null;
+            })
+            .catch(function () {
+              el.dataset.moduleFailed = "true";
+            });
+        },
+        destroy() {
+          if (this.unmount) this.unmount();
+          this.unmount = null;
+        },
+      };
+    });
+
     // Theme switch (components/theme_switch.html): show the theme at once; the form's
     // hx-post saves it (204). "system" is left to the CSS (prefers-color-scheme).
     window.Alpine.data("themeSwitch", function (initial) {
