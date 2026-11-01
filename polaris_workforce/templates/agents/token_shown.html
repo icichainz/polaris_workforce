@@ -20,16 +20,12 @@
 
 <section aria-labelledby="setup-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
   <h2 id="setup-title" class="font-display text-base font-bold">{% translate "Set up Claude Desktop" %}</h2>
-  <p class="text-sm text-ink-700">{% translate "Once the Polaris connector (polaris-mcp) is installed on this computer, add it to Claude Desktop’s configuration (Settings, Developer, Edit config), then restart Claude:" %}</p>
+  <p class="text-sm text-ink-700">{% translate "Once the Polaris connector (polaris-mcp) is installed on this computer, sign in once in a terminal and paste the token when asked:" %}</p>
+  <pre class="overflow-x-auto rounded-control bg-subtle px-4 py-3 font-mono text-[13px]">polaris login --url {{ server_url }}</pre>
+  <p class="text-sm text-ink-700">{% translate "Then add it to Claude Desktop’s configuration (Settings, Developer, Edit config) and restart Claude:" %}</p>
   <pre class="overflow-x-auto rounded-control bg-subtle px-4 py-3 font-mono text-[13px]">{
   "mcpServers": {
-    "polaris": {
-      "command": "polaris-mcp",
-      "env": {
-        "POLARIS_URL": "{{ server_url }}",
-        "POLARIS_TOKEN": "{{ raw }}"
-      }
-    }
+    "polaris": { "command": "polaris-mcp" }
   }
 }</pre>
 </section>

@@ -7,8 +7,9 @@ usually daily) with proof of receipt. Almost every rule is a setting.
 - `polaris_workforce/` — Django 6.1 backend + office dashboard (server-rendered templates,
   Tailwind, htmx/Alpine), Django REST Framework API for the phone app, SQLite in WAL mode.
 - `polaris_foreman/` — Flutter foreman app (offline-first).
-- `polaris_mcp/` — MCP server for office staff using Claude (agent tokens, office API
-  `/api/v1/office/`). Read only, plus roll-call approval after a preview; never payments.
+- `polaris_mcp/` — MCP server (`polaris-mcp`) for office staff using Claude, and the
+  `polaris` CLI; agent tokens on the office API `/api/v1/office/`. Read only, plus
+  roll-call approval after a preview; never payments.
 - `design/project/` — design canvas files (screens and tokens). Treat as the UI spec.
 - `docs/implementation-plan.md` — the multi-agent plan: waves, briefs, file ownership.
 - `polaris_tracker/` and `docs/presence-tracking.md` — a separate presence-tracking track
@@ -25,7 +26,7 @@ uv run python manage.py makemigrations --check --dry-run
 uv run python manage.py runserver
 ```
 
-MCP server (run inside `polaris_mcp/`):
+MCP server and CLI (run inside `polaris_mcp/`):
 
 ```sh
 uv sync

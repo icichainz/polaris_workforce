@@ -7,8 +7,10 @@ format ``{"code", "message", "details"}`` into ``PolarisError``.
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -39,30 +41,73 @@ class PolarisError(Exception):
         return f"{self.message} ({fields})"
 
 
+class SettingsError(Exception):
+    """No usable address or token."""
+
+
+def credentials_path() -> Path:
+    """Where ``polaris login`` keeps the address and token (``POLARIS_CONFIG`` overrides)."""
+    if os.environ.get("POLARIS_CONFIG"):
+        return Path(os.environ["POLARIS_CONFIG"])
+    base = os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config"
+    return Path(base) / "polaris" / "credentials.json"
+
+
 @dataclass(frozen=True)
 class Settings:
     url: str
     token: str
 
     @classmethod
-    def from_env(cls) -> Settings:
-        url = os.environ.get("POLARIS_URL", "").strip().rstrip("/")
-        token = os.environ.get("POLARIS_TOKEN", "").strip()
-        missing = [
-            name for name, value in (("POLARIS_URL", url), ("POLARIS_TOKEN", token)) if not value
-        ]
-        if missing:
-            raise SystemExit(
-                f"polaris-mcp: set {' and '.join(missing)} (the Polaris address and an agent "
-                "token from Polaris > AI assistant access)."
-            )
+    def checked(cls, url: str, token: str) -> Settings:
+        url, token = url.strip().rstrip("/"), token.strip()
         if not token.startswith("pol_"):
-            raise SystemExit("polaris-mcp: POLARIS_TOKEN must be an agent token (pol_…).")
+            raise SettingsError("The token must be an agent token (pol_…).")
         if not url.startswith("https://") and not _is_local(url):
-            raise SystemExit(
-                "polaris-mcp: POLARIS_URL must use https:// (except on this computer)."
-            )
+            raise SettingsError("The Polaris address must use https:// (except on this computer).")
         return cls(url=url, token=token)
+
+    @classmethod
+    def from_env(cls) -> Settings | None:
+        url = os.environ.get("POLARIS_URL", "").strip()
+        token = os.environ.get("POLARIS_TOKEN", "").strip()
+        if not url and not token:
+            return None
+        if not (url and token):
+            raise SettingsError("Set both POLARIS_URL and POLARIS_TOKEN, or neither.")
+        return cls.checked(url, token)
+
+    @classmethod
+    def from_file(cls, path: Path | None = None) -> Settings | None:
+        path = path or credentials_path()
+        if not path.exists():
+            return None
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            return cls.checked(data["url"], data["token"])
+        except (ValueError, KeyError, TypeError) as exc:
+            raise SettingsError(f"{path} is not a valid credentials file.") from exc
+
+    @classmethod
+    def load(cls) -> Settings:
+        """``POLARIS_URL`` + ``POLARIS_TOKEN`` first, then the file ``polaris login`` wrote."""
+        settings = cls.from_env() or cls.from_file()
+        if settings is None:
+            raise SettingsError(
+                "Not signed in. Run `polaris login`, or set POLARIS_URL and POLARIS_TOKEN "
+                "(an agent token from Polaris > AI assistant access)."
+            )
+        return settings
+
+    def save(self, path: Path | None = None) -> Path:
+        """Write the credentials file, readable by this user only."""
+        path = path or credentials_path()
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump({"url": self.url, "token": self.token}, f)
+        os.chmod(path, 0o600)
+        return path
 
 
 def _is_local(url: str) -> bool:

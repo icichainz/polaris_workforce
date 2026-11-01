@@ -1,7 +1,7 @@
 [project]
 name = "polaris-mcp"
 version = "0.1.0"
-description = "MCP server that lets office staff use Polaris Workforce from Claude"
+description = "Polaris Workforce for AI assistants: an MCP server for Claude and the polaris CLI"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -11,6 +11,7 @@ dependencies = [
 
 [project.scripts]
 polaris-mcp = "polaris_mcp.__main__:main"
+polaris = "polaris_mcp.cli:entry"
 
 [dependency-groups]
 dev = [

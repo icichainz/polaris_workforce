@@ -501,10 +501,10 @@ change workers, pay or settings).
 | **Agent tokens** | new app `apps/agents/` (models, services, authentication, office screen) | `AgentToken` per office user (admin, site manager, accountant): hashed, shown once, 30/90/365 days, optional *may approve*; revoke (own; admins: the company's); audit entries; screen *AI assistant access* (`/settings/ai-assistants/`) |
 | **Office API** | `apps/agents/api/`, contract 1.3.0 | `/api/v1/office/`: me, today, approvals, a site's day, a cash sheet, find workers, a worker's days and pay; decision preview → signed confirmation (token, day, decision, note, fingerprint of the records; 10 min) → decision. Agent tokens only (`Authorization: Bearer pol_…`), refused everywhere else; throttled per token (120/min) |
 | **MCP server** | new package `polaris_mcp/` | stdio server for Claude Desktop (`polaris-mcp`, `polaris-mcp check`): 9 task-shaped tools, site names and relative dates resolved, money as minor units + display, confirm tool marked destructive |
+| **CLI** | `polaris_mcp/` (`cli.py`, shared `office.py`) | `polaris`: login (token checked, saved 0600, never an argument) / logout, the same reads as text or `--json`, `approve` / `send-back` asking y/N on a terminal only, `decision preview` / `decision confirm` for scripts; exit codes 0–4 |
 
 Audit: the decision writes the usual `attendance.day.*` entry under the person's name
 plus `agents.day.approve|reject` naming the token. Replaying a confirmation decides once.
 
 Open: claude.ai connectors (remote MCP over HTTPS with OAuth, after hosting is chosen);
-publishing `polaris-mcp` so office computers can install it without a checkout; a shell
-CLI on the same client if scripts need it.
+publishing `polaris-mcp` so office computers can install it without a checkout.

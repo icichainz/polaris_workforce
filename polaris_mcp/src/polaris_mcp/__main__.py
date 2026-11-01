@@ -1,7 +1,7 @@
 """``polaris-mcp``: run the MCP server over stdio (what Claude Desktop launches).
 
 ``polaris-mcp check`` instead checks the address and the token, and says who they act for.
-Configuration comes from the environment: ``POLARIS_URL`` and ``POLARIS_TOKEN``.
+Configuration: ``POLARIS_URL`` and ``POLARIS_TOKEN``, else the file ``polaris login`` wrote.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ import asyncio
 import logging
 import sys
 
-from .client import PolarisClient, PolarisError, Settings
+from .client import PolarisClient, PolarisError, Settings, SettingsError
 from .server import build_server
 
 
@@ -34,7 +34,11 @@ def main(argv: list[str] | None = None) -> None:
     args = sys.argv[1:] if argv is None else argv
     # httpx logs every request at INFO; Claude Desktop keeps stderr in its MCP logs.
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    client = PolarisClient(Settings.from_env())
+    try:
+        settings = Settings.load()
+    except SettingsError as exc:
+        raise SystemExit(f"polaris-mcp: {exc}") from exc
+    client = PolarisClient(settings)
     if args[:1] == ["check"]:
         raise SystemExit(asyncio.run(_check(client)))
     if args:

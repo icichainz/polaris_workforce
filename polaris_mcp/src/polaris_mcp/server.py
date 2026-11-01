@@ -8,7 +8,6 @@ the tool descriptions tell the model how to behave around it.
 
 from __future__ import annotations
 
-import datetime
 from typing import Annotated, Any, Literal
 
 from mcp.server.mcpserver import MCPServer
@@ -17,6 +16,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from .client import PolarisClient, PolarisError
+from .office import Office
 
 INSTRUCTIONS = """\
 Polaris Workforce records attendance and daily pay for construction crews. Foremen take
@@ -60,11 +60,10 @@ SiteText = Annotated[
 
 
 class Polaris:
-    """The tools, around one ``PolarisClient``."""
+    """``Office`` for the tools: every Polaris error becomes a ``ToolError`` the model reads."""
 
     def __init__(self, client: PolarisClient):
-        self.client = client
-        self._me: dict[str, Any] | None = None
+        self.office = Office(client)
 
     async def call(self, coroutine):
         try:
@@ -73,36 +72,13 @@ class Polaris:
             raise ToolError(str(exc)) from exc
 
     async def me(self, refresh: bool = False) -> dict[str, Any]:
-        if self._me is None or refresh:
-            self._me = await self.call(self.client.me())
-        return self._me
+        return await self.call(self.office.me(refresh))
 
     async def site_id(self, site: str) -> int:
-        """Resolve a site name or id against the user's sites (the server checks again)."""
-        sites = (await self.me())["sites"]
-        text = site.strip()
-        if text.isdigit():
-            return int(text)
-        exact = [s for s in sites if s["name"].casefold() == text.casefold()]
-        partial = [s for s in sites if text.casefold() in s["name"].casefold()]
-        matches = exact or partial
-        if len(matches) == 1:
-            return matches[0]["id"]
-        names = ", ".join(s["name"] for s in (matches or sites)) or "none"
-        if not matches:
-            raise ToolError(f"No site of yours matches '{site}'. Your sites: {names}.")
-        raise ToolError(f"'{site}' matches several sites: {names}. Say which one.")
+        return await self.call(self.office.site_id(site))
 
     async def date(self, text: str) -> str:
-        value = text.strip().lower()
-        if value in {"today", "yesterday"}:
-            today = datetime.date.fromisoformat((await self.me())["company"]["today"])
-            day = today if value == "today" else today - datetime.timedelta(days=1)
-            return day.isoformat()
-        try:
-            return datetime.date.fromisoformat(value).isoformat()
-        except ValueError as exc:
-            raise ToolError(f"'{text}' is not a date. Use YYYY-MM-DD.") from exc
+        return await self.call(self.office.date(text))
 
 
 def build_server(client: PolarisClient) -> MCPServer:

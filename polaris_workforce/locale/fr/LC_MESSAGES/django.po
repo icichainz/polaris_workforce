@@ -9277,5 +9277,8 @@ msgstr "Adresse du serveur"
 msgid "Set up Claude Desktop"
 msgstr "Configurer Claude Desktop"
 
-msgid "Once the Polaris connector (polaris-mcp) is installed on this computer, add it to Claude Desktop’s configuration (Settings, Developer, Edit config), then restart Claude:"
-msgstr "Une fois le connecteur Polaris (polaris-mcp) installé sur cet ordinateur, ajoutez-le à la configuration de Claude Desktop (Settings, Developer, Edit config), puis redémarrez Claude :"
+msgid "Once the Polaris connector (polaris-mcp) is installed on this computer, sign in once in a terminal and paste the token when asked:"
+msgstr "Une fois le connecteur Polaris (polaris-mcp) installé sur cet ordinateur, connectez-vous une fois dans un terminal et collez le jeton quand il est demandé :"
+
+msgid "Then add it to Claude Desktop’s configuration (Settings, Developer, Edit config) and restart Claude:"
+msgstr "Ajoutez-le ensuite à la configuration de Claude Desktop (Settings, Developer, Edit config) et redémarrez Claude :"

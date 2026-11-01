@@ -6,7 +6,7 @@ import httpx
 import pytest
 from mcp import Client
 
-from polaris_mcp.client import PolarisClient, Settings
+from polaris_mcp.client import PolarisClient, Settings, SettingsError
 from polaris_mcp.server import build_server
 
 ME = {
@@ -154,12 +154,32 @@ async def test_preview_then_confirm_and_api_errors_reach_the_model(server, fake)
 def test_settings_refuse_plain_http_and_non_agent_tokens(monkeypatch):
     monkeypatch.setenv("POLARIS_URL", "http://polaris.example")
     monkeypatch.setenv("POLARIS_TOKEN", "pol_x")
-    with pytest.raises(SystemExit, match="https"):
+    with pytest.raises(SettingsError, match="https"):
         Settings.from_env()
 
     monkeypatch.setenv("POLARIS_URL", "http://localhost:8000/")
     assert Settings.from_env().url == "http://localhost:8000"
 
     monkeypatch.setenv("POLARIS_TOKEN", "Device abc")
-    with pytest.raises(SystemExit, match="agent token"):
+    with pytest.raises(SettingsError, match="agent token"):
         Settings.from_env()
+
+    monkeypatch.delenv("POLARIS_URL")
+    with pytest.raises(SettingsError, match="both"):
+        Settings.from_env()
+
+
+def test_settings_come_from_the_environment_first_then_the_file(monkeypatch, tmp_path):
+    monkeypatch.setenv("POLARIS_CONFIG", str(tmp_path / "polaris" / "credentials.json"))
+    monkeypatch.delenv("POLARIS_URL", raising=False)
+    monkeypatch.delenv("POLARIS_TOKEN", raising=False)
+    with pytest.raises(SettingsError, match="polaris login"):
+        Settings.load()
+
+    path = Settings.checked("https://polaris.example/", "pol_file").save()
+    assert path.stat().st_mode & 0o777 == 0o600
+    assert Settings.load() == Settings("https://polaris.example", "pol_file")
+
+    monkeypatch.setenv("POLARIS_URL", "https://other.example")
+    monkeypatch.setenv("POLARIS_TOKEN", "pol_env")
+    assert Settings.load().token == "pol_env"
