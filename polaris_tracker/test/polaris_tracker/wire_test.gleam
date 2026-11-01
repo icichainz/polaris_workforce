@@ -29,7 +29,7 @@ pub fn observations_decode_test() {
   assert json.parse(body, wire.observations_decoder())
     == Ok([
       GpsFix("a", 1000, geo.LatLng(6.13, 1.0), 12.0),
-      PhoneBle("b", 2000, 3, "BDG-1", -70),
+      PhoneBle("b", 2000, 3, "bdg-1", -70),
     ])
 }
 
@@ -52,7 +52,7 @@ pub fn gateway_batch_decode_test() {
     "{\"batch_id\": \"b1\", \"sightings\": [
       {\"badge_id\": \"BDG-1\", \"at\": \"1970-01-01T00:00:03Z\", \"rssi\": -64}]}"
   assert json.parse(body, wire.gateway_batch_decoder())
-    == Ok(#("b1", [GatewaySighting("BDG-1", 3000, -64)]))
+    == Ok(#("b1", [GatewaySighting("bdg-1", 3000, -64)]))
 }
 
 pub fn site_config_decode_test() {
@@ -70,7 +70,7 @@ pub fn site_config_decode_test() {
       geofence: Some(geo.Geofence(geo.LatLng(6.1319, 1.2228), 150.0)),
       zones: [Zone("B", "Block B")],
       gateways: [Gateway("GW-1", Some("B")), Gateway("GW-2", None)],
-      badges: [Badge("BDG-1", 12)],
+      badges: [Badge("bdg-1", 12)],
       rules: presence.Rules(2, 300_000, 900_000),
     ))
 }
@@ -88,4 +88,12 @@ pub fn presence_event_encode_test() {
   assert string.contains(text, "\"reason\":\"timeout\"")
   assert string.contains(text, "\"subject\":{\"kind\":\"worker\",\"id\":12}")
   assert string.contains(text, "\"at\":\"1970-01-01T00:00:00Z\"")
+}
+
+/// Badge ids are compared as Django stores them: trimmed, lower case.
+pub fn badge_ids_are_normalized_test() {
+  assert wire.normalize_badge_id("  IB:F7826DA6:1:42 ") == "ib:f7826da6:1:42"
+  let blank =
+    "{\"batch_id\": \"b\", \"sightings\": [{\"badge_id\": \"  \", \"at\": \"1970-01-01T00:00:01Z\", \"rssi\": -60}]}"
+  let assert Error(_) = json.parse(blank, wire.gateway_batch_decoder())
 }

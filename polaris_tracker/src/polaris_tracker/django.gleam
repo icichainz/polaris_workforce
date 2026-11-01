@@ -13,7 +13,9 @@ import polaris_tracker/token
 import polaris_tracker/wire
 
 /// POSTs a batch to `POST /api/v1/presence/events/` with a short-lived
-/// service token. Any 2xx counts as delivered.
+/// service token. Any 2xx counts as delivered; the body
+/// (`{stored, duplicates, ignored, rejected}`) is not read, since Django
+/// stores events idempotently and never asks for a resend.
 pub fn deliver(
   url: String,
   secret: BitArray,

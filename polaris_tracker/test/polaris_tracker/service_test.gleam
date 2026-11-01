@@ -608,3 +608,47 @@ fn gps_fix(uuid: String, at: String, lat: String) -> String {
   <> lat
   <> ", \"lng\": 1.2228, \"accuracy_m\": 10}"
 }
+
+/// Django's ids: gateways `gw-<site>-<generation>` (a new token raises the
+/// generation, so the old id leaves the config), badges normalized to lower
+/// case and trimmed, as phones report iBeacons (`ib:<uuid>:<major>:<minor>`).
+pub fn django_gateway_and_badge_ids_test() {
+  let stack = start_stack()
+  let service = mint("service:django", token.Service, [])
+  let config =
+    "{\"tracking_enabled\": true,
+    \"gateways\": [{\"id\": \"gw-12-4\", \"zone_id\": \"A\"}],
+    \"badges\": [{\"badge_id\": \"ib:f7826da6-4fa2-4e98-8024-bc5b71e0893e:1:42\",
+                  \"worker_id\": 31}],
+    \"rules\": {\"sightings_to_enter\": 1, \"arrival_window_seconds\": 300,
+                \"absence_to_leave_seconds\": 900}}"
+  let response =
+    send(stack, http.Put, "/internal/sites/12/config", service, config)
+  assert response.status == 204
+  let sightings = fn(batch_id) {
+    "{\"batch_id\": \"" <> batch_id <> "\", \"sightings\": [
+      {\"badge_id\": \"  IB:F7826DA6-4FA2-4E98-8024-BC5B71E0893E:1:42 \",
+       \"at\": \"" <> ago(1000) <> "\", \"rssi\": -60}]}"
+  }
+
+  // The previous generation's token is no longer in the config.
+  let old = mint("gateway:gw-12-3", token.Gateway, [12])
+  let response =
+    send(stack, http.Post, "/v1/gateways/sightings", old, sightings("b1"))
+  assert response.status == 403
+  assert string.contains(response.body, "\"code\":\"unknown_gateway\"")
+
+  let current = mint("gateway:gw-12-4", token.Gateway, [12])
+  let response =
+    send(stack, http.Post, "/v1/gateways/sightings", current, sightings("b1"))
+  assert response.status == 200
+  assert string.contains(response.body, "\"accepted\":1")
+
+  // The same badge from a foreman's phone, in yet another spelling.
+  let device = mint("foreman:5", token.Device, [12])
+  let body = "{\"observations\": [{\"client_uuid\": \"p1\", \"type\": \"ble\",
+      \"at\": \"" <> ago(500) <> "\", \"site_id\": 12,
+      \"badge_id\": \"Ib:F7826da6-4fa2-4e98-8024-bc5b71e0893e:1:42\", \"rssi\": -70}]}"
+  let response = send(stack, http.Post, "/v1/observations", device, body)
+  assert string.contains(response.body, "\"accepted\":1")
+}

@@ -11,11 +11,14 @@
 ////   "aud": "polaris-tracker" | "polaris-django", "exp": <unix seconds> }
 //// ```
 ////
-//// An absent `company`, `sites` or `travel` reads as `0`, `[]` or `false`, and
-//// `mint` leaves those values out, so a service token is just `sub`, `kind`,
-//// `aud` and `exp`. `all_sites` (version 1) is no longer read. The encoding is
-//// the one a Python standard-library mint produces with compact separators:
-//// header `{"alg":"HS256","typ":"JWT"}`, base64url without padding.
+//// An absent `company`, `sites` or `travel` reads as `0`, `[]` or `false`.
+//// `all_sites` (version 1) is no longer read. `mint` writes the keys in the
+//// order above, as Django does: `company` only when it is not 0, `sites`
+//// (sorted, without repeats) and `travel` always, except on service tokens,
+//// which are just `sub`, `kind`, `aud` and `exp`. The encoding is the one a
+//// Python standard-library mint produces with compact separators: header
+//// `{"alg":"HS256","typ":"JWT"}`, base64url without padding. Tests check it
+//// byte for byte against tokens from Django's test suite.
 
 import gleam/bit_array
 import gleam/bool
@@ -122,11 +125,14 @@ pub fn mint(claims: Claims, secret secret: BitArray) -> String {
         #("kind", json.string(kind_to_string(claims.kind))),
       ],
       optional(claims.company != 0, #("company", json.int(claims.company))),
-      optional(claims.sites != [], #(
+      optional(claims.kind != Service, #(
         "sites",
-        json.array(claims.sites, json.int),
+        claims.sites
+          |> list.unique
+          |> list.sort(int.compare)
+          |> json.array(json.int),
       )),
-      optional(claims.travel, #("travel", json.bool(True))),
+      optional(claims.kind != Service, #("travel", json.bool(claims.travel))),
       [
         #("aud", json.string(claims.audience)),
         #("exp", json.int(claims.expires_at)),

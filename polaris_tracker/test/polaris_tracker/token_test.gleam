@@ -179,3 +179,91 @@ pub fn subject_id_test() {
   assert token.subject_id(claims(), "foreman") == Ok(5)
   assert token.subject_id(claims(), "gateway") == Error(Nil)
 }
+
+// ---- Cross-check with Django (P2) -------------------------------------------
+//
+// Literal tokens from `polaris_workforce/tests/test_presence_tokens.py`
+// (`KNOWN_DEVICE_TOKEN`, `KNOWN_TRACKER_SERVICE_TOKEN`), minted with Django's
+// test secret; `exp` is 2026-11-01T18:13:20Z.
+
+const django_secret = "tests-only-tracker-secret-0123456789abcdef"
+
+const django_exp = 1_793_468_000
+
+const django_device =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmb3JlbWFuOjciLCJraW5kIjoiZGV2aWNlIiwiY29tcGFueSI6MSwic2l0ZXMiOlszXSwidHJhdmVsIjpmYWxzZSwiYXVkIjoicG9sYXJpcy10cmFja2VyIiwiZXhwIjoxNzkzNDY4MDAwfQ.-j0wb_CttNyRomMExCxIAtr-murJFGOMEti3KkcuMUg"
+
+const django_tracker_service =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzZXJ2aWNlOnRyYWNrZXIiLCJraW5kIjoic2VydmljZSIsImF1ZCI6InBvbGFyaXMtZGphbmdvIiwiZXhwIjoxNzkzNDY4MDAwfQ.8FRlzxMqVSXI52g-NKY93akuvgBGOO87LTT6eyRaGcM"
+
+fn django_device_claims() -> token.Claims {
+  token.Claims(
+    sub: "foreman:7",
+    kind: token.Device,
+    company: 1,
+    sites: [3],
+    travel: False,
+    audience: token.tracker_audience,
+    expires_at: django_exp,
+  )
+}
+
+pub fn django_device_token_verifies_test() {
+  assert token.verify(
+      django_device,
+      secret: bit_array.from_string(django_secret),
+      audience: token.tracker_audience,
+      now_seconds: django_exp - 60,
+    )
+    == Ok(django_device_claims())
+}
+
+pub fn django_device_token_is_what_the_tracker_mints_test() {
+  assert token.mint(
+      django_device_claims(),
+      secret: bit_array.from_string(django_secret),
+    )
+    == django_device
+  // Sites are written sorted, without repeats, as Django writes them.
+  assert token.mint(
+      token.Claims(..django_device_claims(), sites: [3, 3]),
+      secret: bit_array.from_string(django_secret),
+    )
+    == django_device
+}
+
+/// What Django's `verify_tracker_service_token` accepts: `sub =
+/// service:tracker`, `kind = service`, `aud = polaris-django`, `exp` at most
+/// 300 s ahead (Django allows 60 s of clock skew on top).
+pub fn tracker_service_token_matches_django_test() {
+  let raw =
+    token.service_token_for_django(
+      secret: bit_array.from_string(django_secret),
+      now_seconds: django_exp - 300,
+    )
+  assert raw == django_tracker_service
+  let assert Ok(claims) =
+    token.verify(
+      raw,
+      secret: bit_array.from_string(django_secret),
+      audience: token.django_audience,
+      now_seconds: django_exp - 300,
+    )
+  assert claims.sub == "service:tracker"
+  assert claims.kind == token.Service
+  assert claims.expires_at == django_exp
+}
+
+/// Django's own service tokens carry `sites: []` and `travel: false` but no
+/// `company`.
+pub fn django_service_token_is_accepted_test() {
+  let raw =
+    python_mint(
+      "{\"sub\":\"service:django\",\"kind\":\"service\",\"sites\":[],"
+      <> "\"travel\":false,\"aud\":\"polaris-tracker\",\"exp\":1800000060}",
+    )
+  let assert Ok(claims) = verify(raw)
+  assert claims.company == 0
+  assert claims.kind == token.Service
+  assert token.can_access_site(claims, 42)
+}

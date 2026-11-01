@@ -32,6 +32,11 @@ info:
 
     `all_sites` (version 1) is no longer read: a token carrying it gets nothing from it.
 
+    Django writes the keys in the order of the table, as compact JSON: `company` except on
+    service tokens, `sites` as a sorted list without repeats, and `travel` always (its own
+    service tokens carry `"sites":[],"travel":false` and no `company`). The tracker
+    accepts any order and spacing, and the absent claims above.
+
     | kind | sub | endpoints |
     | --- | --- | --- |
     | `device` | `foreman:<user id>` | `POST /v1/observations`, `GET /v1/sites/{id}/presence` |
@@ -173,7 +178,10 @@ paths:
       description: |
         Token kind: `gateway`, with `sub` = `gateway:<gateway id>` and exactly one site in
         `sites`. The gateway must be listed in that site's config; removing it from the
-        config revokes it. Site and zone come from the config, not from the payload.
+        config revokes it. Gateway ids are opaque strings (Django uses
+        `gw-<site>-<generation>`, for example `gw-12-3`; issuing a new token raises the
+        generation, so the old token's id leaves the config). Site and zone come from the
+        config, not from the payload.
 
         The whole batch is idempotent on `batch_id`: a repeated batch returns
         `accepted: 0` and every sighting counted in `duplicates`.
@@ -632,6 +640,7 @@ components:
         badge_id:
           type: string
           minLength: 1
+          description: Opaque; compared trimmed and lower case, as Django stores it (a phone reports iBeacons as `ib:<uuid>:<major>:<minor>`).
         rssi:
           type: integer
           description: Signal strength in dBm.
@@ -643,6 +652,7 @@ components:
         badge_id:
           type: string
           minLength: 1
+          description: Opaque; compared trimmed and lower case, as Django stores it (a phone reports iBeacons as `ib:<uuid>:<major>:<minor>`).
         at:
           type: string
           format: date-time
@@ -915,6 +925,7 @@ components:
               id:
                 type: string
                 minLength: 1
+                description: Opaque, for example `gw-12-3`; the gateway token's `sub` is `gateway:<id>`.
               zone_id:
                 type: [string, "null"]
         badges:
@@ -928,6 +939,7 @@ components:
               badge_id:
                 type: string
                 minLength: 1
+                description: Trimmed and lower-cased on arrival, like sighted badge ids.
               worker_id:
                 type: integer
         rules:

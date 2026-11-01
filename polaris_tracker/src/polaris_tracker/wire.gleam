@@ -36,7 +36,7 @@ fn observation_decoder() -> Decoder(Observation) {
     }
     "ble" -> {
       use site_id <- decode.field("site_id", decode.int)
-      use badge_id <- decode.field("badge_id", non_empty_string())
+      use badge_id <- decode.field("badge_id", badge_id_decoder())
       use rssi <- decode.field("rssi", decode.int)
       decode.success(PhoneBle(client_uuid:, at:, site_id:, badge_id:, rssi:))
     }
@@ -56,7 +56,7 @@ pub fn gateway_batch_decoder() -> Decoder(#(String, List(GatewaySighting))) {
 }
 
 fn sighting_decoder() -> Decoder(GatewaySighting) {
-  use badge_id <- decode.field("badge_id", non_empty_string())
+  use badge_id <- decode.field("badge_id", badge_id_decoder())
   use at <- decode.field("at", timestamp())
   use rssi <- decode.field("rssi", decode.int)
   decode.success(GatewaySighting(badge_id:, at:, rssi:))
@@ -114,7 +114,7 @@ fn gateway_decoder() -> Decoder(domain.Gateway) {
 }
 
 fn badge_decoder() -> Decoder(domain.Badge) {
-  use badge_id <- decode.field("badge_id", non_empty_string())
+  use badge_id <- decode.field("badge_id", badge_id_decoder())
   use worker_id <- decode.field("worker_id", decode.int)
   decode.success(Badge(badge_id:, worker_id:))
 }
@@ -228,6 +228,20 @@ fn positive_int() -> Decoder(Int) {
   case value > 0 {
     True -> decode.success(value)
     False -> decode.failure(value, "integer > 0")
+  }
+}
+
+/// Badge ids are opaque strings (a phone reports `ib:<uuid>:<major>:<minor>`),
+/// compared the way Django stores them: trimmed and lower case.
+pub fn normalize_badge_id(badge_id: String) -> String {
+  badge_id |> string.trim |> string.lowercase
+}
+
+fn badge_id_decoder() -> Decoder(String) {
+  use value <- decode.then(decode.string)
+  case normalize_badge_id(value) {
+    "" -> decode.failure(value, "non-empty badge id")
+    badge_id -> decode.success(badge_id)
   }
 }
 
