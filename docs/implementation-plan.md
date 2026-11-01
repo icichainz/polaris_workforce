@@ -508,3 +508,62 @@ plus `agents.day.approve|reject` naming the token. Replaying a confirmation deci
 
 Open: claude.ai connectors (remote MCP over HTTPS with OAuth, after hosting is chosen);
 publishing `polaris-mcp` so office computers can install it without a checkout.
+
+---
+
+## 14. Presence tracking wave (design: `docs/presence-tracking.md`)
+
+**Lead decisions (2026-11-01):** circles only (the existing `checkin.SiteGeofence`, no
+polygons, no new geofence fields on `Site`); QR badges stay in `checkin`, BLE badges are a
+new `presence.BleBadge`; off-site travel is visible to company admins only; tokens are
+scoped to one company (below); badge hardware is still open, so the badge id is an opaque
+string and the phone's decoder is one replaceable function.
+
+### Token claims, version 2 (shared by P1, P2 and P6)
+
+The design's `all_sites` claim would let an admin of one company read another company's
+sites (site ids are global). It is replaced:
+
+```
+{ "sub": "...", "kind": "device|gateway|dashboard|service",
+  "company": <company id>,          // every kind except service
+  "sites": [<site id>, ...],        // always explicit: an admin gets the company's sites
+  "travel": true|false,             // may see off-site track points (company admins)
+  "aud": "polaris-tracker" | "polaris-django", "exp": <unix seconds> }
+```
+
+- The tracker grants a site only if it is in `sites`; `service` tokens reach every site.
+  `all_sites` is no longer read.
+- Off-site GPS points are stored with the `company` of the device token that sent them and
+  returned only to tokens with `travel = true` and the same `company`.
+- Tokens the tracker mints for Django: `kind = service`, `sub = service:tracker`,
+  `aud = polaris-django`, `exp` ≤ 5 min.
+
+### Consent (shared by P2 and P6)
+
+`POST /api/v1/tracking/token/` answers `403 consent_required` until the foreman has
+accepted the notice; the phone then shows the consent screen and calls
+`POST /api/v1/tracking/consent/` `{client_uuid, accepted, text_version}` → `200
+{accepted, at, text_version}` (idempotent by `client_uuid`; refusing is recorded too and
+gives `403 tracking_disabled` afterwards until accepted again). `403 tracking_disabled`
+keeps its meaning (off by settings).
+
+### Wave 1 (parallel, worktrees)
+
+| Brief | Branch | Owns | Builds |
+| --- | --- | --- | --- |
+| **P1 · Tracker hardening** | `feat/presence-tracker` | `polaris_tracker/`, `docs/api/tracker-openapi.yaml` | Claims v2; Gleam ≥ 1.14 and mist 6; SQLite persistence (own file) for tracks and outbox; `GET /internal/sites/{id}/sessions?date=` (service) returning sessions recomputed with `presence.replay` from the stored track, for Django's nightly reconciliation; load test 500 sightings/s; ingest off the single hub process if needed |
+| **P2+P3 · Django presence app and settings** | `feat/presence-django` | new `apps/presence/` (models, migrations, services, tokens, API, admin, tasks); tracking settings in `apps/core` (+ overrides in `worksites`, `workers`, their migrations and forms); `config/settings.py` (app, env vars, beat); `docs/api/presence-django-openapi.yaml` merged into `docs/api/openapi.yaml` | `Zone`, `Gateway`, `BleBadge`, `PresenceEvent`, `PresenceSession`, `TrackingConsent`; JWT HS256 with the standard library; token, consent, event-ingest and sessions endpoints; `push_site_config(site)` on commit (Celery) plus a periodic resync; services `mint_dashboard_token(user)` and `issue_gateway_token(gateway)` for P4; settings `tracking_enabled` (company/site/worker), `presence_sightings_to_enter`, `presence_arrival_window_seconds`, `presence_absence_to_leave_seconds`, `foreman_gps_interval_seconds`, `tracking_start`/`tracking_end` (company/site), `track_retention_days` (company); company and site scoping tested; EN/FR |
+| **P6 · Flutter tracking** | `feat/presence-flutter` | `polaris_foreman/lib/tracking/`, its tests, and the small hooks it needs (pubspec, platform permissions, l10n, outbox, providers) | Token fetch and refresh, consent screen, GPS inside tracking hours with mock-location rejection, BLE scan (`flutter_blue_plus`, one report per badge per 30 s), observations through the offline outbox to the tracker in batches; works in airplane mode |
+
+### Wave 2 (after P2 is on `main`)
+
+| Brief | Owns | Builds |
+| --- | --- | --- |
+| **P4 · Office screens** | `apps/presence/` views, urls, templates; `static/vendor/leaflet/` | Zones, gateways (issue/revoke token), BLE badges; live map from SSE; timeline per person; worker's presence export; printable notice for badge holders |
+| **P5 · Roll-call suggestions** | `apps/attendance/`, `apps/checkin/` selectors | Presence sessions in the existing suggestion path (phone and approvals); accepting one writes `AuditLog` |
+| **Reconciliation** | `apps/presence/` | Nightly Celery job comparing the tracker's replayed sessions with Django's |
+
+Lead merges P2 → P1 → P6, then wave 2, and updates `docs/presence-tracking.md`,
+`docker-compose.yml` (`DJANGO_EVENTS_URL`, tracker data volume) and the CLAUDE.md
+Gleam version.
