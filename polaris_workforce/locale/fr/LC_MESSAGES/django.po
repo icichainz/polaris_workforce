@@ -9931,3 +9931,55 @@ msgstr "Enregistrer les paramètres du chantier"
 #: templates/worksites/settings.html:59
 msgid "In effect now"
 msgstr "En vigueur actuellement"
+
+#: apps/presence/models.py
+msgid "Live events"
+msgstr "Événements en direct"
+
+#: apps/presence/models.py
+msgid "Nightly replay"
+msgstr "Recalcul de nuit"
+
+#: apps/presence/models.py
+msgid "day starts"
+msgstr "début de la journée"
+
+#: apps/presence/models.py
+msgid "day ends"
+msgstr "fin de la journée"
+
+#: apps/presence/models.py
+msgid "reconciled at"
+msgstr "rapproché le"
+
+#: apps/presence/models.py
+msgid "visits added"
+msgstr "passages ajoutés"
+
+#: apps/presence/models.py
+msgid "visits changed"
+msgstr "passages modifiés"
+
+#: apps/presence/models.py
+msgid "visits removed"
+msgstr "passages supprimés"
+
+#: apps/presence/models.py
+msgid "visits unchanged"
+msgstr "passages inchangés"
+
+#: apps/presence/models.py
+msgid "visits ignored"
+msgstr "passages ignorés"
+
+#: apps/presence/models.py
+msgid "Visits of people the site's company does not know."
+msgstr "Passages de personnes que l’entreprise du chantier ne connaît pas."
+
+#: apps/presence/models.py
+msgid "presence reconciliation"
+msgstr "rapprochement de présence"
+
+#: apps/presence/models.py
+msgid "presence reconciliations"
+msgstr "rapprochements de présence"

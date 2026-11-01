@@ -249,7 +249,15 @@ class PresenceSession(models.Model):
     so events that arrive late or twice give the same sessions. ``ended_at`` is empty
     while the person is still on site. ``local_date`` is the company-time-zone date of
     ``started_at``: the work day the session suggests attendance for.
+
+    The nightly reconciliation (``reconcile``) replaces a past day's sessions with the
+    tracker's replay of its stored track: those are ``source = replay``, and the rebuild
+    from events leaves them, and the events of that day, alone from then on.
     """
+
+    class Source(models.TextChoices):
+        LIVE = "live", _("Live events")
+        REPLAY = "replay", _("Nightly replay")
 
     company = company_field(related_name="presence_sessions", db_index=False)
     site = models.ForeignKey(
@@ -270,6 +278,9 @@ class PresenceSession(models.Model):
     )
     last_event_at = models.DateTimeField(_("last event at"))
     event_count = models.PositiveIntegerField(_("events"), default=0)
+    source = models.CharField(
+        _("source"), max_length=8, choices=Source, default=Source.LIVE, editable=False
+    )
 
     class Meta:
         verbose_name = _("presence session")
@@ -345,3 +356,65 @@ class TrackerSync(models.Model):
 
     def __str__(self) -> str:
         return f"{self.site} · {self.last_success_at or '—'}"
+
+
+class PresenceReconciliation(models.Model):
+    """The nightly reconciliation of one site's day with the tracker (``reconcile``).
+
+    ``reconciled_at`` is set once the day's sessions were replaced by the tracker's replay
+    (``window_start`` to ``window_end``, the local day in UTC); the counts are those of
+    the latest successful run. A failed run keeps ``last_error`` and is tried again the
+    next night (or by ``manage.py reconcile_presence``); an earlier success stays valid.
+    """
+
+    company = company_field(related_name="presence_reconciliations", db_index=False)
+    site = models.ForeignKey(
+        "worksites.Site",
+        verbose_name=_("site"),
+        on_delete=models.CASCADE,
+        related_name="presence_reconciliations",
+        db_index=False,  # the unique constraint below starts with it
+    )
+    local_date = models.DateField(_("date"))
+    window_start = models.DateTimeField(_("day starts"), null=True, blank=True)
+    window_end = models.DateTimeField(_("day ends"), null=True, blank=True)
+    reconciled_at = models.DateTimeField(_("reconciled at"), null=True, blank=True)
+    last_attempt_at = models.DateTimeField(_("last attempt"), null=True, blank=True)
+    last_error = models.CharField(_("last error"), max_length=300, blank=True)
+    attempts = models.PositiveIntegerField(_("attempts"), default=0)
+    added = models.PositiveIntegerField(_("visits added"), default=0)
+    changed = models.PositiveIntegerField(_("visits changed"), default=0)
+    removed = models.PositiveIntegerField(_("visits removed"), default=0)
+    unchanged = models.PositiveIntegerField(_("visits unchanged"), default=0)
+    ignored = models.PositiveIntegerField(
+        _("visits ignored"),
+        default=0,
+        help_text=_("Visits of people the site's company does not know."),
+    )
+
+    class Meta:
+        verbose_name = _("presence reconciliation")
+        verbose_name_plural = _("presence reconciliations")
+        ordering = ["-local_date", "site"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "local_date"], name="one_presence_reconciliation_per_site_day"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.site} · {self.local_date}"
+
+    @property
+    def is_reconciled(self) -> bool:
+        return self.reconciled_at is not None
+
+    @classmethod
+    def replayed_windows(cls, site_id: int, *, after) -> list[tuple]:
+        """The site's reconciled days that end after ``after``, as ``(start, end)``: the
+        rebuild from events skips them (their sessions come from the replay)."""
+        return list(
+            cls.objects.filter(site_id=site_id, reconciled_at__isnull=False, window_end__gt=after)
+            .order_by("window_start")
+            .values_list("window_start", "window_end")
+        )

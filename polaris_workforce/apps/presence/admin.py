@@ -10,6 +10,7 @@ from .models import (
     BleBadge,
     Gateway,
     PresenceEvent,
+    PresenceReconciliation,
     PresenceSession,
     TrackerSync,
     TrackingConsent,
@@ -69,8 +70,16 @@ class PresenceEventAdmin(ReadOnlyAdmin):
 
 @admin.register(PresenceSession)
 class PresenceSessionAdmin(ReadOnlyAdmin):
-    list_display = ("local_date", "site", "subject_kind", "subject_id", "started_at", "ended_at")
-    list_filter = ("company", "local_date")
+    list_display = (
+        "local_date",
+        "site",
+        "subject_kind",
+        "subject_id",
+        "started_at",
+        "ended_at",
+        "source",
+    )
+    list_filter = ("company", "source", "local_date")
     list_select_related = ("site",)
     date_hierarchy = "local_date"
 
@@ -86,3 +95,20 @@ class TrackingConsentAdmin(ReadOnlyAdmin):
 class TrackerSyncAdmin(ReadOnlyAdmin):
     list_display = ("site", "pushed_enabled", "last_success_at", "last_attempt_at", "last_error")
     list_select_related = ("site",)
+
+
+@admin.register(PresenceReconciliation)
+class PresenceReconciliationAdmin(ReadOnlyAdmin):
+    list_display = (
+        "local_date",
+        "site",
+        "reconciled_at",
+        "added",
+        "changed",
+        "removed",
+        "last_attempt_at",
+        "last_error",
+    )
+    list_filter = ("company", "local_date")
+    list_select_related = ("site",)
+    date_hierarchy = "local_date"
