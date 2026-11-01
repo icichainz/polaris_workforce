@@ -71,6 +71,7 @@
     // Swap #main's children and the sidebar <nav> (out of band); the <title> follows.
     window.htmx.swap(area, html, { swapStyle: "innerHTML" }, { select: SHELL + " > *" });
     window.scrollTo(0, scrollY);
+    markAllScrollMore();
     focusHeading(area);
   }
 
@@ -317,6 +318,43 @@
 
   // The finger moved: a scroll, not a tap.
   document.addEventListener("touchmove", dropPreload, { capture: true, passive: true });
+
+  // --- Sideways scrolling -------------------------------------------------------------
+
+  // A box that scrolls sideways (wide tables on a phone, tab rows) gets
+  // data-scroll-more="start" | "end" | "both" while there is more to see on that side;
+  // the CSS fades that edge (static/src/app.css). Without JavaScript it simply scrolls.
+  const SCROLL_X = ".overflow-x-auto";
+
+  function markScrollMore(box) {
+    const hidden = box.scrollWidth - box.clientWidth;
+    const atStart = box.scrollLeft <= 1;
+    const atEnd = box.scrollLeft >= hidden - 1;
+    let more = "";
+    if (hidden > 1 && !(atStart && atEnd)) more = atStart ? "end" : atEnd ? "start" : "both";
+    if (more && box.dataset.scrollMore !== more) box.dataset.scrollMore = more;
+    if (!more && box.dataset.scrollMore) delete box.dataset.scrollMore;
+  }
+
+  function markAllScrollMore() {
+    document.querySelectorAll(SCROLL_X).forEach(markScrollMore);
+  }
+
+  document.addEventListener(
+    "scroll",
+    function (event) {
+      const box = event.target;
+      if (box instanceof Element && box.matches(SCROLL_X)) markScrollMore(box);
+    },
+    { capture: true, passive: true }
+  );
+  window.addEventListener("resize", markAllScrollMore, { passive: true });
+  document.addEventListener("DOMContentLoaded", function () {
+    markAllScrollMore();
+    // Widths change once the web fonts are in.
+    if (document.fonts) document.fonts.ready.then(markAllScrollMore);
+  });
+  document.addEventListener("htmx:afterSettle", markAllScrollMore);
 
   document.addEventListener("alpine:init", function () {
     // Theme switch (components/theme_switch.html): show the theme at once; the form's
