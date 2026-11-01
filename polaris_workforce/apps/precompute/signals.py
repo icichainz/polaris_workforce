@@ -16,3 +16,4 @@ from . import services
 def mark_from_audit(sender, instance: AuditLog, created: bool, raw: bool = False, **kwargs):
     if created and not raw:
         services.mark_from_audit(instance)
+        services.flag_report_month(instance)

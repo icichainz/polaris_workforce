@@ -37,7 +37,7 @@ from apps.payroll.models import PayPeriod
 from apps.worksites.models import Site
 
 from . import marks
-from .models import Freshness, RefreshRun, Stale
+from .models import Freshness, RefreshRun, ReportMonth, Stale
 
 logger = logging.getLogger("polaris.precompute")
 
@@ -146,6 +146,24 @@ def mark_from_audit(entry: AuditLog) -> None:
         return
     for item in found:
         mark(item.site_id, item.start, item.end)
+
+
+# A recomputation that changed a period's lines says so (``payroll[.auto].period.refresh``):
+# not an input of pay, but of the report rollups of the month the period ends in.
+PERIOD_REFRESH_ACTIONS = ("payroll.period.refresh", "payroll.auto.period.refresh")
+
+
+def flag_report_month(entry: AuditLog) -> None:
+    """The report rollups of the month a changed pay period ends in are out of date: the
+    report reads that month live until the rebuild step builds it again."""
+    if entry.action not in PERIOD_REFRESH_ACTIONS or not entry.object_id:
+        return
+    period = PayPeriod.objects.filter(pk=entry.object_id).values_list("site_id", "end_date").first()
+    if period is not None:
+        site_id, end_date = period
+        ReportMonth.objects.filter(site_id=site_id, month=end_date.replace(day=1)).update(
+            stale=True
+        )
 
 
 def _today_of_site(site_id: int) -> datetime.date:
