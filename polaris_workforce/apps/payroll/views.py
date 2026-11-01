@@ -24,7 +24,6 @@ from apps.core import dates
 from apps.core.choices import PayFrequency
 from apps.core.htmx import wants_fragment
 from apps.core.models import CompanySettings
-from apps.worksites.models import Site
 
 from . import services
 from .forms import AdvanceForm, CashIssueForm, LockForm, MarkPaidForm, UndoPaymentForm
@@ -46,21 +45,6 @@ def _site_filter(request, sites):
     if site_id.isdigit():
         return sites.filter(pk=int(site_id)).first()
     return None
-
-
-def _sync_recent(sites, today):
-    """Bring the last week's pay up to date (the attendance services also trigger this).
-
-    Reading is not a write: the recomputation is the system's, not the viewer's."""
-    company = CompanySettings.load()
-    for site in sites.filter(status=Site.Status.ACTIVE):
-        services.sync_site(
-            site,
-            today - datetime.timedelta(days=RECENT_DAYS - 1),
-            today,
-            today=today,
-            company=company,
-        )
 
 
 def _period_badge(period: PayPeriod, today: datetime.date):
@@ -90,7 +74,8 @@ def periods(request):
     sites = scoped_sites(request.user).order_by("name")
     site = _site_filter(request, sites)
     shown_sites = sites.filter(pk=site.pk) if site else sites
-    _sync_recent(shown_sites, today)
+    # Bring the last week's pay up to date (the attendance services also trigger this).
+    services.sync_recent_on_read(shown_sites, today, RECENT_DAYS, company=company)
 
     tab = request.GET.get("status", "open")
     if tab not in ("open", "locked", "all"):
@@ -200,8 +185,7 @@ def cash_sheets(request):
     sites = scoped_sites(request.user).order_by("name")
     site = _site_filter(request, sites)
     shown_sites = sites.filter(pk=site.pk) if site else sites
-    for active in shown_sites.filter(status=Site.Status.ACTIVE):
-        services.sync_sheet(active, today, today=today, company=company)
+    services.sync_sheets_on_read(shown_sites, today, company=company)
 
     groups = (
         PayPeriod.objects.filter(site__in=shown_sites)

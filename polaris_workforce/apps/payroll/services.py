@@ -39,6 +39,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import reduce
 
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import F, Q, Sum
@@ -59,6 +60,7 @@ from apps.accounts.permissions import (
 from apps.api.exceptions import Conflict, Locked
 from apps.attendance.models import AttendanceCorrection, AttendanceDay, AttendanceRecord
 from apps.attendance.services import lock_day
+from apps.core import changes
 from apps.core.choices import PayType, ProofType
 from apps.core.dates import company_today
 from apps.core.models import AuditLog, CompanySettings
@@ -1127,6 +1129,65 @@ def sync_sheet(site: Site, day: datetime.date, **kwargs) -> list[PayPeriod]:
     return sync_site(site, day - datetime.timedelta(days=lookback), day, ending_on=day, **kwargs)
 
 
+# --- refreshing pay on read ---------------------------------------------------------------
+#
+# The screens that list every site's pay (Pay periods, Cash sheets) recompute it on read, a
+# safety net behind the services that recompute it on write. Most of the time nothing has
+# changed, and the recomputation costs dozens of queries per site, so it is skipped while
+# the company's change marker (apps.core.changes, moved by every AuditLog entry) and the
+# day are those of the site's last recomputation. A recomputation that changed something
+# wrote audit entries of its own (payroll.auto.…), which move the marker: the next read
+# recomputes once more, finds nothing to change, and the reads after it skip. Writes that
+# bypass the services and the audit log (Django admin, a shell) show after
+# READ_REFRESH_MAX_AGE seconds at the latest.
+
+READ_REFRESH_MAX_AGE = 300
+
+
+def _refresh_on_read(kind: str, site: Site, today: datetime.date, refresh) -> bool:
+    """Run ``refresh()`` unless nothing changed since the last ``kind`` refresh of ``site``.
+
+    True if it ran. The marker is read before the refresh: a change made during the
+    refresh moves it, and the next read refreshes again.
+    """
+    key = f"payroll:read-refresh:{kind}:{site.pk}"
+    marker = f"{changes.version(site.company_id)}|{today.isoformat()}"
+    if cache.get(key) == marker:
+        return False
+    refresh()
+    cache.set(key, marker, READ_REFRESH_MAX_AGE)
+    return True
+
+
+def sync_recent_on_read(
+    sites, today: datetime.date, days: int, *, company: CompanySettings | None = None
+) -> None:
+    """Bring the last ``days`` days of pay of the active ``sites`` up to date (Pay periods)."""
+    company = company or CompanySettings.load()
+    start = today - datetime.timedelta(days=days - 1)
+    for site in sites.filter(status=Site.Status.ACTIVE):
+        _refresh_on_read(
+            f"recent{days}",
+            site,
+            today,
+            lambda site=site: sync_site(site, start, today, today=today, company=company),
+        )
+
+
+def sync_sheets_on_read(
+    sites, today: datetime.date, *, company: CompanySettings | None = None
+) -> None:
+    """Bring today's cash sheet of the active ``sites`` up to date (Cash sheets)."""
+    company = company or CompanySettings.load()
+    for site in sites.filter(status=Site.Status.ACTIVE):
+        _refresh_on_read(
+            "sheet",
+            site,
+            today,
+            lambda site=site: sync_sheet(site, today, today=today, company=company),
+        )
+
+
 def on_attendance_changed(day: AttendanceDay, *, actor=None) -> None:
     """Hook for the attendance services: refresh pay after a day is approved or corrected."""
     sync_site(day.site, day.date, day.date, actor=actor)
@@ -1255,7 +1316,12 @@ def cash_sheets(
         )
 
     periods: dict[tuple, list[PayPeriod]] = defaultdict(list)
-    for period in PayPeriod.objects.filter(on_sheets("site_id", "end_date")).order_by("start_date"):
+    sheet_periods = (
+        PayPeriod.objects.filter(on_sheets("site_id", "end_date"))
+        .select_related("site")  # period_is_ready reads it for every unlocked period
+        .order_by("start_date")
+    )
+    for period in sheet_periods:
         periods[(period.site_id, period.end_date)].append(period)
     pay_lines = (
         PayLine.objects.filter(period__in=[p for group in periods.values() for p in group])
