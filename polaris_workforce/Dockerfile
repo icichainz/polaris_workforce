@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Polaris Workforce — Django office dashboard, API and worker portal (gunicorn).
-# The same image runs the web server, the message scheduler and one-off manage.py
+# The same image runs the web server, the Celery worker and beat, and one-off manage.py
 # commands; see docker/entrypoint.sh and the docker-compose.yml at the repository root.
 
 FROM python:3.12-slim
@@ -29,7 +29,7 @@ COPY . .
 RUN useradd --system --uid 10001 --home-dir /app --shell /usr/sbin/nologin app \
     && mkdir -p /data/media /data/cache /app/staticfiles \
     && chown -R app:app /data /app/staticfiles \
-    && chmod +x docker/entrypoint.sh docker/scheduler.sh
+    && chmod +x docker/entrypoint.sh
 
 USER app
 

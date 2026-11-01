@@ -17,6 +17,7 @@ from apps.attendance.models import AttendanceDay, AttendanceRecord
 from apps.core.models import AuditLog
 from apps.payroll import services
 from apps.payroll.models import Advance, AdvanceRepayment, PayLine, Payment, PayPeriod
+from apps.precompute import services as precompute
 from tests.factories import (
     AdvanceFactory,
     AttendanceDayFactory,
@@ -61,7 +62,10 @@ def hire(site, rate=6000, pay_type="daily", **worker_kwargs):
 
 
 def roll_call(site, date, marks, status=APPROVED, foreman=None):
-    """``marks``: {worker: status} or {worker: (status, arrival, departure)}."""
+    """``marks``: {worker: status} or {worker: (status, arrival, departure)}.
+
+    Built with factories, so it marks the day out of date itself, as the attendance
+    services' audit entries do (``apps.precompute``)."""
     day = AttendanceDayFactory(
         site=site, date=date, status=status, foreman=foreman or site.foremen.first()
     )
@@ -71,6 +75,7 @@ def roll_call(site, date, marks, status=APPROVED, foreman=None):
         AttendanceRecordFactory(
             day=day, worker=worker, status=mark[0], arrival=mark[1], departure=mark[2]
         )
+    precompute.mark(site.pk, date, date)
     return day
 
 

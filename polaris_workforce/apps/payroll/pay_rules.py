@@ -483,27 +483,47 @@ def employer_costs(sites, start: datetime.date, end: datetime.date, *, trade=Non
     )
     if trade is not None:
         lines = lines.filter(worker__trade=trade)
+    return employer_cost(*line_deduction_totals(lines))
+
+
+def line_deduction_totals(lines) -> tuple[dict, dict]:
+    """``(totals, by_rule)`` of a set of pay lines: ``totals`` holds ``gross``,
+    ``employee`` and ``employer``; ``by_rule`` maps each rule (``add_deductions``) to
+    ``[name, employee, employer]``."""
     totals = lines.aggregate(
         gross=Sum("gross"),
         employee=Sum("statutory_deductions"),
         employer=Sum("employer_contributions"),
     )
-    result = EmployerCost(
-        gross=totals["gross"] or 0,
-        employee=totals["employee"] or 0,
-        employer=totals["employer"] or 0,
-    )
+    totals = {key: value or 0 for key, value in totals.items()}
     by_rule: dict = defaultdict(lambda: [None, 0, 0])
     for deductions in lines.exclude(Q(deductions=[]) | Q(deductions__isnull=True)).values_list(
         "deductions", flat=True
     ):
-        for item in deductions or []:
-            key = item.get("rule_id") or item.get("name")
-            entry = by_rule[key]
-            entry[0] = entry[0] or item.get("name", "")
-            entry[1] += int(item.get("employee") or 0)
-            entry[2] += int(item.get("employer") or 0)
-    order = {r.pk: (r.order, r.name) for r in DeductionRule.objects.filter(pk__in=list(by_rule))}
+        add_deductions(by_rule, deductions)
+    return totals, by_rule
+
+
+def add_deductions(by_rule: dict, deductions) -> None:
+    """Add a pay line's ``deductions`` to ``by_rule`` (rule id, else name →
+    ``[name, employee, employer]``; ``by_rule`` is a ``defaultdict``)."""
+    for item in deductions or []:
+        key = item.get("rule_id") or item.get("name")
+        entry = by_rule[key]
+        entry[0] = entry[0] or item.get("name", "")
+        entry[1] += int(item.get("employee") or 0)
+        entry[2] += int(item.get("employer") or 0)
+
+
+def employer_cost(totals: dict, by_rule: dict) -> EmployerCost:
+    """The ``EmployerCost`` of summed ``totals`` and ``by_rule`` (rules in rule order)."""
+    result = EmployerCost(
+        gross=totals.get("gross") or 0,
+        employee=totals.get("employee") or 0,
+        employer=totals.get("employer") or 0,
+    )
+    ids = [key for key in by_rule if isinstance(key, int)]
+    order = {r.pk: (r.order, r.name) for r in DeductionRule.objects.filter(pk__in=ids)}
     for key in sorted(by_rule, key=lambda k: (order.get(k, (9999, str(k))), str(k))):
         name, employee, employer = by_rule[key]
         result.rules.append(

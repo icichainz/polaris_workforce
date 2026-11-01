@@ -33,12 +33,12 @@ import datetime
 import hashlib
 import re
 import uuid
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Max, Sum
+from django.db.models import Count, Max, Sum
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
@@ -337,12 +337,14 @@ def candidates(
     site: Site | None = None,
     *,
     today: datetime.date | None = None,
+    recompute: bool = True,
 ) -> list[Candidate]:
     """Pay lines of ``pay_date`` to pay by ``method``, on the sites where ``user`` pays out.
 
     Only open cash sheets count (every day of the period approved, not locked); lines
     already in a batch (pending or confirmed) and lines fully paid are left out. The pay is
-    brought up to date first, like opening the cash sheet.
+    brought up to date first: recomputed (``recompute``, for a batch), or like opening the
+    cash sheet, only where a change marked it out of date (the preview).
     """
     company = CompanySettings.load()
     today = today or company_today(company)
@@ -350,14 +352,17 @@ def candidates(
     if site is not None:
         sites = sites.filter(pk=site.pk)
     for active in sites.filter(status=Site.Status.ACTIVE):
-        payroll.sync_sheet(active, pay_date, today=today, company=company)
-    periods = [
-        p
-        for p in PayPeriod.objects.filter(site__in=sites, end_date=pay_date)
+        if recompute:
+            payroll.sync_sheet(active, pay_date, today=today, company=company)
+        else:
+            payroll.ensure_sheet_fresh(active, pay_date, today=today, company=company)
+    unlocked = list(
+        PayPeriod.objects.filter(site__in=sites, end_date=pay_date)
         .exclude(status=PayPeriod.Status.LOCKED)
         .select_related("site")
-        if payroll.period_is_ready(p, today, company)
-    ]
+    )
+    ready = payroll.periods_ready(unlocked, today, company)
+    periods = [p for p in unlocked if ready[p.pk]]
     lines = (
         PayLine.objects.filter(period__in=periods)
         .exclude(payout_lines__status__in=ACTIVE_LINE_STATUSES)
@@ -985,9 +990,11 @@ def transfer_state(pay_line: PayLine, company: CompanySettings | None = None):
     method = effective_method(pay_line, company)
     if method not in TRANSFER_METHODS:
         return None
-    payout_lines = list(
-        pay_line.payout_lines.select_related("batch").order_by("-created_at", "-pk")
-    )
+    # Sorted here so that lines prefetched with their batch (the cash sheet) cost nothing.
+    payout_lines = pay_line.payout_lines.all()
+    if "payout_lines" not in getattr(pay_line, "_prefetched_objects_cache", {}):
+        payout_lines = payout_lines.select_related("batch")
+    payout_lines = sorted(payout_lines, key=lambda p: (p.created_at, p.pk), reverse=True)
     active = next((p for p in payout_lines if p.status in ACTIVE_LINE_STATUSES), None)
     failed = None
     if active is None:
@@ -997,10 +1004,28 @@ def transfer_state(pay_line: PayLine, company: CompanySettings | None = None):
 
 def batch_totals(batch: PayoutBatch) -> dict[str, int]:
     """Amounts by line status, and the number of lines."""
-    rows = batch.lines.values("status").annotate(total=Sum("amount"))
-    totals = {row["status"]: row["total"] or 0 for row in rows}
-    totals["all"] = sum(v for k, v in totals.items() if k != PayoutLine.Status.CANCELLED)
-    totals["count"] = batch.lines.exclude(status=PayoutLine.Status.CANCELLED).count()
+    return batches_totals([batch])[batch.pk]
+
+
+def batches_totals(batches) -> dict[int, dict[str, int]]:
+    """``batch_totals`` of each batch, per batch id (one query for a page of batches)."""
+    rows = (
+        PayoutLine.objects.filter(batch__in=list(batches))
+        .values("batch_id", "status")
+        .annotate(total=Sum("amount"), lines=Count("pk"))
+        .order_by()
+    )
+    totals: dict[int, dict[str, int]] = {batch.pk: {} for batch in batches}
+    counts: dict[int, int] = defaultdict(int)
+    for row in rows:
+        totals[row["batch_id"]][row["status"]] = row["total"] or 0
+        if row["status"] != PayoutLine.Status.CANCELLED:
+            counts[row["batch_id"]] += row["lines"]
+    for batch_id, batch_totals_ in totals.items():
+        batch_totals_["all"] = sum(
+            v for k, v in batch_totals_.items() if k != PayoutLine.Status.CANCELLED
+        )
+        batch_totals_["count"] = counts[batch_id]
     return totals
 
 

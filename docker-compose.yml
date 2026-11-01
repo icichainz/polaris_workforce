@@ -4,9 +4,10 @@
 #   docker compose up -d --build    # http://localhost:8080
 #   docker compose run --rm web manage seed_demo      # optional demo data
 #
-# Services: nginx (entry point) → web (Django + gunicorn) and tracker (Gleam);
-# scheduler runs the messaging jobs. Data lives in the `data` volume (SQLite in WAL
-# mode, uploads, throttle cache). The Flutter foreman app is not a server: point it at
+# Services: nginx (entry point) → web (Django + gunicorn) and tracker (Gleam); worker
+# (Celery) rebuilds pay figures in the background and runs the jobs beat schedules
+# (messaging, refresh_precomputed); redis is their queue. Data lives in the `data` volume
+# (SQLite in WAL mode, uploads, throttle cache). The Flutter foreman app is not a server: point it at
 # http://<this machine>:8080/api/v1/ (see docs/docker.md).
 
 x-django-env: &django-env
@@ -28,6 +29,7 @@ x-django-env: &django-env
   PROTECTED_MEDIA_INTERNAL_URL: /protected-media/
   DEVICE_TOKEN_IDLE_DAYS: ${DEVICE_TOKEN_IDLE_DAYS:-30}
   MESSAGING_PROVIDER: ${MESSAGING_PROVIDER:-log}
+  CELERY_BROKER_URL: redis://redis:6379/0
 
 services:
   web:
@@ -42,14 +44,46 @@ services:
       - "8000"
     restart: unless-stopped
 
-  scheduler:
+  # The queue only: a lost task costs a rebuild a few minutes later (beat's periodic
+  # run, or the next screen that reads the site), so nothing is persisted.
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    expose:
+      - "6379"
+    restart: unless-stopped
+
+  worker:
     build: ./polaris_workforce
     image: polaris-workforce:latest
-    command: ["scheduler"]
-    environment: *django-env
+    command: ["worker"]
+    environment:
+      <<: *django-env
+      CELERY_CONCURRENCY: ${CELERY_CONCURRENCY:-2}
     volumes:
       - data:/data
+    healthcheck:
+      test: ["CMD", "celery", "-A", "config", "inspect", "ping", "--timeout", "5"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
     depends_on:
+      redis:
+        condition: service_started
+      web:
+        condition: service_healthy  # migrations ran
+    restart: unless-stopped
+
+  beat:
+    build: ./polaris_workforce
+    image: polaris-workforce:latest
+    command: ["beat"]
+    environment: *django-env
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_started
       web:
         condition: service_healthy
     restart: unless-stopped

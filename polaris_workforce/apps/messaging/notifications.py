@@ -145,7 +145,9 @@ class _Run:
             .distinct()
             .order_by("pk")
         )
+        workers = list(workers)
         managers = [user for user in self.users if can(user, GIVE_ADVANCES)]
+        sites = payroll_services.current_sites([worker.pk for worker in workers], self.today)
         queued = 0
         for worker in workers:
             check = payroll_services.advance_check(
@@ -153,7 +155,7 @@ class _Run:
             )
             if check.limit_amount <= 0 or check.owed * 100 < check.limit_amount * warn:
                 continue
-            site = payroll_services.current_site(worker, self.today)
+            site = sites.get(worker.pk)
             context = {
                 "worker": worker.full_name,
                 "owed": format_amount(check.owed, self.company),

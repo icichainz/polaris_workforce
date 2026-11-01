@@ -6,7 +6,9 @@ One command starts the whole platform on a machine with Docker:
 | --- | --- | --- |
 | `nginx` | Entry point: static files, protected uploads, proxies the rest | `http://localhost:8080` |
 | `web` | Django (office dashboard, worker portal `/portal/`, phone API `/api/v1/`) under gunicorn; runs migrations and `collectstatic` on start | through nginx |
-| `scheduler` | `send_messages` every 2 min, `send_notifications` every 15 min | – |
+| `worker` | Celery worker: rebuilds a site's pay once a change to it commits, and runs the jobs `beat` sends | – |
+| `beat` | Celery beat: `send_messages` every 2 min, `send_notifications` every 15 min, `refresh_precomputed` every 5 min and its sweep at 00:30 | – |
+| `redis` | The queue between `web`, `beat` and `worker` (nothing kept on disk) | – |
 | `tracker` | Gleam presence tracker (prototype) | `http://localhost:8080/tracker/` |
 
 Data (SQLite in WAL mode, uploads, throttle cache) lives in the `data` volume; collected
@@ -50,7 +52,7 @@ the app refuse plain HTTP: use HTTPS for real phones.
 ## Everyday commands
 
 ```sh
-docker compose logs -f web scheduler        # app and job logs (the "log" messaging provider writes texts here)
+docker compose logs -f web worker beat     # app and job logs (the "log" messaging provider writes texts here)
 docker compose run --rm web manage <command>
 docker compose up -d --build                # after pulling new code (migrations run on start)
 docker compose down                         # stop; data stays in the volumes

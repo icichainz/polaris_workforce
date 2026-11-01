@@ -99,8 +99,9 @@ def batches(request):
     page = Paginator(rows.order_by("-pay_date", "-number"), PAGE_SIZE).get_page(
         request.GET.get("page")
     )
+    totals = services.batches_totals(page)
     for batch in page:
-        batch.totals = services.batch_totals(batch)
+        batch.totals = totals[batch.pk]
     can_prepare = services.payout_sites(request.user).exists()
     form = (
         _prepare_form(request, initial={"pay_date": today, "method": TransferMethod.MOBILE_MONEY})
@@ -160,7 +161,9 @@ def prepare(request):
             )
         messages.success(request, _("Batch %(ref)s prepared.") % {"ref": batch.reference})
         return redirect(_batch_url(batch))
-    found = services.candidates(request.user, data["pay_date"], data["method"], data["site"])
+    found = services.candidates(
+        request.user, data["pay_date"], data["method"], data["site"], recompute=False
+    )
     ready = [c for c in found if c.ready]
     return render(
         request,

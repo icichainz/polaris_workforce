@@ -12,6 +12,7 @@ Which data counts:
   their pay and the employer contributions on top; for the company, the employer cost
   (labour cost + employer contributions) and the split per deduction rule
   (``apps.payroll.pay_rules.employer_costs``).
+- Whole months are read from rollups built ahead of time (``rollups``), the rest live.
 - Every query is limited to the sites passed in, which callers take from
   ``scoped_sites(user)``.
 """
@@ -30,8 +31,17 @@ from apps.attendance.models import AttendanceDay, AttendanceRecord
 from apps.core.models import CompanySettings
 from apps.core.money import from_minor
 from apps.payroll.models import PayLine
-from apps.payroll.pay_rules import EmployerCost, employer_costs
+from apps.payroll.pay_rules import EmployerCost, employer_cost, line_deduction_totals
+from apps.precompute.models import (
+    DeductionTotal,
+    ReportMonth,
+    SiteDayCounts,
+    Stale,
+    WorkerMonth,
+)
+from apps.worksites.models import Site
 
+from . import rollups
 from .services import worker_days
 
 Status = AttendanceRecord.Status
@@ -154,23 +164,32 @@ def build_report(
     trade=None,
     company: CompanySettings | None = None,
 ) -> Report:
-    """The report for ``sites`` (a queryset or list of sites) between two dates inclusive."""
+    """The report for ``sites`` (a queryset or list of sites) between two dates inclusive.
+
+    Whole months already rolled up (``rollups``) are read from the rollups; the rest of
+    the range (the months at its ends, months not built yet) from the records and pay
+    lines. Both give the same figures.
+    """
     company = company or CompanySettings.load()
     half_units = company.half_day_units
     site_ids = [getattr(site, "pk", site) for site in sites]
+    trade_id = getattr(trade, "pk", trade)
+    covered = _covered_months(site_ids, start, end)
+    live = _uncovered_ranges(site_ids, start, end, covered)
 
     records = AttendanceRecord.objects.filter(
-        day__site__in=site_ids,
-        day__date__gte=start,
-        day__date__lte=end,
-        day__status__in=REPORTED_DAY_STATUSES,
+        _on_ranges(live, "day__site_id", "day__date"), day__status__in=REPORTED_DAY_STATUSES
     )
-    lines = PayLine.objects.filter(
-        period__site__in=site_ids, period__end_date__gte=start, period__end_date__lte=end
-    )
-    if trade is not None:
-        records = records.filter(worker__trade=trade)
-        lines = lines.filter(worker__trade=trade)
+    lines = PayLine.objects.filter(_on_ranges(live, "period__site_id", "period__end_date"))
+    worker_months = WorkerMonth.objects.filter(_on_months(covered))
+    day_counts = SiteDayCounts.objects.filter(_on_covered_days(covered))
+    deduction_totals = DeductionTotal.objects.filter(_on_months(covered))
+    if trade_id is not None:
+        records = records.filter(worker__trade_id=trade_id)
+        lines = lines.filter(worker__trade_id=trade_id)
+        worker_months = worker_months.filter(trade_id=trade_id)
+        day_counts = day_counts.filter(trade_id=trade_id)
+        deduction_totals = deduction_totals.filter(trade_id=trade_id)
 
     status_counts = {
         "present": Count("id", filter=Q(status=Status.PRESENT)),
@@ -200,46 +219,81 @@ def build_report(
             )
         return rows[key]
 
+    def add_attendance(row: WorkerRow, values) -> None:
+        row.present += values["present"] or 0
+        row.half += values["half"] or 0
+        row.late += values["late"] or 0
+        row.absent += values["absent"] or 0
+
+    def add_pay(row: WorkerRow, values) -> None:
+        row.earned += values["earned"] or 0
+        row.statutory += values["statutory"] or 0
+        row.employer += values["employer"] or 0
+
     for values in (
         records.values(*worker_fields, "day__site_id", "day__site__name")
         .annotate(**status_counts)
         .order_by()
     ):
-        row = row_for(values, values["day__site_id"], values["day__site__name"])
-        row.present, row.half = values["present"], values["half"]
-        row.late, row.absent = values["late"], values["absent"]
-        row.days = worker_days(row.present, row.late, row.half, half_units)
-
+        add_attendance(row_for(values, values["day__site_id"], values["day__site__name"]), values)
     for values in (
         lines.values(*worker_fields, "period__site_id", "period__site__name")
         .annotate(
-            gross=Sum(F("gross") + F("adjustment")),
+            earned=Sum(F("gross") + F("adjustment")),
             statutory=Sum("statutory_deductions"),
             employer=Sum("employer_contributions"),
         )
         .order_by()
     ):
-        row = row_for(values, values["period__site_id"], values["period__site__name"])
-        row.earned = values["gross"] or 0
-        row.statutory = values["statutory"] or 0
-        row.employer = values["employer"] or 0
+        add_pay(row_for(values, values["period__site_id"], values["period__site__name"]), values)
+    for values in (
+        worker_months.values(*worker_fields, "site_id", "site__name")
+        .annotate(
+            present=Sum("present"),
+            half=Sum("half"),
+            late=Sum("late"),
+            absent=Sum("absent"),
+            earned=Sum("earned"),
+            statutory=Sum("statutory"),
+            employer=Sum("employer"),
+        )
+        .order_by()
+    ):
+        row = row_for(values, values["site_id"], values["site__name"])
+        add_attendance(row, values)
+        add_pay(row, values)
+    for row in rows.values():
+        row.days = worker_days(row.present, row.late, row.half, half_units)
 
     workers = sorted(rows.values(), key=lambda row: (row.name.lower(), row.number, row.site_name))
 
     # Labour cost by site.
-    costs: dict[int, SiteCost] = {}
-    for values in (
-        lines.values("period__site_id", "period__site__name", "period__site__labour_budget")
+    cost_by_site: dict[int, int] = defaultdict(int)
+    for site_id, cost in (
+        lines.values("period__site_id")
         .annotate(cost=Sum(F("gross") + F("adjustment")))
         .order_by()
+        .values_list("period__site_id", "cost")
     ):
-        costs[values["period__site_id"]] = SiteCost(
-            site_id=values["period__site_id"],
-            name=values["period__site__name"],
-            cost=values["cost"] or 0,
-            budget=values["period__site__labour_budget"],
+        cost_by_site[site_id] += cost or 0
+    for site_id, cost in (
+        worker_months.filter(pay_lines__gt=0)  # sites with pay, as the live lines count
+        .values("site_id")
+        .annotate(cost=Sum("earned"))
+        .order_by()
+        .values_list("site_id", "cost")
+    ):
+        cost_by_site[site_id] += cost or 0
+    by_site = [
+        SiteCost(
+            site_id=site.pk,
+            name=site.name,
+            cost=cost_by_site[site.pk],
+            budget=site.labour_budget,
         )
-    by_site = sorted(costs.values(), key=lambda item: (-item.cost, item.name))
+        for site in Site.objects.filter(pk__in=list(cost_by_site)).only("name", "labour_budget")
+    ]
+    by_site.sort(key=lambda item: (-item.cost, item.name))
     top = max((item.cost for item in by_site), default=0)
     for item in by_site:
         item.width_percent = round(100 * item.cost / top) if top else 0
@@ -249,6 +303,17 @@ def build_report(
     for values in records.values("day__date", "status").annotate(n=Count("id")).order_by():
         iso = values["day__date"].isocalendar()
         weekly[(iso.year, iso.week)][values["status"]] += values["n"]
+    for values in (
+        day_counts.values("date")
+        .annotate(present=Sum("present"), half=Sum("half"), late=Sum("late"), absent=Sum("absent"))
+        .order_by()
+    ):
+        iso = values["date"].isocalendar()
+        week = weekly[(iso.year, iso.week)]
+        week[Status.PRESENT] += values["present"] or 0
+        week[Status.HALF_DAY] += values["half"] or 0
+        week[Status.LATE] += values["late"] or 0
+        week[Status.ABSENT] += values["absent"] or 0
     by_week = []
     week_start = start - datetime.timedelta(days=start.weekday())
     while week_start <= end:
@@ -273,6 +338,21 @@ def build_report(
         )
         week_start += datetime.timedelta(days=7)
 
+    # Statutory deductions: the live lines' own, plus the rolled-up totals.
+    totals, by_rule = line_deduction_totals(lines)
+    rolled = worker_months.aggregate(
+        gross=Sum("gross"), employee=Sum("statutory"), employer=Sum("employer")
+    )
+    for key in totals:
+        totals[key] += rolled[key] or 0
+    for rule_key, name, employee, employer in deduction_totals.values_list(
+        "rule_key", "name", "employee", "employer"
+    ):
+        entry = by_rule[int(rule_key) if rule_key.isdigit() else rule_key]
+        entry[0] = entry[0] or name
+        entry[1] += employee
+        entry[2] += employer
+
     return Report(
         start=start,
         end=end,
@@ -284,8 +364,101 @@ def build_report(
         by_site=by_site,
         by_week=by_week,
         workers=workers,
-        employer_cost=employer_costs(site_ids, start, end, trade=trade),
+        employer_cost=employer_cost(totals, by_rule),
     )
+
+
+# --- which part of the range the rollups cover -------------------------------------------
+
+
+def _covered_months(site_ids, start, end) -> dict[int, list[datetime.date]]:
+    """``{site_id: [month, …]}``: the whole months of the range whose rollups are current:
+    built, not flagged since (a pay period of the month changed), and not in the dates a
+    change marked out of date and the rebuild has not reached yet. The rest is read live,
+    so reading a report never waits for a rebuild nor starts one."""
+    months = [
+        month
+        for month in rollups.months_between(start, end)
+        if month >= start and rollups.month_end(month) <= end
+    ]
+    covered: dict[int, list[datetime.date]] = defaultdict(list)
+    if not months:
+        return covered
+    marked = {stale.site_id: stale for stale in Stale.objects.filter(site_id__in=site_ids)}
+    for site_id, month in ReportMonth.objects.filter(
+        site_id__in=site_ids, month__in=months, stale=False
+    ).values_list("site_id", "month"):
+        if not _marked_in(marked.get(site_id), month):
+            covered[site_id].append(month)
+    return covered
+
+
+def _marked_in(mark, month: datetime.date) -> bool:
+    """A change marked dates of ``month`` out of date (``Stale``), not rebuilt yet."""
+    if mark is None:
+        return False
+    starts_before_its_end = mark.start is None or mark.start <= rollups.month_end(month)
+    return starts_before_its_end and mark.end >= month
+
+
+def _uncovered_ranges(site_ids, start, end, covered) -> dict[int, list[tuple]]:
+    """``{site_id: [(first, last), …]}``: the dates of the range read live."""
+    ranges: dict[int, list[tuple]] = {}
+    for site_id in site_ids:
+        gaps, cursor = [], start
+        for month in sorted(covered.get(site_id, [])):
+            if cursor < month:
+                gaps.append((cursor, month - datetime.timedelta(days=1)))
+            cursor = rollups.month_end(month) + datetime.timedelta(days=1)
+        if cursor <= end:
+            gaps.append((cursor, end))
+        if gaps:
+            ranges[site_id] = gaps
+    return ranges
+
+
+# The conditions below are ORs, one term per date range or month (sites with the same
+# one share it): SQLite nests an OR per term and refuses past 1000, so a term per site
+# and month would break a company-wide report over a few years.
+
+
+def _by_value(items: dict) -> dict:
+    """``{site_id: [value, …]}`` → ``{value: [site_id, …]}``."""
+    grouped: dict = defaultdict(list)
+    for site_id, values in items.items():
+        for value in values:
+            grouped[value].append(site_id)
+    return grouped
+
+
+def _on_ranges(ranges, site_field: str, date_field: str) -> Q:
+    """Rows of the sites' date ranges (none when there is no range)."""
+    found = Q(pk__in=[])
+    for (first, last), site_ids in _by_value(ranges).items():
+        found |= Q(
+            **{
+                f"{site_field}__in": site_ids,
+                f"{date_field}__gte": first,
+                f"{date_field}__lte": last,
+            }
+        )
+    return found
+
+
+def _on_months(covered) -> Q:
+    """Rollup rows of the sites' covered months."""
+    found = Q(pk__in=[])
+    for month, site_ids in _by_value(covered).items():
+        found |= Q(site_id__in=site_ids, month=month)
+    return found
+
+
+def _on_covered_days(covered) -> Q:
+    """Day counts of the sites' covered months."""
+    found = Q(pk__in=[])
+    for month, site_ids in _by_value(covered).items():
+        found |= Q(site_id__in=site_ids, date__gte=month, date__lte=rollups.month_end(month))
+    return found
 
 
 def _plain_days(value: Decimal) -> str:

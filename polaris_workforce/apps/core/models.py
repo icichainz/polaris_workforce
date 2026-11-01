@@ -12,7 +12,6 @@ from django.db import models
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 
-from . import changes
 from .choices import (
     AttendanceMode,
     Language,
@@ -23,7 +22,7 @@ from .choices import (
     PayType,
     ProofType,
 )
-from .tenancy import current_company, current_company_id
+from .tenancy import current_company, current_company_id, request_memo
 from .validators import validate_time_zone
 
 
@@ -144,7 +143,6 @@ class AuditLog(models.Model):
 
         The entry belongs to ``company``, else the current company, else the actor's or
         the target's company (sign-in lockouts run before any company is current).
-        It moves the company's change marker (``apps.core.changes``).
         """
         company_id = getattr(company, "pk", company) or current_company_id()
         if company_id is None:
@@ -160,8 +158,7 @@ class AuditLog(models.Model):
         if target is not None:
             entry.content_type = ContentType.objects.get_for_model(target)
             entry.object_id = str(target.pk)
-        entry.save()
-        changes.mark_changed(company_id)
+        entry.save()  # apps.precompute marks what it changed (post_save)
         return entry
 
 
@@ -296,6 +293,12 @@ class CompanySettings(TimeStampedModel):
     def __str__(self) -> str:
         return str(self.company_name or _("Company settings"))
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        memo = request_memo()  # the request's shared copy (``load``) is now this one
+        if memo is not None and (CompanySettings, self.company_id) in memo:
+            memo[(CompanySettings, self.company_id)] = self
+
     def clean(self):
         super().clean()
         errors = {}
@@ -318,18 +321,30 @@ class CompanySettings(TimeStampedModel):
             raise ValidationError(errors)
 
     @classmethod
-    def load(cls, company=None) -> "CompanySettings":
+    def load(cls, company=None, *, fresh: bool = False) -> "CompanySettings":
         """The settings of ``company`` (a ``Company`` or its id), else of the current
         company; created with the defaults if needed. Raises ``NoCurrentCompany`` when
-        there is no company to read."""
+        there is no company to read.
+
+        In a request they are read once and shared (``tenancy.request_memo``); saving
+        them updates the shared copy. ``fresh``: a copy of their own, for a form that
+        edits them (a form changes its instance even when it is invalid).
+        """
         if company is None:
             company = current_company()
+        company_id = company.pk if isinstance(company, Company) else company
+        memo = None if fresh else request_memo()
+        key = (cls, company_id)
+        if memo is not None and key in memo:
+            return memo[key]
         if isinstance(company, Company):
             obj, _created = cls.objects.get_or_create(
                 company=company, defaults={"company_name": company.name}
             )
-            return obj
-        obj, _created = cls.objects.get_or_create(company_id=company)
+        else:
+            obj, _created = cls.objects.get_or_create(company_id=company)
+        if memo is not None:
+            memo[key] = obj
         return obj
 
     def holiday_dates(self) -> set[datetime.date]:

@@ -9,7 +9,7 @@ import datetime
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.translation import gettext as _
@@ -272,11 +272,12 @@ def site_detail(request, pk):
     )
     foremen = list(site.foremen.order_by("first_name", "last_name"))
 
+    # The Reports rule: pay days this month, with the correction adjustments.
     month_start = today.replace(day=1)
     labour_cost = (
         PayLine.objects.filter(
-            period__site=site, period__start_date__gte=month_start, period__start_date__lte=today
-        ).aggregate(total=Sum("gross"))["total"]
+            period__site=site, period__end_date__gte=month_start, period__end_date__lte=today
+        ).aggregate(total=Sum(F("gross") + F("adjustment")))["total"]
         or 0
     )
 

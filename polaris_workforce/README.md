@@ -43,7 +43,7 @@ checklist in `docs/security-review.md`.
 
 ## Deployment notes
 
-To run the whole platform (Django, scheduler, nginx, tracker) with Docker Compose, see
+To run the whole platform (Django, Celery, Redis, nginx, tracker) with Docker Compose, see
 [`docs/docker.md`](../docs/docker.md).
 
 Static files are collected with hashed names (`app.3f2a9c81d0e4.css`, Django's
@@ -54,22 +54,48 @@ with `Cache-Control: public, max-age=31536000, immutable`; `docker/nginx/default
 does both. Office pages are 5–10 times smaller compressed, which is most of the wait on
 mobile data.
 
-Besides the production checklist in `docs/security-review.md`, two commands must run
-from cron (as the app user, with the production environment) once messaging is on:
+Besides the production checklist in `docs/security-review.md`, background jobs run on
+Celery with Redis as the broker. Next to the web server (as the app user, with the
+production environment and `CELERY_BROKER_URL=redis://…`), run a worker and beat:
 
-```cron
-*/15 * * * *  cd /srv/polaris/polaris_workforce && .venv/bin/python manage.py send_notifications
-*/2 * * * *   cd /srv/polaris/polaris_workforce && .venv/bin/python manage.py send_messages
+```sh
+celery -A config worker --loglevel INFO --concurrency 2
+celery -A config beat --loglevel INFO
 ```
+
+Keep the worker small (`--concurrency 2`): every task writes to the one SQLite file.
+Beat sends the periodic jobs (`CELERY_BEAT_SCHEDULE` in `config/settings.py`); each is a
+management command that can also be run by hand:
 
 - `send_notifications` (every 15 minutes) checks each active company's notification
   rules (missing roll call, days waiting for approval, unclosed cash sheets, advances
   near their limit) and queues the texts; it also sends what is due.
 - `send_messages` (every 2 minutes) only flushes the outbox: payslip texts, portal PINs
   and retries (with backoff, outside quiet hours).
+- `refresh_precomputed` (every 5 minutes, and with `--sweep` at 00:30) is the fallback of
+  the pay rebuilds, below.
 - The default provider (`MESSAGING_PROVIDER=log`) sends nothing: it writes each text and
   phone number to the `polaris.messaging` log. Set a log retention, or a real provider,
   before go-live (see the security review).
+
+Pay and the figures built from it are rebuilt in the background, only where something
+changed (`apps/precompute`):
+
+- A change to attendance or pay marks its site and dates out of date. Once it commits,
+  the worker rebuilds that site (`precompute.rebuild_site`, after
+  `PRECOMPUTE_REBUILD_DELAY` seconds; one rebuild however many changes come in).
+- `refresh_precomputed` rebuilds any site still marked (a rebuild that was lost, Redis
+  down) and each active site once a new day starts. The screens never wait for it: they
+  rebuild a marked site before reading it, so figures are right even with no worker,
+  only the first read after a change is slower.
+- `--sweep` (nightly) rebuilds every open pay period and lists, in the
+  `polaris.precompute` warnings and the admin's refresh runs, anything that changed
+  without a mark: a write that bypassed the services and the audit log.
+
+Locally, without Redis, leave `CELERY_BROKER_URL` empty: nothing is queued and the
+screens rebuild what they read. To try the worker, run `redis-server`, export
+`CELERY_BROKER_URL=redis://localhost:6379/0` and start the two commands above with
+`uv run`.
 
 ## CSS (Tailwind v4)
 

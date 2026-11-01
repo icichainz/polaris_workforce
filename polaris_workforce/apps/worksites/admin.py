@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 
+from apps.core.admin import AuditedAdmin
+
 from .models import Site, SiteAssignment
 
 
@@ -12,7 +14,7 @@ class SiteAssignmentInline(admin.TabularInline):
 
 
 @admin.register(Site)
-class SiteAdmin(admin.ModelAdmin):
+class SiteAdmin(AuditedAdmin):
     list_display = ("name", "company", "status", "manager", "started_on", "labour_budget")
     list_filter = ("company", "status", "started_on")
     search_fields = ("name", "address", "manager__username", "manager__last_name")
@@ -46,7 +48,7 @@ class SiteAdmin(admin.ModelAdmin):
 
 
 @admin.register(SiteAssignment)
-class SiteAssignmentAdmin(admin.ModelAdmin):
+class SiteAssignmentAdmin(AuditedAdmin):
     list_display = ("worker", "site", "start_date", "end_date")
     list_filter = ("site", "start_date")
     search_fields = ("worker__number", "worker__first_name", "worker__last_name", "site__name")

@@ -7,7 +7,7 @@ later, payroll.
 from __future__ import annotations
 
 import datetime
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 
 from django.utils import timezone
@@ -69,10 +69,37 @@ def payout_status(day: AttendanceDay | None) -> str:
         return "not_open"
     if day.status not in (AttendanceDay.Status.APPROVED, AttendanceDay.Status.LOCKED):
         return "not_open"
-    # Imported here: payroll's services import the attendance modules.
-    from apps.payroll.services import sheet_status
+    return payout_statuses([day])[day.pk]
 
-    return sheet_status(day.site, day.date)
+
+def payout_statuses(days) -> dict[int, str]:
+    """``payout_status`` of each day, per day id (the cash sheets are read together)."""
+    # Imported here: payroll's services import the attendance modules.
+    from apps.payroll.services import sheet_statuses
+
+    open_days = [
+        day
+        for day in days
+        if day.pk is not None
+        and day.status in (AttendanceDay.Status.APPROVED, AttendanceDay.Status.LOCKED)
+    ]
+    sheets = sheet_statuses([(day.site_id, day.date) for day in open_days])
+    statuses = {day.pk: "not_open" for day in days if day.pk is not None}
+    statuses.update({day.pk: sheets[(day.site_id, day.date)] for day in open_days})
+    return statuses
+
+
+def expected_for_days(days) -> dict[int, set[int]]:
+    """``expected_worker_ids`` of each day, per day id (one crew query per site)."""
+    by_site = defaultdict(list)
+    for day in days:
+        by_site[day.site_id].append(day)
+    expected = {}
+    for site_days in by_site.values():
+        dates = [day.date for day in site_days]
+        crews = crew_ids_by_date(site_days[0].site, min(dates), max(dates))
+        expected.update({day.pk: crews[day.date] for day in site_days})
+    return expected
 
 
 # --- Sync ------------------------------------------------------------------------------

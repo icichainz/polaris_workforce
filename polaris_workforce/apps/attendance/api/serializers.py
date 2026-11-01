@@ -194,9 +194,17 @@ def record_payload(record: AttendanceRecord) -> dict:
     }
 
 
-def day_payload(site, date, day, expected_ids: set[int], records, *, with_records=False) -> dict:
-    """One day summary (``not_started`` when ``day`` is None)."""
+def day_payload(
+    site, date, day, expected_ids: set[int], records, *, with_records=False, payout_status=None
+) -> dict:
+    """One day summary (``not_started`` when ``day`` is None).
+
+    ``payout_status``: the day's, when the caller read it with others
+    (``selectors.payout_statuses``); else it is read here.
+    """
     records = list(records)
+    if payout_status is None:
+        payout_status = selectors.payout_status(day)
     data = {
         "id": day.pk if day else None,
         "site_id": site.pk,
@@ -209,7 +217,7 @@ def day_payload(site, date, day, expected_ids: set[int], records, *, with_record
         "approved_by": person(day.approved_by) if day else None,
         "rejection_note": day.rejection_note if day else "",
         "counts": selectors.day_counts(expected_ids, records),
-        "payout_status": selectors.payout_status(day),
+        "payout_status": payout_status,
         "updated_at": day.updated_at if day else None,
     }
     if with_records:
