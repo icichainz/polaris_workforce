@@ -10,7 +10,7 @@
 {% endblock %}
 
 {% block content %}
-  <section class="overflow-x-auto rounded-card border border-line bg-white" aria-labelledby="users-heading">
+  <section class="overflow-x-auto rounded-card border border-line bg-surface" aria-labelledby="users-heading">
     <h2 id="users-heading" class="sr-only">{% translate "Users" %}</h2>
     <table class="w-full min-w-[820px] border-collapse text-sm">
       <thead>
@@ -31,7 +31,7 @@
               <span class="text-xs text-steel">{% if row.uses_pin %}{{ row.user.phone|default:row.user.email }}{% else %}{{ row.user.email|default:row.user.phone }}{% endif %}</span>
             </td>
             <td class="px-4 py-3">
-              <span class="inline-flex h-[26px] items-center whitespace-nowrap rounded-full px-2.5 text-[13px] font-semibold {% if row.role == 'admin' %}bg-ink text-white{% elif row.role == 'site_manager' %}bg-late-bg text-late-fg{% elif row.role == 'foreman' %}bg-warning-bg text-warning-fg{% else %}bg-draft-bg text-draft-fg{% endif %}">{{ row.role_label }}</span>
+              <span class="inline-flex h-[26px] items-center whitespace-nowrap rounded-full px-2.5 text-[13px] font-semibold {% if row.role == 'admin' %}bg-ink text-on-ink{% elif row.role == 'site_manager' %}bg-late-bg text-late-fg{% elif row.role == 'foreman' %}bg-warning-bg text-warning-fg{% else %}bg-draft-bg text-draft-fg{% endif %}">{{ row.role_label }}</span>
             </td>
             <td class="px-4 py-3">
               {% if row.sites is None %}{% if row.role == 'accountant' %}{% translate "All (read)" %}{% else %}{% translate "All" %}{% endif %}{% elif row.sites %}{{ row.sites|join:", " }}{% else %}<span class="text-steel">{% translate "None yet" %}</span>{% endif %}
@@ -42,7 +42,7 @@
             <td class="px-4 py-3 text-ink-700">{% if row.last_active %}{{ row.last_active|date:_("j M Y H:i") }}{% else %}—{% endif %}</td>
             <td class="px-5 py-3 text-right">
               {% url 'accounts:user_edit' pk=row.user.pk as edit_url %}
-              <a href="{{ edit_url }}" class="inline-flex h-8 items-center rounded-md border border-line-strong bg-white px-2.5 text-[13px] font-semibold text-ink no-underline hover:bg-ground hover:text-ink">{% translate "Edit" %}<span class="sr-only"> {{ row.user }}</span></a>
+              <a href="{{ edit_url }}" class="inline-flex h-8 items-center rounded-md border border-line-strong bg-surface px-2.5 text-[13px] font-semibold text-ink no-underline hover:bg-ground hover:text-ink">{% translate "Edit" %}<span class="sr-only"> {{ row.user }}</span></a>
             </td>
           </tr>
         {% endfor %}
@@ -50,7 +50,7 @@
     </table>
   </section>
 
-  <section class="rounded-card border border-line bg-white" aria-labelledby="matrix-heading">
+  <section class="rounded-card border border-line bg-surface" aria-labelledby="matrix-heading">
     <div class="flex flex-col gap-1 border-b border-line px-5 py-4">
       <h2 id="matrix-heading" class="font-display text-lg font-bold">{% translate "What each role can do" %}</h2>
       <p class="text-[13px] text-steel">{% translate "Site managers and foremen only see the sites they are assigned to." %}</p>

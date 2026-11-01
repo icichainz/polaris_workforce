@@ -19,7 +19,7 @@ paid or locked), `can_manage`, `piece_form`, `bonus_form`, `stoppage_form`, `she
     {% include "components/alert.html" with variant="info" title=title message=message only %}
   {% endif %}
 
-  <section aria-labelledby="stoppage-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4">
+  <section aria-labelledby="stoppage-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4">
     <h2 id="stoppage-title" class="font-display text-lg font-bold">{% translate "Stoppage day" %}</h2>
     {% if extras.stoppage %}
       <p class="text-sm"><strong>{{ extras.stoppage.reason }}</strong> · {% if extras.stoppage.pay == "fixed" %}{% blocktranslate with amount=extras.stoppage.amount|money:company %}workers present get {{ amount }}{% endblocktranslate %}{% else %}{% blocktranslate with percent=extras.stoppage.percent|num %}workers present get {{ percent }} % of their day{% endblocktranslate %}{% endif %}</p>
@@ -47,7 +47,7 @@ paid or locked), `can_manage`, `piece_form`, `bonus_form`, `stoppage_form`, `she
     {% endif %}
   </section>
 
-  <section aria-labelledby="piece-title" class="rounded-card border border-line bg-white">
+  <section aria-labelledby="piece-title" class="rounded-card border border-line bg-surface">
     <div class="border-b border-line px-5 py-3.5">
       <h2 id="piece-title" class="font-display text-lg font-bold">{% translate "Piece work" %}</h2>
       <p class="text-sm text-ink-700">{% translate "Paid once the day's roll call is approved." %}</p>
@@ -83,7 +83,7 @@ paid or locked), `can_manage`, `piece_form`, `bonus_form`, `stoppage_form`, `she
     {% endif %}
   </section>
 
-  <section aria-labelledby="bonus-title" class="rounded-card border border-line bg-white">
+  <section aria-labelledby="bonus-title" class="rounded-card border border-line bg-surface">
     <div class="border-b border-line px-5 py-3.5">
       <h2 id="bonus-title" class="font-display text-lg font-bold">{% translate "Bonuses" %}</h2>
       <p class="text-sm text-ink-700">{% translate "A one-off amount, added to the worker's next pay at this site." %}</p>

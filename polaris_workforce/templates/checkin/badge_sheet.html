@@ -6,6 +6,7 @@ browser (margins: default; background graphics not needed).
 {% endcomment %}
 
 {% block title %}{% translate "Badges" %} · Polaris Workforce{% endblock %}
+{% block theme %}light{% endblock %}{# paper and QR codes: always the light theme #}
 {% block head %}<style>@page { size: A4; margin: 10mm; }</style>{% endblock %}
 
 {% block body %}
@@ -13,7 +14,7 @@ browser (margins: default; background graphics not needed).
   <p class="text-sm text-ink-700">{% blocktranslate count n=count %}{{ n }} badge to print{% plural %}{{ n }} badges to print{% endblocktranslate %}{% if site %} · {{ site.name }}{% endif %}</p>
   <div class="flex gap-2">
     {% translate "Back to badges" as back_label %}{% url "checkin:badges" as back_url %}{% include "components/button.html" with label=back_label href=back_url only %}
-    <button type="button" onclick="window.print()" class="inline-flex h-10 items-center justify-center rounded-control bg-amber-500 px-4 text-sm font-semibold text-ink hover:brightness-95">{% translate "Print" %}</button>
+    <button type="button" onclick="window.print()" class="inline-flex h-10 items-center justify-center rounded-control bg-amber-500 px-4 text-sm font-semibold text-on-primary hover:brightness-95">{% translate "Print" %}</button>
   </div>
 </div>
 

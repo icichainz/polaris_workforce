@@ -7,7 +7,7 @@ the language cookie and wins over the company language). Big, glove-safe buttons
   {% csrf_token %}
   <input type="hidden" name="next" value="{{ request.get_full_path }}">
   <button type="submit" name="language" value="en" lang="en" aria-pressed="{% if LANGUAGE_CODE == 'en' %}true{% else %}false{% endif %}"
-    class="h-12 min-w-12 rounded-control border px-3 text-[15px] font-semibold {% if LANGUAGE_CODE == 'en' %}border-ink bg-ink text-white{% else %}border-line-strong bg-white text-ink hover:bg-ground{% endif %}"><span aria-hidden="true">EN</span><span class="sr-only">English</span></button>
+    class="h-12 min-w-12 rounded-control border px-3 text-[15px] font-semibold {% if LANGUAGE_CODE == 'en' %}border-ink bg-ink text-on-ink{% else %}border-line-strong bg-surface text-ink hover:bg-ground{% endif %}"><span aria-hidden="true">EN</span><span class="sr-only">English</span></button>
   <button type="submit" name="language" value="fr" lang="fr" aria-pressed="{% if LANGUAGE_CODE == 'fr' %}true{% else %}false{% endif %}"
-    class="h-12 min-w-12 rounded-control border px-3 text-[15px] font-semibold {% if LANGUAGE_CODE == 'fr' %}border-ink bg-ink text-white{% else %}border-line-strong bg-white text-ink hover:bg-ground{% endif %}"><span aria-hidden="true">FR</span><span class="sr-only">Français</span></button>
+    class="h-12 min-w-12 rounded-control border px-3 text-[15px] font-semibold {% if LANGUAGE_CODE == 'fr' %}border-ink bg-ink text-on-ink{% else %}border-line-strong bg-surface text-ink hover:bg-ground{% endif %}"><span aria-hidden="true">FR</span><span class="sr-only">Français</span></button>
 </form>

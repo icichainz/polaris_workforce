@@ -14,7 +14,7 @@
     {% translate "Another method." as title %}{% translate "This worker is paid by another method than this account: their transfers will wait until the account matches." as message %}
     {% include "components/alert.html" with variant="warning" title=title message=message only %}
   {% endif %}
-  <form method="post" x-data="{ method: '{{ form.method.value|default:"mobile_money"|escapejs }}' }" class="flex max-w-2xl flex-col gap-4 rounded-card border border-line bg-white p-5">
+  <form method="post" x-data="{ method: '{{ form.method.value|default:"mobile_money"|escapejs }}' }" class="flex max-w-2xl flex-col gap-4 rounded-card border border-line bg-surface p-5">
     {% csrf_token %}
     {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
     {% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}

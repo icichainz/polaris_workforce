@@ -9,7 +9,7 @@ Parameters
   icon           optional icon name (see components/icon.html)
   action_label   optional button text, with…
   action_href    …the link it goes to (rendered as a primary button)
-{% endcomment %}<div class="flex flex-col items-center gap-3 rounded-card border border-line bg-white px-6 py-12 text-center">
+{% endcomment %}<div class="flex flex-col items-center gap-3 rounded-card border border-line bg-surface px-6 py-12 text-center">
   {% if icon %}<span class="flex size-12 items-center justify-center rounded-card bg-ground text-steel">{% include "components/icon.html" with name=icon class="size-6" only %}</span>{% endif %}
   <h2 class="font-display text-lg font-bold">{{ title }}</h2>
   {% if message %}<p class="max-w-md text-sm text-ink-700">{{ message }}</p>{% endif %}

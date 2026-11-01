@@ -173,6 +173,18 @@
   });
 
   document.addEventListener("alpine:init", function () {
+    // Theme switch (components/theme_switch.html): show the theme at once; the form's
+    // hx-post saves it (204). "system" is left to the CSS (prefers-color-scheme).
+    window.Alpine.data("themeSwitch", function (initial) {
+      return {
+        theme: initial,
+        pick(value) {
+          this.theme = value;
+          document.documentElement.dataset.theme = value;
+        },
+      };
+    });
+
     // Settings form (core/settings.html): unsaved-change count, currency warning,
     // "every N days" field.
     window.Alpine.data("settingsForm", function () {

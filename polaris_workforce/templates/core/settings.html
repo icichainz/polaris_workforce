@@ -21,11 +21,11 @@
 
 <div class="flex flex-col gap-6 lg:flex-row lg:items-start">
   <nav aria-label="{% translate 'Settings sections' %}" class="flex flex-col gap-0.5 lg:sticky lg:top-6 lg:w-52 lg:shrink-0">
-    <a href="#company" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-white hover:text-ink">{% translate "Company & region" %}</a>
-    <a href="#attendance" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-white hover:text-ink">{% translate "Attendance" %}</a>
-    <a href="#pay" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-white hover:text-ink">{% translate "Pay rules" %}</a>
-    <a href="#payments" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-white hover:text-ink">{% translate "Payments & advances" %}</a>
-    <a href="#holidays" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-white hover:text-ink">{% translate "Working days & holidays" %}</a>
+    <a href="#company" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-surface hover:text-ink">{% translate "Company & region" %}</a>
+    <a href="#attendance" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-surface hover:text-ink">{% translate "Attendance" %}</a>
+    <a href="#pay" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-surface hover:text-ink">{% translate "Pay rules" %}</a>
+    <a href="#payments" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-surface hover:text-ink">{% translate "Payments & advances" %}</a>
+    <a href="#holidays" class="flex h-10 items-center rounded-control px-3 text-sm font-medium text-ink-700 no-underline hover:bg-surface hover:text-ink">{% translate "Working days & holidays" %}</a>
   </nav>
 
   <form method="post" novalidate x-data="settingsForm" @input="update()" @change="update()" @reset="$nextTick(() => update())"
@@ -33,7 +33,7 @@
     {% csrf_token %}
 
     {# --- Company & region ------------------------------------------------------------ #}
-    <section id="company" aria-labelledby="company-title" class="grid scroll-mt-6 grid-cols-1 gap-4 rounded-card border border-line bg-white p-6 sm:grid-cols-2">
+    <section id="company" aria-labelledby="company-title" class="grid scroll-mt-6 grid-cols-1 gap-4 rounded-card border border-line bg-surface p-6 sm:grid-cols-2">
       <h2 id="company-title" class="font-display text-lg font-bold sm:col-span-2">{% translate "Company & region" %}</h2>
       {% include "components/field.html" with field=form.company_name %}
       {% include "components/field.html" with field=form.country %}
@@ -53,7 +53,7 @@
     </section>
 
     {# --- Attendance ------------------------------------------------------------------ #}
-    <section id="attendance" aria-labelledby="attendance-title" class="flex scroll-mt-6 flex-col gap-4 rounded-card border border-line bg-white p-6">
+    <section id="attendance" aria-labelledby="attendance-title" class="flex scroll-mt-6 flex-col gap-4 rounded-card border border-line bg-surface p-6">
       <h2 id="attendance-title" class="font-display text-lg font-bold">{% translate "Attendance" %}</h2>
       <fieldset class="m-0 border-0 p-0">
         <legend class="pb-2 text-[13px] font-semibold">{{ form.attendance_mode.label }}</legend>
@@ -83,7 +83,7 @@
     </section>
 
     {# --- Pay rules ------------------------------------------------------------------- #}
-    <section id="pay" aria-labelledby="pay-title" class="grid scroll-mt-6 grid-cols-1 gap-4 rounded-card border border-line bg-white p-6 sm:grid-cols-2">
+    <section id="pay" aria-labelledby="pay-title" class="grid scroll-mt-6 grid-cols-1 gap-4 rounded-card border border-line bg-surface p-6 sm:grid-cols-2">
       <h2 id="pay-title" class="font-display text-lg font-bold sm:col-span-2">{% translate "Pay rules" %}</h2>
       {% include "components/field.html" with field=form.pay_frequency %}
       {% include "components/field.html" with field=form.default_pay_type %}
@@ -104,7 +104,7 @@
     </section>
 
     {# --- Payments & advances --------------------------------------------------------- #}
-    <section id="payments" aria-labelledby="payments-title" class="flex scroll-mt-6 flex-col gap-4 rounded-card border border-line bg-white p-6">
+    <section id="payments" aria-labelledby="payments-title" class="flex scroll-mt-6 flex-col gap-4 rounded-card border border-line bg-surface p-6">
       <h2 id="payments-title" class="font-display text-lg font-bold">{% translate "Payments & advances" %}</h2>
       <fieldset class="m-0 border-0 p-0">
         <legend class="pb-2 text-[13px] font-semibold">{{ form.payment_method.label }}</legend>
@@ -136,7 +136,7 @@
     </section>
 
     {# --- Working days & holidays ------------------------------------------------------ #}
-    <section id="holidays" aria-labelledby="holidays-title" class="flex scroll-mt-6 flex-col gap-4 rounded-card border border-line bg-white p-6">
+    <section id="holidays" aria-labelledby="holidays-title" class="flex scroll-mt-6 flex-col gap-4 rounded-card border border-line bg-surface p-6">
       <h2 id="holidays-title" class="font-display text-lg font-bold">{% translate "Working days & holidays" %}</h2>
       <fieldset class="m-0 border-0 p-0">
         <legend class="pb-2 text-[13px] font-semibold">{{ form.working_days.label }}</legend>
@@ -153,14 +153,14 @@
     </section>
 
     {# --- Sticky save bar ------------------------------------------------------------- #}
-    <div class="sticky bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-card bg-ink px-4 py-3 text-white shadow-lg">
+    <div class="sticky bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-card bg-inverse px-4 py-3 text-on-inverse shadow-lg">
       <span class="text-sm" aria-live="polite">
         <span x-show="count === 0">{% translate "No unsaved changes" %}</span>
         <span x-show="count === 1" x-cloak>{% translate "1 unsaved change" %}</span>
         <span x-show="count > 1" x-cloak><span x-text="count"></span> {% translate "unsaved changes" %}</span>
       </span>
       <div class="flex gap-2">
-        <button type="reset" class="inline-flex h-10 items-center rounded-control border border-ink-700 bg-transparent px-3.5 text-sm font-semibold text-white hover:bg-rail-raised">{% translate "Discard" %}</button>
+        <button type="reset" class="inline-flex h-10 items-center rounded-control border border-rail-edge bg-transparent px-3.5 text-sm font-semibold text-on-inverse hover:bg-rail-raised">{% translate "Discard" %}</button>
         {% translate "Save settings" as save_label %}
         {% include "components/button.html" with label=save_label variant="primary" type="submit" only %}
       </div>

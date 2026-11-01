@@ -14,12 +14,12 @@
 {% endblock %}
 
 {% block content %}
-<form method="get" x-data="{ period: '{{ period|escapejs }}' }" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-white px-4 py-3.5">
+<form method="get" x-data="{ period: '{{ period|escapejs }}' }" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-surface px-4 py-3.5">
   <fieldset class="m-0 border-0 p-0">
     <legend class="sr-only">{% translate "Period" %}</legend>
     <div class="flex gap-1 rounded-card bg-segment p-1">
       {% for radio in form.period %}
-      <label for="{{ radio.id_for_label }}" class="flex h-8.5 items-center rounded-[7px] px-3 text-[13px] font-semibold text-ink-700 has-checked:bg-white has-checked:text-ink has-focus-visible:outline-3 has-focus-visible:outline-amber-500">
+      <label for="{{ radio.id_for_label }}" class="flex h-8.5 items-center rounded-[7px] px-3 text-[13px] font-semibold text-ink-700 has-checked:bg-surface has-checked:text-ink has-focus-visible:outline-3 has-focus-visible:outline-amber-500">
         <input type="radio" name="{{ radio.data.name }}" value="{{ radio.data.value }}" id="{{ radio.id_for_label }}" x-model="period"{% if radio.data.value == period %} checked{% endif %} class="sr-only"> {{ radio.choice_label }}
       </label>
       {% endfor %}
@@ -51,7 +51,7 @@
 </section>
 
 <div class="flex flex-col gap-5 lg:flex-row lg:items-stretch">
-  <section aria-labelledby="cost-title" class="flex min-w-0 flex-col gap-3.5 rounded-card border border-line bg-white px-5 py-4 lg:basis-1/2">
+  <section aria-labelledby="cost-title" class="flex min-w-0 flex-col gap-3.5 rounded-card border border-line bg-surface px-5 py-4 lg:basis-1/2">
     <h2 id="cost-title" class="font-display text-lg font-bold">{% translate "Labour cost by site" %}</h2>
     {% if report.by_site %}
     <ul class="m-0 flex list-none flex-col gap-3.5 p-0">
@@ -70,7 +70,7 @@
     <span class="text-xs text-steel">{% translate "Gross pay of the pay periods that end in this period." %}</span>
   </section>
 
-  <section aria-labelledby="week-title" class="flex min-w-0 flex-col gap-3.5 rounded-card border border-line bg-white px-5 py-4 lg:basis-1/2">
+  <section aria-labelledby="week-title" class="flex min-w-0 flex-col gap-3.5 rounded-card border border-line bg-surface px-5 py-4 lg:basis-1/2">
     <h2 id="week-title" class="font-display text-lg font-bold">{% translate "Attendance rate by week" %}</h2>
     <div role="img" aria-label="{% translate 'Attendance rate by week' %}: {% for week in report.by_week %}{% blocktranslate with week=week.week %}week {{ week }}{% endblocktranslate %} {% if week.rate is None %}{% translate 'no data' %}{% else %}{{ week.rate }}%{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}"
       class="flex h-42.5 items-end gap-3 border-b border-line-strong sm:gap-4">
@@ -88,7 +88,7 @@
   </section>
 </div>
 
-<section id="employer-cost" aria-labelledby="employer-title" class="flex flex-col gap-4 rounded-card border border-line bg-white px-5 py-4">
+<section id="employer-cost" aria-labelledby="employer-title" class="flex flex-col gap-4 rounded-card border border-line bg-surface px-5 py-4">
   <h2 id="employer-title" class="font-display text-lg font-bold">{% translate "Employer cost and statutory deductions" %}</h2>
   {% with cost=report.employer_cost %}
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -134,7 +134,7 @@
   {% endwith %}
 </section>
 
-<section aria-labelledby="workers-title" class="rounded-card border border-line bg-white">
+<section aria-labelledby="workers-title" class="rounded-card border border-line bg-surface">
   <div class="border-b border-line px-5 py-4"><h2 id="workers-title" class="font-display text-lg font-bold">{% translate "Attendance by worker" %}</h2></div>
   {% if report.workers %}
   <div class="overflow-x-auto">

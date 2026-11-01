@@ -9,10 +9,10 @@
 {% block content %}
 <form method="get" class="flex flex-wrap items-end gap-3" role="search">
   <label class="flex min-w-[240px] grow flex-col gap-1.5 text-[13px] font-semibold">{% translate "Search" %}
-    <input type="search" name="q" value="{{ query }}" placeholder="{% translate 'Name, number or phone' %}" class="h-10 w-full rounded-control border border-line-strong bg-white px-3 text-sm font-normal text-ink placeholder:text-steel">
+    <input type="search" name="q" value="{{ query }}" placeholder="{% translate 'Name, number or phone' %}" class="h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm font-normal text-ink placeholder:text-steel">
   </label>
   <label class="flex flex-col gap-1.5 text-[13px] font-semibold">{% translate "Show" %}
-    <select name="show" class="h-10 rounded-control border border-line-strong bg-white px-2.5 text-sm font-normal text-ink">
+    <select name="show" class="h-10 rounded-control border border-line-strong bg-surface px-2.5 text-sm font-normal text-ink">
       <option value="all"{% if show == 'all' %} selected{% endif %}>{% translate "All workers" %}</option>
       <option value="with"{% if show == 'with' %} selected{% endif %}>{% translate "With access" %}</option>
       <option value="without"{% if show == 'without' %} selected{% endif %}>{% translate "Without access" %}</option>
@@ -22,7 +22,7 @@
 </form>
 
 {% if rows %}
-<div class="overflow-x-auto rounded-control border border-line bg-white">
+<div class="overflow-x-auto rounded-control border border-line bg-surface">
   <table class="w-full min-w-[680px] border-collapse text-sm">
     <thead>
       <tr class="bg-subtle text-left">

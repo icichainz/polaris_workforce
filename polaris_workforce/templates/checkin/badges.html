@@ -25,7 +25,7 @@
 
 <section aria-label="{% translate 'Badges' %}" class="flex flex-col">
   {% if rows %}
-  <div class="overflow-x-auto rounded-control border border-line bg-white">
+  <div class="overflow-x-auto rounded-control border border-line bg-surface">
     <table class="w-full min-w-[760px] border-collapse text-sm">
       <thead><tr class="bg-subtle text-left">
         <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
@@ -48,7 +48,7 @@
               {% url "checkin:badge_sheet" as sheet_url %}<a href="{{ sheet_url }}?worker={{ row.worker.pk }}" hx-boost="false" class="text-sm font-semibold">{% translate "Print" %}</a>
               <form method="post" action="{% url 'checkin:badge_revoke' row.worker.pk %}" class="flex items-center gap-2">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
                 <label class="sr-only" for="reason-{{ row.worker.pk }}">{% translate "Reason" %}</label>
-                <input id="reason-{{ row.worker.pk }}" name="reason" maxlength="200" placeholder="{% translate 'Reason (lost, left…)' %}" class="h-10 w-44 rounded-control border border-line-strong bg-white px-3 text-sm">
+                <input id="reason-{{ row.worker.pk }}" name="reason" maxlength="200" placeholder="{% translate 'Reason (lost, left…)' %}" class="h-10 w-44 rounded-control border border-line-strong bg-surface px-3 text-sm">
                 {% translate "Revoke" as revoke_label %}{% include "components/button.html" with label=revoke_label type="submit" variant="danger" only %}
               </form>
               {% endif %}

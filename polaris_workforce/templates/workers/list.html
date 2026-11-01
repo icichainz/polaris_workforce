@@ -21,7 +21,7 @@
 
 <section aria-label="{% translate 'Workers' %}" class="flex flex-col">
   {% if rows %}
-  <div class="overflow-x-auto rounded-t-control border border-line bg-white">
+  <div class="overflow-x-auto rounded-t-control border border-line bg-surface">
     <table class="w-full min-w-[880px] border-collapse text-sm">
       <thead><tr class="bg-subtle text-left">
         <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
@@ -48,7 +48,7 @@
       </tbody>
     </table>
   </div>
-  <div class="flex flex-wrap items-center justify-between gap-3 rounded-b-control border border-t-0 border-line bg-white px-4 py-3 text-[13px] text-ink-700">
+  <div class="flex flex-wrap items-center justify-between gap-3 rounded-b-control border border-t-0 border-line bg-surface px-4 py-3 text-[13px] text-ink-700">
     <span>{% blocktranslate with start=page.start_index end=page.end_index total=page.paginator.count %}Showing {{ start }}–{{ end }} of {{ total }}{% endblocktranslate %}</span>
     <nav aria-label="{% translate 'Pages' %}" class="flex gap-2">
       {% translate "Previous" as prev_label %}{% translate "Next" as next_label %}

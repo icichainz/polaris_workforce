@@ -8,7 +8,7 @@
 {% block page_meta %}{% include "messaging/_phone.html" with row=row only %}{% endblock %}
 
 {% block content %}
-<form method="post" class="flex flex-col gap-4 rounded-card border border-line bg-white p-6 sm:max-w-xl">
+<form method="post" class="flex flex-col gap-4 rounded-card border border-line bg-surface p-6 sm:max-w-xl">
   {% csrf_token %}
   <h2 class="font-display text-lg font-bold">{% translate "Text messages" %}</h2>
   {% include "components/field.html" with field=form.opted_in %}
@@ -25,7 +25,7 @@
   {% if sent %}
   <ul class="flex flex-col gap-2">
     {% for message in sent %}
-    <li class="rounded-card border border-line bg-white px-4 py-3 text-sm">
+    <li class="rounded-card border border-line bg-surface px-4 py-3 text-sm">
       <span class="text-xs text-steel tabular-nums">{{ message.created_at|date:_("j M Y · H:i") }} · {{ message.get_kind_display }} · {{ message.get_status_display }}</span><br>
       {{ message.text }}
     </li>

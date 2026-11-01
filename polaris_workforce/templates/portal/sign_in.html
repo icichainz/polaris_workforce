@@ -7,11 +7,12 @@
 <main id="main" class="mx-auto flex min-h-screen w-full max-w-md flex-col gap-6 px-4 py-6">
   <div class="flex items-center justify-between gap-3">
     <span class="flex items-center gap-2.5">
-      <span class="flex size-10 items-center justify-center rounded-card bg-amber-500 text-ink">{% include "components/icon.html" with name="logo" class="size-[22px]" stroke_width="2.2" only %}</span>
+      <span class="flex size-10 items-center justify-center rounded-card bg-amber-500 text-on-primary">{% include "components/icon.html" with name="logo" class="size-[22px]" stroke_width="2.2" only %}</span>
       <span class="font-display text-[20px] font-extrabold">Polaris</span>
     </span>
     {% include "portal/_language_switch.html" %}
   </div>
+  <div class="flex justify-end">{% include "components/theme_switch.html" with current=theme.device tone="" size="phone" browser_only=True %}</div>
 
   <div class="flex flex-col gap-1.5">
     <h1 class="font-display text-[28px] font-extrabold leading-tight">{% translate "My days and pay" %}</h1>
@@ -27,7 +28,7 @@
     {% translate "Sign in" as submit_label %}{% include "components/button.html" with label=submit_label variant="primary" size="phone" type="submit" full=True only %}
   </form>
 
-  <div class="flex gap-3 rounded-card border border-line bg-white p-4 text-[15px] leading-normal">
+  <div class="flex gap-3 rounded-card border border-line bg-surface p-4 text-[15px] leading-normal">
     <span class="text-blue-700">{% include "components/icon.html" with name="info" class="size-5" only %}</span>
     <p>{% translate "No PIN, or forgot it? Ask your site manager or the office for a new one." %}</p>
   </div>

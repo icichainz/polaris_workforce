@@ -13,12 +13,12 @@
       <div class="flex flex-wrap items-center justify-between gap-3">
         <h2 id="batches-title" class="font-display text-lg font-bold">{% translate "Batches" %}</h2>
         <div role="tablist" aria-label="{% translate 'Batches shown' %}" class="flex gap-1 rounded-card bg-segment p-1">
-          <a role="tab" href="?status=open" aria-selected="{% if status == 'open' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if status == 'open' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Open" %}</a>
-          <a role="tab" href="?status=all" aria-selected="{% if status != 'open' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if status != 'open' %}bg-white text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "All" %}</a>
+          <a role="tab" href="?status=open" aria-selected="{% if status == 'open' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if status == 'open' %}bg-surface text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "Open" %}</a>
+          <a role="tab" href="?status=all" aria-selected="{% if status != 'open' %}true{% else %}false{% endif %}" class="flex h-8 items-center rounded-[7px] px-3 text-[13px] font-semibold no-underline {% if status != 'open' %}bg-surface text-ink{% else %}text-ink-700 hover:text-ink{% endif %}">{% translate "All" %}</a>
         </div>
       </div>
       {% if page.object_list %}
-      <div class="overflow-x-auto rounded-control border border-line bg-white">
+      <div class="overflow-x-auto rounded-control border border-line bg-surface">
         <table class="w-full min-w-[720px] border-collapse text-sm">
           <thead>
             <tr class="bg-subtle text-left">
@@ -53,7 +53,7 @@
     </section>
 
     {% if form %}
-    <aside aria-labelledby="prepare-title" class="flex flex-col gap-4 rounded-card border border-line bg-white p-5">
+    <aside aria-labelledby="prepare-title" class="flex flex-col gap-4 rounded-card border border-line bg-surface p-5">
       <h2 id="prepare-title" class="font-display text-lg font-bold">{% translate "Prepare a batch" %}</h2>
       <form method="get" action="{% url 'payouts:prepare' %}" class="flex flex-col gap-4">
         {% include "components/field.html" with field=form.pay_date only %}

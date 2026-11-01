@@ -14,7 +14,7 @@
 {% elif phone_taken %}{% translate "Another worker already signs in to the worker portal with this phone number. Each worker needs their own number." as taken %}{% include "components/alert.html" with variant="warning" message=taken only %}{% endif %}
 
 <div class="flex flex-wrap items-start gap-6">
-  <section aria-labelledby="pin-title" class="flex min-w-0 flex-[2_1_420px] flex-col gap-4 rounded-card border border-line bg-white px-5 py-4.5">
+  <section aria-labelledby="pin-title" class="flex min-w-0 flex-[2_1_420px] flex-col gap-4 rounded-card border border-line bg-surface px-5 py-4.5">
     <h2 id="pin-title" class="font-display text-lg font-bold">{% if access and access.is_enabled %}{% translate "Reset the PIN" %}{% else %}{% translate "Give portal access" %}{% endif %}</h2>
     <p class="text-sm text-ink-700">{% translate "The worker signs in with the phone number on their profile and this PIN. You see the PIN once: tell it to the worker; they can choose their own afterwards." %}</p>
     <form method="post" action="{% url 'portal:office_set_pin' worker.pk %}" class="flex flex-col gap-4">
@@ -26,7 +26,7 @@
   </section>
 
   <aside class="flex min-w-0 flex-[1_1_280px] flex-col gap-4">
-    <section aria-labelledby="details-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+    <section aria-labelledby="details-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
       <h2 id="details-title" class="font-display text-base font-bold">{% translate "Details" %}</h2>
       <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Phone on the profile" %}</span><span class="text-right font-semibold tabular-nums">{{ worker.phone|default:"—" }}</span></div>
       <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Signs in with" %}</span><span class="text-right font-semibold tabular-nums">{% if access and access.is_enabled %}{{ access.phone }}{% else %}—{% endif %}</span></div>
@@ -35,7 +35,7 @@
       {% if access.is_locked %}<p class="text-sm font-medium text-absent-fg">{% blocktranslate with time=access.locked_until|time:"H:i" %}Locked after 5 wrong PINs until {{ time }}. Setting a new PIN unlocks it.{% endblocktranslate %}</p>{% endif %}
     </section>
     {% if access and access.is_enabled %}
-    <section aria-labelledby="revoke-title" class="flex flex-col gap-3 rounded-card border border-line bg-white px-5 py-4.5">
+    <section aria-labelledby="revoke-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
       <h2 id="revoke-title" class="font-display text-base font-bold">{% translate "Turn off access" %}</h2>
       <p class="text-sm text-ink-700">{% translate "The worker is signed out at once and can no longer sign in." %}</p>
       <form method="post" action="{% url 'portal:office_revoke' worker.pk %}">

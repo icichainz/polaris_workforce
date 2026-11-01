@@ -59,3 +59,10 @@ class CompanySwitcher:
 
 def company(request) -> dict:
     return {"company_switcher": CompanySwitcher(request)}
+
+
+def theme(request) -> dict:
+    """``theme.office`` / ``theme.device``: the colour theme (see apps.core.theme)."""
+    from apps.core.theme import RequestTheme
+
+    return {"theme": RequestTheme(request)}

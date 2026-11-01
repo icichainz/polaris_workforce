@@ -10,6 +10,14 @@ class Language(models.TextChoices):
     FRENCH = "fr", _("French")
 
 
+class Theme(models.TextChoices):
+    """Colour theme of the office dashboard and the worker portal (see apps.core.theme)."""
+
+    LIGHT = "light", _("Light")
+    DARK = "dark", _("Dark")
+    SYSTEM = "system", _("System")
+
+
 class AttendanceMode(models.TextChoices):
     FOREMAN_ROLL_CALL = "foreman_roll_call", _("Foreman roll call")
     SELF_CHECK_IN = "self_check_in", _("Self check-in")

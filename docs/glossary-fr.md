@@ -90,6 +90,8 @@ from translatable strings (`pgettext` context "attendance status letter (…)" i
 | PIN | code PIN (the phone just says "code") |
 | override (a setting) | personnaliser · "valeur du chantier" / "valeur de l’entreprise" |
 | company default | valeur par défaut de l’entreprise |
+| (colour) theme | thème · the switch is labelled "Thème" |
+| Light · Dark · System | Clair · Sombre · Système · short adjectives on the buttons, after "Thème"; not "Thème clair" (too long for the sidebar). "Système" = follow the device: "Suivre le réglage de l’appareil" |
 
 ## Typography
 

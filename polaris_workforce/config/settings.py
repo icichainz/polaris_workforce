@@ -98,6 +98,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "apps.core.context_processors.nav_badges",
                 "apps.core.context_processors.company",
+                "apps.core.context_processors.theme",
             ],
         },
     },

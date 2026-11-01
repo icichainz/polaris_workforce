@@ -14,7 +14,7 @@
   {% csrf_token %}
   {% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}
 
-  <section class="flex flex-col gap-5 rounded-card border border-line bg-white p-5 sm:flex-row sm:p-6" aria-labelledby="identity-title">
+  <section class="flex flex-col gap-5 rounded-card border border-line bg-surface p-5 sm:flex-row sm:p-6" aria-labelledby="identity-title">
     <div class="flex shrink-0 flex-col items-center gap-2.5 sm:w-44">
       {% if worker.photo %}<img src="{% url 'core:worker_photo' worker.pk %}" alt="" class="size-28 rounded-full object-cover">{% else %}
       <span class="flex size-28 items-center justify-center rounded-full border-2 border-dashed border-line-strong bg-subtle text-steel">
@@ -22,7 +22,7 @@
       </span>{% endif %}
       <div class="flex w-full flex-col gap-1.5">
         <label for="{{ form.photo.auto_id }}" class="text-center text-[13px] font-semibold">{% if worker.photo %}{% translate "Change photo" %}{% else %}{% translate "Add photo" %}{% endif %}</label>
-        <input type="file" name="{{ form.photo.html_name }}" id="{{ form.photo.auto_id }}" accept="image/jpeg,image/png,image/webp" aria-describedby="{{ form.photo.auto_id }}_help" class="w-full text-xs file:mr-2 file:h-10 file:rounded-control file:border file:border-line-strong file:bg-white file:px-3 file:text-[13px] file:font-semibold">
+        <input type="file" name="{{ form.photo.html_name }}" id="{{ form.photo.auto_id }}" accept="image/jpeg,image/png,image/webp" aria-describedby="{{ form.photo.auto_id }}_help" class="w-full text-xs file:mr-2 file:h-10 file:rounded-control file:border file:border-line-strong file:bg-surface file:px-3 file:text-[13px] file:font-semibold">
         {% if worker.photo %}<label class="flex items-center justify-center gap-2 text-xs"><input type="checkbox" name="{{ form.photo.html_name }}-clear" id="{{ form.photo.auto_id }}-clear_id" class="size-4 accent-ink"> {% translate "Remove photo" %}</label>{% endif %}
         {% if form.photo.errors %}<p class="text-center text-[13px] font-medium text-absent-fg">{{ form.photo.errors|join:" " }}</p>{% else %}<p id="{{ form.photo.auto_id }}_help" class="text-center text-xs text-steel">{{ form.photo.help_text }}</p>{% endif %}
       </div>
@@ -41,7 +41,7 @@
     </div>
   </section>
 
-  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-5 sm:p-6" aria-labelledby="emergency-title">
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-surface p-5 sm:p-6" aria-labelledby="emergency-title">
     <div class="flex flex-col gap-1">
       <h2 id="emergency-title" class="font-display text-lg font-bold">{% translate "Emergency contact" %}</h2>
       <p class="text-sm text-ink-700">{% translate "Who to call if the worker is hurt on site. Optional." %}</p>
@@ -53,7 +53,7 @@
     </div>
   </section>
 
-  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-5 sm:p-6" aria-labelledby="site-title">
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-surface p-5 sm:p-6" aria-labelledby="site-title">
     <h2 id="site-title" class="font-display text-lg font-bold">{% translate "Site" %}</h2>
     {% if worker and current_site %}<p class="text-sm text-ink-700">{% blocktranslate with site=current_site.name %}Now on {{ site }}.{% endblocktranslate %}</p>{% endif %}
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2" @change="if ($event.target.name === '{{ form.site.html_name }}') site = $event.target.value">
@@ -62,13 +62,13 @@
     </div>
   </section>
 
-  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-5 sm:p-6" aria-labelledby="pay-title">
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-surface p-5 sm:p-6" aria-labelledby="pay-title">
     <h2 id="pay-title" class="font-display text-lg font-bold">{% translate "Pay" %}</h2>
     <fieldset class="flex flex-col gap-2">
       <legend class="mb-1.5 text-[13px] font-semibold">{{ form.pay_type.label }}</legend>
       <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
         {% for option in form.pay_type %}
-        <label class="flex min-h-14 cursor-pointer items-start gap-2.5 rounded-control border border-line-strong bg-white p-3 text-sm has-[:checked]:border-2 has-[:checked]:border-ink">
+        <label class="flex min-h-14 cursor-pointer items-start gap-2.5 rounded-control border border-line-strong bg-surface p-3 text-sm has-[:checked]:border-2 has-[:checked]:border-ink">
           <input type="radio" name="{{ option.data.name }}" value="{{ option.data.value }}" id="{{ option.id_for_label }}"{% if option.data.selected %} checked{% endif %} x-model="payType" class="mt-0.5 size-[18px] accent-ink">
           <span><strong>{{ option.choice_label }}</strong><br><span class="text-xs text-steel">{% if option.data.value == "hourly" %}{% translate "Needs arrival & departure" %}{% elif option.data.value == "piece" %}{% translate "Pay comes from piece-work entries" %}{% else %}{% translate "Paid per day present" %}{% endif %}</span></span>
         </label>

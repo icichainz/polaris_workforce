@@ -12,11 +12,11 @@ Parameters
   caption     optional line under the value
   progress    optional 0–100 → green progress bar
   href        optional link under the value, with link_label
-  dark        true → ink tile (one per row, for the headline figure)
-{% endcomment %}<div class="flex min-w-0 flex-col gap-1.5 rounded-card border p-4 {% if dark %}border-ink bg-ink text-white{% else %}border-line bg-white text-ink{% endif %}">
+  dark        true → dark (inverse) tile, dark in both themes (one per row, headline figure)
+{% endcomment %}<div class="flex min-w-0 flex-col gap-1.5 rounded-card border p-4 {% if dark %}border-inverse-line bg-inverse text-on-inverse{% else %}border-line bg-surface text-ink{% endif %}">
   <span class="text-xs font-semibold uppercase tracking-[0.06em] {% if dark %}text-rail-text{% else %}text-steel{% endif %}">{{ label }}</span>
   <span class="font-display text-[28px] font-bold leading-tight tabular-nums">{{ value }}{% if suffix %} <span class="text-base {% if dark %}text-rail-text{% else %}text-steel{% endif %}">{{ suffix }}</span>{% endif %}</span>
   {% if progress is not None and progress != "" %}<span class="block h-1.5 overflow-hidden rounded-full {% if dark %}bg-rail-line{% else %}bg-line-soft{% endif %}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ progress }}" aria-label="{{ label }}"><span class="block h-1.5 bg-present-fg" style="width: {{ progress }}%"></span></span>{% endif %}
   {% if caption %}<span class="text-[13px] {% if dark %}text-rail-text{% else %}text-ink-700{% endif %}">{{ caption }}</span>{% endif %}
-  {% if href %}<a href="{{ href }}" class="text-[13px] font-semibold {% if dark %}text-white underline{% endif %}">{{ link_label|default:href }}</a>{% endif %}
+  {% if href %}<a href="{{ href }}" class="text-[13px] font-semibold {% if dark %}text-on-inverse underline{% endif %}">{{ link_label|default:href }}</a>{% endif %}
 </div>

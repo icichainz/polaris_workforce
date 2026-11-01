@@ -71,7 +71,7 @@ def test_sidebar_shows_user_and_sign_out(signed_in_client):
 def test_base_layout_loads_assets_and_htmx_csrf_header(signed_in_client):
     html = signed_in_client.get(reverse("dashboard:home")).content.decode()
 
-    assert '<html lang="en">' in html
+    assert '<html lang="en" ' in html
     assert "css/app.css" in html
     assert "vendor/htmx-2.0.4.min.js" in html
     assert "vendor/alpine-3.14.8.min.js" in html
@@ -122,5 +122,5 @@ def test_login_page_in_french(client):
     client.post(reverse("set_language"), {"language": "fr", "next": reverse("login")})
     html = client.get(reverse("login")).content.decode()
 
-    assert '<html lang="fr">' in html
+    assert '<html lang="fr" ' in html
     assert 'name="language" value="fr" lang="fr" aria-pressed="true"' in html

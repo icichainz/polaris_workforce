@@ -1,0 +1,31 @@
+{% load i18n %}{% comment %}
+Colour theme switch: Light · Dark · System (follow the device). A group of three
+aria-pressed buttons (Tab to reach, Enter / Space to pick), like the language switch.
+
+  {% include "components/theme_switch.html" with current=theme.office tone="inverse" %}   sidebar
+  {% include "components/theme_switch.html" with current=theme.office %}                  office sign-in
+  {% include "components/theme_switch.html" with current=theme.device size="phone" browser_only=True %}  worker portal
+
+With JavaScript (office pages): Alpine sets <html data-theme> at once and htmx posts the
+choice (core:set_theme answers 204). Without (the worker portal has no JavaScript): a plain
+form post, which saves the choice and comes back to this page.
+
+Parameters
+  current  light | dark | system (theme.office on office pages, theme.device on the portal)
+  tone     "" (on the page) | inverse (on the dark sidebar)
+  size     "" (40px) | phone (48px, glove-safe)
+  browser_only  true → keep the choice on this browser only (the worker portal), never on the
+                signed-in office account. Include without `only` (the form needs csrf_token
+                and request) and pass every parameter.
+{% endcomment %}{% url 'core:set_theme' as set_theme_url %}<form method="post" action="{{ set_theme_url }}" hx-post="{{ set_theme_url }}" hx-swap="none" x-data="themeSwitch('{{ current|default:'light' }}')"
+  role="group" aria-label="{% translate 'Colour theme' %}" class="{% if tone == 'inverse' %}grid grid-cols-3 gap-1 rounded-control border border-rail-line p-1{% else %}flex flex-wrap gap-1{% endif %}">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  {% if browser_only %}<input type="hidden" name="device" value="1">{% endif %}
+  <button type="submit" name="theme" value="light" @click="pick('light')" :aria-pressed="String(theme === 'light')" aria-pressed="{% if current == 'light' or not current %}true{% else %}false{% endif %}"
+    class="{% if tone == 'inverse' %}flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[6px] text-xs font-semibold text-rail-text hover:bg-rail-raised hover:text-on-inverse aria-pressed:bg-rail-active aria-pressed:text-on-inverse{% elif size == 'phone' %}inline-flex h-12 items-center gap-1.5 rounded-control border border-line-strong bg-surface px-2.5 text-[15px] font-semibold text-ink hover:bg-ground aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-on-ink{% else %}inline-flex h-10 items-center gap-1.5 rounded-md border border-line-strong bg-surface px-2.5 text-[13px] font-semibold text-ink hover:bg-ground aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-on-ink{% endif %}">{% include "components/icon.html" with name="sun" class="size-4" only %}<span>{% translate "Light" %}</span></button>
+  <button type="submit" name="theme" value="dark" @click="pick('dark')" :aria-pressed="String(theme === 'dark')" aria-pressed="{% if current == 'dark' %}true{% else %}false{% endif %}"
+    class="{% if tone == 'inverse' %}flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[6px] text-xs font-semibold text-rail-text hover:bg-rail-raised hover:text-on-inverse aria-pressed:bg-rail-active aria-pressed:text-on-inverse{% elif size == 'phone' %}inline-flex h-12 items-center gap-1.5 rounded-control border border-line-strong bg-surface px-2.5 text-[15px] font-semibold text-ink hover:bg-ground aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-on-ink{% else %}inline-flex h-10 items-center gap-1.5 rounded-md border border-line-strong bg-surface px-2.5 text-[13px] font-semibold text-ink hover:bg-ground aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-on-ink{% endif %}">{% include "components/icon.html" with name="moon" class="size-4" only %}<span>{% translate "Dark" %}</span></button>
+  <button type="submit" name="theme" value="system" @click="pick('system')" :aria-pressed="String(theme === 'system')" aria-pressed="{% if current == 'system' %}true{% else %}false{% endif %}" title="{% translate 'Follow the device setting' %}"
+    class="{% if tone == 'inverse' %}flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[6px] text-xs font-semibold text-rail-text hover:bg-rail-raised hover:text-on-inverse aria-pressed:bg-rail-active aria-pressed:text-on-inverse{% elif size == 'phone' %}inline-flex h-12 items-center gap-1.5 rounded-control border border-line-strong bg-surface px-2.5 text-[15px] font-semibold text-ink hover:bg-ground aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-on-ink{% else %}inline-flex h-10 items-center gap-1.5 rounded-md border border-line-strong bg-surface px-2.5 text-[13px] font-semibold text-ink hover:bg-ground aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-on-ink{% endif %}">{% include "components/icon.html" with name="monitor" class="size-4" only %}<span>{% translate "System" %}</span></button>
+</form>

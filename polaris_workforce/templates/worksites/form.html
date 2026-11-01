@@ -9,7 +9,7 @@
 <form method="post" novalidate class="flex max-w-[860px] flex-col gap-5">
   {% csrf_token %}
   {% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}
-  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-5 sm:p-6" aria-labelledby="site-identity">
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-surface p-5 sm:p-6" aria-labelledby="site-identity">
     <h2 id="site-identity" class="font-display text-lg font-bold">{% translate "Site" %}</h2>
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {% include "components/field.html" with field=form.name %}
@@ -19,7 +19,7 @@
       {% include "components/money_field.html" with field=form.labour_budget currency=company_currency|default:"" %}
     </div>
   </section>
-  <section class="flex flex-col gap-4 rounded-card border border-line bg-white p-5 sm:p-6" aria-labelledby="site-people">
+  <section class="flex flex-col gap-4 rounded-card border border-line bg-surface p-5 sm:p-6" aria-labelledby="site-people">
     <h2 id="site-people" class="font-display text-lg font-bold">{% translate "People" %}</h2>
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {% include "components/field.html" with field=form.manager %}

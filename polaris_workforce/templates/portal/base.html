@@ -1,6 +1,6 @@
 {% load i18n static %}<!doctype html>
 {% get_current_language as LANGUAGE_CODE %}
-<html lang="{{ LANGUAGE_CODE }}">
+<html lang="{{ LANGUAGE_CODE }}" data-theme="{{ theme.device|default:"light" }}">
 {% comment %}
 Worker portal page shell. Mobile-first and light for cheap Android phones on slow
 networks: the shared stylesheet only, no JavaScript, no font preloads (the CSS falls back

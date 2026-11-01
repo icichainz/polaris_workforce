@@ -11,13 +11,13 @@ The sidebar stays on screen during boosted navigation (layouts/app.html). The <n
 carries hx-swap-oob, so each page response replaces it: active entry and badges stay
 current. Keep everything that changes from page to page inside that <nav>.
 {% endcomment %}{% with current=nav_active|default:request.resolver_match.view_name %}
-<div x-data="{ open: false }" x-on:polaris-navigate.window="open = false" class="flex flex-col gap-5 bg-ink px-3.5 py-4 text-rail-text lg:sticky lg:top-0 lg:h-screen lg:w-62 lg:shrink-0 lg:overflow-y-auto lg:py-5">
+<div x-data="{ open: false }" x-on:polaris-navigate.window="open = false" class="flex flex-col gap-5 bg-inverse px-3.5 py-4 text-rail-text lg:sticky lg:top-0 lg:h-screen lg:w-62 lg:shrink-0 lg:overflow-y-auto lg:py-5">
   <div class="flex items-center justify-between gap-2">
-    <a href="{% url 'dashboard:home' %}" class="flex items-center gap-2.5 rounded-control px-2 py-1 text-white no-underline hover:text-white">
-      <span class="flex size-[34px] items-center justify-center rounded-[9px] bg-amber-500 text-ink">{% include "components/icon.html" with name="logo" class="size-5" stroke_width="2.2" only %}</span>
+    <a href="{% url 'dashboard:home' %}" class="flex items-center gap-2.5 rounded-control px-2 py-1 text-on-inverse no-underline hover:text-on-inverse">
+      <span class="flex size-[34px] items-center justify-center rounded-[9px] bg-amber-500 text-on-primary">{% include "components/icon.html" with name="logo" class="size-5" stroke_width="2.2" only %}</span>
       <span class="flex flex-col leading-[1.1]"><span class="font-display text-[19px] font-extrabold">Polaris</span><span class="text-xs font-semibold uppercase tracking-[0.08em] text-rail-text">Workforce</span></span>
     </a>
-    <button type="button" x-cloak class="flex size-10 items-center justify-center rounded-control text-rail-text hover:bg-rail-raised hover:text-white lg:hidden"
+    <button type="button" x-cloak class="flex size-10 items-center justify-center rounded-control text-rail-text hover:bg-rail-raised hover:text-on-inverse lg:hidden"
       @click="open = !open" :aria-expanded="open.toString()" aria-expanded="false" aria-controls="sidebar-nav" aria-label="{% translate 'Menu' %}">
       <span x-show="!open">{% include "components/icon.html" with name="menu" class="size-5" only %}</span>
       <span x-show="open">{% include "components/icon.html" with name="close" class="size-5" only %}</span>
@@ -29,14 +29,14 @@ current. Keep everything that changes from page to page inside that <nav>.
     <form method="post" action="{% url 'core:company_switch' %}" hx-boost="false" class="flex flex-col gap-1.5">
       {% csrf_token %}
       <label for="company-switcher" class="px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-rail-label">{% translate "Company" %}</label>
-      <select id="company-switcher" name="company" x-on:change="$el.form.submit()" class="h-11 rounded-control border border-rail-line bg-rail-raised px-3 text-sm font-medium text-white">
+      <select id="company-switcher" name="company" x-on:change="$el.form.submit()" class="h-11 rounded-control border border-rail-line bg-rail-raised px-3 text-sm font-medium text-on-inverse">
         {% if not company_switcher.current %}<option value="">{% translate "No company yet" %}</option>{% endif %}
         {% for company in company_switcher.companies %}<option value="{{ company.pk }}"{% if company_switcher.current.pk == company.pk %} selected{% endif %}>{{ company.name }}</option>{% endfor %}
       </select>
       <noscript>{% translate "View" as view_label %}{% include "components/button.html" with label=view_label type="submit" only %}</noscript>
     </form>
     {% endif %}
-    <button type="button" class="flex h-11 items-center gap-2.5 rounded-control border border-rail-line bg-rail-raised px-3 text-left text-sm font-medium text-white">
+    <button type="button" class="flex h-11 items-center gap-2.5 rounded-control border border-rail-line bg-rail-raised px-3 text-left text-sm font-medium text-on-inverse">
       <span class="flex grow flex-col leading-tight"><span class="text-[11px] text-rail-muted">{% translate "Viewing" %}</span>{% translate "All sites" %}</span>
       <span class="text-rail-text">{% include "components/icon.html" with name="chevron_down" class="size-4" only %}</span>
     </button>
@@ -83,13 +83,16 @@ current. Keep everything that changes from page to page inside that <nav>.
     <div class="grow"></div>
 
     {% if user.is_authenticated %}
-    <div class="flex items-center gap-2.5 border-t border-rail-line p-2.5">
-      <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-rail-line text-[13px] font-bold text-white" aria-hidden="true">{% if user.first_name or user.last_name %}{{ user.first_name|slice:":1"|upper }}{{ user.last_name|slice:":1"|upper }}{% else %}{{ user.username|slice:":2"|upper }}{% endif %}</span>
-      <span class="flex min-w-0 grow flex-col leading-snug"><span class="truncate text-sm font-semibold text-white">{{ user.get_full_name|default:user.username }}</span><span class="text-xs text-rail-muted">{{ user.get_role_display }}</span></span>
-      <form method="post" action="{% url 'logout' %}" hx-boost="false">
-        {% csrf_token %}
-        <button type="submit" aria-label="{% translate 'Sign out' %}" title="{% translate 'Sign out' %}" class="flex size-10 items-center justify-center rounded-control text-rail-text hover:bg-rail-raised hover:text-white">{% include "components/icon.html" with name="sign_out" only %}</button>
-      </form>
+    <div class="flex flex-col gap-2.5 border-t border-rail-line p-2.5">
+      <div class="flex items-center gap-2.5">
+        <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-rail-line text-[13px] font-bold text-on-inverse" aria-hidden="true">{% if user.first_name or user.last_name %}{{ user.first_name|slice:":1"|upper }}{{ user.last_name|slice:":1"|upper }}{% else %}{{ user.username|slice:":2"|upper }}{% endif %}</span>
+        <span class="flex min-w-0 grow flex-col leading-snug"><span class="truncate text-sm font-semibold text-on-inverse">{{ user.get_full_name|default:user.username }}</span><span class="text-xs text-rail-muted">{{ user.get_role_display }}</span></span>
+        <form method="post" action="{% url 'logout' %}" hx-boost="false">
+          {% csrf_token %}
+          <button type="submit" aria-label="{% translate 'Sign out' %}" title="{% translate 'Sign out' %}" class="flex size-10 items-center justify-center rounded-control text-rail-text hover:bg-rail-raised hover:text-on-inverse">{% include "components/icon.html" with name="sign_out" only %}</button>
+        </form>
+      </div>
+      {% include "components/theme_switch.html" with current=theme.office tone="inverse" size="" browser_only=False %}
     </div>
     {% endif %}
   </div>

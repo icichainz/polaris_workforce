@@ -7,7 +7,7 @@
 {% block page_meta %}{% translate "Stand at the site gate, read the position from a map or a phone, and enter it here." %}{% endblock %}
 
 {% block content %}
-<form method="post" class="flex max-w-xl flex-col gap-4 rounded-card border border-line bg-white p-5">
+<form method="post" class="flex max-w-xl flex-col gap-4 rounded-card border border-line bg-surface p-5">
   {% csrf_token %}
   {% include "components/field.html" with field=form.latitude %}
   {% include "components/field.html" with field=form.longitude %}

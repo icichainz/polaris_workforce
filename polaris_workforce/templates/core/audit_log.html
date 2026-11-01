@@ -7,7 +7,7 @@
 {% block page_title %}{% translate "Audit log" %}{% endblock %}
 
 {% block content %}
-<form method="get" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-white px-4 py-3.5">
+<form method="get" class="flex flex-wrap items-end gap-3 rounded-card border border-line bg-surface px-4 py-3.5">
   <div class="w-full sm:w-56">{% include "components/field.html" with field=form.actor %}</div>
   <div class="w-full sm:w-56">{% include "components/field.html" with field=form.target_type %}</div>
   <div class="w-full sm:w-40">{% include "components/field.html" with field=form.date_from %}</div>
@@ -22,7 +22,7 @@
 {% if rows %}
 <div class="flex flex-col gap-3">
   {% for entry, diff in rows %}
-  <article class="rounded-card border border-line bg-white">
+  <article class="rounded-card border border-line bg-surface">
     <header class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line px-4 py-3">
       <div class="flex flex-col gap-0.5">
         <span class="font-semibold"><code class="font-mono text-[13px]">{{ entry.action }}</code>{% if entry.content_type %} · {{ entry.content_type.name|capfirst }} {{ entry.object_id }}{% endif %}</span>

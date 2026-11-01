@@ -16,7 +16,7 @@
   {% if items %}
   <ul class="m-0 flex list-none flex-col gap-3 p-0">
     {% for item in items %}{% with advance=item.advance %}
-    <li class="flex flex-col gap-3 rounded-card border border-line bg-white p-4">
+    <li class="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
       <div class="flex items-start justify-between gap-3">
         <div class="flex min-w-0 flex-col">
           <span class="font-semibold">{{ advance.given_on|date:_("j M Y") }}</span>

@@ -176,7 +176,7 @@ def test_days_page_in_french_with_the_switch(scene):
     assert response.status_code == 302
     response = portal.get(reverse("portal:days"), {"month": "2025-09"})
     page = response.content.decode()
-    assert '<html lang="fr">' in page
+    assert '<html lang="fr" ' in page
     text = _text(response)
     assert "septembre 2025" in text
     assert "Présent" in text and "Retard" in text
@@ -190,7 +190,7 @@ def test_portal_follows_the_company_language(scene):
 
     CompanySettings.objects.filter(company=scene["ama"].company).update(language="fr")
     response = scene["portal"].get(reverse("portal:pay"))
-    assert '<html lang="fr">' in response.content.decode()
+    assert '<html lang="fr" ' in response.content.decode()
     text = _text(response)
     assert "Périodes de paie" in text and "Net à payer" in text and "Brut" in text
 
@@ -200,7 +200,7 @@ def test_sign_in_page_in_french(db):
 
     response = Client().get(reverse("portal:sign_in"), headers={"accept-language": "fr"})
     page = response.content.decode()
-    assert '<html lang="fr">' in page
+    assert '<html lang="fr" ' in page
     assert "Se connecter" in _text(response)
 
 

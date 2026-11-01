@@ -2,7 +2,7 @@
 {% load i18n %}
 
 {% block tab_content %}
-<section aria-labelledby="crew-title" class="rounded-card border border-line bg-white">
+<section aria-labelledby="crew-title" class="rounded-card border border-line bg-surface">
   <div class="flex flex-wrap items-end justify-between gap-3 border-b border-line px-5 py-4">
     <div class="flex flex-col gap-0.5">
       <h2 id="crew-title" class="font-display text-lg font-bold">{% blocktranslate with date=date|date:_("l j F Y") %}Crew on {{ date }}{% endblocktranslate %}</h2>
@@ -10,7 +10,7 @@
     </div>
     <form method="get" class="flex items-end gap-2">
       <label class="flex flex-col gap-1.5 text-[13px] font-semibold">{% translate "Day" %}
-        <input type="date" name="date" value="{{ date|date:'Y-m-d' }}" class="h-10 rounded-control border border-line-strong bg-white px-3 text-sm font-normal">
+        <input type="date" name="date" value="{{ date|date:'Y-m-d' }}" class="h-10 rounded-control border border-line-strong bg-surface px-3 text-sm font-normal">
       </label>
       {% translate "Show" as show_label %}{% include "components/button.html" with label=show_label type="submit" only %}
     </form>
@@ -40,7 +40,7 @@
               {% csrf_token %}
               <input type="hidden" name="end_date" value="{{ date|date:'Y-m-d' }}">
               {% translate "Remove from crew" as remove_label %}{% translate "Remove this worker from the crew after this day?" as remove_confirm %}
-              <button type="submit" class="inline-flex h-10 items-center rounded-control border border-danger-line bg-white px-3 text-[13px] font-semibold text-absent-fg hover:bg-absent-bg" onclick="return confirm('{{ remove_confirm|escapejs }}')">{{ remove_label }}</button>
+              <button type="submit" class="inline-flex h-10 items-center rounded-control border border-danger-line bg-surface px-3 text-[13px] font-semibold text-absent-fg hover:bg-absent-bg" onclick="return confirm('{{ remove_confirm|escapejs }}')">{{ remove_label }}</button>
             </form>
             {% endif %}
           </td>

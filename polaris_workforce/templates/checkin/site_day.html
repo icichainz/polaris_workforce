@@ -22,7 +22,7 @@
   <h2 id="suggestions-title" class="font-display text-xl font-bold">{% translate "Roll-call suggestions" %}</h2>
   <p class="text-sm text-ink-700">{% blocktranslate with late=result.late_after|time:"H:i" %}From the check-ins that count, crew only. Late after {{ late }}; an out before 12:00 is a half day.{% endblocktranslate %}</p>
   {% if suggestions %}
-  <div class="overflow-x-auto rounded-control border border-line bg-white">
+  <div class="overflow-x-auto rounded-control border border-line bg-surface">
     <table class="w-full min-w-[560px] border-collapse text-sm">
       <thead><tr class="bg-subtle text-left">
         <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Worker" %}</th>
@@ -50,7 +50,7 @@
 <section aria-labelledby="checkins-title" class="flex flex-col gap-3">
   <h2 id="checkins-title" class="font-display text-xl font-bold">{% translate "Check-ins" %}</h2>
   {% if rows %}
-  <div class="overflow-x-auto rounded-control border border-line bg-white">
+  <div class="overflow-x-auto rounded-control border border-line bg-surface">
     <table class="w-full min-w-[880px] border-collapse text-sm">
       <thead><tr class="bg-subtle text-left">
         <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Time" %}</th>

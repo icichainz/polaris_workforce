@@ -3,7 +3,7 @@
 
 {% block tab_content %}
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
-  <section aria-labelledby="periods-title" class="min-w-0 rounded-card border border-line bg-white">
+  <section aria-labelledby="periods-title" class="min-w-0 rounded-card border border-line bg-surface">
     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4">
       <h2 id="periods-title" class="font-display text-lg font-bold">{% translate "Pay periods" %}</h2>
       <a href="{% url 'payroll:periods' %}?site={{ site.pk }}" class="text-sm font-semibold">{% translate "All pay periods" %}</a>
@@ -34,7 +34,7 @@
     {% endif %}
   </section>
 
-  <section aria-labelledby="cash-title" class="min-w-0 rounded-card border border-line bg-white">
+  <section aria-labelledby="cash-title" class="min-w-0 rounded-card border border-line bg-surface">
     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4">
       <h2 id="cash-title" class="font-display text-lg font-bold">{% translate "Cash handed to the site" %}</h2>
       <a href="{% url 'payroll:cash_sheets' %}?site={{ site.pk }}" class="text-sm font-semibold">{% translate "This site’s cash sheets" %}</a>
