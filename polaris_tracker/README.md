@@ -16,7 +16,7 @@ sightings after a restart). See [Status](#status).
 ## Run
 
 ```sh
-gleam test                            # 82 tests: state machine, geo, tokens, wire, store, tz, end to end
+gleam test                            # 84 tests: state machine, geo, tokens, wire, store, tz, end to end
 gleam format --check src test
 TRACKER_DEBUG=1 gleam run             # http://127.0.0.1:4100, dev secret, events logged
 ```
@@ -76,6 +76,18 @@ reaches every site), `travel` (may see off-site GPS points of its own company), 
 `exp`. `all_sites` is no longer read. GPS fixes are stored with the device token's
 company; off-site points go only to `travel` tokens of that company.
 
+The `kind` keeps each token to its endpoints (every kind shares the secret and
+`aud = polaris-tracker`): only `service` reaches `/internal/*`, only `device` posts
+`/v1/observations`, only `gateway` posts `/v1/gateways/sightings`; anything else is
+`403 forbidden`.
+
+**Foremen and consent.** Each site config lists, in `foremen`, the foremen who may be
+tracked there (assigned, current consent notice accepted; missing means nobody). A GPS
+fix inside a site that lists the foreman is stored for that site and feeds it; inside a
+site of the token that does not list him it is dropped; off site it is stored as travel
+only if some site of the token lists him. Dropped fixes are answered as `not_tracked` and
+never stored. A new config without the foreman applies to the next fix.
+
 The tracker mints one kind of token, for Django: `{"sub":"service:tracker",
 "kind":"service","aud":"polaris-django","exp":<now + 300>}`. Tests check `token.mint`
 byte for byte against tokens from Django's test suite (`KNOWN_DEVICE_TOKEN`,
@@ -98,8 +110,9 @@ sqlight re-prepares on every call); every write is one short transaction.
   is stopped.
 
 Dedupe keys (`client_uuid`s, gateway batch ids) are kept in memory for 48 h and are lost
-on a restart, so a phone that resends after a tracker restart can store a point twice.
-Replays tolerate this; the live state is rebuilt anyway.
+on a restart, so a phone or gateway that resends after a tracker restart can store a
+point twice; in a replay such a twin can count twice towards `sightings_to_enter`.
+Persisting the keys (or a unique key per point) is left for later.
 
 ## Sessions for reconciliation
 
@@ -164,6 +177,7 @@ million keys over 48 h at 10 batches/s.
 | JWT claims v2, verify and mint (`token`) | Built; tested byte for byte against Python stdlib and Django's test tokens; two-company isolation tested end to end |
 | JSON decoding of all payloads (`wire`) | Built, unit-tested; badge ids trimmed and lower-cased |
 | Ingest (`hub`, `registry`) | Built, off the single process; concurrent first touch starts one site actor; tested |
+| Foremen consent (`SiteConfig.foremen`) | Built: unlisted foremen's fixes dropped as `not_tracked`, on and off site; withdrawal applies to the next fix; tested |
 | Site actors, broadcaster (`site`, `broadcaster`) | Built; covered by end-to-end tests through the API |
 | HTTP endpoints (`api`) and SSE (`server`) | Built; smoke-tested over real HTTP with tokens minted by Python's `hmac` |
 | SQLite persistence for tracks and outbox (`db`, `track_store`, `outbox`) | Built: WAL, prepared statements, short transactions, hourly retention; restart tested (kill the actor, reopen, read back) |

@@ -22,6 +22,7 @@ fn config() -> domain.SiteConfig {
       list.repeat(Nil, 20) |> list.index_map(fn(_, i) { i }),
       fn(i) { domain.Badge(badge_id: "B" <> int.to_string(i), worker_id: i) },
     ),
+    foremen: [],
     rules: presence.Rules(
       sightings_to_enter: 2,
       arrival_window_ms: 300_000,

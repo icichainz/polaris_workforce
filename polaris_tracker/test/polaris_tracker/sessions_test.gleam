@@ -18,6 +18,7 @@ fn config() -> domain.SiteConfig {
     zones: [],
     gateways: [],
     badges: [],
+    foremen: [5],
     rules: presence.Rules(
       sightings_to_enter: 2,
       arrival_window_ms: 5 * minute,

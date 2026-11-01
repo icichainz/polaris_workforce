@@ -71,6 +71,7 @@ pub fn site_config_decode_test() {
       zones: [Zone("B", "Block B")],
       gateways: [Gateway("GW-1", Some("B")), Gateway("GW-2", None)],
       badges: [Badge("bdg-1", 12)],
+      foremen: [],
       rules: presence.Rules(2, 300_000, 900_000),
     ))
 }

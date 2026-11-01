@@ -80,6 +80,8 @@ pub fn site_config_decoder() -> Decoder(SiteConfig) {
     [],
     decode.list(badge_decoder()),
   )
+  // Nobody is tracked until Django says so.
+  use foremen <- decode.optional_field("foremen", [], decode.list(decode.int))
   use rules <- decode.field("rules", rules_decoder())
   decode.success(SiteConfig(
     tracking_enabled:,
@@ -87,6 +89,7 @@ pub fn site_config_decoder() -> Decoder(SiteConfig) {
     zones:,
     gateways:,
     badges:,
+    foremen:,
     rules:,
   ))
 }

@@ -17,6 +17,7 @@ import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
+import gleam/result
 import polaris_tracker/domain.{
   type GatewaySighting, type IngestResult, type Observation, type Person,
   type PresenceEvent, type SiteConfig, type TrackPoint, BlePoint, Foreman,
@@ -260,16 +261,30 @@ fn ingest_phone_item(
   points: Points,
 ) -> #(Tally, Points) {
   let ref = domain.observation_ref(observation)
-  case check_phone_observation(hub, claims, observation, now) {
-    Some(#(code, message)) -> #(reject(tally, ref, code, message), points)
-    None -> {
+  let checked = case check_phone_observation(hub, claims, observation, now) {
+    Some(rejection) -> Error(rejection)
+    None ->
+      case observation {
+        GpsFix(..) ->
+          plan_gps(hub, foreman_id, claims, observation)
+          |> result.map(Some)
+          |> result.replace_error(#(
+            "not_tracked",
+            "This foreman is not tracked here (not assigned, no consent, or tracking off).",
+          ))
+        PhoneBle(..) -> Ok(None)
+      }
+  }
+  case checked {
+    Error(#(code, message)) -> #(reject(tally, ref, code, message), points)
+    Ok(plan) -> {
       let key = "foreman:" <> int.to_string(foreman_id) <> ":" <> ref
       case registry.remember(hub.registry, key, now) {
         False -> #(Tally(..tally, duplicates: tally.duplicates + 1), points)
         True -> {
-          let #(point, late) = case observation {
-            GpsFix(..) -> ingest_gps(hub, foreman_id, claims, observation, now)
-            PhoneBle(..) -> ingest_phone_ble(hub, observation, now)
+          let #(point, late) = case plan {
+            Some(plan) -> apply_gps(hub, foreman_id, plan, now)
+            None -> ingest_phone_ble(hub, observation, now)
           }
           #(accept(tally, late), [point, ..points])
         }
@@ -310,20 +325,39 @@ fn check_phone_observation(
   }
 }
 
-/// Feeds the sites the fix says something about. Returns the point to store
-/// and whether it was too old to change live presence.
-fn ingest_gps(
+/// What a GPS fix does, decided before it is accepted.
+type GpsPlan {
+  GpsPlan(
+    at: Int,
+    point: TrackPoint,
+    /// The site whose geofence contains the fix and that tracks this foreman.
+    inside: Option(#(Int, SiteConfig)),
+    /// Sites tracking this foreman whose geofence the fix is clearly outside.
+    outside: List(Int),
+  )
+}
+
+/// A fix counts only where the site's config lists the foreman (assigned
+/// and consented; see `SiteConfig.foremen`):
+///
+/// - inside the geofence of such a site: stored for that site and fed to it;
+/// - inside the geofence of a site in the token that does not track him:
+///   dropped, so his whereabouts on that site are never recorded;
+/// - outside every geofence: stored as off-site travel if at least one site in
+///   the token tracks him, dropped otherwise.
+///
+/// `Error(Nil)` means dropped (`not_tracked`).
+fn plan_gps(
   hub: Hub,
   foreman_id: Int,
   claims: token.Claims,
   observation: Observation,
-  now: Int,
-) -> #(#(Person, TrackPoint), Bool) {
+) -> Result(GpsPlan, Nil) {
   let assert GpsFix(at:, position:, accuracy_m:, ..) = observation
-  let person = Person(Foreman, foreman_id)
+  let sites = tracked_sites(hub, claims)
+  let tracks = fn(config) { domain.tracks_foreman(config, foreman_id) }
   let placements =
-    tracked_sites(hub, claims)
-    |> list.filter_map(fn(entry) {
+    list.filter_map(sites, fn(entry) {
       let #(site_id, config) = entry
       case config.geofence {
         Some(fence) ->
@@ -334,43 +368,75 @@ fn ingest_gps(
   let inside =
     list.find_map(placements, fn(placement) {
       case placement {
-        #(site_id, config, geo.Inside) -> Ok(#(site_id, config))
+        #(site_id, config, geo.Inside) ->
+          case tracks(config) {
+            True -> Ok(#(site_id, config))
+            False -> Error(Nil)
+          }
         _ -> Error(Nil)
       }
     })
-  let point =
-    GpsPoint(
-      at:,
-      position:,
-      accuracy_m:,
-      site_id: case inside {
-        Ok(#(site_id, _)) -> Some(site_id)
-        Error(Nil) -> None
-      },
-      company: claims.company,
-    )
+  let inside_untracked =
+    list.any(placements, fn(placement) {
+      placement.2 == geo.Inside && !tracks(placement.1)
+    })
+  let tracked_somewhere = list.any(sites, fn(entry) { tracks(entry.1) })
+  let outside =
+    list.filter_map(placements, fn(placement) {
+      case placement.2 == geo.Outside && tracks(placement.1) {
+        True -> Ok(placement.0)
+        False -> Error(Nil)
+      }
+    })
+  let point = fn(site_id) {
+    GpsPoint(at:, position:, accuracy_m:, site_id:, company: claims.company)
+  }
+  case inside, inside_untracked, tracked_somewhere {
+    Ok(#(site_id, config)), _, _ ->
+      Ok(GpsPlan(
+        at:,
+        point: point(Some(site_id)),
+        inside: Some(#(site_id, config)),
+        outside:,
+      ))
+    Error(Nil), False, True ->
+      Ok(GpsPlan(at:, point: point(None), inside: None, outside:))
+    _, _, _ -> Error(Nil)
+  }
+}
 
+/// Feeds the sites the fix says something about. Returns the point to store
+/// and whether it was too old to change live presence.
+fn apply_gps(
+  hub: Hub,
+  foreman_id: Int,
+  plan: GpsPlan,
+  now: Int,
+) -> #(#(Person, TrackPoint), Bool) {
+  let person = Person(Foreman, foreman_id)
   // A fix outside a site only matters to a site that is already running.
-  list.each(placements, fn(placement) {
-    case placement, registry.get_running(hub.registry, placement.0) {
-      #(_, _, geo.Outside), Ok(running) ->
-        process.send(running, site.Observe(person, presence.SeenOutside(at)))
-      _, _ -> Nil
+  list.each(plan.outside, fn(site_id) {
+    case registry.get_running(hub.registry, site_id) {
+      Ok(running) ->
+        process.send(
+          running,
+          site.Observe(person, presence.SeenOutside(plan.at)),
+        )
+      Error(Nil) -> Nil
     }
   })
-
-  let late = case inside {
-    Ok(#(site_id, config)) ->
-      case is_late(config, at, now) {
+  let late = case plan.inside {
+    Some(#(site_id, config)) ->
+      case is_late(config, plan.at, now) {
         True -> True
         False -> {
-          observe(hub, site_id, person, presence.Seen(zone: None, at:))
+          observe(hub, site_id, person, presence.Seen(zone: None, at: plan.at))
           False
         }
       }
-    Error(Nil) -> False
+    None -> False
   }
-  #(#(person, point), late)
+  #(#(person, plan.point), late)
 }
 
 fn ingest_phone_ble(

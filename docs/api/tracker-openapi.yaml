@@ -121,6 +121,18 @@ paths:
         that site; farther than `radius + accuracy_m` counts as outside and closes an open
         visit early; anything in between is stored in the track only.
 
+        A fix only counts where the site's config lists the foreman in `foremen` (assigned
+        there and the current consent notice accepted):
+
+        - inside the geofence of a site that lists him: stored for that site and applied
+          to its presence;
+        - inside the geofence of a site in the token that does **not** list him: dropped;
+        - outside every geofence (travel): stored as off-site only if at least one site in
+          the token lists him; dropped otherwise.
+
+        A dropped fix is acknowledged in `rejected` with `not_tracked` and never stored.
+        A new config without the foreman stops this at once.
+
         **BLE sightings** must name a site in the token's `sites`, and a badge assigned on
         that site.
 
@@ -428,8 +440,10 @@ paths:
         `resolve_setting` (company → site).
 
         Only badges of workers with `tracking_enabled` are included, so sightings of other
-        workers are rejected as `unknown_badge` and never stored. Setting
-        `tracking_enabled: false` stops all ingest for the site.
+        workers are rejected as `unknown_badge` and never stored. Likewise only foremen
+        listed in `foremen` (assigned to the site, consent accepted) are tracked by GPS;
+        Django pushes the config again when a consent changes, and the new list applies to
+        the next fix. Setting `tracking_enabled: false` stops all ingest for the site.
       parameters:
         - $ref: "#/components/parameters/SiteId"
       requestBody:
@@ -459,6 +473,7 @@ paths:
                   worker_id: 12
                 - badge_id: BDG-0A22
                   worker_id: 31
+              foremen: [5, 9]
               rules:
                 sightings_to_enter: 2
                 arrival_window_seconds: 300
@@ -693,6 +708,7 @@ components:
             - site_not_configured
             - tracking_disabled
             - unknown_badge
+            - not_tracked
         message:
           type: string
 
@@ -942,6 +958,16 @@ components:
                 description: Trimmed and lower-cased on arrival, like sighted badge ids.
               worker_id:
                 type: integer
+        foremen:
+          type: array
+          default: []
+          description: |
+            User ids of the foremen who may be tracked on this site: assigned to it and with
+            the current consent notice accepted. Omitted means nobody. GPS fixes of other
+            foremen are dropped (`not_tracked`).
+          items:
+            type: integer
+          example: [5, 9]
         rules:
           type: object
           required: [sightings_to_enter, arrival_window_seconds, absence_to_leave_seconds]

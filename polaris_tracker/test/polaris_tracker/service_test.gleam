@@ -31,6 +31,7 @@ const site_config =
   \"zones\": [{\"id\": \"B\", \"name\": \"Block B\"}],
   \"gateways\": [{\"id\": \"GW-1\", \"zone_id\": \"B\"}],
   \"badges\": [{\"badge_id\": \"BDG-1\", \"worker_id\": 12}],
+  \"foremen\": [5],
   \"rules\": {\"sightings_to_enter\": 2, \"arrival_window_seconds\": 300,
               \"absence_to_leave_seconds\": 900}
 }"
@@ -403,8 +404,15 @@ pub fn two_companies_are_kept_apart_test() {
   let stack = start_stack()
   configure(stack)
   let service = mint("service:django", token.Service, [])
+  // Company 2's site, about 10 km away, tracking foreman 8.
+  let site_4 =
+    "{\"tracking_enabled\": true,
+      \"geofence\": {\"lat\": 6.2219, \"lng\": 1.2228, \"radius_m\": 150},
+      \"foremen\": [8],
+      \"rules\": {\"sightings_to_enter\": 2, \"arrival_window_seconds\": 300,
+                  \"absence_to_leave_seconds\": 900}}"
   let response =
-    send(stack, http.Put, "/internal/sites/4/config", service, site_config)
+    send(stack, http.Put, "/internal/sites/4/config", service, site_4)
   assert response.status == 204
 
   let admin_1 =
@@ -651,4 +659,146 @@ pub fn django_gateway_and_badge_ids_test() {
       \"badge_id\": \"Ib:F7826da6-4fa2-4e98-8024-bc5b71e0893e:1:42\", \"rssi\": -70}]}"
   let response = send(stack, http.Post, "/v1/observations", device, body)
   assert string.contains(response.body, "\"accepted\":1")
+}
+
+fn site_with_foremen(foremen: String, lat: String) -> String {
+  "{\"tracking_enabled\": true,
+    \"geofence\": {\"lat\": " <> lat <> ", \"lng\": 1.2228, \"radius_m\": 150},
+    " <> foremen <> "
+    \"rules\": {\"sightings_to_enter\": 1, \"arrival_window_seconds\": 300,
+                \"absence_to_leave_seconds\": 900}}"
+}
+
+fn foreman_track(stack: Stack, id: String) -> String {
+  let admin =
+    mint_for("user:1", token.Dashboard, company: 1, sites: [3, 4], travel: True)
+  let range =
+    "?from=" <> ago(3_600_000) <> "&to=" <> clock.to_rfc3339(clock.now_ms())
+  let response =
+    send(
+      stack,
+      http.Get,
+      "/v1/people/foreman/" <> id <> "/track" <> range,
+      admin,
+      "",
+    )
+  assert response.status == 200
+  response.body
+}
+
+/// `foremen` in the site config: only listed foremen (assigned, consent
+/// accepted) are tracked; everything else is acknowledged and dropped.
+pub fn foremen_consent_test() {
+  let stack = start_stack()
+  let service = mint("service:django", token.Service, [])
+  let push = fn(site, config) {
+    let response =
+      send(
+        stack,
+        http.Put,
+        "/internal/sites/" <> site <> "/config",
+        service,
+        config,
+      )
+    assert response.status == 204
+  }
+  let post = fn(bearer, uuid, lat) {
+    send(
+      stack,
+      http.Post,
+      "/v1/observations",
+      bearer,
+      gps_batch(uuid, ago(1000), lat),
+    ).body
+  }
+  push("3", site_with_foremen("\"foremen\": [5],", "6.1319"))
+  let foreman_5 = mint("foreman:5", token.Device, [3])
+  let foreman_6 = mint("foreman:6", token.Device, [3])
+
+  // Allowed: on site, stored for the site.
+  assert string.contains(post(foreman_5, "a1", "6.1320"), "\"accepted\":1")
+  let assert hub.Running(running) = hub.find_site(stack.ctx.hub, 3)
+  assert list.length(process.call(running, 1000, site.Snapshot)) == 1
+  // Off site (about 2 km away), tracked on a site of the token: stored.
+  assert string.contains(post(foreman_5, "a2", "6.1500"), "\"accepted\":1")
+  let body = foreman_track(stack, "5")
+  assert count(body, "\"site_id\":3") == 1
+  assert count(body, "\"site_id\":null") == 1
+
+  // Not allowed: dropped, on site and off site, never stored.
+  let body = post(foreman_6, "b1", "6.1320")
+  assert string.contains(body, "\"accepted\":0")
+  assert string.contains(body, "\"code\":\"not_tracked\"")
+  assert string.contains(post(foreman_6, "b2", "6.1500"), "\"not_tracked\"")
+  assert count(foreman_track(stack, "6"), "\"type\":\"gps\"") == 0
+
+  // Consent withdrawn: the next push without the id stops ingest at once.
+  push("3", site_with_foremen("\"foremen\": [],", "6.1319"))
+  assert string.contains(post(foreman_5, "a3", "6.1320"), "\"not_tracked\"")
+  assert string.contains(post(foreman_5, "a4", "6.1500"), "\"not_tracked\"")
+  assert count(foreman_track(stack, "5"), "\"type\":\"gps\"") == 2
+
+  // A missing field means nobody.
+  push("3", site_with_foremen("", "6.1319"))
+  assert string.contains(post(foreman_5, "a5", "6.1320"), "\"not_tracked\"")
+
+  // Tracked on site 4 only: a fix inside site 3 (in the token, not
+  // tracking him) is dropped, not stored as travel; far from both, kept.
+  push("4", site_with_foremen("\"foremen\": [5],", "6.2219"))
+  let both = mint("foreman:5", token.Device, [3, 4])
+  assert string.contains(post(both, "c1", "6.1320"), "\"not_tracked\"")
+  assert string.contains(post(both, "c2", "6.1700"), "\"accepted\":1")
+  assert count(foreman_track(stack, "5"), "\"site_id\":null") == 2
+}
+
+/// Every kind is signed with the same secret and audience, so the kind is
+/// what keeps each token to its endpoints.
+pub fn token_kinds_are_kept_to_their_endpoints_test() {
+  let stack = start_stack()
+  configure(stack)
+  let device = mint("foreman:5", token.Device, [3])
+  let gateway = mint("gateway:GW-1", token.Gateway, [3])
+  let dashboard =
+    mint_for("user:1", token.Dashboard, company: 1, sites: [3], travel: True)
+  let sessions = "/internal/sites/3/sessions?date=2025-06-02&tz=Z"
+  list.each([device, gateway, dashboard], fn(bearer) {
+    let response =
+      send(stack, http.Put, "/internal/sites/3/config", bearer, site_config)
+    assert response.status == 403
+    assert string.contains(response.body, "\"code\":\"forbidden\"")
+    assert send(stack, http.Get, sessions, bearer, "").status == 403
+  })
+  let service = mint("service:django", token.Service, [])
+  assert send(stack, http.Get, sessions, service, "").status == 200
+
+  // A gateway cannot post phone observations, nor a phone gateway batches.
+  let response =
+    send(
+      stack,
+      http.Post,
+      "/v1/observations",
+      gateway,
+      gps_batch("g1", ago(1000), "6.1320"),
+    )
+  assert response.status == 403
+  let response =
+    send(
+      stack,
+      http.Post,
+      "/v1/gateways/sightings",
+      device,
+      "{\"batch_id\": \"x\", \"sightings\": []}",
+    )
+  assert response.status == 403
+  // Nor do service or dashboard tokens ingest anything.
+  list.each([service, dashboard], fn(bearer) {
+    assert send(
+        stack,
+        http.Post,
+        "/v1/observations",
+        bearer,
+        gps_batch("s1", ago(1000), "6.1320"),
+      ).status
+      == 403
+  })
 }
