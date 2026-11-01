@@ -1,4 +1,4 @@
-//// Wall-clock time as Unix milliseconds, and RFC 3339 conversion for the API.
+/// Wall-clock time as Unix milliseconds, and RFC 3339 conversion for the API.
 
 import gleam/result
 import gleam/time/calendar

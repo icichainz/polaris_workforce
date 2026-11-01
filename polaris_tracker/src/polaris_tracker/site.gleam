@@ -1,7 +1,7 @@
-//// One actor per site: the presence state of every person seen there.
-////
-//// Site actors run under a factory supervisor, so a crash only loses that
-//// site's live state; the hub starts a fresh actor on the next observation.
+/// One actor per site: the presence state of every person seen there.
+///
+/// Site actors run under a factory supervisor, so a crash only loses that
+/// site's live state; the hub starts a fresh actor on the next observation.
 
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
