@@ -173,14 +173,8 @@ def badges(request):
     workers = _workers(request.user).filter(is_active=True)
     site = None
     if form.is_valid():
-        query = form.cleaned_data["q"].strip()
+        workers = workers.search(form.cleaned_data["q"])
         site = form.cleaned_data["site"]
-        if query:
-            workers = workers.filter(
-                Q(first_name__icontains=query)
-                | Q(last_name__icontains=query)
-                | Q(number__icontains=query)
-            )
         if site is not None:
             on_site = SiteAssignment.objects.filter(site=site).values("worker_id")
             workers = workers.filter(pk__in=on_site)

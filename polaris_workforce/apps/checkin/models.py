@@ -186,11 +186,13 @@ class CheckIn(models.Model):
         UNKNOWN = "unknown", _("Unknown badge")
         REVOKED = "revoked", _("Revoked badge")
 
+    # Not indexed on their own: the (site, date) and (worker, date) indexes start with them.
     site = models.ForeignKey(
         "worksites.Site",
         verbose_name=_("site"),
         on_delete=models.PROTECT,
         related_name="checkins",
+        db_index=False,
     )
     worker = models.ForeignKey(
         "workers.Worker",
@@ -200,6 +202,7 @@ class CheckIn(models.Model):
         on_delete=models.PROTECT,
         related_name="checkins",
         help_text=_("Empty for a badge the server does not know."),
+        db_index=False,
     )
     badge = models.ForeignKey(
         Badge,

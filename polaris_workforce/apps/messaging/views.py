@@ -9,7 +9,6 @@ import datetime
 
 from django.contrib import messages as flash
 from django.core.paginator import Paginator
-from django.db.models import Q
 from django.http import Http404, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -212,14 +211,7 @@ def recipients_view(request):
     users = list(company_users(request.user).filter(is_active=True).order_by("first_name", "pk"))
     user_prefs = _preferences(company, users=users)
     search = (request.GET.get("q") or "").strip()
-    workers = company_workers(request.user).filter(is_active=True)
-    if search:
-        workers = workers.filter(
-            Q(first_name__icontains=search)
-            | Q(last_name__icontains=search)
-            | Q(number__icontains=search)
-            | Q(phone__icontains=search)
-        )
+    workers = company_workers(request.user).filter(is_active=True).search(search)
     page = Paginator(workers.order_by("last_name", "first_name", "pk"), PAGE_SIZE).get_page(
         request.GET.get("page")
     )

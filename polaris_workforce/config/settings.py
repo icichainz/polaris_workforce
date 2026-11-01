@@ -110,6 +110,9 @@ WSGI_APPLICATION = "config.wsgi.application"
 # WAL lets the office dashboard read while the API writes roll calls.
 # IMMEDIATE transactions take the write lock up front, which avoids
 # "database is locked" errors when two writers upgrade at the same time.
+# The page cache (cache_size) belongs to the connection, so connections are kept for
+# CONN_MAX_AGE seconds instead of being reopened for every request. mmap_size lets reads
+# come straight from the OS page cache.
 
 SQLITE_INIT_COMMAND = (
     "PRAGMA journal_mode=WAL;"
@@ -117,12 +120,15 @@ SQLITE_INIT_COMMAND = (
     "PRAGMA busy_timeout=5000;"
     "PRAGMA temp_store=MEMORY;"
     "PRAGMA cache_size=-20000;"
+    "PRAGMA mmap_size=268435456;"
 )
 
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": env_str("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
+        "CONN_MAX_AGE": int(env_str("DJANGO_CONN_MAX_AGE", "60")),
+        "CONN_HEALTH_CHECKS": True,
         "OPTIONS": {
             "init_command": SQLITE_INIT_COMMAND,
             "transaction_mode": "IMMEDIATE",

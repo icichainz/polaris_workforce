@@ -423,15 +423,16 @@ def accounts(request):
     company = CompanySettings.load()
     today = dates.company_today(company)
     show = request.GET.get("show", "transfer")
-    rows = []
-    for worker in (
+    shown = list(
         workers.filter(is_active=True)
         .select_related("payout_account")
         .order_by("last_name", "first_name", "number")
-    ):
-        account = services.account_of(worker)
-        method = services.worker_method(worker, today, company)
-        rows.append({"worker": worker, "account": account, "method": method})
+    )
+    methods = services.worker_methods(shown, today, company)
+    rows = [
+        {"worker": worker, "account": services.account_of(worker), "method": methods[worker.pk]}
+        for worker in shown
+    ]
     if show == "transfer":
         rows = [r for r in rows if r["account"] is not None or r["method"] in TransferMethod.values]
     elif show == "missing":

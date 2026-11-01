@@ -11,6 +11,9 @@ from apps.core.choices import PayFrequency, PaymentMethod, PayType
 from apps.core.models import TimeStampedModel, company_field
 from apps.core.validators import UPLOAD_VALIDATORS
 
+from .search import SOURCE_FIELDS as SEARCH_SOURCE_FIELDS
+from .search import search_terms, search_text
+
 
 class Trade(models.Model):
     """A trade such as mason, carpenter or labourer."""
@@ -28,6 +31,16 @@ class Trade(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class WorkerQuerySet(models.QuerySet):
+    def search(self, text: str):
+        """Workers matching every word of ``text`` in their name, number or phone,
+        ignoring case and accents (``apps.workers.search``)."""
+        workers = self
+        for term in search_terms(text):
+            workers = workers.filter(search_text__contains=term)
+        return workers
 
 
 class Worker(TimeStampedModel):
@@ -89,6 +102,11 @@ class Worker(TimeStampedModel):
         _("pay frequency"), max_length=20, choices=PayFrequency.choices, null=True, blank=True
     )
 
+    # Name, number and phone folded for search (apps.workers.search); set by save().
+    search_text = models.CharField(_("search text"), max_length=500, blank=True, editable=False)
+
+    objects = WorkerQuerySet.as_manager()
+
     class Meta:
         verbose_name = _("worker")
         verbose_name_plural = _("workers")
@@ -101,6 +119,12 @@ class Worker(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.full_name} ({self.number})"
+
+    def save(self, *args, update_fields=None, **kwargs):
+        self.search_text = search_text(self)
+        if update_fields is not None and set(update_fields) & set(SEARCH_SOURCE_FIELDS):
+            update_fields = {*update_fields, "search_text"}
+        super().save(*args, update_fields=update_fields, **kwargs)
 
     @property
     def full_name(self) -> str:

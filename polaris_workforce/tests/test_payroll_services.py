@@ -523,6 +523,32 @@ def test_cash_reconciliation_follows_issues_and_payments(company, media):
     assert (rec.line_count, rec.paid_count) == (3, 1)
 
 
+def test_many_cash_sheets_read_together_are_the_sheets_read_one_by_one(company, media):
+    first, manager, foreman = setup_site()
+    second, _m, _f = setup_site()
+    yao, afi, kodjo = hire(first, 6000), hire(first, 3500), hire(first, 5000)
+    ama = hire(second, 4000)
+    roll_call(first, MON, {yao: "present", afi: "half_day", kodjo: "absent"})
+    roll_call(first, TUE, {yao: "present", afi: "absent"}, status=SUBMITTED)
+    roll_call(second, MON, {ama: "late"})
+    services.issue_cash(manager, first, MON, 10000, received_by=foreman)
+    for site, day in ((first, MON), (first, TUE), (second, MON)):
+        sheet_for(site, day)
+    pay(foreman, line_of(first, MON, yao))
+    wanted = [(second, MON), (first, TUE), (first, MON), (second, WED)]
+
+    together = services.cash_sheets(wanted)
+
+    assert together == [services.cash_sheet(site, day, refresh=False) for site, day in wanted]
+    assert [sheet.status for sheet in together] == [
+        services.SHEET_OPEN,
+        services.SHEET_NOT_OPEN,
+        services.SHEET_OPEN,
+        services.SHEET_NOT_OPEN,
+    ]
+    assert together[2].absent == [kodjo] and together[2].reconciliation.paid_total == 6000
+
+
 @pytest.mark.parametrize("seed", range(5))
 def test_property_cash_sheet_totals_always_add_up(company, media, seed):
     rng = random.Random(seed)

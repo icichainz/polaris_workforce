@@ -275,6 +275,16 @@ def worker_method(worker, today: datetime.date, company: CompanySettings | None 
     return resolve_setting("payment_method", site, worker, company=company)
 
 
+def worker_methods(workers, today: datetime.date, company: CompanySettings) -> dict[int, str]:
+    """``worker_method`` for many workers, with their current sites read in one query."""
+    workers = list(workers)
+    sites = payroll.current_sites([worker.pk for worker in workers], today)
+    return {
+        worker.pk: resolve_setting("payment_method", sites.get(worker.pk), worker, company=company)
+        for worker in workers
+    }
+
+
 def effective_method(line: PayLine, company: CompanySettings | None = None) -> str:
     """How this pay line is paid: the worker's, else the site's, else the company's."""
     return resolve_setting("payment_method", line.period.site, line.worker, company=company)

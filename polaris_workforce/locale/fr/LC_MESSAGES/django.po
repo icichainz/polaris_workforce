@@ -181,6 +181,10 @@ msgstr "rôle"
 msgid "phone"
 msgstr "téléphone"
 
+#: apps/accounts/models.py:38
+msgid "phone (normalised)"
+msgstr "téléphone (normalisé)"
+
 #: apps/accounts/models.py:35 apps/core/models.py:193
 #: apps/messaging/models.py:260
 msgid "language"
@@ -4643,6 +4647,10 @@ msgstr "type de pièce d’identité"
 #: apps/workers/importer.py:115 apps/workers/models.py:60
 msgid "ID document number"
 msgstr "numéro de pièce d’identité"
+
+#: apps/workers/models.py:106
+msgid "search text"
+msgstr "texte de recherche"
 
 #: apps/workers/importer.py:119
 msgid "Empty: the site's or the company's setting."

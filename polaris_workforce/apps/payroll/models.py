@@ -87,7 +87,11 @@ class PayLine(TimeStampedModel):
     """What one worker earns in one pay period."""
 
     period = models.ForeignKey(
-        PayPeriod, verbose_name=_("pay period"), on_delete=models.CASCADE, related_name="lines"
+        PayPeriod,
+        verbose_name=_("pay period"),
+        on_delete=models.CASCADE,
+        related_name="lines",
+        db_index=False,  # unique_pay_line_per_worker starts with it
     )
     worker = models.ForeignKey(
         "workers.Worker",

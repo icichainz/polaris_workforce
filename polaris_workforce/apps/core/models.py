@@ -89,11 +89,14 @@ def company_field(**kwargs):
 class AuditLog(models.Model):
     """Who changed what, when, and why. Written for every change to attendance or pay."""
 
+    # company and content_type are not indexed on their own: the indexes below start with
+    # them (the audit log is written on every change, so every index costs).
     company = company_field(
         null=True,
         blank=True,
         related_name="audit_logs",
         help_text=_("Empty for platform events (e.g. a sign-in lockout of an unknown name)."),
+        db_index=False,
     )
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -110,6 +113,7 @@ class AuditLog(models.Model):
         null=True,
         blank=True,
         on_delete=models.PROTECT,
+        db_index=False,
     )
     object_id = models.CharField(_("target ID"), max_length=64, blank=True)
     target = GenericForeignKey("content_type", "object_id")
@@ -123,7 +127,8 @@ class AuditLog(models.Model):
         verbose_name_plural = _("audit log")
         ordering = ["-created_at", "-id"]
         indexes = [
-            models.Index(fields=["content_type", "object_id"]),
+            # Ends with created_at: an object's history comes newest first without a sort.
+            models.Index(fields=["content_type", "object_id", "created_at"]),
             models.Index(fields=["company", "created_at"]),
         ]
 

@@ -218,10 +218,12 @@ def _upsert_records(day, records, user):
         old_status = day.status
         if day.status == Status.REJECTED:
             _move(day, Status.DRAFT)
+        # New records in one INSERT (a first roll call is the whole crew).
+        AttendanceRecord.objects.bulk_create(
+            [record for record, changed in to_save.values() if changed is None]
+        )
         for record, changed in to_save.values():
-            if changed is None:
-                record.save()
-            else:
+            if changed is not None:
                 record.save(update_fields=[*sorted(changed), "updated_at"])
         day.save(update_fields=["status", "updated_at"])  # bumps updated_at for sync
         AuditLog.record(

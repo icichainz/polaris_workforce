@@ -12,8 +12,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Q, Value
-from django.db.models.functions import Replace
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -65,18 +64,7 @@ def _filter_workers(workers, data, today):
         workers = workers.filter(services.needs_document_attention(today))
     elif data.get("documents") == "expired":
         workers = workers.filter(services.has_expired_document(today))
-    query = data.get("q") or ""
-    if query:
-        workers = workers.annotate(phone_digits=Replace("phone", Value(" "), Value("")))
-        for term in query.split():
-            workers = workers.filter(
-                Q(first_name__icontains=term)
-                | Q(last_name__icontains=term)
-                | Q(number__icontains=term)
-                | Q(phone__icontains=term)
-                | Q(phone_digits__icontains=term)
-            )
-    return workers
+    return workers.search(data.get("q") or "")
 
 
 def _site_names(workers, today) -> dict[int, str]:
