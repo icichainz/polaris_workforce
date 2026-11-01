@@ -498,6 +498,38 @@ def test_sync_returns_only_changes_after_since(crew):
     assert changes["since"] is not None
 
 
+def test_sync_since_leaves_out_changes_on_other_sites(crew):
+    put_marks(crew)
+    since = crew.client.get(url("sync")).json()["server_time"]
+    other = SiteAssignmentFactory(start_date=crew.today)
+    other_day = AttendanceDay.objects.create(site=other.site, date=crew.today)
+    hidden = AttendanceRecord.objects.create(day=other_day, worker=other.worker)
+    mine = AttendanceRecord.objects.get(worker=crew.workers[2])
+    mine.note = "Left at noon"
+    mine.save()
+
+    data = crew.client.get(url("sync"), {"since": since}).json()
+
+    assert [r["id"] for r in data["records"]] == [mine.pk]
+    assert hidden.pk not in [r["id"] for r in data["records"]]
+
+
+def test_sync_since_with_many_changes_still_returns_them_in_order(crew, monkeypatch):
+    # More changes than the timestamp-first lookup takes: the sites filter is used.
+    monkeypatch.setattr(selectors, "SYNC_CHANGED_MAX", 1)
+    since = timezone.now() - datetime.timedelta(seconds=1)
+    put_marks(crew)
+    other = SiteAssignmentFactory(start_date=crew.today)
+    AttendanceRecord.objects.create(
+        day=AttendanceDay.objects.create(site=other.site, date=crew.today), worker=other.worker
+    )
+
+    data = crew.client.get(url("sync"), {"since": since.isoformat()}).json()
+
+    records = AttendanceRecord.objects.filter(day__site=crew.site).order_by("day_id", "worker_id")
+    assert [r["id"] for r in data["records"]] == [r.pk for r in records]
+
+
 def test_sync_shows_office_approval(crew):
     put_marks(crew)
     submit(crew)

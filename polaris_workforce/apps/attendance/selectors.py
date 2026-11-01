@@ -77,6 +77,33 @@ def payout_status(day: AttendanceDay | None) -> str:
 
 # --- Sync ------------------------------------------------------------------------------
 
+# A sync finds the records and corrections changed since the phone's last one by their
+# timestamp alone first: a handful of rows, where the user's sites hold every record ever
+# taken (and SQLite, joining from the sites, walks all of them). The queries are shaped
+# so that the timestamp index or the primary key is the only way in, and sorted in
+# Python, whatever the planner thinks. Past this many changes (a phone back after a long
+# time offline) the sites are the narrower filter again.
+SYNC_CHANGED_MAX = 2000
+
+
+def _changed_ids(model, field_name: str, day_path: str, since, sites) -> list[int] | None:
+    """The ids of the ``model`` rows on ``sites`` whose ``field_name`` is at or after
+    ``since`` (``day_path`` leads to their attendance day), or ``None`` when more than
+    ``SYNC_CHANGED_MAX`` rows changed."""
+    changed = list(
+        model.objects.filter(**{f"{field_name}__gte": since})
+        .order_by()
+        .values_list("pk", day_path)[: SYNC_CHANGED_MAX + 1]
+    )
+    if len(changed) > SYNC_CHANGED_MAX:
+        return None
+    on_sites = set(
+        AttendanceDay.objects.filter(pk__in={day_id for _pk, day_id in changed}, site__in=sites)
+        .order_by()
+        .values_list("pk", flat=True)
+    )
+    return [pk for pk, day_id in changed if day_id in on_sites]
+
 
 @dataclass
 class SyncChanges:
@@ -112,12 +139,22 @@ def changes_since(user, since: datetime.datetime | None) -> SyncChanges:
         days = days.filter(updated_at__gte=since)
         records = records.filter(updated_at__gte=since)
         corrections = corrections.filter(created_at__gte=since)
+        record_ids = _changed_ids(AttendanceRecord, "updated_at", "day", since, sites)
+        if record_ids is not None:
+            records = AttendanceRecord.objects.filter(pk__in=record_ids)
+        correction_ids = _changed_ids(
+            AttendanceCorrection, "created_at", "record__day", since, sites
+        )
+        if correction_ids is not None:
+            corrections = AttendanceCorrection.objects.filter(pk__in=correction_ids).select_related(
+                "record", "corrected_by"
+            )
     return SyncChanges(
         server_time=server_time,
         since=since,
         days=list(days.order_by("-date", "site_id")),
-        records=list(records.order_by("day_id", "worker_id")),
-        corrections=list(corrections.order_by("created_at", "id")),
+        records=sorted(records.order_by(), key=lambda r: (r.day_id, r.worker_id)),
+        corrections=sorted(corrections.order_by(), key=lambda c: (c.created_at, c.pk)),
     )
 
 
