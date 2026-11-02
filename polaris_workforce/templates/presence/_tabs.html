@@ -3,6 +3,6 @@ Tabs of the Presence pages. Parameter: active = "home" | "badges". The notice is
 page outside the office layout: its link is not boosted.
 {% endcomment %}<nav aria-label="{% translate 'Presence' %}" class="flex flex-wrap gap-1 border-b border-line">
   {% url "presence:home" as tab_url %}<a href="{{ tab_url }}"{% if active == "home" %} aria-current="page"{% endif %} class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold no-underline {% if active == "home" %}border-amber-500 text-ink{% else %}border-transparent text-steel hover:text-ink{% endif %}">{% translate "Sites" %}</a>
-  {% url "presence:badges" as tab_url %}<a href="{{ tab_url }}"{% if active == "badges" %} aria-current="page"{% endif %} class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold no-underline {% if active == "badges" %}border-amber-500 text-ink{% else %}border-transparent text-steel hover:text-ink{% endif %}">{% translate "BLE badges" %}</a>
+  {% url "presence:badges" as tab_url %}<a href="{{ tab_url }}"{% if active == "badges" %} aria-current="page"{% endif %} class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold no-underline {% if active == "badges" %}border-amber-500 text-ink{% else %}border-transparent text-steel hover:text-ink{% endif %}">{% translate "BLE badges" context "screen" %}</a>
   {% url "presence:notice" as tab_url %}<a href="{{ tab_url }}" hx-boost="false" class="-mb-px border-b-2 border-transparent px-3 py-2 text-sm font-semibold text-steel no-underline hover:text-ink">{% translate "Notice for badge holders" %}</a>
 </nav>

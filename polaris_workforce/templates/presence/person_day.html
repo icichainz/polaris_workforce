@@ -48,7 +48,7 @@ tracker filters the track by the token: only the user's sites, and trips between
       <tbody>
         {% for row in timeline.rows %}
         <tr class="border-t border-line-soft">
-          <td class="px-4 py-3 font-semibold">{{ row.session.site.name }}</td>
+          <td class="px-4 py-3"><span class="font-semibold">{{ row.session.site.name }}</span>{% if row.session.source == "replay" %}<br><span class="text-xs text-steel">{% translate "Corrected by the nightly check" %}</span>{% endif %}</td>
           <td class="px-4 py-3 tabular-nums">{{ row.started|date:"H:i" }}</td>
           <td class="px-4 py-3 tabular-nums">{% if row.ended %}{{ row.ended|date:"H:i" }}{% for code, label in reasons.items %}{% if code == row.session.end_reason %}<br><span class="text-xs text-steel">{{ label }}</span>{% endif %}{% endfor %}{% else %}{% translate "Still on site" as open_label %}{% include "components/status_badge.html" with status="active" label=open_label only %}{% endif %}</td>
           <td class="px-4 py-3 text-right tabular-nums">{{ row.minutes }}</td>

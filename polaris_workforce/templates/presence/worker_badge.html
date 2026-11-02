@@ -1,8 +1,8 @@
 {% extends "layouts/app.html" %}
 {% load i18n tz %}
 
-{% block title %}{% translate "BLE badge" %} · {{ worker.full_name }} · Polaris Workforce{% endblock %}
-{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'presence:badges' %}">{% translate "BLE badges" %}</a> / <a href="{% url 'workers:detail' worker.pk %}">{{ worker.full_name }}</a></p>{% endblock %}
+{% block title %}{% translate "BLE badge" context "screen" %} · {{ worker.full_name }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'presence:badges' %}">{% translate "BLE badges" context "screen" %}</a> / <a href="{% url 'workers:detail' worker.pk %}">{{ worker.full_name }}</a></p>{% endblock %}
 {% block page_title %}{% blocktranslate with name=worker.full_name %}BLE badge of {{ name }}{% endblocktranslate %}{% endblock %}
 {% block page_meta %}{{ worker.number }}{% if worker.trade %} · {{ worker.trade.name }}{% endif %}{% endblock %}
 

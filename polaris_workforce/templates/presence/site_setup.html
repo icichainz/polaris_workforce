@@ -14,7 +14,7 @@
 {% endblock %}
 
 {% block content %}{% timezone time_zone %}
-<section aria-label="{% translate 'Status' %}" class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+<section aria-label="{% translate 'Status' %}" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
   <div class="flex flex-col gap-2 rounded-card border border-line bg-surface px-5 py-4">
     <span class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Tracking" %}</span>
     <span>{% if tracked %}{% translate "On" as on_label %}{% include "components/status_badge.html" with status="active" label=on_label only %}{% else %}{% translate "Off" as off_label %}{% include "components/status_badge.html" with status="inactive" label=off_label only %}{% endif %}</span>
@@ -28,6 +28,10 @@
   <div class="flex flex-col gap-2 rounded-card border border-line bg-surface px-5 py-4">
     <span class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Tracker" %}</span>
     {% include "presence/_sync.html" with sync=sync detail=True only %}
+  </div>
+  <div id="reconciliation" class="flex flex-col gap-2 rounded-card border border-line bg-surface px-5 py-4">
+    <span class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Nightly check" %}</span>
+    {% include "presence/_reconciliation.html" with rec=reconciliation only %}
   </div>
 </section>
 
@@ -119,7 +123,7 @@
 </section>
 
 <section aria-labelledby="badges-title" class="flex flex-col gap-2 rounded-card border border-line bg-surface px-5 py-4">
-  <h2 id="badges-title" class="font-display text-base font-bold">{% translate "BLE badges" %}</h2>
+  <h2 id="badges-title" class="font-display text-base font-bold">{% translate "BLE badges" context "screen" %}</h2>
   <p class="text-sm text-ink-700">{% translate "Badges belong to workers, not to a site: a badge is recognised on every site of the company." %}</p>
   <span class="flex flex-wrap gap-3 text-sm font-semibold"><a href="{% url 'presence:badges' %}?site={{ site.pk }}">{% translate "Badges of this site’s crew" %}</a><a href="{% url 'presence:notice' %}?site={{ site.pk }}" hx-boost="false">{% translate "Print the notice for badge holders" %}</a></span>
 </section>

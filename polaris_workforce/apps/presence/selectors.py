@@ -15,7 +15,14 @@ from apps.core.dates import company_tz
 from apps.core.models import CompanySettings
 from apps.core.settings import resolve_setting
 
-from .models import BleBadge, PresenceSession, SubjectKind, TrackerSync, TrackingConsent
+from .models import (
+    BleBadge,
+    PresenceReconciliation,
+    PresenceSession,
+    SubjectKind,
+    TrackerSync,
+    TrackingConsent,
+)
 
 # --- settings ----------------------------------------------------------------------------
 
@@ -196,6 +203,16 @@ def _sync_status(sync: TrackerSync | None) -> SyncStatus:
 
 def sync_status(site) -> SyncStatus:
     return _sync_status(TrackerSync.objects.filter(site=site).first())
+
+
+def latest_reconciliation(site) -> PresenceReconciliation | None:
+    """The site's most recent nightly check of a day against the tracker's replay (the
+    latest day tried, successful or not), or ``None`` before the first one."""
+    return (
+        PresenceReconciliation.objects.filter(site=site)
+        .order_by("-local_date", "-last_attempt_at")
+        .first()
+    )
 
 
 @dataclass(frozen=True)

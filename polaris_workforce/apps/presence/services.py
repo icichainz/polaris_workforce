@@ -496,6 +496,7 @@ def write_worker_presence_csv(user, worker: Worker, out) -> int:
             _("Minutes on site"),
             _("Zones"),
             _("Ended because"),
+            _("Source"),
         ]
     )
     count = 0
@@ -516,6 +517,7 @@ def write_worker_presence_csv(user, worker: Worker, out) -> int:
                 minutes,
                 _text_cell(" > ".join(session.zones)),
                 str(reasons.get(session.end_reason, session.end_reason)) if ended else "",
+                str(session.get_source_display()),
             ]
         )
         count += 1

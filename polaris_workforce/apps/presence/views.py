@@ -129,6 +129,16 @@ def _subject_name(user) -> str:
     return user.get_full_name() or user.username
 
 
+def tracker_public_url(path: str = "") -> str:
+    """``TRACKER_PUBLIC_URL`` joined with ``path``; empty without a public URL. The
+    tracker may sit under a path behind the proxy (``http://host:8080/tracker``), so the
+    path is appended to it, never resolved from the root."""
+    base = (settings.TRACKER_PUBLIC_URL or "").rstrip("/")
+    if not base:
+        return ""
+    return f"{base}/{path.lstrip('/')}" if path else base
+
+
 def _page(request, template, context):
     """``render`` with the company time zone: the templates show times in it
     (``{% timezone time_zone %}``), not in the server's."""
@@ -171,6 +181,7 @@ def site_setup(request, pk):
             "zones": zones,
             "gateways": gateways,
             "sync": selectors.sync_status(site),
+            "reconciliation": selectors.latest_reconciliation(site),
             "revoke_form": RevokeForm(),
             "nav_active": NAV,
         },
@@ -289,10 +300,8 @@ def gateway_token(request, pk):
         context.update(
             token=token,
             expires_at=expires_at,
-            tracker_url=settings.TRACKER_PUBLIC_URL,
-            sightings_url=f"{settings.TRACKER_PUBLIC_URL}/v1/gateways/sightings"
-            if settings.TRACKER_PUBLIC_URL
-            else "",
+            tracker_url=tracker_public_url(),
+            sightings_url=tracker_public_url("v1/gateways/sightings"),
         )
     return _page(request, "presence/gateway_token.html", context)
 
@@ -465,7 +474,7 @@ def dashboard_token(request):
         {
             "token": token,
             "expires_at": int(expires_at.timestamp()),
-            "tracker_url": settings.TRACKER_PUBLIC_URL,
+            "tracker_url": tracker_public_url(),
         }
     )
 
@@ -521,7 +530,7 @@ def live(request, pk):
     if token:
         config = {
             "siteId": site.pk,
-            "trackerUrl": settings.TRACKER_PUBLIC_URL,
+            "trackerUrl": tracker_public_url(),
             "token": token,
             "expiresAt": int(expires_at.timestamp()),
             "tokenUrl": reverse("presence:dashboard_token"),
@@ -586,10 +595,11 @@ def person_day(request, kind, pk, date=None):
     company = CompanySettings.load()
     today = dates.company_today(company)
     subject, name, detail = _person_or_404(request.user, kind, pk, today)
-    if date is None:
+    if date is None:  # today, or the day picked in the form
         pick = DayForm(request.GET or None)
-        date = pick.cleaned_data["date"] if pick.is_valid() else today
-        return redirect("presence:person_day", kind=kind, pk=pk, date=date)
+        if pick.is_valid():
+            return redirect("presence:person_day", kind=kind, pk=pk, date=pick.cleaned_data["date"])
+        date = today
     sessions = list(selectors.person_sessions(request.user, kind, pk, date))
     timeline = selectors.timeline(sessions, date, company)
     reasons = dict(PresenceEvent.Reason.choices)
@@ -606,7 +616,7 @@ def person_day(request, kind, pk, date=None):
         ):
             zones.setdefault(str(site_id), {})[code] = zone_name
         config = {
-            "trackerUrl": settings.TRACKER_PUBLIC_URL,
+            "trackerUrl": tracker_public_url(),
             "token": token,
             "kind": kind,
             "id": pk,

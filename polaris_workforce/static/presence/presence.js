@@ -102,8 +102,14 @@ function setText(scope, selector, text) {
   scope.querySelectorAll(selector).forEach(function (el) { el.textContent = text; });
 }
 
+// The tracker may sit under a path (behind nginx: http://host:8080/tracker): join, never
+// assume the root. ``path`` may carry a query string.
+function trackerUrl(config, path) {
+  return String(config.trackerUrl).replace(/\/+$/, "") + "/" + path.replace(/^\/+/, "");
+}
+
 function trackerFetch(config, path) {
-  return fetch(config.trackerUrl + path, {
+  return fetch(trackerUrl(config, path), {
     headers: { Authorization: "Bearer " + config.token, Accept: "application/json" },
     credentials: "omit",
     cache: "no-store",
@@ -121,6 +127,7 @@ function mountLive(root, config) {
   const rowTemplate = root.querySelector("template[data-person-row]");
   let source = null;
   let stopped = false;
+  let loaded = false; // a first snapshot arrived: the list says something true
   let retryMs = RETRY_MIN_MS;
   let authFailures = 0;
   let retryTimer = null;
@@ -193,6 +200,7 @@ function mountLive(root, config) {
   }
 
   function applySnapshot(snapshot) {
+    loaded = true;
     people.clear();
     (snapshot.people || []).forEach(function (p) {
       people.set(keyOf(p.subject), {
@@ -361,8 +369,8 @@ function mountLive(root, config) {
   function connect() {
     if (stopped) return;
     closeStream();
-    const url = config.trackerUrl + "/v1/sites/" + config.siteId + "/live?access_token=" +
-      encodeURIComponent(config.token);
+    const url = trackerUrl(config, "v1/sites/" + config.siteId + "/live?access_token=" +
+      encodeURIComponent(config.token));
     const stream = new EventSource(url);
     source = stream;
     heard();
@@ -430,6 +438,7 @@ function mountLive(root, config) {
       if (stopped || !mapElement || !config.geofence) return;
       const g = config.geofence;
       map = baseMap(L, mapElement);
+      map.setView([g.lat, g.lng], 17); // A circle measures itself on a map with a view.
       const circle = L.circle([g.lat, g.lng], { radius: g.radius, className: "presence-geofence" }).addTo(map);
       centre = L.circleMarker([g.lat, g.lng], { radius: 5, className: "presence-centre" })
         .bindTooltip(textElement(fill(strings.onSiteTooltip || "{count}", { count: 0 })), {
@@ -438,7 +447,7 @@ function mountLive(root, config) {
         })
         .addTo(map);
       map.fitBounds(circle.getBounds(), { padding: [16, 16] });
-      render();
+      if (loaded) render();
       foremanTimer = window.setInterval(refreshForemen, FOREMAN_TRACK_MS);
     })
     .catch(function () {

@@ -1,8 +1,8 @@
 {% extends "layouts/app.html" %}
 {% load i18n tz %}
 
-{% block title %}{% translate "BLE badges" %} · Polaris Workforce{% endblock %}
-{% block page_title %}{% translate "BLE badges" %}{% endblock %}
+{% block title %}{% translate "BLE badges" context "screen" %} · Polaris Workforce{% endblock %}
+{% block page_title %}{% translate "BLE badges" context "screen" %}{% endblock %}
 {% block page_meta %}{% translate "Radio badges (lanyard or helmet tags) that gateways and the foremen’s phones pick up. One badge per worker; a badge is recognised on every site of the company." %}{% endblock %}
 {% block page_actions %}
   {% translate "Print the notice" as notice_label %}{% url "presence:notice" as notice_url %}{% include "components/button.html" with label=notice_label href=notice_url download=True only %}
@@ -17,7 +17,7 @@
   {% translate "Filter" as filter_label %}{% include "components/button.html" with label=filter_label type="submit" only %}
 </form>
 
-<section aria-label="{% translate 'BLE badges' %}" class="flex flex-col gap-2">
+<section aria-label="{% translate 'BLE badges' context 'screen' %}" class="flex flex-col gap-2">
   <p class="text-sm text-ink-700">{% blocktranslate count n=rows|length with with_badge=with_badge %}With a badge: {{ with_badge }} of {{ n }} worker.{% plural %}With a badge: {{ with_badge }} of {{ n }} workers.{% endblocktranslate %}{% if rows|length >= limit %} {% blocktranslate with limit=limit %}Only the first {{ limit }} are shown: search to narrow the list.{% endblocktranslate %}{% endif %}</p>
   {% if rows %}
   <div class="overflow-x-auto rounded-control border border-line bg-surface">

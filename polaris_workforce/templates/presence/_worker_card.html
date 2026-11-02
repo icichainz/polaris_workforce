@@ -3,7 +3,7 @@ Presence card of the worker profile ({% presence_worker_card worker %}, apps/pre
 {% endcomment %}{% if show %}<section id="worker-presence" aria-labelledby="presence-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
   <h2 id="presence-title" class="font-display text-base font-bold">{% translate "Presence tracking" %}</h2>
   <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Tracking" %}</span><span class="text-right font-semibold">{% if tracking_on %}{% translate "On" %}{% else %}{% translate "Off" %}{% endif %}</span></div>
-  <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "BLE badge" %}</span><span class="min-w-0 break-all text-right font-mono text-[13px] font-semibold">{% if badge %}{{ badge.badge_id }}{% else %}<span class="font-sans font-normal text-steel">{% translate "None" %}</span>{% endif %}</span></div>
+  <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "BLE badge" context "screen" %}</span><span class="min-w-0 break-all text-right font-mono text-[13px] font-semibold">{% if badge %}{{ badge.badge_id }}{% else %}<span class="font-sans font-normal text-steel">{% translate "None" %}</span>{% endif %}</span></div>
   <div class="flex flex-wrap gap-3 text-sm font-semibold">
     <a href="{% url 'presence:person_day' 'worker' worker.pk today %}">{% translate "Presence today" %}</a>
     <a href="{% url 'presence:worker_badge' worker.pk %}">{% if badge %}{% translate "Change badge" %}{% else %}{% translate "Give a badge" %}{% endif %}</a>
