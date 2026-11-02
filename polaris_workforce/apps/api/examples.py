@@ -223,6 +223,7 @@ PAYMENT_SUMMARY = {
     "id": 3301,
     "client_uuid": PAYMENT_UUID,
     "amount": 4000,
+    "method": "cash",
     "proof_type": "photo",
     "paid_at": PAID_AT,
 }
@@ -264,6 +265,7 @@ PAYOUT = {
     "total_to_pay": 13250,
     "paid_total": 4000,
     "left_to_pay": 9250,
+    "cash_to_pay": 13250,
     "cash_in_hand": 16000,
     "line_count": 3,
     "paid_count": 1,

@@ -26,6 +26,12 @@ class PaymentSummarySerializer(serializers.Serializer):
     id = serializers.IntegerField()
     client_uuid = serializers.UUIDField()
     amount = MoneyField()
+    method = serializers.ChoiceField(
+        choices=enums.PAYMENT_METHODS,
+        help_text="How the worker was paid (1.6). `cash` for every payment made on the "
+        "phone; `bank_transfer` / `mobile_money` for transfers the office confirmed: "
+        "those take no cash from the foreman.",
+    )
     proof_type = serializers.ChoiceField(choices=enums.PROOF_TYPES)
     paid_at = serializers.DateTimeField()
 
@@ -71,9 +77,16 @@ class PayoutSerializer(serializers.Serializer):
     total_to_pay = MoneyField(help_text="Sum of `net` over all lines.")
     paid_total = MoneyField(help_text="Sum of payments made.")
     left_to_pay = MoneyField(help_text="total_to_pay − paid_total.")
+    cash_to_pay = MoneyField(
+        help_text="Sum of `net` over the lines paid in cash: the workers whose payment "
+        "method is cash, and any line already paid in cash (a failed transfer). Workers "
+        "paid by bank transfer or mobile money take no cash. (1.6)"
+    )
     cash_in_hand = MoneyField(
-        help_text="cash_issued − paid_total: what the foreman should hold now "
-        "(and return to the office once everyone is paid)."
+        help_text="cash_issued − the payments made in cash: what the foreman should hold "
+        "now. Once everyone paid in cash is paid, cash_issued − cash_to_pay goes back to "
+        "the office. A transfer does not change it. (1.6: transfers used to be taken off "
+        "too.)"
     )
     line_count = serializers.IntegerField()
     paid_count = serializers.IntegerField()
@@ -111,6 +124,12 @@ class PaymentSerializer(serializers.Serializer):
     client_uuid = serializers.UUIDField()
     pay_line_id = serializers.IntegerField()
     amount = MoneyField()
+    method = serializers.ChoiceField(
+        choices=enums.PAYMENT_METHODS,
+        help_text="How the worker was paid (1.6). `cash` for every payment made on the "
+        "phone; `bank_transfer` / `mobile_money` for transfers the office confirmed: "
+        "those take no cash from the foreman.",
+    )
     currency = CurrencySerializer()
     proof_type = serializers.ChoiceField(choices=enums.PROOF_TYPES)
     proof_url = serializers.URLField(allow_null=True)
@@ -169,6 +188,7 @@ def payout_data(sheet, request) -> dict:
                     "id": payment.pk,
                     "client_uuid": payment.client_uuid,
                     "amount": payment.amount,
+                    "method": payment.method,
                     "proof_type": payment.proof_type,
                     "paid_at": payment.paid_at,
                 },
@@ -185,6 +205,7 @@ def payout_data(sheet, request) -> dict:
         "total_to_pay": rec.total_to_pay,
         "paid_total": rec.paid_total,
         "left_to_pay": rec.left_to_pay,
+        "cash_to_pay": rec.cash_to_pay,
         "cash_in_hand": rec.cash_in_hand,
         "line_count": rec.line_count,
         "paid_count": rec.paid_count,
@@ -200,6 +221,7 @@ def payment_data(payment, request) -> dict:
         "client_uuid": payment.client_uuid,
         "pay_line_id": payment.pay_line_id,
         "amount": payment.amount,
+        "method": payment.method,
         "currency": _currency(period.currency, period.currency_decimals),
         "proof_type": payment.proof_type,
         "proof_url": files.api_payment_proof_url(request, payment),

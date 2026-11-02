@@ -7,6 +7,7 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from apps.core.choices import PaymentMethod
 from apps.payroll.api.serializers import PaymentSerializer, PayoutSerializer
 from apps.payroll.models import PayLine, Payment, PayPeriod
 from tests.factories import AdvanceFactory, CashIssueFactory, CompanySettingsFactory, UserFactory
@@ -96,6 +97,29 @@ def test_payout_follows_the_contract(site_setup):
     assert data["left_to_pay"] == data["total_to_pay"] - data["paid_total"]
     assert data["cash_in_hand"] == data["cash_issued"] - data["paid_total"] == 20000
     assert (data["line_count"], data["paid_count"]) == (2, 0)
+
+
+def test_a_worker_paid_by_transfer_takes_no_cash(site_setup):
+    """Contract 1.6: Kofi is paid by mobile money. He is on the sheet and in the totals,
+    not in the cash figures; the foreman paying him anyway (a failed transfer) pays cash."""
+    site, manager, foreman, yao, afi = site_setup
+    kofi = hire(site, 4000, first_name="Kofi", payment_method=PaymentMethod.MOBILE_MONEY)
+    roll_call(site, MON, {yao: "present", afi: "half_day", kofi: "present"})
+    CashIssueFactory(site=site, date=MON, amount=8000, issued_by=manager, received_by=foreman)
+    phone = client_for(foreman)
+
+    before = phone.get(payout_url(site)).json()
+    line = PayLine.objects.get(worker=kofi, period__end_date=MON)
+    paid = phone.post(payments_url(), body(line), format="json")
+    after = phone.get(payout_url(site)).json()
+
+    assert (before["total_to_pay"], before["cash_to_pay"]) == (9750, 5750)
+    assert before["cash_in_hand"] == 8000
+    assert paid.status_code == 201 and paid.json()["method"] == "cash"
+    lines = {row["worker"]["id"]: row for row in after["lines"]}
+    assert lines[kofi.pk]["payment"]["method"] == "cash"
+    assert (after["cash_to_pay"], after["cash_in_hand"]) == (9750, 4000)
+    assert PayoutSerializer(data=after).is_valid(), PayoutSerializer(data=after).errors
 
 
 def test_payout_before_approval_is_a_preview(site_setup):

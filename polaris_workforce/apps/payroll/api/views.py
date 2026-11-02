@@ -14,6 +14,7 @@ from apps.accounts.permissions import get_site_or_403
 from apps.api import examples as ex
 from apps.api.idempotency import IdempotentCreateMixin, run_once
 from apps.api.schema import DATE, SITE_ID, error_responses
+from apps.core.choices import PaymentMethod
 
 from .. import services
 from ..models import PayLine, Payment
@@ -39,7 +40,9 @@ class PayoutView(APIView):
             "('Preview tonight's payout'). Every money value is an integer in the "
             "smallest unit of `currency`.\n\n"
             "Invariants: `total_to_pay = Σ net`, `left_to_pay = total_to_pay − paid_total`, "
-            "`cash_in_hand = cash_issued − paid_total`.\n\n"
+            "`cash_to_pay = Σ net of the lines paid in cash`, "
+            "`cash_in_hand = cash_issued − payments in cash`. Workers paid by bank transfer "
+            "or mobile money are in the totals but take no cash (1.6).\n\n"
             "**`pay_line_id`** is stable for a worker and pay period while the line is "
             "recomputed (a correction, an approval): the line is updated in place. It "
             "changes only if the worker drops off the sheet (no worked day left in the "
@@ -166,6 +169,9 @@ class PaymentCreateView(IdempotentCreateMixin, APIView):
                 proof_file=data.get("proof_file"),
                 paid_at=data.get("paid_at"),
                 client_uuid=data["client_uuid"],
+                # The foreman hands the money over: cash, whatever the worker's usual
+                # method (a failed transfer paid on site). Transfers come from payouts.
+                method=PaymentMethod.CASH,
             ),
             matches=lambda p: p.pay_line_id == line.pk and p.paid_by_id == request.user.pk,
         )

@@ -262,6 +262,7 @@ def cash_sheet_data(site, date: datetime.date) -> dict:
         "total_to_pay": amount(rec.total_to_pay),
         "paid_total": amount(rec.paid_total),
         "left_to_pay": amount(rec.left_to_pay),
+        "cash_to_pay": amount(rec.cash_to_pay),
         "cash_in_hand": amount(rec.cash_in_hand),
         "line_count": rec.line_count,
         "paid_count": rec.paid_count,

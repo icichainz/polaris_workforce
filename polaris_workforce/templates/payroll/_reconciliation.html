@@ -1,6 +1,7 @@
 {% load i18n payroll_tags %}{% comment %}
 Cash reconciliation strip (CashSheet artboard). Context: `sheet`; `oob` → htmx out-of-band.
-Total to pay = Σ net · left = total − paid · in hand = issued − paid · return = issued − total.
+Total to pay = Σ net · left = total − paid (every method). Cash only (workers paid by
+transfer take no cash): in hand = issued − cash payments · return = issued − cash to pay.
 {% endcomment %}{% with rec=sheet.reconciliation %}
 <section id="reconciliation"{% if oob %} hx-swap-oob="true"{% endif %} aria-label="{% translate 'Cash reconciliation' %}" class="grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface sm:grid-cols-2 lg:grid-cols-5">
   <div class="flex flex-col gap-1 border-b border-line-soft px-5 py-4 lg:border-r lg:border-b-0">
@@ -12,6 +13,7 @@ Total to pay = Σ net · left = total − paid · in hand = issued − paid · r
     <span class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Total to pay" %}</span>
     <span class="font-display text-2xl font-bold tabular-nums">{{ rec.total_to_pay|money:sheet }}</span>
     <span class="text-xs text-steel">{% blocktranslate count n=rec.line_count %}{{ n }} worker · net of advances{% plural %}{{ n }} workers · net of advances{% endblocktranslate %}</span>
+    {% if rec.transfer_to_pay %}<span class="text-xs text-steel">{% blocktranslate with cash=rec.cash_to_pay|money:sheet transfer=rec.transfer_to_pay|money:sheet %}{{ cash }} in cash · {{ transfer }} by transfer{% endblocktranslate %}</span>{% endif %}
   </div>
   <div class="flex flex-col gap-1 border-b border-line-soft px-5 py-4 lg:border-r lg:border-b-0">
     <span class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Paid so far" %}</span>

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Polaris Workforce API
-  version: 1.5.0
+  version: 1.6.0
   description: |-
     Foreman phone API: PIN sign-in, crew lists, roll call, corrections, sync and cash payouts. Authenticate with `Authorization: Device <token>` from `POST /api/v1/auth/pin/`. Errors are `{code, message, details}`. Every phone write carries a `client_uuid` and is idempotent. Money is an integer in the currency's smallest unit, next to a `currency {code, decimals}` object. Dates are ISO 8601, times `HH:MM`. Conventions: docs/api/README.md.
 
@@ -1447,6 +1447,7 @@ paths:
                     id: 3301
                     client_uuid: e4b1c9d2-6a3f-4d8e-b7c0-1a2b3c4d5e61
                     amount: 4000
+                    method: cash
                     proof_type: photo
                     paid_at: '2026-10-31T16:31:00Z'
                     pay_line_id: 801
@@ -1469,6 +1470,7 @@ paths:
                     id: 3301
                     client_uuid: e4b1c9d2-6a3f-4d8e-b7c0-1a2b3c4d5e61
                     amount: 4000
+                    method: cash
                     proof_type: photo
                     paid_at: '2026-10-31T16:31:00Z'
                     pay_line_id: 801
@@ -3196,7 +3198,7 @@ paths:
       description: |-
         Who to pay and how much, with the cash reconciliation. Before the roll call is approved `status` is `not_open` and the figures are a preview ('Preview tonight's payout'). Every money value is an integer in the smallest unit of `currency`.
 
-        Invariants: `total_to_pay = Σ net`, `left_to_pay = total_to_pay − paid_total`, `cash_in_hand = cash_issued − paid_total`.
+        Invariants: `total_to_pay = Σ net`, `left_to_pay = total_to_pay − paid_total`, `cash_to_pay = Σ net of the lines paid in cash`, `cash_in_hand = cash_issued − payments in cash`. Workers paid by bank transfer or mobile money are in the totals but take no cash (1.6).
 
         **`pay_line_id`** is stable for a worker and pay period while the line is recomputed (a correction, an approval): the line is updated in place. It changes only if the worker drops off the sheet (no worked day left in the period, e.g. corrected to absent) and comes back later, which makes a new line. A paid line is frozen. Pay from the latest sheet: a queued payment for a line that no longer exists gets `404 not_found`, and one whose `net` changed gets `400` on `amount`; fetch the sheet again.
       summary: Cash sheet for the day
@@ -3240,6 +3242,7 @@ paths:
                     total_to_pay: 13250
                     paid_total: 4000
                     left_to_pay: 9250
+                    cash_to_pay: 13250
                     cash_in_hand: 16000
                     line_count: 3
                     paid_count: 1
@@ -3283,6 +3286,7 @@ paths:
                         id: 3301
                         client_uuid: e4b1c9d2-6a3f-4d8e-b7c0-1a2b3c4d5e61
                         amount: 4000
+                        method: cash
                         proof_type: photo
                         paid_at: '2026-10-31T16:31:00Z'
                   summary: Open sheet
@@ -4868,6 +4872,16 @@ components:
       - phone
       - role
       - sites
+    MethodEnum:
+      enum:
+      - cash
+      - bank_transfer
+      - mobile_money
+      type: string
+      description: |-
+        * `cash` - Cash
+        * `bank_transfer` - Bank transfer
+        * `mobile_money` - Mobile money
     Money:
       type: object
       properties:
@@ -4930,8 +4944,14 @@ components:
           $ref: '#/components/schemas/Money'
         left_to_pay:
           $ref: '#/components/schemas/Money'
+        cash_to_pay:
+          allOf:
+          - $ref: '#/components/schemas/Money'
+          description: Net of the lines paid in cash (1.6).
         cash_in_hand:
-          $ref: '#/components/schemas/Money'
+          allOf:
+          - $ref: '#/components/schemas/Money'
+          description: Cash issued − payments in cash; transfers take no cash (1.6).
         line_count:
           type: integer
         paid_count:
@@ -4948,6 +4968,7 @@ components:
       - absent
       - cash_in_hand
       - cash_issued
+      - cash_to_pay
       - currency
       - date
       - day_status
@@ -5151,6 +5172,15 @@ components:
           description: 'Money: an integer in the currency''s smallest unit (see the
             `currency` object of the same response). 5000 XOF (0 decimals) is 5000;
             12.50 EUR is 1250.'
+        method:
+          allOf:
+          - $ref: '#/components/schemas/MethodEnum'
+          description: |-
+            How the worker was paid (1.6). `cash` for every payment made on the phone; `bank_transfer` / `mobile_money` for transfers the office confirmed: those take no cash from the foreman.
+
+            * `cash` - Cash
+            * `bank_transfer` - Bank transfer
+            * `mobile_money` - Mobile money
         currency:
           $ref: '#/components/schemas/Currency'
         proof_type:
@@ -5169,6 +5199,7 @@ components:
       - client_uuid
       - currency
       - id
+      - method
       - paid_at
       - paid_by
       - pay_line_id
@@ -5253,6 +5284,15 @@ components:
           description: 'Money: an integer in the currency''s smallest unit (see the
             `currency` object of the same response). 5000 XOF (0 decimals) is 5000;
             12.50 EUR is 1250.'
+        method:
+          allOf:
+          - $ref: '#/components/schemas/MethodEnum'
+          description: |-
+            How the worker was paid (1.6). `cash` for every payment made on the phone; `bank_transfer` / `mobile_money` for transfers the office confirmed: those take no cash from the foreman.
+
+            * `cash` - Cash
+            * `bank_transfer` - Bank transfer
+            * `mobile_money` - Mobile money
         proof_type:
           $ref: '#/components/schemas/ProofTypeEnum'
         paid_at:
@@ -5262,6 +5302,7 @@ components:
       - amount
       - client_uuid
       - id
+      - method
       - paid_at
       - proof_type
     Payout:
@@ -5306,11 +5347,19 @@ components:
           type: integer
           format: int64
           description: total_to_pay − paid_total.
+        cash_to_pay:
+          type: integer
+          format: int64
+          description: 'Sum of `net` over the lines paid in cash: the workers whose
+            payment method is cash, and any line already paid in cash (a failed transfer).
+            Workers paid by bank transfer or mobile money take no cash. (1.6)'
         cash_in_hand:
           type: integer
           format: int64
-          description: 'cash_issued − paid_total: what the foreman should hold now
-            (and return to the office once everyone is paid).'
+          description: 'cash_issued − the payments made in cash: what the foreman
+            should hold now. Once everyone paid in cash is paid, cash_issued − cash_to_pay
+            goes back to the office. A transfer does not change it. (1.6: transfers
+            used to be taken off too.)'
         line_count:
           type: integer
         paid_count:
@@ -5323,6 +5372,7 @@ components:
       - approved_at
       - cash_in_hand
       - cash_issued
+      - cash_to_pay
       - currency
       - date
       - day_status

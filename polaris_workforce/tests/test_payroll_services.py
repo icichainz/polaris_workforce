@@ -14,6 +14,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from apps.api.exceptions import Conflict, Locked
 from apps.attendance.models import AttendanceDay, AttendanceRecord
+from apps.core.choices import PaymentMethod
 from apps.core.models import AuditLog
 from apps.payroll import services
 from apps.payroll.models import Advance, AdvanceRepayment, PayLine, Payment, PayPeriod
@@ -526,6 +527,52 @@ def test_cash_reconciliation_follows_issues_and_payments(company, media):
     assert rec.cash_in_hand == 14000
     assert rec.return_amount == 5000
     assert (rec.line_count, rec.paid_count) == (3, 1)
+
+
+def test_workers_paid_by_transfer_take_no_cash(company, media):
+    """Two workers in cash, one by mobile money: the cash issued is set against the cash
+    workers only, and the transfer leaves the foreman's cash as it was."""
+    site, manager, foreman = setup_site()
+    yao, afi = hire(site, 6000), hire(site, 5000)
+    kofi = hire(site, 4000, payment_method=PaymentMethod.MOBILE_MONEY)
+    roll_call(site, MON, {yao: "present", afi: "present", kofi: "present"})
+    services.issue_cash(manager, site, MON, 12000, received_by=foreman)
+    sheet_for(site, MON)
+    pay(foreman, line_of(site, MON, yao))
+    with services.transfer_proof("MM-778"):
+        pay(
+            manager,
+            line_of(site, MON, kofi),
+            method=PaymentMethod.MOBILE_MONEY,
+            proof_type="none",
+            proof_file=None,
+        )
+
+    rec = sheet_for(site, MON).reconciliation
+
+    assert (rec.total_to_pay, rec.paid_total, rec.left_to_pay) == (15000, 10000, 5000)
+    assert (rec.cash_to_pay, rec.cash_paid, rec.cash_left_to_pay) == (11000, 6000, 5000)
+    assert rec.cash_in_hand == 6000  # 12 000 − Yao's 6 000; Kofi's transfer took no cash
+    assert (rec.return_amount, rec.short_by) == (1000, 0)
+    # The list screens and the dashboard read the same figures without the objects.
+    [summary] = services.cash_sheet_summaries([(site, MON)])
+    assert summary.reconciliation == rec
+    assert services.reconciliations([site.pk], MON)[site.pk] == rec
+
+
+def test_a_failed_transfer_paid_in_cash_takes_cash(company, media):
+    site, manager, foreman = setup_site()
+    kofi = hire(site, 4000, payment_method=PaymentMethod.MOBILE_MONEY)
+    roll_call(site, MON, {kofi: "present"})
+    services.issue_cash(manager, site, MON, 3000, received_by=foreman)
+    sheet_for(site, MON)
+    before = sheet_for(site, MON).reconciliation
+    pay(foreman, line_of(site, MON, kofi), method=PaymentMethod.CASH)
+
+    rec = sheet_for(site, MON).reconciliation
+
+    assert (before.cash_to_pay, before.short_by) == (0, 0)
+    assert (rec.cash_to_pay, rec.cash_in_hand, rec.short_by) == (4000, -1000, 1000)
 
 
 def test_many_cash_sheets_read_together_are_the_sheets_read_one_by_one(company, media):

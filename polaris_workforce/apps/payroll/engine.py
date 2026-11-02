@@ -85,6 +85,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from fractions import Fraction
+from typing import NamedTuple
 
 PRESENT = "present"
 ABSENT = "absent"
@@ -838,50 +839,89 @@ def period_bounds(
 # --- cash sheet --------------------------------------------------------------------------
 
 
+class SheetAmounts(NamedTuple):
+    """One pay line as the cash reconciliation sees it."""
+
+    net: int
+    paid: int  # every payment: cash, bank transfer, mobile money
+    cash_paid: int  # the payments in cash
+    in_cash: bool  # paid out of the cash issued (see ``reconcile``)
+
+
 @dataclass(frozen=True)
 class CashReconciliation:
+    """Every method (``total_to_pay``, ``paid_total``, ``left_to_pay``, the counts) and
+    cash only: the cash issued is set against the lines paid in cash."""
+
     cash_issued: int
     total_to_pay: int
     paid_total: int
     left_to_pay: int
-    cash_in_hand: int
-    return_amount: int  # cash_issued − total_to_pay; negative means the cash was short
+    cash_in_hand: int  # cash_issued − cash payments: what the foreman should still hold
+    return_amount: int  # cash_issued − cash_to_pay; negative means the cash was short
     line_count: int
     paid_count: int
+    cash_to_pay: int = 0  # net of the lines paid in cash
+    cash_paid: int = 0
+    cash_left_to_pay: int = 0  # what the lines paid in cash still need
 
     @property
     def left_count(self) -> int:
         return self.line_count - self.paid_count
 
     @property
+    def transfer_to_pay(self) -> int:
+        """Net of the lines paid by bank transfer or mobile money."""
+        return self.total_to_pay - self.cash_to_pay
+
+    @property
     def short_by(self) -> int:
-        """How much cash is missing to pay everyone (0 when enough was issued)."""
+        """How much cash is missing to pay everyone paid in cash (0 when enough was
+        issued)."""
         return max(0, -self.return_amount)
 
 
-def reconcile(cash_issued: int, lines: Iterable[tuple[int, int]]) -> CashReconciliation:
-    """Cash sheet totals from the cash issued and ``(net, paid)`` per line.
+def reconcile(
+    cash_issued: int, lines: Iterable[SheetAmounts | tuple[int, int]]
+) -> CashReconciliation:
+    """Cash sheet totals from the cash issued and each line's amounts.
 
     A line counts as paid once its payments cover its net (a net of 0 needs no payment).
+    The cash figures (cash to pay, cash in hand, return, short by) take only the lines
+    paid out of the cash issued: a worker paid by bank transfer or mobile money is on
+    the sheet and in the totals, but takes no cash, unless their line was paid in cash
+    (a transfer that failed). A ``(net, paid)`` pair is a line paid in cash.
     """
     _check_money(cash_issued, "cash_issued")
     total = paid = count = paid_count = 0
-    for net, paid_amount in lines:
-        _check_money(net, "net")
-        _check_money(paid_amount, "paid")
-        total += net
-        paid += paid_amount
+    cash_total = cash_paid = cash_left = 0
+    for line in lines:
+        if len(line) == 2:
+            net, paid_amount = line
+            line = SheetAmounts(net, paid_amount, paid_amount, True)
+        _check_money(line.net, "net")
+        _check_money(line.paid, "paid")
+        _check_money(line.cash_paid, "cash_paid")
+        total += line.net
+        paid += line.paid
         count += 1
-        paid_count += paid_amount >= net
+        paid_count += line.paid >= line.net
+        cash_paid += line.cash_paid
+        if line.in_cash:
+            cash_total += line.net
+            cash_left += line.net - line.paid
     return CashReconciliation(
         cash_issued=cash_issued,
         total_to_pay=total,
         paid_total=paid,
         left_to_pay=total - paid,
-        cash_in_hand=cash_issued - paid,
-        return_amount=cash_issued - total,
+        cash_in_hand=cash_issued - cash_paid,
+        return_amount=cash_issued - cash_total,
         line_count=count,
         paid_count=paid_count,
+        cash_to_pay=cash_total,
+        cash_paid=cash_paid,
+        cash_left_to_pay=cash_left,
     )
 
 

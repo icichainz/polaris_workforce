@@ -281,7 +281,13 @@ GET /api/v1/sync/?since=2026-10-31T07:45:00Z
   For display, divide by `10^decimals`: XOF `5000` is "5 000 XOF"; EUR `1250` with
   `decimals: 2` is "12,50 €". Do the maths in integers.
 - The payout sheet always adds up: `total_to_pay = Σ lines.net`,
-  `left_to_pay = total_to_pay − paid_total`, `cash_in_hand = cash_issued − paid_total`.
+  `left_to_pay = total_to_pay − paid_total` (every payment method).
+- **Cash figures count cash only (1.6).** Workers paid by bank transfer or mobile money
+  are on the sheet and in the totals above, but take no cash. `cash_to_pay` is the net of
+  the lines paid in cash (the workers whose payment method is cash, and any line already
+  paid in cash, e.g. after a failed transfer); `cash_in_hand = cash_issued − payments in
+  cash`, so a transfer does not change it. Until 1.5, `cash_in_hand` took every payment
+  off, transfers included; on a site paying everyone in cash the two are the same.
 - `units` (days or hours) is a decimal **string**, e.g. `"0.50"`.
 
 ## Payments

@@ -493,6 +493,7 @@ class SyncService {
           approvedAt: sheet.approvedAt,
           currency: sheet.currency,
           cashIssued: sheet.cashIssued,
+          cashToPay: sheet.cashToPay,
           lines: [
             for (final l in sheet.lines)
               l.payLineId == payment.payLineId

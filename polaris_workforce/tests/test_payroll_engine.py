@@ -595,6 +595,28 @@ def test_reconcile_reports_short_cash_as_a_negative_return():
     assert sheet.cash_in_hand == 5000
 
 
+def test_reconcile_sets_the_cash_against_the_workers_paid_in_cash():
+    """Market Hall: two workers in cash, one by mobile money (already transferred)."""
+    lines = [
+        engine.SheetAmounts(10000, 10000, 10000, True),
+        engine.SheetAmounts(10000, 0, 0, True),
+        engine.SheetAmounts(9960, 9960, 0, False),
+    ]
+
+    sheet = engine.reconcile(30000, lines)
+
+    assert (sheet.total_to_pay, sheet.paid_total, sheet.left_to_pay) == (29960, 19960, 10000)
+    assert (sheet.cash_to_pay, sheet.cash_paid, sheet.cash_left_to_pay) == (20000, 10000, 10000)
+    assert sheet.cash_in_hand == 20000  # the transfer took no cash from the foreman
+    assert (sheet.return_amount, sheet.short_by) == (10000, 0)
+
+
+def test_reconcile_counts_a_failed_transfer_paid_in_cash():
+    sheet = engine.reconcile(5000, [engine.SheetAmounts(6000, 6000, 6000, True)])
+
+    assert (sheet.cash_to_pay, sheet.cash_in_hand, sheet.short_by) == (6000, -1000, 1000)
+
+
 def test_reconcile_rejects_floats():
     with pytest.raises(TypeError):
         engine.reconcile(100.0, [])
@@ -751,6 +773,31 @@ def test_property_cash_reconciliation_always_adds_up(seed):
         assert sheet.cash_in_hand - sheet.left_to_pay == sheet.return_amount
         assert sheet.left_to_pay >= 0
         assert 0 <= sheet.paid_count <= sheet.line_count == len(lines)
+
+
+@pytest.mark.parametrize("seed", range(20))
+def test_property_cash_figures_take_only_the_lines_paid_in_cash(seed):
+    rng = random.Random(seed)
+    for _ in range(100):
+        lines = []
+        for _line in range(rng.randint(0, 40)):
+            net = rng.choice([0, rng.randint(0, 100000)])
+            in_cash = rng.random() < 0.6
+            paid = rng.choice([0, net])
+            lines.append(engine.SheetAmounts(net, paid, paid if in_cash else 0, in_cash))
+        issued = rng.randint(0, 2_000_000)
+
+        sheet = engine.reconcile(issued, lines)
+
+        cash = [line for line in lines if line.in_cash]
+        assert sheet.total_to_pay == sum(line.net for line in lines)
+        assert sheet.left_to_pay == sheet.total_to_pay - sheet.paid_total
+        assert sheet.cash_to_pay == sum(line.net for line in cash)
+        assert sheet.cash_left_to_pay == sum(line.net - line.paid for line in cash)
+        assert sheet.cash_in_hand == issued - sum(line.cash_paid for line in lines)
+        assert sheet.return_amount == issued - sheet.cash_to_pay
+        assert sheet.cash_in_hand - sheet.cash_left_to_pay == sheet.return_amount
+        assert 0 <= sheet.cash_left_to_pay <= sheet.left_to_pay
 
 
 @pytest.mark.parametrize("seed", range(20))

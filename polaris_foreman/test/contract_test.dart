@@ -146,7 +146,10 @@ void main() {
       final p = Payout.fromJson(json);
       expect(p.totalToPay, p.lines.fold<int>(0, (s, l) => s + l.net));
       expect(p.leftToPay, p.totalToPay - p.paidTotal);
-      expect(p.cashInHand, p.cashIssued - p.paidTotal);
+      final cashPaid = p.lines
+          .where((l) => l.payment?.isCash ?? false)
+          .fold<int>(0, (s, l) => s + l.payment!.amount);
+      expect(p.cashInHand, p.cashIssued - cashPaid);
       final rebuilt = Payout.fromLines(
         siteId: p.siteId,
         date: p.date,
@@ -155,6 +158,7 @@ void main() {
         approvedAt: p.approvedAt,
         currency: p.currency,
         cashIssued: p.cashIssued,
+        cashToPay: p.cashToPay,
         lines: p.lines,
       );
       expect(rebuilt.toJson(), json);
@@ -311,8 +315,8 @@ void main() {
       );
     });
 
-    test('the contract is version 1.5', () {
-      expect(OpenApi.load().version, startsWith('1.5.'));
+    test('the contract is version 1.6', () {
+      expect(OpenApi.load().version, startsWith('1.6.'));
     });
   });
 

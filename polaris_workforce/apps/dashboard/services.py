@@ -145,7 +145,7 @@ def today_overview(
             n_late=Count("records", filter=Q(records__status=Status.LATE)),
         )
     }
-    cash = _cash_tonight(active_ids, today)
+    cash = _cash_tonight(active_ids, today, company)
 
     rows = []
     alerts: list[Alert] = []
@@ -217,16 +217,18 @@ def _name(user) -> str:
     return user.get_full_name() or user.username
 
 
-def _cash_tonight(site_ids, today) -> dict[int, int]:
+def _cash_tonight(site_ids, today, company=None) -> dict[int, int]:
     """Cash still to hand over tonight per site: payroll's cash-sheet reconciliation.
 
-    ``left_to_pay`` of today's cash sheet (``apps.payroll.services.reconciliations``,
-    the same figures as the Cash sheets screen, read for every site in two queries).
-    Sites without a pay line today are left out.
+    ``cash_left_to_pay`` of today's cash sheet: the workers paid in cash only, those paid
+    by transfer take no cash (``apps.payroll.services.reconciliations``, the same figures
+    as the Cash sheets screen, read for every site in two queries). Sites without a pay
+    line today are left out.
     """
+    reconciliations = payroll_services.reconciliations(site_ids, today, company=company)
     return {
-        site_id: max(0, reconciliation.left_to_pay)
-        for site_id, reconciliation in payroll_services.reconciliations(site_ids, today).items()
+        site_id: max(0, reconciliation.cash_left_to_pay)
+        for site_id, reconciliation in reconciliations.items()
         if reconciliation.line_count
     }
 
