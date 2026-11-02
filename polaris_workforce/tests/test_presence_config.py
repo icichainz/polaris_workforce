@@ -15,6 +15,7 @@ import io
 import json
 import logging
 import urllib.error
+import uuid
 from decimal import Decimal
 from pathlib import Path
 from unittest import mock
@@ -34,16 +35,23 @@ from apps.checkin.models import SiteGeofence
 from apps.core.models import AuditLog, CompanySettings
 from apps.core.tenancy import use_company
 from apps.presence import services, tasks, tokens
-from apps.presence.models import BleBadge, Gateway, TrackerSync, Zone
+from apps.presence.models import BleBadge, Gateway, TrackerSync, TrackingConsent, Zone
 from apps.workers import services as worker_services
 from apps.worksites import services as site_services
-from tests.factories import AdminUserFactory, CompanyFactory, SiteFactory, WorkerFactory
+from tests.factories import (
+    AdminUserFactory,
+    CompanyFactory,
+    ForemanFactory,
+    SiteFactory,
+    WorkerFactory,
+)
 from tests.test_settings_view import form_data
 
 pytestmark = pytest.mark.django_db
 
 TRACKER_SPEC = Path(django_settings.BASE_DIR).parent / "docs" / "api" / "tracker-openapi.yaml"
 TRACKER = "http://tracker.test:4100"
+VERSION = django_settings.TRACKING_CONSENT_TEXT_VERSION
 
 
 def site_config_validator() -> Draft202012Validator:
@@ -75,6 +83,13 @@ class FakeTracker:
 
     def body(self, index=-1) -> dict:
         return json.loads(self.requests[index].data)
+
+
+@pytest.fixture(autouse=True)
+def _no_pushes_left_over():
+    """Pushes queued by earlier tests whose transaction rolled back (their on-commit
+    callback never ran) would ride along with the first push here."""
+    services._pending_sites().clear()
 
 
 @pytest.fixture
@@ -137,6 +152,7 @@ def test_site_config_is_the_tracker_schema_with_only_tracked_badges(tracked):
         "zones": [{"id": "A", "name": "Gate"}, {"id": "B", "name": "Block B"}],
         "gateways": [{"id": f"gw-{tracked['live'].pk}-0", "zone_id": "A"}],
         "badges": [{"badge_id": "bdg-00f1", "worker_id": tracked["yao"].pk}],
+        "foremen": [],
         "rules": {
             "sightings_to_enter": 3,
             "arrival_window_seconds": 300,
@@ -162,8 +178,92 @@ def test_tracking_off_on_the_site_sends_nothing_but_the_switch(tracked):
 
     site_config_validator().validate(config)
     assert config["tracking_enabled"] is False
-    assert config["zones"] == config["gateways"] == config["badges"] == []
+    assert config["zones"] == config["gateways"] == config["badges"] == config["foremen"] == []
     assert config["geofence"] is None
+
+
+def test_an_inactive_company_sends_nothing_but_the_switch(tracked):
+    site = tracked["site"]
+    site.company.is_active = False
+    site.company.save()
+
+    config = services.site_config(site)
+
+    site_config_validator().validate(config)
+    assert config["tracking_enabled"] is False
+    assert config["zones"] == config["gateways"] == config["badges"] == config["foremen"] == []
+
+
+def consent(user, accepted=True, version=VERSION) -> TrackingConsent:
+    return TrackingConsent.objects.create(
+        company_id=user.company_id,
+        user=user,
+        accepted=accepted,
+        text_version=version,
+        client_uuid=uuid.uuid4(),
+    )
+
+
+def test_the_config_lists_the_site_foremen_who_accepted_the_current_notice(tracked):
+    accepted, refused, old_notice, never, gone, elsewhere = (
+        ForemanFactory(first_name=name)
+        for name in ("Kodjo", "Afi", "Komi", "Edem", "Kossi", "Mawuli")
+    )
+    gone.is_active = False
+    gone.save()
+    site = tracked["site"]
+    site.foremen.set([accepted, refused, old_notice, never, gone])
+    SiteFactory(foremen=[elsewhere])
+    for foreman in (accepted, gone, elsewhere):
+        consent(foreman)
+    consent(refused)
+    consent(refused, accepted=False)  # withdrawn since
+    consent(old_notice, version="2025-01-01")
+
+    config = services.site_config(site)
+
+    site_config_validator().validate(config)
+    assert config["foremen"] == [accepted.pk]
+
+
+def test_a_consent_answer_pushes_the_foreman_tracked_sites(
+    tracked, fake_tracker, django_capture_on_commit_callbacks
+):
+    foreman = ForemanFactory()
+    site = tracked["site"]
+    untracked = SiteFactory(name="Off", tracking_enabled=False)
+    site.foremen.add(foreman)
+    untracked.foremen.add(foreman)
+    SiteFactory(name="South")  # tracked, not his
+
+    with django_capture_on_commit_callbacks(execute=True):
+        services.record_consent(
+            foreman, client_uuid=uuid.uuid4(), accepted=True, text_version=VERSION
+        )
+    assert fake_tracker.sites == [site.pk]
+    assert fake_tracker.body()["foremen"] == [foreman.pk]
+
+    fake_tracker.requests.clear()
+    with django_capture_on_commit_callbacks(execute=True):
+        services.record_consent(
+            foreman, client_uuid=uuid.uuid4(), accepted=False, text_version=VERSION
+        )
+    assert fake_tracker.sites == [site.pk]
+    assert fake_tracker.body()["foremen"] == []
+
+
+def test_assigning_a_foreman_pushes_the_site(
+    tracked, fake_tracker, admin, django_capture_on_commit_callbacks
+):
+    foreman = ForemanFactory()
+    consent(foreman)
+    site = tracked["site"]
+
+    with django_capture_on_commit_callbacks(execute=True):
+        site_services.save_site(site, actor=admin, foremen=[foreman])
+
+    assert fake_tracker.sites == [site.pk]
+    assert fake_tracker.body()["foremen"] == [foreman.pk]
 
 
 def test_badges_of_another_company_are_never_in_the_config(tracked):
@@ -403,6 +503,43 @@ def test_a_failed_inline_push_never_fails_the_change(
     assert Zone.objects.filter(pk=zone.pk).exists()
 
 
+def test_an_unexpected_push_error_is_logged_and_the_other_sites_still_pushed(
+    tracked, fake_tracker, admin, monkeypatch, caplog, django_capture_on_commit_callbacks
+):
+    first, second = tracked["site"], SiteFactory(name="South")
+    real_push = services.push_site_config
+
+    def push(site):
+        if site.pk == first.pk:
+            raise RuntimeError("a bug in the config")
+        return real_push(site)
+
+    monkeypatch.setattr(services, "push_site_config", push)
+    with django_capture_on_commit_callbacks(execute=True), transaction.atomic():
+        zone = services.save_zone(Zone(site=first, code="C", name="Store"), actor=admin)
+        services.save_zone(Zone(site=second, code="C", name="Store"), actor=admin)
+
+    assert Zone.objects.filter(pk=zone.pk).exists()
+    assert fake_tracker.sites == [second.pk]
+    assert f"config push of site {first.pk} failed" in caplog.text
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_push_error_after_a_request_commits_is_not_a_server_error(
+    tracked, fake_tracker, admin, client, monkeypatch
+):
+    """Real commits: the push runs inside the request, once the save committed."""
+    send = mock.Mock(side_effect=RuntimeError("a bug in the push"))
+    monkeypatch.setattr(services, "_send_push", send)
+    client.force_login(admin)
+
+    response = client.post(reverse("core:settings"), form_data(foreman_gps_interval_seconds="45"))
+
+    assert response.status_code == 302
+    assert send.called
+    assert CompanySettings.load(fresh=True).foreman_gps_interval_seconds == 45
+
+
 # --- gateways and badges ------------------------------------------------------------------------
 
 
@@ -501,6 +638,29 @@ def test_the_resync_pushes_tracked_sites_and_those_tracked_before(tracked, fake_
     assert sorted(fake_tracker.sites) == sorted([tracked["site"].pk, was_tracked.pk, bravo_site.pk])
     assert untracked.pk not in fake_tracker.sites
     assert TrackerSync.objects.get(site=was_tracked).pushed_enabled is False
+
+
+def test_the_resync_turns_tracking_off_for_an_inactive_company(tracked, fake_tracker):
+    with use_company(CompanyFactory(name="Bravo")) as bravo:
+        bravo_settings = CompanySettings.load(bravo)
+        bravo_settings.tracking_enabled = True
+        bravo_settings.save()
+        pushed_on, failed, never = SiteFactory(), SiteFactory(), SiteFactory()
+    TrackerSync.objects.create(site=pushed_on, pushed_enabled=True)
+    TrackerSync.objects.create(site=failed, last_error="HTTP 503")
+    bravo.is_active = False
+    bravo.save()
+
+    assert sorted(site.pk for site in services.sites_to_resync()) == sorted(
+        [tracked["site"].pk, pushed_on.pk, failed.pk]
+    )
+    tasks.resync_site_configs()
+
+    assert never.pk not in fake_tracker.sites
+    bodies = {site_id: fake_tracker.body(i) for i, site_id in enumerate(fake_tracker.sites)}
+    assert bodies[pushed_on.pk]["tracking_enabled"] is False
+    assert bodies[pushed_on.pk]["badges"] == bodies[pushed_on.pk]["foremen"] == []
+    assert TrackerSync.objects.get(site=pushed_on).pushed_enabled is False
 
 
 def test_the_resync_stops_at_an_unreachable_tracker(tracked, fake_tracker):
