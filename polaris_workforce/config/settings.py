@@ -339,6 +339,11 @@ if not DEBUG:
     # (see SECURE_PROXY_SSL_HEADER), or every request loops; turn it off only when the
     # proxy itself refuses plain HTTP.
     SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
+    # The tracker posts presence events straight to Django inside the private network
+    # (http://web:8000, no proxy, no X-Forwarded-Proto); a redirect would make its outbox
+    # retry forever. The endpoint takes only the tracker's service token, and the public
+    # proxy refuses it (docker/nginx/default.conf).
+    SECURE_REDIRECT_EXEMPT = [r"^api/v1/presence/events/$"]
     # HSTS: set once HTTPS works for the domain (and its subdomains, for the two flags).
     SECURE_HSTS_SECONDS = int(env_str("DJANGO_HSTS_SECONDS", "0"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("DJANGO_HSTS_INCLUDE_SUBDOMAINS")

@@ -296,3 +296,14 @@ def test_a_gateway_token_names_its_gateway_and_one_site(two_companies):
     assert claims["sites"] == [north.pk]
     assert claims["travel"] is False
     assert (expires_at - gateway.token_issued_at).days in (364, 365)
+
+
+def test_the_tracker_reaches_the_events_endpoint_over_plain_http(client, settings):
+    """With the HTTPS redirect on, the events endpoint is exempt (the tracker posts inside
+    the network over plain HTTP); every other page still redirects."""
+    from django.conf import settings as project
+
+    settings.SECURE_SSL_REDIRECT = True
+    settings.SECURE_REDIRECT_EXEMPT = project.SECURE_REDIRECT_EXEMPT
+    assert client.post("/api/v1/presence/events/", {}).status_code != 301
+    assert client.get("/accounts/login/").status_code == 301
