@@ -1,6 +1,7 @@
 """Construction sites and worker assignments."""
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -24,6 +25,12 @@ class Site(TimeStampedModel):
         _("status"), max_length=20, choices=Status.choices, default=Status.ACTIVE
     )
     started_on = models.DateField(_("started on"), null=True, blank=True)
+    planned_end_date = models.DateField(
+        _("planned end date"),
+        null=True,
+        blank=True,
+        help_text=_("When the work should be finished. Compared with when the budget runs out."),
+    )
     manager = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=_("site manager"),
@@ -43,7 +50,7 @@ class Site(TimeStampedModel):
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
-        help_text=_("In the currency's smallest unit."),
+        help_text=_("For the whole site, in the currency's smallest unit."),
     )
 
     # Overrides of CompanySettings (see apps.core.settings.SITE_OVERRIDABLE).
@@ -102,6 +109,13 @@ class Site(TimeStampedModel):
 
     def __str__(self) -> str:
         return self.name
+
+    def clean(self):
+        super().clean()
+        if self.started_on and self.planned_end_date and self.planned_end_date < self.started_on:
+            raise ValidationError(
+                {"planned_end_date": _("The planned end date is before the start date.")}
+            )
 
 
 class SiteAssignmentQuerySet(models.QuerySet):

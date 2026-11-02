@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Polaris Workforce\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-02 00:25+0000\n"
+"POT-Creation-Date: 2026-11-02 02:37+0000\n"
 "PO-Revision-Date: 2026-10-31 18:00+0000\n"
 "Last-Translator: Polaris Workforce\n"
 "Language-Team: French\n"
@@ -160,9 +160,11 @@ msgid "Site manager"
 msgstr "Conducteur de travaux"
 
 #: apps/accounts/models.py:31 apps/api/enums.py:35 apps/presence/models.py:28
-#: templates/checkin/kiosks.html:17 templates/worksites/attendance.html:18
-#: templates/worksites/detail.html:66 templates/worksites/detail.html:68
-#: templates/worksites/list.html:39
+#: apps/presence/views.py:501 apps/presence/views.py:515
+#: apps/presence/views.py:588 templates/checkin/kiosks.html:17
+#: templates/dashboard/reports_checks.html:65
+#: templates/worksites/attendance.html:18 templates/worksites/detail.html:66
+#: templates/worksites/detail.html:68 templates/worksites/list.html:39
 msgid "Foreman"
 msgstr "Chef d’équipe"
 
@@ -328,7 +330,7 @@ msgstr "Au plus %(n)s jours à la fois."
 
 #: apps/agents/apps.py:7 templates/agents/access.html:4
 #: templates/agents/access.html:5 templates/agents/token_shown.html:4
-#: templates/agents/token_shown.html:5 templates/components/sidebar.html:81
+#: templates/agents/token_shown.html:5 templates/components/sidebar.html:82
 msgid "AI assistant access"
 msgstr "Accès des assistants IA"
 
@@ -373,7 +375,8 @@ msgstr "1 an"
 
 #: apps/agents/forms.py:15 apps/workers/forms.py:102
 #: templates/agents/_tokens.html:8 templates/payouts/layouts.html:15
-#: templates/workers/detail.html:114
+#: templates/presence/notice.html:73 templates/presence/site_setup.html:48
+#: templates/workers/detail.html:115
 msgid "Name"
 msgstr "Nom"
 
@@ -392,7 +395,7 @@ msgstr "Peut valider ou renvoyer les appels (toujours après un aperçu)"
 #: apps/agents/models.py:31 apps/core/models.py:43 apps/payouts/models.py:190
 #: apps/payroll/models.py:595 apps/payroll/models.py:667
 #: apps/precompute/models.py:197 apps/presence/models.py:52
-#: apps/workers/models.py:22 apps/worksites/models.py:21
+#: apps/workers/models.py:22 apps/worksites/models.py:22
 msgid "name"
 msgstr "nom"
 
@@ -472,6 +475,50 @@ msgstr ""
 #, python-format
 msgid "“%(name)s” can no longer use Polaris."
 msgstr "« %(name)s » ne peut plus utiliser Polaris."
+
+#: apps/analytics/apps.py:7
+msgid "Analytics"
+msgstr "Analyse"
+
+#: apps/analytics/models.py:16
+msgid "warn when a site has used (% of its labour budget)"
+msgstr "alerter quand un chantier a utilisé (% de son budget main-d’œuvre)"
+
+#: apps/analytics/models.py:19
+msgid ""
+"A site is also at risk when its budget runs out before its planned end date."
+msgstr ""
+"Un chantier est aussi menacé quand son budget est épuisé avant sa date de "
+"fin prévue."
+
+#: apps/analytics/models.py:23 apps/analytics/models.py:24
+msgid "analytics settings"
+msgstr "paramètres d’analyse"
+
+#: apps/analytics/models.py:30
+msgid "Analytics settings"
+msgstr "Paramètres d’analyse"
+
+#: apps/analytics/services.py:416
+msgid "Nothing to compare with in the previous period"
+msgstr "Rien à comparer sur la période précédente"
+
+#: apps/analytics/services.py:418
+msgid "Same as the previous period"
+msgstr "Comme sur la période précédente"
+
+#: apps/analytics/services.py:422
+#, python-format
+msgid "%(arrow)s %(n)s pt on the previous period"
+msgid_plural "%(arrow)s %(n)s pts on the previous period"
+msgstr[0] "%(arrow)s %(n)s pt par rapport à la période précédente"
+msgstr[1] "%(arrow)s %(n)s pts par rapport à la période précédente"
+msgstr[2] "%(arrow)s %(n)s pts par rapport à la période précédente"
+
+#: apps/analytics/services.py:426
+#, python-format
+msgid "%(arrow)s %(n)s%% on the previous period"
+msgstr "%(arrow)s %(n)s %% par rapport à la période précédente"
 
 #: apps/api/apps.py:7
 msgid "API"
@@ -554,11 +601,11 @@ msgstr "L’en-tête Accept ne peut pas être satisfait."
 msgid "Unexpected server error."
 msgstr "Erreur inattendue du serveur."
 
-#: apps/api/enums.py:40 apps/core/choices.py:9 config/settings.py:173
+#: apps/api/enums.py:40 apps/core/choices.py:9 config/settings.py:174
 msgid "English"
 msgstr "Anglais"
 
-#: apps/api/enums.py:41 apps/core/choices.py:10 config/settings.py:174
+#: apps/api/enums.py:41 apps/core/choices.py:10 config/settings.py:175
 msgid "French"
 msgstr "Français"
 
@@ -574,7 +621,7 @@ msgstr "Horaire"
 #: apps/dashboard/reports.py:490 apps/dashboard/reports.py:602
 #: apps/payroll/payslip.py:31 templates/attendance/approvals.html:49
 #: templates/components/status_badge.html:17 templates/dashboard/home.html:23
-#: templates/dashboard/home.html:68 templates/dashboard/reports.html:144
+#: templates/dashboard/home.html:68 templates/dashboard/reports.html:228
 #: templates/portal/_legend.html:10 templates/workers/detail.html:83
 #: templates/worksites/attendance.html:16
 msgid "Present"
@@ -584,7 +631,7 @@ msgstr "Présent"
 #: apps/dashboard/reports.py:493 apps/dashboard/reports.py:605
 #: apps/payroll/payslip.py:32 templates/attendance/approvals.html:52
 #: templates/components/status_badge.html:17
-#: templates/dashboard/reports.html:147 templates/portal/_legend.html:13
+#: templates/dashboard/reports.html:231 templates/portal/_legend.html:13
 #: templates/workers/detail.html:86 templates/worksites/attendance.html:17
 msgid "Absent"
 msgstr "Absent"
@@ -592,7 +639,7 @@ msgstr "Absent"
 #: apps/api/enums.py:53 apps/attendance/models.py:96 apps/payroll/payslip.py:33
 #: templates/attendance/approvals.html:50
 #: templates/components/status_badge.html:17
-#: templates/dashboard/reports.html:145 templates/portal/_legend.html:11
+#: templates/dashboard/reports.html:229 templates/portal/_legend.html:11
 msgid "Half day"
 msgstr "Demi-journée"
 
@@ -600,7 +647,7 @@ msgstr "Demi-journée"
 #: apps/dashboard/reports.py:492 apps/dashboard/reports.py:604
 #: apps/payroll/payslip.py:34 templates/attendance/approvals.html:51
 #: templates/components/status_badge.html:17
-#: templates/dashboard/reports.html:146 templates/portal/_legend.html:12
+#: templates/dashboard/reports.html:230 templates/portal/_legend.html:12
 #: templates/workers/detail.html:85
 msgid "Late"
 msgstr "Retard"
@@ -644,9 +691,10 @@ msgstr "Clôturé"
 #: templates/accounts/user_form.html:92 templates/agents/_tokens.html:11
 #: templates/attendance/_approval_detail.html:61
 #: templates/components/data_table.html:29 templates/core/companies.html:17
-#: templates/messaging/messages.html:48 templates/payouts/batch.html:70
-#: templates/payouts/batches.html:30 templates/payouts/layouts.html:19
-#: templates/payroll/cash_sheets.html:30 templates/payroll/periods.html:53
+#: templates/dashboard/reports.html:64 templates/messaging/messages.html:48
+#: templates/payouts/batch.html:70 templates/payouts/batches.html:30
+#: templates/payouts/layouts.html:19 templates/payroll/cash_sheets.html:30
+#: templates/payroll/periods.html:53 templates/presence/site_setup.html:17
 #: templates/worksites/attendance.html:15 templates/worksites/crew.html:24
 #: templates/worksites/detail.html:32 templates/worksites/pay.html:16
 msgid "Status"
@@ -660,7 +708,7 @@ msgstr "Arrivée"
 msgid "Departure"
 msgstr "Départ"
 
-#: apps/api/enums.py:72 apps/dashboard/views.py:107 apps/payroll/forms.py:85
+#: apps/api/enums.py:72 apps/dashboard/views.py:227 apps/payroll/forms.py:85
 #: apps/payroll/forms.py:281 templates/attendance/_approval_detail.html:63
 msgid "Note"
 msgstr "Note"
@@ -688,6 +736,7 @@ msgid "Photo"
 msgstr "Photo"
 
 #: apps/api/enums.py:85 apps/core/choices.py:54
+#: templates/presence/notice.html:75
 msgid "Signature"
 msgstr "Signature"
 
@@ -780,8 +829,8 @@ msgstr "p. ex. Kodjo a été vu sur le chantier — merci de vérifier"
 #: apps/presence/models.py:42 apps/presence/models.py:77
 #: apps/presence/models.py:213 apps/presence/models.py:265
 #: apps/presence/models.py:344 apps/presence/models.py:373
-#: apps/workers/views.py:187 apps/worksites/models.py:99
-#: apps/worksites/models.py:129
+#: apps/workers/views.py:187 apps/worksites/models.py:106
+#: apps/worksites/models.py:143
 msgid "site"
 msgstr "chantier"
 
@@ -800,7 +849,7 @@ msgstr "chef d’équipe"
 #: apps/attendance/models.py:40 apps/attendance/models.py:113
 #: apps/messaging/models.py:264 apps/payouts/models.py:267
 #: apps/payouts/models.py:326 apps/payroll/models.py:50
-#: apps/payroll/models.py:192 apps/worksites/models.py:24
+#: apps/payroll/models.py:192 apps/worksites/models.py:25
 msgid "status"
 msgstr "statut"
 
@@ -863,7 +912,7 @@ msgstr "journées de présence"
 #: apps/precompute/models.py:140 apps/presence/models.py:153
 #: apps/workers/models.py:114 apps/workers/models.py:145
 #: apps/workers/models.py:197 apps/workers/views.py:185
-#: apps/worksites/models.py:124
+#: apps/worksites/models.py:138
 msgid "worker"
 msgstr "ouvrier"
 
@@ -1131,11 +1180,12 @@ msgstr "Ouvrier inconnu."
 #: apps/checkin/apps.py:7 templates/checkin/_tabs.html:3
 #: templates/checkin/home.html:4 templates/checkin/home.html:6
 #: templates/checkin/site_day.html:5 templates/components/sidebar.html:69
+#: templates/dashboard/reports_checks.html:33
 #: templates/worksites/detail.html:80
 msgid "Check-in"
 msgstr "Pointage"
 
-#: apps/checkin/forms.py:11 apps/workers/forms.py:160
+#: apps/checkin/forms.py:11 apps/presence/forms.py:84 apps/workers/forms.py:160
 #: templates/messaging/recipients.html:50
 #: templates/portal/office/access_list.html:11
 msgid "Search"
@@ -1145,27 +1195,33 @@ msgstr "Rechercher"
 msgid "Name or number"
 msgstr "Nom ou matricule"
 
-#: apps/checkin/forms.py:15 apps/checkin/forms.py:24 apps/dashboard/forms.py:35
+#: apps/checkin/forms.py:15 apps/checkin/forms.py:24 apps/dashboard/forms.py:48
 #: apps/dashboard/reports.py:489 apps/dashboard/reports.py:601
 #: apps/dashboard/reports.py:666 apps/payouts/forms.py:15
-#: apps/payroll/payslip.py:104 apps/workers/forms.py:167
+#: apps/payroll/payslip.py:104 apps/presence/forms.py:88
+#: apps/presence/services.py:493 apps/workers/forms.py:167
 #: apps/workers/importer.py:93 templates/checkin/geofences.html:16
-#: templates/checkin/home.html:17 templates/dashboard/home.html:66
-#: templates/payouts/batches.html:28 templates/payouts/prepare.html:25
-#: templates/payroll/cash_sheets.html:10 templates/payroll/cash_sheets.html:25
-#: templates/payroll/periods.html:32 templates/payroll/periods.html:47
-#: templates/workers/form.html:57 templates/workers/import.html:21
-#: templates/workers/import.html:86 templates/workers/list.html:29
-#: templates/worksites/form.html:13
+#: templates/checkin/home.html:17 templates/dashboard/_age_table.html:7
+#: templates/dashboard/home.html:66 templates/dashboard/reports.html:58
+#: templates/dashboard/reports.html:133
+#: templates/dashboard/reports_cash.html:44
+#: templates/dashboard/reports_checks.html:98 templates/payouts/batches.html:28
+#: templates/payouts/prepare.html:25 templates/payroll/cash_sheets.html:10
+#: templates/payroll/cash_sheets.html:25 templates/payroll/periods.html:32
+#: templates/payroll/periods.html:47 templates/presence/home.html:24
+#: templates/presence/person_day.html:42 templates/workers/form.html:57
+#: templates/workers/import.html:21 templates/workers/import.html:86
+#: templates/workers/list.html:29 templates/worksites/form.html:13
 msgid "Site"
 msgstr "Chantier"
 
-#: apps/checkin/forms.py:20
+#: apps/checkin/forms.py:20 apps/presence/forms.py:93
 msgid "All my sites"
 msgstr "Tous mes chantiers"
 
-#: apps/checkin/forms.py:25 templates/workers/detail.html:140
-#: templates/worksites/pay.html:46
+#: apps/checkin/forms.py:25 apps/presence/forms.py:97
+#: apps/presence/services.py:492 templates/presence/notice.html:74
+#: templates/workers/detail.html:141 templates/worksites/pay.html:46
 msgid "Date"
 msgstr "Date"
 
@@ -1202,8 +1258,9 @@ msgstr "Borne du chantier"
 #: apps/checkin/forms.py:68 apps/payouts/forms.py:50 apps/payroll/forms.py:80
 #: apps/payroll/forms.py:94 apps/payroll/forms.py:106 apps/payroll/forms.py:293
 #: apps/payroll/forms.py:303 apps/payroll/forms.py:321
-#: templates/checkin/badges.html:50 templates/core/audit_log.html:33
-#: templates/payouts/batch.html:101 templates/payouts/batch.html:129
+#: apps/presence/forms.py:75 templates/checkin/badges.html:50
+#: templates/core/audit_log.html:33 templates/payouts/batch.html:101
+#: templates/payouts/batch.html:129 templates/presence/site_setup.html:107
 msgid "Reason"
 msgstr "Motif"
 
@@ -1302,14 +1359,17 @@ msgid "Manual"
 msgstr "Manuel"
 
 #: apps/checkin/models.py:185 apps/workers/models.py:53
+#: templates/presence/_worker_card.html:6
 msgid "None"
 msgstr "Aucune"
 
 #: apps/checkin/models.py:186 apps/checkin/views.py:48
+#: templates/dashboard/reports_checks.html:101
 msgid "Unknown badge"
 msgstr "Badge inconnu"
 
 #: apps/checkin/models.py:187 apps/checkin/views.py:49
+#: templates/dashboard/reports_checks.html:102
 msgid "Revoked badge"
 msgstr "Badge révoqué"
 
@@ -1500,7 +1560,8 @@ msgstr "Périmètre enregistré pour %(site)s."
 msgid "Company"
 msgstr "Entreprise"
 
-#: apps/core/admin.py:128 templates/portal/_language_switch.html:6
+#: apps/core/admin.py:128 apps/presence/forms.py:107
+#: templates/portal/_language_switch.html:6
 #: templates/registration/login.html:10
 msgid "Language"
 msgstr "Langue"
@@ -1519,8 +1580,9 @@ msgid "Advances"
 msgstr "Avances"
 
 #: apps/core/admin.py:164 apps/presence/apps.py:7 apps/workers/forms.py:76
-#: apps/worksites/forms.py:59 templates/core/settings.html:29
-#: templates/core/settings.html:159 templates/worksites/settings.html:40
+#: apps/worksites/forms.py:73 templates/core/settings.html:29
+#: templates/core/settings.html:159 templates/presence/_site_card.html:4
+#: templates/presence/_worker_card.html:4 templates/worksites/settings.html:40
 msgid "Presence tracking"
 msgstr "Suivi de présence"
 
@@ -1571,7 +1633,7 @@ msgstr "Mensuel"
 msgid "Every N days"
 msgstr "Tous les N jours"
 
-#: apps/core/choices.py:36 apps/dashboard/views.py:101
+#: apps/core/choices.py:36 apps/dashboard/views.py:221
 #: apps/payroll/models.py:486
 msgid "Daily rate"
 msgstr "Tarif journalier"
@@ -1582,7 +1644,8 @@ msgstr "Tarif horaire"
 
 #: apps/core/choices.py:38 apps/payroll/models.py:488
 #: apps/payroll/payslip.py:90 apps/payroll/payslip.py:187
-#: templates/payroll/day_extras.html:52 templates/portal/pay.html:23
+#: templates/dashboard/reports.html:135 templates/payroll/day_extras.html:52
+#: templates/portal/pay.html:23
 msgid "Piece work"
 msgstr "À la tâche"
 
@@ -1590,12 +1653,13 @@ msgstr "À la tâche"
 msgid "Cash"
 msgstr "Espèces"
 
-#: apps/core/choices.py:43 templates/payouts/accounts.html:30
+#: apps/core/choices.py:43 templates/dashboard/reports_checks.html:136
+#: templates/payouts/accounts.html:30
 msgid "Bank transfer"
 msgstr "Virement bancaire"
 
-#: apps/core/choices.py:44 templates/payouts/account_form.html:30
-#: templates/payouts/accounts.html:30
+#: apps/core/choices.py:44 templates/dashboard/reports_checks.html:136
+#: templates/payouts/account_form.html:30 templates/payouts/accounts.html:30
 msgid "Mobile money"
 msgstr "Mobile Money"
 
@@ -1722,11 +1786,15 @@ msgstr "Empreinte digitale sur la feuille papier (photo)"
 msgid "No proof needed"
 msgstr "Aucune preuve exigée"
 
-#: apps/core/forms.py:56 apps/worksites/forms.py:120
+#: apps/core/forms.py:56 apps/worksites/forms.py:134
+#: templates/presence/_site_card.html:5 templates/presence/_worker_card.html:5
+#: templates/presence/home.html:35 templates/presence/site_setup.html:20
 msgid "On"
 msgstr "Activé"
 
-#: apps/core/forms.py:56 apps/worksites/forms.py:120
+#: apps/core/forms.py:56 apps/worksites/forms.py:134
+#: templates/presence/_site_card.html:5 templates/presence/_worker_card.html:5
+#: templates/presence/home.html:35 templates/presence/site_setup.html:20
 msgid "Off"
 msgstr "Désactivé"
 
@@ -1869,7 +1937,7 @@ msgstr "Les corrections après l’envoi exigent un motif"
 msgid "Track presence on the sites"
 msgstr "Suivre la présence sur les chantiers"
 
-#: apps/core/forms.py:257 apps/worksites/forms.py:147
+#: apps/core/forms.py:257 apps/worksites/forms.py:161
 msgid "Work must end after it starts."
 msgstr "La fin du travail doit être après le début."
 
@@ -1877,7 +1945,7 @@ msgstr "La fin du travail doit être après le début."
 msgid "Late after must not be before work starts."
 msgstr "« Retard après » ne peut pas être avant le début du travail."
 
-#: apps/core/forms.py:263 apps/core/models.py:367 apps/worksites/forms.py:151
+#: apps/core/forms.py:263 apps/core/models.py:367 apps/worksites/forms.py:165
 #: apps/worksites/services.py:262
 msgid "Tracking must end after it starts."
 msgstr "La fin du suivi doit être après le début."
@@ -1908,11 +1976,11 @@ msgstr "Qui"
 msgid "Target type"
 msgstr "Type d’objet"
 
-#: apps/core/forms.py:329 apps/dashboard/forms.py:29 apps/messaging/forms.py:58
+#: apps/core/forms.py:329 apps/dashboard/forms.py:42 apps/messaging/forms.py:58
 msgid "From"
 msgstr "Du"
 
-#: apps/core/forms.py:332 apps/dashboard/forms.py:32 apps/messaging/forms.py:61
+#: apps/core/forms.py:332 apps/dashboard/forms.py:45 apps/messaging/forms.py:61
 #: templates/messaging/messages.html:46
 msgid "To"
 msgstr "Au"
@@ -1925,7 +1993,7 @@ msgstr "Tout le monde"
 msgid "Any type"
 msgstr "Tous les types"
 
-#: apps/core/forms.py:353 apps/dashboard/forms.py:54 apps/messaging/forms.py:68
+#: apps/core/forms.py:353 apps/dashboard/forms.py:67 apps/messaging/forms.py:68
 msgid "The end date is before the start date."
 msgstr "La date de fin est avant la date de début."
 
@@ -2035,11 +2103,11 @@ msgstr ""
 msgid "attendance mode"
 msgstr "mode de présence"
 
-#: apps/core/models.py:215 apps/worksites/models.py:59
+#: apps/core/models.py:215 apps/worksites/models.py:66
 msgid "work starts"
 msgstr "début du travail"
 
-#: apps/core/models.py:216 apps/worksites/models.py:60
+#: apps/core/models.py:216 apps/worksites/models.py:67
 msgid "work ends"
 msgstr "fin du travail"
 
@@ -2047,11 +2115,11 @@ msgstr "fin du travail"
 msgid "break (minutes)"
 msgstr "pause (minutes)"
 
-#: apps/core/models.py:218 apps/worksites/models.py:61
+#: apps/core/models.py:218 apps/worksites/models.py:68
 msgid "late after"
 msgstr "retard après"
 
-#: apps/core/models.py:219 apps/worksites/models.py:62
+#: apps/core/models.py:219 apps/worksites/models.py:69
 msgid "roll call due by"
 msgstr "appel à faire avant"
 
@@ -2088,11 +2156,11 @@ msgid "A list of {\"date\": \"YYYY-MM-DD\", \"name\": \"…\"} entries."
 msgstr "Une liste d’entrées {\"date\": \"YYYY-MM-DD\", \"name\": \"…\"}."
 
 #: apps/core/models.py:251 apps/workers/models.py:102
-#: apps/worksites/models.py:51
+#: apps/worksites/models.py:58
 msgid "pay frequency"
 msgstr "fréquence de paie"
 
-#: apps/core/models.py:257 apps/worksites/models.py:54
+#: apps/core/models.py:257 apps/worksites/models.py:61
 msgid "pay every N days"
 msgstr "payer tous les N jours"
 
@@ -2101,15 +2169,15 @@ msgid "default pay type"
 msgstr "type de rémunération par défaut"
 
 #: apps/core/models.py:263 apps/workers/models.py:99
-#: apps/worksites/models.py:57
+#: apps/worksites/models.py:64
 msgid "payment method"
 msgstr "mode de paiement"
 
-#: apps/core/models.py:269 apps/worksites/models.py:64
+#: apps/core/models.py:269 apps/worksites/models.py:71
 msgid "overtime after (hours)"
 msgstr "heures supplémentaires après (heures)"
 
-#: apps/core/models.py:272 apps/worksites/models.py:67
+#: apps/core/models.py:272 apps/worksites/models.py:74
 msgid "overtime multiplier"
 msgstr "majoration des heures supplémentaires"
 
@@ -2125,12 +2193,12 @@ msgstr "plafond d’avance (% de la paie de la période)"
 msgid "default advance deduction per pay"
 msgstr "retenue d’avance par défaut par paie"
 
-#: apps/core/models.py:286 apps/worksites/models.py:46
+#: apps/core/models.py:286
 msgid "In the currency's smallest unit."
 msgstr "Dans la plus petite unité de la devise."
 
 #: apps/core/models.py:292 apps/workers/models.py:106
-#: apps/worksites/models.py:70
+#: apps/worksites/models.py:77
 msgid "presence tracking"
 msgstr "suivi de présence"
 
@@ -2143,7 +2211,7 @@ msgstr ""
 "chantier. Vérifiez les règles de protection des données de votre pays avant "
 "de l’activer."
 
-#: apps/core/models.py:300 apps/worksites/models.py:72
+#: apps/core/models.py:300 apps/worksites/models.py:79
 msgid "sightings before arrival"
 msgstr "détections avant arrivée"
 
@@ -2153,7 +2221,7 @@ msgstr ""
 "Nombre de fois qu’une personne doit être détectée avant d’être comptée comme "
 "arrivée."
 
-#: apps/core/models.py:306 apps/worksites/models.py:78
+#: apps/core/models.py:306 apps/worksites/models.py:85
 msgid "arrival window (seconds)"
 msgstr "délai d’arrivée (secondes)"
 
@@ -2161,7 +2229,7 @@ msgstr "délai d’arrivée (secondes)"
 msgid "Time allowed to collect those sightings."
 msgstr "Temps accordé pour réunir ces détections."
 
-#: apps/core/models.py:312 apps/worksites/models.py:84
+#: apps/core/models.py:312 apps/worksites/models.py:91
 msgid "absence before departure (seconds)"
 msgstr "absence avant départ (secondes)"
 
@@ -2169,15 +2237,15 @@ msgstr "absence avant départ (secondes)"
 msgid "Someone not seen for this long has left the site."
 msgstr "Une personne non détectée pendant cette durée a quitté le chantier."
 
-#: apps/core/models.py:318 apps/worksites/models.py:90
+#: apps/core/models.py:318 apps/worksites/models.py:97
 msgid "foreman GPS interval (seconds)"
 msgstr "intervalle GPS du chef d’équipe (secondes)"
 
-#: apps/core/models.py:322 apps/worksites/models.py:95
+#: apps/core/models.py:322 apps/worksites/models.py:102
 msgid "tracking starts"
 msgstr "début du suivi"
 
-#: apps/core/models.py:323 apps/worksites/models.py:96
+#: apps/core/models.py:323 apps/worksites/models.py:103
 msgid "tracking ends"
 msgstr "fin du suivi"
 
@@ -2199,7 +2267,7 @@ msgstr "paramètres de l’entreprise"
 msgid "Company settings"
 msgstr "Paramètres de l’entreprise"
 
-#: apps/core/models.py:348 apps/worksites/forms.py:143
+#: apps/core/models.py:348 apps/worksites/forms.py:157
 msgid "Set the number of days between pay days."
 msgstr "Indiquez le nombre de jours entre deux jours de paie."
 
@@ -2284,29 +2352,33 @@ msgstr "Choisissez clair, sombre ou système."
 msgid "Dashboard"
 msgstr "Tableau de bord"
 
-#: apps/dashboard/forms.py:19 templates/payroll/periods.html:15
+#: apps/dashboard/forms.py:24
+msgid "Warn at (% of the budget used)"
+msgstr "Alerter à (% du budget utilisé)"
+
+#: apps/dashboard/forms.py:32 templates/payroll/periods.html:15
 #: templates/portal/home.html:17 templates/worksites/detail.html:6
 msgid "This week"
 msgstr "Cette semaine"
 
-#: apps/dashboard/forms.py:20
+#: apps/dashboard/forms.py:33
 msgid "This month"
 msgstr "Ce mois-ci"
 
-#: apps/dashboard/forms.py:21
+#: apps/dashboard/forms.py:34
 msgid "Last month"
 msgstr "Le mois dernier"
 
-#: apps/dashboard/forms.py:22
+#: apps/dashboard/forms.py:35
 msgid "Custom…"
 msgstr "Personnalisée…"
 
-#: apps/dashboard/forms.py:26 templates/dashboard/reports.html:19
+#: apps/dashboard/forms.py:39 templates/dashboard/_report_filters.html:6
 #: templates/payroll/periods.html:46 templates/worksites/pay.html:15
 msgid "Period"
 msgstr "Période"
 
-#: apps/dashboard/forms.py:35 apps/payouts/forms.py:15
+#: apps/dashboard/forms.py:48 apps/payouts/forms.py:15
 #: apps/workers/forms.py:167 templates/components/sidebar.html:43
 #: templates/dashboard/home.html:60 templates/payouts/batch.html:8
 #: templates/payouts/batches.html:39 templates/payroll/cash_sheets.html:12
@@ -2314,28 +2386,28 @@ msgstr "Période"
 msgid "All sites"
 msgstr "Tous les chantiers"
 
-#: apps/dashboard/forms.py:38 apps/dashboard/reports.py:488
-#: apps/dashboard/reports.py:600 apps/dashboard/views.py:98
+#: apps/dashboard/forms.py:51 apps/dashboard/reports.py:488
+#: apps/dashboard/reports.py:600 apps/dashboard/views.py:218
 #: apps/payroll/payslip.py:103 apps/workers/forms.py:170
 #: apps/workers/importer.py:88 templates/workers/import.html:85
 #: templates/workers/list.html:28
 msgid "Trade"
 msgstr "Métier"
 
-#: apps/dashboard/forms.py:38 apps/workers/forms.py:170
+#: apps/dashboard/forms.py:51 apps/workers/forms.py:170
 msgid "All trades"
 msgstr "Tous les métiers"
 
-#: apps/dashboard/forms.py:52
+#: apps/dashboard/forms.py:65
 msgid "Pick both dates for a custom period."
 msgstr "Choisissez les deux dates pour une période personnalisée."
 
-#: apps/dashboard/forms.py:56
+#: apps/dashboard/forms.py:69
 msgid "Pick a period of one year or less."
 msgstr "Choisissez une période d’un an au plus."
 
 #: apps/dashboard/reports.py:486 apps/dashboard/reports.py:598
-#: apps/payouts/layouts.py:31
+#: apps/payouts/layouts.py:31 apps/presence/services.py:490
 msgid "Worker number"
 msgstr "Matricule de l’ouvrier"
 
@@ -2343,14 +2415,16 @@ msgstr "Matricule de l’ouvrier"
 #: apps/payroll/forms.py:103 apps/payroll/forms.py:270
 #: apps/payroll/forms.py:276 apps/payroll/forms.py:291
 #: apps/payroll/payslip.py:101 apps/presence/models.py:27
-#: templates/attendance/_approval_detail.html:60
+#: apps/presence/services.py:491 templates/attendance/_approval_detail.html:60
 #: templates/checkin/badges.html:31 templates/checkin/site_day.html:28
 #: templates/checkin/site_day.html:59 templates/components/data_table.html:28
-#: templates/dashboard/reports.html:143 templates/messaging/recipients.html:59
-#: templates/payouts/accounts.html:20 templates/payouts/batch.html:67
-#: templates/payouts/prepare.html:24 templates/payroll/advances.html:26
-#: templates/payroll/cash_sheet.html:49
-#: templates/portal/office/access_list.html:29 templates/workers/import.html:20
+#: templates/dashboard/reports.html:227
+#: templates/dashboard/reports_checks.html:31
+#: templates/messaging/recipients.html:59 templates/payouts/accounts.html:20
+#: templates/payouts/batch.html:67 templates/payouts/prepare.html:24
+#: templates/payroll/advances.html:26 templates/payroll/cash_sheet.html:49
+#: templates/portal/office/access_list.html:29
+#: templates/presence/badges.html:26 templates/workers/import.html:20
 #: templates/workers/import.html:83 templates/workers/list.html:27
 #: templates/worksites/crew.html:22 templates/worksites/detail.html:31
 msgid "Worker"
@@ -2361,7 +2435,7 @@ msgid "Half days"
 msgstr "Demi-journées"
 
 #: apps/dashboard/reports.py:494 apps/dashboard/reports.py:606
-#: templates/dashboard/reports.html:43
+#: templates/dashboard/reports.html:26
 msgid "Worker-days"
 msgstr "Jours-ouvrier"
 
@@ -2371,25 +2445,28 @@ msgid "Attendance rate (%)"
 msgstr "Taux de présence (%)"
 
 #: apps/dashboard/reports.py:496 apps/dashboard/reports.py:608
-#: templates/dashboard/reports.html:149
+#: templates/dashboard/reports.html:233
 msgid "Earned"
 msgstr "Gagné"
 
 #: apps/dashboard/reports.py:497 apps/dashboard/reports.py:609
-#: templates/dashboard/reports.html:150 templates/payroll/pay_rules.html:47
+#: templates/dashboard/reports.html:234 templates/payroll/pay_rules.html:47
 msgid "Statutory deductions"
 msgstr "Retenues légales"
 
 #: apps/dashboard/reports.py:498 apps/dashboard/reports.py:610
-#: apps/dashboard/reports.py:709 templates/dashboard/reports.html:97
-#: templates/dashboard/reports.html:99 templates/dashboard/reports.html:113
+#: apps/dashboard/reports.py:709 templates/dashboard/reports.html:139
+#: templates/dashboard/reports.html:181 templates/dashboard/reports.html:183
+#: templates/dashboard/reports.html:197
 msgid "Employer contributions"
 msgstr "Cotisations patronales"
 
 #: apps/dashboard/reports.py:526 apps/dashboard/reports.py:645
 #: apps/dashboard/reports.py:682 apps/dashboard/reports.py:700
-#: apps/dashboard/reports.py:731 templates/dashboard/reports.html:125
-#: templates/dashboard/reports.html:168 templates/payouts/batch.html:12
+#: apps/dashboard/reports.py:731 templates/dashboard/_age_table.html:9
+#: templates/dashboard/_age_table.html:21 templates/dashboard/reports.html:158
+#: templates/dashboard/reports.html:209 templates/dashboard/reports.html:252
+#: templates/dashboard/reports_cash.html:65 templates/payouts/batch.html:12
 #: templates/payouts/batches.html:29
 msgid "Total"
 msgstr "Total"
@@ -2403,11 +2480,12 @@ msgid "By site"
 msgstr "Par chantier"
 
 #: apps/dashboard/reports.py:666 apps/dashboard/reports.py:740
-#: templates/dashboard/reports.html:40 templates/dashboard/reports.html:97
+#: templates/dashboard/reports.html:23 templates/dashboard/reports.html:138
+#: templates/dashboard/reports.html:181
 msgid "Labour cost"
 msgstr "Coût de main-d’œuvre"
 
-#: apps/dashboard/reports.py:666 apps/worksites/forms.py:27
+#: apps/dashboard/reports.py:666 apps/worksites/forms.py:28
 msgid "Labour budget"
 msgstr "Budget main-d’œuvre"
 
@@ -2427,17 +2505,17 @@ msgstr "Semaine"
 msgid "Week starting"
 msgstr "Début de semaine"
 
-#: apps/dashboard/reports.py:708 templates/dashboard/reports.html:95
+#: apps/dashboard/reports.py:708 templates/dashboard/reports.html:179
 msgid "Employer cost"
 msgstr "Coût employeur"
 
 #: apps/dashboard/reports.py:709 apps/payroll/rule_views.py:144
-#: templates/dashboard/reports.html:111
+#: templates/dashboard/reports.html:195
 msgid "Deduction rule"
 msgstr "Règle de retenue"
 
-#: apps/dashboard/reports.py:709 templates/dashboard/reports.html:102
-#: templates/dashboard/reports.html:112
+#: apps/dashboard/reports.py:709 templates/dashboard/reports.html:186
+#: templates/dashboard/reports.html:196
 msgid "Deducted from pay"
 msgstr "Retenu sur la paie"
 
@@ -2445,35 +2523,39 @@ msgstr "Retenu sur la paie"
 msgid "Employer cost (labour cost + employer contributions)"
 msgstr "Coût employeur (coût main-d’œuvre + cotisations patronales)"
 
-#: apps/dashboard/views.py:96
+#: apps/dashboard/views.py:130
+msgid "Budget warning saved."
+msgstr "Alerte de budget enregistrée."
+
+#: apps/dashboard/views.py:216
 msgid "Full name"
 msgstr "Nom complet"
 
-#: apps/dashboard/views.py:99
+#: apps/dashboard/views.py:219
 msgid "Mason"
 msgstr "Maçon"
 
-#: apps/dashboard/views.py:99
+#: apps/dashboard/views.py:219
 msgid "Carpenter"
 msgstr "Charpentier"
 
-#: apps/dashboard/views.py:99
+#: apps/dashboard/views.py:219
 msgid "Labourer"
 msgstr "Manœuvre"
 
-#: apps/dashboard/views.py:103
+#: apps/dashboard/views.py:223
 msgid "Correction reason"
 msgstr "Motif de la correction"
 
-#: apps/dashboard/views.py:104
+#: apps/dashboard/views.py:224
 msgid "e.g. Bus breakdown, arrived 07:20"
 msgstr "p. ex. Bus en panne, arrivé à 07:20"
 
-#: apps/dashboard/views.py:109
+#: apps/dashboard/views.py:229
 msgid "Shown to the foreman on the phone."
 msgstr "Affiché au chef d’équipe sur le téléphone."
 
-#: apps/dashboard/views.py:113
+#: apps/dashboard/views.py:233
 msgid "Keep me signed in on this computer"
 msgstr "Rester connecté sur cet ordinateur"
 
@@ -2493,7 +2575,7 @@ msgstr "Heures de silence jusqu’à"
 msgid "Any status"
 msgstr "Tous les statuts"
 
-#: apps/messaging/forms.py:55 templates/workers/detail.html:194
+#: apps/messaging/forms.py:55 templates/workers/detail.html:195
 msgid "Type"
 msgstr "Type"
 
@@ -2507,8 +2589,8 @@ msgstr "Canal"
 
 #: apps/messaging/forms.py:77 apps/workers/views.py:474
 #: apps/workers/views.py:478 apps/workers/views.py:484
-#: apps/workers/views.py:488 apps/worksites/forms.py:59
-#: apps/worksites/views.py:193
+#: apps/workers/views.py:488 apps/worksites/forms.py:73
+#: apps/worksites/views.py:194
 msgid "Company default"
 msgstr "Valeur par défaut de l’entreprise"
 
@@ -2674,7 +2756,7 @@ msgstr "préférences de messages"
 msgid "Queued"
 msgstr "En file d’attente"
 
-#: apps/messaging/models.py:232
+#: apps/messaging/models.py:232 templates/presence/_sync.html:5
 msgid "Sent"
 msgstr "Envoyé"
 
@@ -2862,8 +2944,8 @@ msgstr "Statut « %(status)s » inconnu."
 msgid "Unreadable amount “%(amount)s”."
 msgstr "Montant « %(amount)s » illisible."
 
-#: apps/payouts/forms.py:12 templates/payouts/batches.html:26
-#: templates/payroll/cash_sheets.html:24
+#: apps/payouts/forms.py:12 templates/dashboard/reports_cash.html:43
+#: templates/payouts/batches.html:26 templates/payroll/cash_sheets.html:24
 msgid "Pay day"
 msgstr "Jour de paie"
 
@@ -3483,7 +3565,8 @@ msgstr ""
 "Photo de l’ouvrier, signature ou empreinte digitale (JPEG, PNG ou PDF, ≤ 5 "
 "Mo)."
 
-#: apps/payroll/forms.py:84 templates/payroll/_reconciliation.html:7
+#: apps/payroll/forms.py:84 templates/dashboard/reports_cash.html:48
+#: templates/payroll/_reconciliation.html:7
 #: templates/payroll/cash_sheets.html:26
 msgid "Cash issued"
 msgstr "Fonds remis"
@@ -3649,9 +3732,11 @@ msgstr "%(task)s · %(quantity)s %(unit)s × %(rate)s"
 #: templates/attendance/approvals.html:40
 #: templates/attendance/approvals.html:46 templates/dashboard/home.html:42
 #: templates/dashboard/home.html:129 templates/dashboard/home.html:137
-#: templates/dashboard/home.html:153 templates/dashboard/home.html:156
+#: templates/dashboard/home.html:157 templates/dashboard/home.html:160
+#: templates/dashboard/reports_cash.html:54
+#: templates/dashboard/reports_checks.html:38
 #: templates/payroll/cash_sheet.html:5 templates/payroll/day_extras.html:9
-#: templates/workers/detail.html:150
+#: templates/workers/detail.html:151
 msgid "D j M"
 msgstr "D j N"
 
@@ -3664,15 +3749,21 @@ msgstr "j N"
 
 #: apps/payroll/labels.py:97 templates/agents/_tokens.html:25
 #: templates/agents/_tokens.html:27 templates/agents/token_shown.html:17
-#: templates/dashboard/reports.html:5 templates/payroll/pay_rules.html:78
-#: templates/portal/advances.html:22 templates/portal/advances.html:38
-#: templates/portal/home.html:29 templates/portal/office/access_list.html:42
+#: templates/dashboard/home.html:141 templates/dashboard/reports.html:5
+#: templates/dashboard/reports.html:35 templates/dashboard/reports.html:69
+#: templates/dashboard/reports.html:74 templates/dashboard/reports_cash.html:5
+#: templates/dashboard/reports_cash.html:84
+#: templates/dashboard/reports_cash.html:97
+#: templates/dashboard/reports_checks.html:5
+#: templates/payroll/pay_rules.html:78 templates/portal/advances.html:22
+#: templates/portal/advances.html:38 templates/portal/home.html:29
+#: templates/portal/office/access_list.html:42
 #: templates/portal/office/worker.html:33 templates/portal/pay.html:58
-#: templates/workers/detail.html:40 templates/workers/detail.html:123
-#: templates/workers/detail.html:205 templates/workers/detail.html:206
-#: templates/workers/detail.html:208 templates/workers/import.html:99
-#: templates/worksites/crew.html:33 templates/worksites/detail.html:90
-#: templates/worksites/pay.html:23
+#: templates/workers/detail.html:40 templates/workers/detail.html:124
+#: templates/workers/detail.html:206 templates/workers/detail.html:207
+#: templates/workers/detail.html:209 templates/workers/import.html:99
+#: templates/worksites/crew.html:33 templates/worksites/detail.html:91
+#: templates/worksites/detail.html:104 templates/worksites/pay.html:23
 msgid "j M Y"
 msgstr "j N Y"
 
@@ -3719,16 +3810,18 @@ msgstr "Paiement en cours"
 
 #: apps/payroll/models.py:35 apps/payroll/payslip.py:106
 #: apps/payroll/views.py:62 apps/portal/selectors.py:255
-#: templates/components/status_badge.html:18 templates/payroll/periods.html:52
+#: templates/components/status_badge.html:18
+#: templates/dashboard/reports_cash.html:19
+#: templates/dashboard/reports_cash.html:46 templates/payroll/periods.html:52
 #: templates/payroll/periods.html:73 templates/portal/pay.html:31
 msgid "Paid"
 msgstr "Payé"
 
-#: apps/payroll/models.py:44 apps/worksites/models.py:131
+#: apps/payroll/models.py:44 apps/worksites/models.py:145
 msgid "start date"
 msgstr "date de début"
 
-#: apps/payroll/models.py:45 apps/worksites/models.py:132
+#: apps/payroll/models.py:45 apps/worksites/models.py:146
 msgid "end date"
 msgstr "date de fin"
 
@@ -4236,7 +4329,7 @@ msgid "Worker ID"
 msgstr "Matricule"
 
 #: apps/payroll/payslip.py:105 apps/workers/forms.py:62
-#: apps/workers/importer.py:107 templates/dashboard/reports.html:148
+#: apps/workers/importer.py:107 templates/dashboard/reports.html:232
 #: templates/workers/detail.html:41 templates/workers/import.html:88
 #: templates/workers/list.html:31 templates/worksites/crew.html:25
 #: templates/worksites/detail.html:35
@@ -4248,8 +4341,8 @@ msgstr "Tarif"
 msgid "%(frequency)s, %(method)s"
 msgstr "%(frequency)s, %(method)s"
 
-#: apps/payroll/payslip.py:119 templates/worksites/attendance.html:14
-#: templates/worksites/crew.html:12
+#: apps/payroll/payslip.py:119 templates/dashboard/reports_checks.html:30
+#: templates/worksites/attendance.html:14 templates/worksites/crew.html:12
 msgid "Day"
 msgstr "Jour"
 
@@ -4257,14 +4350,14 @@ msgstr "Jour"
 msgid "Worked"
 msgstr "Travaillé"
 
-#: apps/payroll/payslip.py:122 apps/worksites/views.py:219
+#: apps/payroll/payslip.py:122 apps/worksites/views.py:220
 #: templates/worksites/settings.html:33
 msgid "Overtime"
 msgstr "Heures sup."
 
 #: apps/payroll/payslip.py:123 apps/payroll/payslip.py:192
 #: templates/payroll/cash_sheet.html:51 templates/payroll/periods.html:49
-#: templates/portal/pay.html:22 templates/workers/detail.html:142
+#: templates/portal/pay.html:22 templates/workers/detail.html:143
 msgid "Gross"
 msgstr "Brut"
 
@@ -4286,7 +4379,7 @@ msgstr "Jours travaillés"
 msgid "Hours"
 msgstr "Heures"
 
-#: apps/payroll/payslip.py:185
+#: apps/payroll/payslip.py:185 templates/dashboard/reports.html:140
 msgid "Overtime hours"
 msgstr "Heures supplémentaires"
 
@@ -4544,7 +4637,7 @@ msgstr "Espace ouvrier"
 #: templates/checkin/kiosks.html:16 templates/messaging/recipients.html:18
 #: templates/messaging/recipients.html:60
 #: templates/portal/office/access_list.html:30 templates/workers/detail.html:94
-#: templates/workers/detail.html:115 templates/workers/import.html:84
+#: templates/workers/detail.html:116 templates/workers/import.html:84
 #: templates/workers/list.html:30
 msgid "Phone"
 msgstr "Téléphone"
@@ -4625,6 +4718,8 @@ msgid "In progress"
 msgstr "En cours"
 
 #: apps/portal/selectors.py:260 templates/components/status_badge.html:18
+#: templates/dashboard/reports_cash.html:15
+#: templates/dashboard/reports_cash.html:45
 #: templates/payroll/_cash_sheet_row.html:61
 msgid "To pay"
 msgstr "À payer"
@@ -4928,6 +5023,66 @@ msgstr "Le suivi n’est pas activé pour vous."
 msgid "Invalid or expired tracker service token."
 msgstr "Jeton du service de suivi invalide ou expiré."
 
+#: apps/presence/forms.py:16
+msgid "e.g. GATE"
+msgstr "ex. ENTREE"
+
+#: apps/presence/forms.py:17
+msgid "e.g. Main gate"
+msgstr "ex. Entrée principale"
+
+#: apps/presence/forms.py:29
+msgid "This site already has a zone with this code."
+msgstr "Ce chantier a déjà une zone avec ce code."
+
+#: apps/presence/forms.py:39
+msgid "Sightings of this gateway are placed in this zone."
+msgstr "Les détections de cette passerelle sont placées dans cette zone."
+
+#: apps/presence/forms.py:45
+msgid "No zone (the whole site)"
+msgstr "Aucune zone (tout le chantier)"
+
+#: apps/presence/forms.py:51 templates/presence/badges.html:27
+msgid "Badge ID"
+msgstr "Identifiant du badge"
+
+#: apps/presence/forms.py:61
+msgid ""
+"As the badge broadcasts it. For an iBeacon: ib:<uuid>:<major>:<minor>. Case "
+"does not matter: it is saved in lower case."
+msgstr ""
+"Tel que le badge le diffuse. Pour un iBeacon : ib:<uuid>:<major>:<minor>. "
+"Majuscules ou minuscules : il est enregistré en minuscules."
+
+#: apps/presence/forms.py:69
+msgid "Enter the badge ID."
+msgstr "Saisissez l’identifiant du badge."
+
+#: apps/presence/forms.py:78
+msgid "e.g. Gateway stolen"
+msgstr "ex. Passerelle volée"
+
+#: apps/presence/forms.py:86
+msgid "Name, number or badge ID"
+msgstr "Nom, matricule ou identifiant de badge"
+
+#: apps/presence/forms.py:101
+msgid "US Letter"
+msgstr "Lettre US"
+
+#: apps/presence/forms.py:108
+msgid "Paper"
+msgstr "Papier"
+
+#: apps/presence/forms.py:109
+msgid "Tracking hours of"
+msgstr "Heures de suivi de"
+
+#: apps/presence/forms.py:114
+msgid "The company"
+msgstr "L’entreprise"
+
 #: apps/presence/models.py:33
 msgid "Use letters, digits, - and _ only, e.g. A, GATE or BLOCK-B."
 msgstr ""
@@ -5005,7 +5160,8 @@ msgstr "Arrivé"
 msgid "Moved zone"
 msgstr "Changement de zone"
 
-#: apps/presence/models.py:200 templates/worksites/detail.html:34
+#: apps/presence/models.py:200 apps/presence/services.py:495
+#: templates/presence/person_day.html:44 templates/worksites/detail.html:34
 msgid "Left"
 msgstr "Parti"
 
@@ -5192,11 +5348,128 @@ msgstr "Saisissez l’identifiant du badge (64 caractères au plus)."
 msgid "This badge is already given to %(worker)s."
 msgstr "Ce badge est déjà attribué à %(worker)s."
 
+#: apps/presence/services.py:494 templates/presence/person_day.html:43
+#: templates/worksites/detail.html:33
+msgid "Arrived"
+msgstr "Arrivé"
+
+#: apps/presence/services.py:496
+msgid "Minutes on site"
+msgstr "Minutes sur le chantier"
+
+#: apps/presence/services.py:497 templates/presence/_site_card.html:6
+#: templates/presence/home.html:26 templates/presence/live.html:107
+#: templates/presence/person_day.html:46 templates/presence/site_setup.html:40
+msgid "Zones"
+msgstr "Zones"
+
+#: apps/presence/services.py:498
+msgid "Ended because"
+msgstr "Motif de fin"
+
+#: apps/presence/services.py:499 templates/checkin/site_day.html:61
+msgid "Source"
+msgstr "Source"
+
+#: apps/presence/views.py:196 apps/presence/views.py:462
+msgid "The tracker is not configured on this server."
+msgstr "Le service de suivi n’est pas configuré sur ce serveur."
+
+#: apps/presence/views.py:200
+#, python-format
+msgid "The settings of %(site)s were sent to the tracker."
+msgstr "Les réglages de %(site)s ont été envoyés au service de suivi."
+
+#: apps/presence/views.py:216
+#, python-format
+msgid "Zone %(code)s saved."
+msgstr "Zone %(code)s enregistrée."
+
+#: apps/presence/views.py:243
+#, python-format
+msgid "Zone %(code)s deleted."
+msgstr "Zone %(code)s supprimée."
+
+#: apps/presence/views.py:262
+#, python-format
+msgid "Gateway %(label)s added. Issue its token to connect it."
+msgstr "Passerelle %(label)s ajoutée. Émettez son jeton pour la connecter."
+
+#: apps/presence/views.py:266
+#, python-format
+msgid "Gateway %(label)s saved."
+msgstr "Passerelle %(label)s enregistrée."
+
+#: apps/presence/views.py:317
+#, python-format
+msgid "Gateway %(label)s has no token to revoke."
+msgstr "La passerelle %(label)s n’a pas de jeton à révoquer."
+
+#: apps/presence/views.py:323
+#, python-format
+msgid "Gateway %(label)s revoked: the tracker refuses its token."
+msgstr "Passerelle %(label)s révoquée : le service de suivi refuse son jeton."
+
+#: apps/presence/views.py:383
+#, python-format
+msgid "Badge %(badge)s given to %(name)s."
+msgstr "Badge %(badge)s remis à %(name)s."
+
+#: apps/presence/views.py:416
+#, python-format
+msgid "Badge %(badge)s of %(name)s ended."
+msgstr "Badge %(badge)s de %(name)s repris."
+
+#: apps/presence/views.py:450
+msgid "Sign in again."
+msgstr "Reconnectez-vous."
+
+#: apps/presence/views.py:455 apps/presence/views.py:470
+msgid "Not allowed."
+msgstr "Non autorisé."
+
+#: apps/presence/views.py:511
+#, python-brace-format
+msgid "Worker no. {id}"
+msgstr "Ouvrier n° {id}"
+
+#: apps/presence/views.py:512
+#, python-brace-format
+msgid "Foreman no. {id}"
+msgstr "Chef d’équipe n° {id}"
+
+#: apps/presence/views.py:513 apps/presence/views.py:629
+#: templates/presence/site_setup.html:94
+msgid "Whole site"
+msgstr "Tout le chantier"
+
+#: apps/presence/views.py:514
+#, python-brace-format
+msgid "{count} on site"
+msgstr "{count} sur le chantier"
+
+#: apps/presence/views.py:630 templates/presence/person_day.html:85
+msgid "Off site"
+msgstr "Hors chantier"
+
+#: apps/presence/views.py:631
+msgid "Foreman’s phone"
+msgstr "Téléphone du chef d’équipe"
+
+#: apps/presence/views.py:632 templates/presence/site_setup.html:85
+msgid "Gateway"
+msgstr "Passerelle"
+
+#: apps/presence/views.py:633
+#, python-brace-format
+msgid "Site no. {id}"
+msgstr "Chantier n° {id}"
+
 #: apps/workers/admin.py:45
 msgid "Identity document"
 msgstr "Pièce d’identité"
 
-#: apps/workers/admin.py:47 templates/workers/detail.html:112
+#: apps/workers/admin.py:47 templates/workers/detail.html:113
 #: templates/workers/form.html:46
 msgid "Emergency contact"
 msgstr "Contact d’urgence"
@@ -5207,13 +5480,13 @@ msgstr ""
 "Paramètres personnalisés (vide = valeur du chantier ou de l’entreprise)"
 
 #: apps/workers/apps.py:7 apps/workers/importer.py:694
-#: apps/worksites/forms.py:160 templates/checkin/home.html:19
+#: apps/worksites/forms.py:174 templates/checkin/home.html:19
 #: templates/components/sidebar.html:65 templates/messaging/recipients.html:46
 #: templates/payroll/cash_sheet.html:42 templates/payroll/periods.html:48
-#: templates/workers/detail.html:8 templates/workers/form.html:5
-#: templates/workers/import.html:5 templates/workers/list.html:4
-#: templates/workers/list.html:6 templates/workers/list.html:22
-#: templates/worksites/pay.html:17
+#: templates/presence/person_day.html:10 templates/workers/detail.html:8
+#: templates/workers/form.html:5 templates/workers/import.html:5
+#: templates/workers/list.html:4 templates/workers/list.html:6
+#: templates/workers/list.html:22 templates/worksites/pay.html:17
 msgid "Workers"
 msgstr "Ouvriers"
 
@@ -5251,7 +5524,7 @@ msgstr "p. ex. Carreleur"
 msgid "Assign to site"
 msgstr "Affecter au chantier"
 
-#: apps/workers/forms.py:54 apps/worksites/forms.py:165
+#: apps/workers/forms.py:54 apps/worksites/forms.py:179
 #: templates/workers/import.html:87
 msgid "Starting"
 msgstr "À partir du"
@@ -5271,7 +5544,7 @@ msgid "Effective from"
 msgstr "En vigueur à partir du"
 
 #: apps/workers/forms.py:65 apps/workers/importer.py:118
-#: apps/worksites/forms.py:57 apps/worksites/views.py:209
+#: apps/worksites/forms.py:71 apps/worksites/views.py:210
 #: templates/workers/form.html:90
 msgid "Payment method"
 msgstr "Mode de paiement"
@@ -5280,8 +5553,8 @@ msgstr "Mode de paiement"
 msgid "Use the inherited value"
 msgstr "Utiliser la valeur héritée"
 
-#: apps/workers/forms.py:71 apps/worksites/forms.py:54
-#: apps/worksites/views.py:204 templates/workers/detail.html:98
+#: apps/workers/forms.py:71 apps/worksites/forms.py:68
+#: apps/worksites/views.py:205 templates/workers/detail.html:98
 #: templates/workers/form.html:94
 msgid "Pay frequency"
 msgstr "Fréquence de paie"
@@ -5322,9 +5595,10 @@ msgid "Set the date the worker starts on this site."
 msgstr "Indiquez la date à laquelle l’ouvrier commence sur ce chantier."
 
 #: apps/workers/forms.py:157 apps/workers/views.py:289
-#: apps/worksites/models.py:16 templates/checkin/badges.html:40
+#: apps/worksites/models.py:17 templates/checkin/badges.html:40
 #: templates/components/status_badge.html:18 templates/core/companies.html:26
 #: templates/payroll/pay_rules.html:64 templates/payroll/pay_rules.html:77
+#: templates/presence/site_setup.html:96
 msgid "Active"
 msgstr "Actif"
 
@@ -5353,11 +5627,11 @@ msgid "Expired or expiring"
 msgstr "Expirés ou bientôt expirés"
 
 #: apps/workers/forms.py:176 apps/workers/models.py:193
-#: templates/agents/_tokens.html:24 templates/workers/detail.html:207
+#: templates/agents/_tokens.html:24 templates/workers/detail.html:208
 msgid "Expired"
 msgstr "Expirés"
 
-#: apps/workers/forms.py:178 templates/workers/detail.html:169
+#: apps/workers/forms.py:178 templates/workers/detail.html:170
 msgid "Documents"
 msgstr "Documents"
 
@@ -5723,7 +5997,7 @@ msgstr "Certificat"
 msgid "Other"
 msgstr "Autre"
 
-#: apps/workers/models.py:194 templates/workers/detail.html:207
+#: apps/workers/models.py:194 templates/workers/detail.html:208
 msgid "Expires soon"
 msgstr "Expire bientôt"
 
@@ -5830,6 +6104,7 @@ msgstr "Pas de compte de paiement"
 
 #: apps/workers/views.py:279 templates/accounts/users.html:45
 #: templates/checkin/geofences.html:27 templates/payouts/accounts.html:36
+#: templates/presence/site_setup.html:58 templates/presence/site_setup.html:102
 #: templates/workers/detail.html:21 templates/workers/form.html:5
 #: templates/worksites/form.html:5
 msgid "Edit"
@@ -5840,10 +6115,12 @@ msgid "Add"
 msgstr "Ajouter"
 
 #: apps/workers/views.py:287 templates/checkin/badges.html:32
+#: templates/presence/person_day.html:93
 msgid "Badge"
 msgstr "Badge"
 
 #: apps/workers/views.py:289 templates/checkin/badges.html:40
+#: templates/presence/badges.html:35
 msgid "No badge"
 msgstr "Pas de badge"
 
@@ -5923,7 +6200,7 @@ msgstr[1] "%(n)s ouvriers importés."
 msgstr[2] "%(n)s ouvriers importés."
 
 #: apps/worksites/admin.py:30 templates/worksites/detail.html:63
-#: templates/worksites/form.html:23
+#: templates/worksites/form.html:24
 msgid "People"
 msgstr "Personnes"
 
@@ -5932,76 +6209,99 @@ msgid "Setting overrides (empty = company setting)"
 msgstr "Paramètres personnalisés (vide = valeur de l’entreprise)"
 
 #: apps/worksites/apps.py:7 templates/accounts/users.html:20
-#: templates/components/sidebar.html:66
-#: templates/worksites/_detail_base.html:10 templates/worksites/form.html:5
-#: templates/worksites/list.html:4 templates/worksites/list.html:6
-#: templates/worksites/list.html:27
+#: templates/components/sidebar.html:66 templates/presence/_tabs.html:5
+#: templates/presence/home.html:19 templates/worksites/_detail_base.html:10
+#: templates/worksites/form.html:5 templates/worksites/list.html:4
+#: templates/worksites/list.html:6 templates/worksites/list.html:27
 msgid "Sites"
 msgstr "Chantiers"
 
-#: apps/worksites/forms.py:44
+#: apps/worksites/forms.py:28
+msgid "For the whole site."
+msgstr "Pour tout le chantier."
+
+#: apps/worksites/forms.py:58
 msgid "No site manager"
 msgstr "Pas de conducteur de travaux"
 
-#: apps/worksites/forms.py:94 apps/worksites/forms.py:100
-#: apps/worksites/forms.py:119
+#: apps/worksites/forms.py:108 apps/worksites/forms.py:114
+#: apps/worksites/forms.py:133
 #, python-format
 msgid "Company default (%(value)s)"
 msgstr "Valeur de l’entreprise (%(value)s)"
 
-#: apps/worksites/forms.py:107
+#: apps/worksites/forms.py:121
 msgid "Company default: not set. Leave blank to inherit."
 msgstr "Valeur de l’entreprise : non définie. Laissez vide pour en hériter."
 
-#: apps/worksites/forms.py:110 apps/worksites/forms.py:114
-#: apps/worksites/forms.py:135
+#: apps/worksites/forms.py:124 apps/worksites/forms.py:128
+#: apps/worksites/forms.py:149
 #, python-format
 msgid "Company default: %(value)s. Leave blank to inherit."
 msgstr "Valeur de l’entreprise : %(value)s. Laissez vide pour en hériter."
 
-#: apps/worksites/forms.py:163
+#: apps/worksites/forms.py:177
 msgid "Workers already on another site move here from the start date."
 msgstr ""
 "Les ouvriers déjà sur un autre chantier sont déplacés ici à partir de la "
 "date de début."
 
-#: apps/worksites/models.py:17 templates/components/status_badge.html:18
+#: apps/worksites/models.py:18 templates/components/status_badge.html:18
 msgid "Paused"
 msgstr "En pause"
 
-#: apps/worksites/models.py:18 templates/components/status_badge.html:18
+#: apps/worksites/models.py:19 templates/components/status_badge.html:18
 msgid "Completed"
 msgstr "Terminé"
 
-#: apps/worksites/models.py:22
+#: apps/worksites/models.py:23
 msgid "address"
 msgstr "adresse"
 
-#: apps/worksites/models.py:26
+#: apps/worksites/models.py:27
 msgid "started on"
 msgstr "démarré le"
 
 #: apps/worksites/models.py:29
+msgid "planned end date"
+msgstr "date de fin prévue"
+
+#: apps/worksites/models.py:32
+msgid ""
+"When the work should be finished. Compared with when the budget runs out."
+msgstr ""
+"Quand les travaux doivent être terminés. Comparé à la date où le budget sera "
+"épuisé."
+
+#: apps/worksites/models.py:36
 msgid "site manager"
 msgstr "conducteur de travaux"
 
-#: apps/worksites/models.py:37
+#: apps/worksites/models.py:44
 msgid "foremen"
 msgstr "chefs d’équipe"
 
-#: apps/worksites/models.py:42
+#: apps/worksites/models.py:49
 msgid "labour budget"
 msgstr "budget main-d’œuvre"
 
-#: apps/worksites/models.py:100
+#: apps/worksites/models.py:53
+msgid "For the whole site, in the currency's smallest unit."
+msgstr "Pour tout le chantier, dans la plus petite unité de la devise."
+
+#: apps/worksites/models.py:107
 msgid "sites"
 msgstr "chantiers"
 
-#: apps/worksites/models.py:137
+#: apps/worksites/models.py:117
+msgid "The planned end date is before the start date."
+msgstr "La date de fin prévue est avant la date de début."
+
+#: apps/worksites/models.py:151
 msgid "site assignment"
 msgstr "affectation au chantier"
 
-#: apps/worksites/models.py:138
+#: apps/worksites/models.py:152
 msgid "site assignments"
 msgstr "affectations aux chantiers"
 
@@ -6024,32 +6324,32 @@ msgstr ""
 "Les conducteurs de travaux et les chefs d’équipe doivent appartenir à "
 "l’entreprise du chantier."
 
-#: apps/worksites/views.py:113
+#: apps/worksites/views.py:114
 msgid "Site saved."
 msgstr "Chantier enregistré."
 
-#: apps/worksites/views.py:193
+#: apps/worksites/views.py:194
 msgid "Site override"
 msgstr "Valeur du chantier"
 
-#: apps/worksites/views.py:214
+#: apps/worksites/views.py:215
 msgid "Work hours"
 msgstr "Horaires de travail"
 
-#: apps/worksites/views.py:220
+#: apps/worksites/views.py:221
 #, python-format
 msgid "After %(hours)s h × %(multiplier)s"
 msgstr "Après %(hours)s h × %(multiplier)s"
 
-#: apps/worksites/views.py:404
+#: apps/worksites/views.py:406
 msgid "Site settings saved."
 msgstr "Paramètres du chantier enregistrés."
 
-#: apps/worksites/views.py:445
+#: apps/worksites/views.py:447
 msgid "Crew updated."
 msgstr "Équipe mise à jour."
 
-#: apps/worksites/views.py:469
+#: apps/worksites/views.py:471
 #, python-format
 msgid "%(name)s leaves the crew after %(date)s."
 msgstr "%(name)s quitte l’équipe après le %(date)s."
@@ -6072,7 +6372,7 @@ msgid "Breadcrumb"
 msgstr "Fil d’Ariane"
 
 #: templates/accounts/user_form.html:7 templates/accounts/users.html:4
-#: templates/accounts/users.html:6 templates/components/sidebar.html:76
+#: templates/accounts/users.html:6 templates/components/sidebar.html:77
 msgid "Users & roles"
 msgstr "Utilisateurs et rôles"
 
@@ -6095,8 +6395,11 @@ msgid "Save changes"
 msgstr "Enregistrer les modifications"
 
 #: templates/accounts/user_form.html:43 templates/payroll/rule_form.html:24
-#: templates/workers/form.html:106 templates/workers/import.html:118
-#: templates/worksites/assign.html:26 templates/worksites/form.html:41
+#: templates/presence/gateway_form.html:17
+#: templates/presence/gateway_token.html:45
+#: templates/presence/zone_form.html:17 templates/workers/form.html:106
+#: templates/workers/import.html:118 templates/worksites/assign.html:26
+#: templates/worksites/form.html:42
 msgid "Cancel"
 msgstr "Annuler"
 
@@ -6156,7 +6459,8 @@ msgstr ""
 msgid "First sign-in"
 msgstr "Première connexion"
 
-#: templates/accounts/user_form.html:91
+#: templates/accounts/user_form.html:91 templates/presence/live.html:77
+#: templates/presence/live.html:106
 msgid "Last seen"
 msgstr "Vu pour la dernière fois"
 
@@ -6166,7 +6470,9 @@ msgstr "Vu pour la dernière fois"
 #: templates/messaging/messages.html:49 templates/messaging/recipients.html:20
 #: templates/messaging/recipients.html:62 templates/payouts/accounts.html:23
 #: templates/portal/office/access_list.html:33
-#: templates/workers/detail.html:198 templates/worksites/crew.html:26
+#: templates/presence/badges.html:29 templates/presence/home.html:29
+#: templates/presence/site_setup.html:49 templates/presence/site_setup.html:88
+#: templates/workers/detail.html:199 templates/worksites/crew.html:26
 msgid "Actions"
 msgstr "Actions"
 
@@ -6182,7 +6488,7 @@ msgstr "Connecté"
 msgid "Signed out"
 msgstr "Déconnecté"
 
-#: templates/accounts/user_form.html:107 templates/components/sidebar.html:97
+#: templates/accounts/user_form.html:107 templates/components/sidebar.html:98
 #: templates/portal/layout.html:26
 msgid "Sign out"
 msgstr "Déconnecter"
@@ -6286,7 +6592,7 @@ msgstr "Lecture et validation"
 msgid "Read only"
 msgstr "Lecture seule"
 
-#: templates/agents/_tokens.html:23
+#: templates/agents/_tokens.html:23 templates/presence/site_setup.html:97
 msgid "Revoked"
 msgstr "Révoqué"
 
@@ -6296,6 +6602,7 @@ msgid "Until %(date)s"
 msgstr "Jusqu’au %(date)s"
 
 #: templates/agents/_tokens.html:32 templates/checkin/badges.html:52
+#: templates/presence/site_setup.html:110
 msgid "Revoke"
 msgstr "Révoquer"
 
@@ -6330,7 +6637,7 @@ msgstr ""
 "Les jetons d’assistant appartiennent à un utilisateur d’une entreprise. "
 "Connectez-vous avec votre compte d’entreprise pour en créer un."
 
-#: templates/agents/access.html:15
+#: templates/agents/access.html:15 templates/presence/site_setup.html:103
 msgid "New token"
 msgstr "Nouveau jeton"
 
@@ -6570,6 +6877,7 @@ msgstr "Aucune autre journée en attente."
 
 #: templates/checkin/_tabs.html:4 templates/checkin/site_day.html:4
 #: templates/checkin/site_day.html:53
+#: templates/dashboard/reports_checks.html:99
 msgid "Check-ins"
 msgstr "Pointages"
 
@@ -6592,11 +6900,12 @@ msgstr[0] "%(n)s badge à imprimer"
 msgstr[1] "%(n)s badges à imprimer"
 msgstr[2] "%(n)s badges à imprimer"
 
-#: templates/checkin/badge_sheet.html:16
+#: templates/checkin/badge_sheet.html:16 templates/presence/notice.html:22
 msgid "Back to badges"
 msgstr "Retour aux badges"
 
 #: templates/checkin/badge_sheet.html:17 templates/checkin/badges.html:48
+#: templates/presence/notice.html:23
 msgid "Print"
 msgstr "Imprimer"
 
@@ -6652,11 +6961,12 @@ msgstr "Imprimer les badges"
 #: templates/checkin/badges.html:23 templates/core/audit_log.html:16
 #: templates/messaging/messages.html:33 templates/payroll/cash_sheets.html:16
 #: templates/payroll/periods.html:38
-#: templates/portal/office/access_list.html:21 templates/workers/list.html:19
+#: templates/portal/office/access_list.html:21
+#: templates/presence/badges.html:17 templates/workers/list.html:19
 msgid "Filter"
 msgstr "Filtrer"
 
-#: templates/checkin/badges.html:33 templates/workers/detail.html:195
+#: templates/checkin/badges.html:33 templates/workers/detail.html:196
 msgid "Issued"
 msgstr "Émis"
 
@@ -6682,7 +6992,7 @@ msgid "Change the filters."
 msgstr "Modifiez les filtres."
 
 #: templates/checkin/geofence.html:4 templates/checkin/home.html:20
-#: templates/worksites/detail.html:81
+#: templates/presence/site_setup.html:24 templates/worksites/detail.html:81
 msgid "Geofence"
 msgstr "Périmètre"
 
@@ -6732,7 +7042,8 @@ msgstr "Centre"
 msgid "Radius"
 msgstr "Rayon"
 
-#: templates/checkin/geofences.html:25 templates/worksites/detail.html:81
+#: templates/checkin/geofences.html:25 templates/dashboard/reports.html:72
+#: templates/worksites/detail.html:81
 msgid "Not set"
 msgstr "Non défini"
 
@@ -6741,10 +7052,12 @@ msgid "Set"
 msgstr "Définir"
 
 #: templates/checkin/geofences.html:34 templates/checkin/home.html:37
+#: templates/presence/home.html:46
 msgid "No sites"
 msgstr "Aucun chantier"
 
 #: templates/checkin/geofences.html:34 templates/checkin/home.html:37
+#: templates/presence/home.html:46
 msgid "You have no sites to show."
 msgstr "Vous n’avez aucun chantier à afficher."
 
@@ -6849,17 +7162,19 @@ msgstr[0] "%(n)s pointage · signalés : %(flagged)s"
 msgstr[1] "%(n)s pointages · signalés : %(flagged)s"
 msgstr[2] "%(n)s pointages · signalés : %(flagged)s"
 
-#: templates/checkin/site_day.html:10
+#: templates/checkin/site_day.html:10 templates/presence/person_day.html:14
 msgid "Previous day"
 msgstr "Jour précédent"
 
-#: templates/checkin/site_day.html:11
+#: templates/checkin/site_day.html:11 templates/presence/person_day.html:15
 msgid "Next day"
 msgstr "Jour suivant"
 
-#: templates/checkin/site_day.html:18 templates/dashboard/reports.html:34
+#: templates/checkin/site_day.html:18
+#: templates/dashboard/_report_filters.html:21
 #: templates/payouts/prepare.html:13
-#: templates/portal/office/access_list.html:14 templates/worksites/crew.html:15
+#: templates/portal/office/access_list.html:14
+#: templates/presence/person_day.html:22 templates/worksites/crew.html:15
 msgid "Show"
 msgstr "Afficher"
 
@@ -6889,7 +7204,12 @@ msgstr ""
 msgid "Suggested"
 msgstr "Suggéré"
 
-#: templates/checkin/site_day.html:31
+#: templates/checkin/site_day.html:31 templates/components/sidebar.html:70
+#: templates/presence/_tabs.html:4 templates/presence/gateway_form.html:5
+#: templates/presence/gateway_token.html:8 templates/presence/home.html:4
+#: templates/presence/home.html:5 templates/presence/live.html:12
+#: templates/presence/person_day.html:9 templates/presence/person_day.html:10
+#: templates/presence/site_setup.html:5 templates/presence/zone_form.html:5
 msgid "Presence"
 msgstr "Présence"
 
@@ -6909,11 +7229,8 @@ msgstr "Heure"
 msgid "Direction"
 msgstr "Sens"
 
-#: templates/checkin/site_day.html:61
-msgid "Source"
-msgstr "Source"
-
-#: templates/checkin/site_day.html:62
+#: templates/checkin/site_day.html:62 templates/presence/person_day.html:85
+#: templates/presence/person_day.html:93
 msgid "GPS"
 msgstr "GPS"
 
@@ -7011,7 +7328,7 @@ msgid "Overview"
 msgstr "Vue d’ensemble"
 
 #: templates/components/sidebar.html:50 templates/dashboard/home.html:4
-#: templates/dashboard/home.html:163 templates/workers/list.html:32
+#: templates/dashboard/home.html:167 templates/workers/list.html:32
 msgid "Today"
 msgstr "Aujourd’hui"
 
@@ -7019,7 +7336,8 @@ msgstr "Aujourd’hui"
 msgid "Daily work"
 msgstr "Travail quotidien"
 
-#: templates/components/sidebar.html:55 templates/payroll/cash_sheet.html:5
+#: templates/components/sidebar.html:55
+#: templates/dashboard/reports_cash.html:36 templates/payroll/cash_sheet.html:5
 #: templates/payroll/cash_sheets.html:4 templates/payroll/cash_sheets.html:6
 #: templates/payroll/day_extras.html:9 templates/payroll/periods.html:10
 msgid "Cash sheets"
@@ -7041,30 +7359,32 @@ msgstr "Banque et Mobile Money"
 msgid "People & sites"
 msgstr "Personnel et chantiers"
 
-#: templates/components/sidebar.html:73
+#: templates/components/sidebar.html:74
 msgid "Insight & admin"
 msgstr "Analyse et administration"
 
-#: templates/components/sidebar.html:74 templates/dashboard/reports.html:4
-#: templates/dashboard/reports.html:6 templates/worksites/detail.html:100
+#: templates/components/sidebar.html:75 templates/dashboard/reports.html:4
+#: templates/dashboard/reports.html:6 templates/dashboard/reports_cash.html:6
+#: templates/dashboard/reports_checks.html:6
+#: templates/worksites/detail.html:109
 msgid "Reports"
 msgstr "Rapports"
 
-#: templates/components/sidebar.html:77 templates/core/audit_log.html:5
+#: templates/components/sidebar.html:78 templates/core/audit_log.html:5
 #: templates/core/settings.html:4 templates/core/settings.html:6
 #: templates/messaging/_tabs.html:6 templates/messaging/settings.html:5
 #: templates/payroll/pay_rules.html:9
 msgid "Settings"
 msgstr "Paramètres"
 
-#: templates/components/sidebar.html:78 templates/messaging/_tabs.html:4
+#: templates/components/sidebar.html:79 templates/messaging/_tabs.html:4
 #: templates/messaging/messages.html:4 templates/messaging/messages.html:6
 #: templates/messaging/messages.html:41 templates/messaging/recipients.html:5
 #: templates/messaging/settings.html:5
 msgid "Messages"
 msgstr "Messages"
 
-#: templates/components/sidebar.html:84 templates/core/companies.html:4
+#: templates/components/sidebar.html:85 templates/core/companies.html:4
 #: templates/core/companies.html:6
 msgid "Companies"
 msgstr "Entreprises"
@@ -7317,6 +7637,84 @@ msgstr "Abandonner"
 msgid "Save settings"
 msgstr "Enregistrer les paramètres"
 
+#: templates/dashboard/_age_label.html:3
+msgid "1–7 days"
+msgstr "1 à 7 jours"
+
+#: templates/dashboard/_age_label.html:3
+msgid "8–30 days"
+msgstr "8 à 30 jours"
+
+#: templates/dashboard/_age_label.html:3
+msgid "Over 30 days"
+msgstr "Plus de 30 jours"
+
+#: templates/dashboard/_age_label.html:3
+msgid "Up to 30 days"
+msgstr "Jusqu’à 30 jours"
+
+#: templates/dashboard/_age_label.html:3
+msgid "31–90 days"
+msgstr "31 à 90 jours"
+
+#: templates/dashboard/_age_label.html:3
+msgid "Over 90 days"
+msgstr "Plus de 90 jours"
+
+#: templates/dashboard/_age_table.html:15
+#, python-format
+msgid "%(counter)s advance"
+msgid_plural "%(counter)s advances"
+msgstr[0] "%(counter)s avance"
+msgstr[1] "%(counter)s avances"
+msgstr[2] "%(counter)s avances"
+
+#: templates/dashboard/_age_table.html:15
+#, python-format
+msgid "%(counter)s pay line"
+msgid_plural "%(counter)s pay lines"
+msgstr[0] "%(counter)s ligne de paie"
+msgstr[1] "%(counter)s lignes de paie"
+msgstr[2] "%(counter)s lignes de paie"
+
+#: templates/dashboard/_budget_status.html:3
+msgid "Over budget"
+msgstr "Budget dépassé"
+
+#: templates/dashboard/_budget_status.html:3
+msgid "At risk"
+msgstr "Menacé"
+
+#: templates/dashboard/_budget_status.html:3
+msgid "On track"
+msgstr "Dans les temps"
+
+#: templates/dashboard/_budget_status.html:3
+msgid "Too early to tell"
+msgstr "Trop tôt pour le dire"
+
+#: templates/dashboard/_budget_status.html:3
+msgid "No budget"
+msgstr "Pas de budget"
+
+#: templates/dashboard/_report_tabs.html:4
+msgid "Report pages"
+msgstr "Pages des rapports"
+
+#: templates/dashboard/_report_tabs.html:5
+msgid "Cost and attendance"
+msgstr "Coûts et présences"
+
+#: templates/dashboard/_report_tabs.html:6
+#: templates/dashboard/reports_cash.html:4
+msgid "Cash and advances"
+msgstr "Caisse et avances"
+
+#: templates/dashboard/_report_tabs.html:7
+#: templates/dashboard/reports_checks.html:4
+msgid "Checks"
+msgstr "Contrôles"
+
 #: templates/dashboard/home.html:5
 msgid "l j F Y · H:i"
 msgstr "l j F Y · H:i"
@@ -7337,7 +7735,8 @@ msgstr[0] "Vérifier %(counter)s journée"
 msgstr[1] "Vérifier %(counter)s journées"
 msgstr[2] "Vérifier %(counter)s journées"
 
-#: templates/dashboard/home.html:22 templates/dashboard/reports.html:39
+#: templates/dashboard/home.html:22 templates/dashboard/reports.html:21
+#: templates/dashboard/reports_cash.html:14
 msgid "Key figures"
 msgstr "Chiffres clés"
 
@@ -7400,7 +7799,7 @@ msgstr "Espèces à payer ce soir"
 msgid "Open cash sheets"
 msgstr "Feuilles de caisse ouvertes"
 
-#: templates/dashboard/home.html:67
+#: templates/dashboard/home.html:67 templates/dashboard/reports_checks.html:32
 msgid "Roll call"
 msgstr "Appel"
 
@@ -7519,34 +7918,59 @@ msgstr[2] "%(site)s, %(date)s — %(counter)s ouvriers non payés."
 msgid "Open cash sheet"
 msgstr "Ouvrir la feuille de caisse"
 
-#: templates/dashboard/home.html:143
+#: templates/dashboard/home.html:140
+#, python-format
+msgid "%(site)s — over its labour budget"
+msgstr "%(site)s — budget main-d’œuvre dépassé"
+
+#: templates/dashboard/home.html:140
+#, python-format
+msgid "%(site)s — labour budget at risk"
+msgstr "%(site)s — budget main-d’œuvre menacé"
+
+#: templates/dashboard/home.html:141
+#, python-format
+msgid "%(percent)s%% used; at this pace it runs out on %(date)s."
+msgstr "%(percent)s %% utilisé ; à ce rythme, il sera épuisé le %(date)s."
+
+#: templates/dashboard/home.html:141
+#, python-format
+msgid "%(percent)s%% of the budget used."
+msgstr "%(percent)s %% du budget utilisé."
+
+#: templates/dashboard/home.html:142
+msgid "Open site budgets"
+msgstr "Ouvrir les budgets des chantiers"
+
+#: templates/dashboard/home.html:147
 msgid "Nothing needs attention right now."
 msgstr "Rien à traiter pour le moment."
 
-#: templates/dashboard/home.html:150
+#: templates/dashboard/home.html:154
 msgid "Worker-days, last 7 working days"
 msgstr "Jours-ouvrier, 7 derniers jours ouvrés"
 
-#: templates/dashboard/home.html:151
+#: templates/dashboard/home.html:155
 #, python-format
 msgid "Your sites · present and late count as 1, half days as %(units)s"
 msgstr ""
 "Vos chantiers · présent et retard comptent pour 1, demi-journée pour "
 "%(units)s"
 
-#: templates/dashboard/home.html:153
+#: templates/dashboard/home.html:157
 msgid "Worker-days per day"
 msgstr "Jours-ouvrier par jour"
 
-#: templates/dashboard/home.html:153
+#: templates/dashboard/home.html:157
 msgid "today, so far"
 msgstr "aujourd’hui, jusqu’ici"
 
-#: templates/dashboard/home.html:163 templates/worksites/detail.html:10
+#: templates/dashboard/home.html:167 templates/worksites/detail.html:10
 msgid "D j"
 msgstr "D j"
 
-#: templates/dashboard/reports.html:5
+#: templates/dashboard/reports.html:5 templates/dashboard/reports_cash.html:5
+#: templates/dashboard/reports_checks.html:5
 #, python-format
 msgid "%(start)s – %(end)s"
 msgstr "%(start)s – %(end)s"
@@ -7559,80 +7983,415 @@ msgstr "Télécharger le CSV"
 msgid "Download Excel"
 msgstr "Télécharger Excel"
 
-#: templates/dashboard/reports.html:46
+#: templates/dashboard/reports.html:29
 msgid "Attendance rate"
 msgstr "Taux de présence"
 
-#: templates/dashboard/reports.html:48
+#: templates/dashboard/reports.html:31
 msgid "Avg cost per worker-day"
 msgstr "Coût moyen par jour-ouvrier"
 
-#: templates/dashboard/reports.html:55
+#: templates/dashboard/reports.html:35
+#, python-format
+msgid "Compared with %(start)s – %(end)s."
+msgstr "Comparé avec %(start)s – %(end)s."
+
+#: templates/dashboard/reports.html:41
+msgid "Site budgets"
+msgstr "Budgets des chantiers"
+
+#: templates/dashboard/reports.html:42
+#, python-format
+msgid ""
+"Labour cost to date against each site's budget. At risk: %(percent)s%% used, "
+"the budget runs out before the planned end, or the site is still running "
+"after it. Spending is projected from the pay periods of the last 4 weeks."
+msgstr ""
+"Coût main-d’œuvre à ce jour par rapport au budget de chaque chantier. "
+"Menacé : %(percent)s %% utilisé, le budget est épuisé avant la fin prévue, "
+"ou le chantier continue après elle. Les dépenses sont projetées à partir des "
+"périodes de paie des 4 dernières semaines."
+
+#: templates/dashboard/reports.html:49 templates/messaging/worker.html:18
+#: templates/payroll/rule_form.html:23
+msgid "Save"
+msgstr "Enregistrer"
+
+#: templates/dashboard/reports.html:59
+msgid "Used"
+msgstr "Utilisé"
+
+#: templates/dashboard/reports.html:60
+msgid "Spent to date"
+msgstr "Dépensé à ce jour"
+
+#: templates/dashboard/reports.html:61
+msgid "Budget"
+msgstr "Budget"
+
+#: templates/dashboard/reports.html:62
+msgid "Per week"
+msgstr "Par semaine"
+
+#: templates/dashboard/reports.html:63
+msgid "Runs out"
+msgstr "Épuisé le"
+
+#: templates/dashboard/reports.html:69
+#, python-format
+msgid "Planned end %(date)s"
+msgstr "Fin prévue le %(date)s"
+
+#: templates/dashboard/reports.html:70 templates/worksites/detail.html:102
+msgid "Budget used"
+msgstr "Budget utilisé"
+
+#: templates/dashboard/reports.html:74
+#, python-format
+msgid "%(counter)s day before the planned end"
+msgid_plural "%(counter)s days before the planned end"
+msgstr[0] "%(counter)s jour avant la fin prévue"
+msgstr[1] "%(counter)s jours avant la fin prévue"
+msgstr[2] "%(counter)s jours avant la fin prévue"
+
+#: templates/dashboard/reports.html:82
+msgid "No site has a labour budget or labour cost yet."
+msgstr "Aucun chantier n’a encore de budget ou de coût main-d’œuvre."
+
+#: templates/dashboard/reports.html:88
 msgid "Labour cost by site"
 msgstr "Coût de main-d’œuvre par chantier"
 
-#: templates/dashboard/reports.html:63
+#: templates/dashboard/reports.html:96
 #, python-format
 msgid "Labour budget: %(budget)s"
 msgstr "Budget main-d’œuvre : %(budget)s"
 
-#: templates/dashboard/reports.html:68
+#: templates/dashboard/reports.html:101 templates/dashboard/reports.html:171
 msgid "No pay periods end in this period yet."
 msgstr "Aucune période de paie ne se termine encore dans cette période."
 
-#: templates/dashboard/reports.html:70
+#: templates/dashboard/reports.html:103
 msgid "Gross pay of the pay periods that end in this period."
 msgstr "Paie brute des périodes de paie qui se terminent dans cette période."
 
-#: templates/dashboard/reports.html:74 templates/dashboard/reports.html:75
+#: templates/dashboard/reports.html:107 templates/dashboard/reports.html:108
 msgid "Attendance rate by week"
 msgstr "Taux de présence par semaine"
 
-#: templates/dashboard/reports.html:75
+#: templates/dashboard/reports.html:108
 #, python-format
 msgid "week %(week)s"
 msgstr "semaine %(week)s"
 
-#: templates/dashboard/reports.html:75
+#: templates/dashboard/reports.html:108
 msgid "no data"
 msgstr "pas de données"
 
-#: templates/dashboard/reports.html:78
+#: templates/dashboard/reports.html:111
 #, python-format
 msgid "Week %(week)s"
 msgstr "Semaine %(week)s"
 
-#: templates/dashboard/reports.html:85
+#: templates/dashboard/reports.html:118
 #, python-format
 msgid "Wk %(week)s"
 msgstr "Sem. %(week)s"
 
-#: templates/dashboard/reports.html:87
+#: templates/dashboard/reports.html:120
 #, python-format
 msgid "Axis starts at 50%% · present and late, plus half days, ÷ recorded days"
 msgstr ""
 "L’axe commence à 50 %% · présents et retards, plus les demi-journées, ÷ "
 "jours saisis"
 
-#: templates/dashboard/reports.html:92
+#: templates/dashboard/reports.html:126
+msgid "What the labour cost is made of"
+msgstr "De quoi se compose le coût main-d’œuvre"
+
+#: templates/dashboard/reports.html:127
+msgid ""
+"Time pay includes overtime, night, Sunday, public holiday and stoppage pay. "
+"Corrections settle days already paid (negative: recovered)."
+msgstr ""
+"La paie au temps comprend les heures supplémentaires, la nuit, le dimanche, "
+"les jours fériés et les jours d’arrêt. Les régularisations soldent des jours "
+"déjà payés (négatif : récupéré)."
+
+#: templates/dashboard/reports.html:134
+msgid "Time pay"
+msgstr "Paie au temps"
+
+#: templates/dashboard/reports.html:136 templates/payroll/day_extras.html:88
+msgid "Bonuses"
+msgstr "Primes"
+
+#: templates/dashboard/reports.html:137
+#: templates/dashboard/reports_checks.html:67
+msgid "Corrections"
+msgstr "Régularisations"
+
+#: templates/dashboard/reports.html:176
 msgid "Employer cost and statutory deductions"
 msgstr "Coût employeur et retenues légales"
 
-#: templates/dashboard/reports.html:104
+#: templates/dashboard/reports.html:188
 msgid "Workers' share, withheld from their pay"
 msgstr "Part des ouvriers, retenue sur leur paie"
 
-#: templates/dashboard/reports.html:132
+#: templates/dashboard/reports.html:216
 msgid "No statutory deductions in this period."
 msgstr "Aucune retenue légale sur cette période."
 
-#: templates/dashboard/reports.html:138
+#: templates/dashboard/reports.html:222
 msgid "Attendance by worker"
 msgstr "Présences par ouvrier"
 
-#: templates/dashboard/reports.html:181
+#: templates/dashboard/reports.html:265
 msgid "No submitted attendance in this period."
 msgstr "Aucune présence envoyée sur cette période."
+
+#: templates/dashboard/reports_cash.html:17
+#, python-format
+msgid "%(counter)s pay line on the cash sheets"
+msgid_plural "%(counter)s pay lines on the cash sheets"
+msgstr[0] "%(counter)s ligne de paie sur les feuilles de caisse"
+msgstr[1] "%(counter)s lignes de paie sur les feuilles de caisse"
+msgstr[2] "%(counter)s lignes de paie sur les feuilles de caisse"
+
+#: templates/dashboard/reports_cash.html:21
+msgid "Cash, bank transfer and mobile money"
+msgstr "Espèces, virement bancaire et Mobile Money"
+
+#: templates/dashboard/reports_cash.html:23
+#: templates/dashboard/reports_cash.html:47 templates/payouts/prepare.html:27
+#: templates/payroll/_reconciliation.html:22
+#: templates/payroll/cash_sheets.html:29
+msgid "Left to pay"
+msgstr "Reste à payer"
+
+#: templates/dashboard/reports_cash.html:25
+#, python-format
+msgid "%(counter)s pay line without a payment"
+msgid_plural "%(counter)s pay lines without a payment"
+msgstr[0] "%(counter)s ligne de paie sans paiement"
+msgstr[1] "%(counter)s lignes de paie sans paiement"
+msgstr[2] "%(counter)s lignes de paie sans paiement"
+
+#: templates/dashboard/reports_cash.html:27
+#: templates/dashboard/reports_cash.html:49
+msgid "Cash not paid out"
+msgstr "Espèces non distribuées"
+
+#: templates/dashboard/reports_cash.html:30
+#, python-format
+msgid "Of %(issued)s cash issued: to hand back or explain"
+msgstr "Sur %(issued)s de fonds remis : à rendre ou à justifier"
+
+#: templates/dashboard/reports_cash.html:37
+msgid ""
+"Every pay day of the period. Cash not paid out = cash issued − cash payments."
+msgstr ""
+"Chaque jour de paie de la période. Espèces non distribuées = fonds remis − "
+"paiements en espèces."
+
+#: templates/dashboard/reports_cash.html:58
+#, python-format
+msgid "%(counter)s unpaid"
+msgid_plural "%(counter)s unpaid"
+msgstr[0] "%(counter)s non payé"
+msgstr[1] "%(counter)s non payés"
+msgstr[2] "%(counter)s non payés"
+
+#: templates/dashboard/reports_cash.html:75
+msgid "No cash sheet in this period."
+msgstr "Aucune feuille de caisse sur cette période."
+
+#: templates/dashboard/reports_cash.html:83
+msgid "Pay still owed"
+msgstr "Paie encore due"
+
+#: templates/dashboard/reports_cash.html:84
+#, python-format
+msgid ""
+"On %(date)s, by days since the pay day, any period. Closed and locked cash "
+"sheets are left out."
+msgstr ""
+"Au %(date)s, par jours depuis le jour de paie, toutes périodes. Les feuilles "
+"de caisse clôturées et verrouillées ne sont pas comptées."
+
+#: templates/dashboard/reports_cash.html:87
+msgid "No site"
+msgstr "Aucun chantier"
+
+#: templates/dashboard/reports_cash.html:90
+msgid "Everyone was paid after their pay day."
+msgstr "Tout le monde a été payé après son jour de paie."
+
+#: templates/dashboard/reports_cash.html:96
+msgid "Advances owed"
+msgstr "Avances dues"
+
+#: templates/dashboard/reports_cash.html:97
+#, python-format
+msgid ""
+"On %(date)s, by the worker's site today and days since the advance was given."
+msgstr ""
+"Au %(date)s, par chantier actuel de l’ouvrier et jours depuis le versement "
+"de l’avance."
+
+#: templates/dashboard/reports_cash.html:97
+msgid "Open advances"
+msgstr "Ouvrir les avances"
+
+#: templates/dashboard/reports_cash.html:100
+msgid "Not on these sites today"
+msgstr "Sur aucun de ces chantiers aujourd’hui"
+
+#: templates/dashboard/reports_cash.html:103
+msgid "No advance is owed."
+msgstr "Aucune avance n’est due."
+
+#: templates/dashboard/reports_checks.html:11
+msgid ""
+"These are things to look at, not proof of a fault: a phone left at home, a "
+"family sharing a number or a late correction can each have a good reason."
+msgstr ""
+"Ce sont des points à vérifier, pas la preuve d’une faute : un téléphone "
+"oublié, une famille qui partage un numéro ou une correction tardive peuvent "
+"avoir une bonne raison."
+
+#: templates/dashboard/reports_checks.html:16
+msgid "Roll call against check-ins"
+msgstr "Appel comparé aux pointages"
+
+#: templates/dashboard/reports_checks.html:17
+#, python-format
+msgid ""
+"Compared on the %(counter)s site day where someone checked in. Days without "
+"any check-in are not compared."
+msgid_plural ""
+"Compared on the %(counter)s site days where someone checked in. Days without "
+"any check-in are not compared."
+msgstr[0] ""
+"Comparé sur le %(counter)s jour de chantier où quelqu’un a pointé. Les jours "
+"sans aucun pointage ne sont pas comparés."
+msgstr[1] ""
+"Comparé sur les %(counter)s jours de chantier où quelqu’un a pointé. Les "
+"jours sans aucun pointage ne sont pas comparés."
+msgstr[2] ""
+"Comparé sur les %(counter)s jours de chantier où quelqu’un a pointé. Les "
+"jours sans aucun pointage ne sont pas comparés."
+
+#: templates/dashboard/reports_checks.html:17
+msgid "Compared on the days a site used check-in."
+msgstr "Comparé sur les jours où un chantier a utilisé le pointage."
+
+#: templates/dashboard/reports_checks.html:21
+msgid "Marked worked, no check-in"
+msgstr "Marqué au travail, sans pointage"
+
+#: templates/dashboard/reports_checks.html:23
+msgid "Marked absent, checked in"
+msgstr "Marqué absent, a pointé"
+
+#: templates/dashboard/reports_checks.html:41
+msgid "Checked in"
+msgstr "A pointé"
+
+#: templates/dashboard/reports_checks.html:41
+msgid "No check-in"
+msgstr "Aucun pointage"
+
+#: templates/dashboard/reports_checks.html:47
+#, python-format
+msgid ""
+"The %(shown)s most recent of %(total)s. Pick a site or a shorter period to "
+"see the rest."
+msgstr ""
+"Les %(shown)s plus récents sur %(total)s. Choisissez un chantier ou une "
+"période plus courte pour voir le reste."
+
+#: templates/dashboard/reports_checks.html:49
+msgid "The roll call matches the check-ins."
+msgstr "L’appel correspond aux pointages."
+
+#: templates/dashboard/reports_checks.html:52
+#: templates/dashboard/reports_checks.html:122
+msgid "Nobody checked in during this period."
+msgstr "Personne n’a pointé sur cette période."
+
+#: templates/dashboard/reports_checks.html:58
+msgid "Corrections per foreman"
+msgstr "Corrections par chef d’équipe"
+
+#: templates/dashboard/reports_checks.html:59
+msgid ""
+"Changes to the records of each foreman's roll calls after they submitted "
+"them, and how many were made once the day was approved."
+msgstr ""
+"Modifications des fiches des appels de chaque chef d’équipe après leur "
+"envoi, et combien ont été faites une fois la journée validée."
+
+#: templates/dashboard/reports_checks.html:66
+msgid "Records"
+msgstr "Fiches"
+
+#: templates/dashboard/reports_checks.html:68
+msgid "Per 100 records"
+msgstr "Pour 100 fiches"
+
+#: templates/dashboard/reports_checks.html:69
+msgid "After approval"
+msgstr "Après validation"
+
+#: templates/dashboard/reports_checks.html:74
+msgid "No foreman"
+msgstr "Aucun chef d’équipe"
+
+#: templates/dashboard/reports_checks.html:85
+msgid "No correction in this period."
+msgstr "Aucune correction sur cette période."
+
+#: templates/dashboard/reports_checks.html:91
+msgid "Check-in flags per site"
+msgstr "Alertes de pointage par chantier"
+
+#: templates/dashboard/reports_checks.html:92
+msgid ""
+"Scans outside the site's area, unknown or revoked badges, workers not on the "
+"crew, and check-ins typed in by hand."
+msgstr ""
+"Scans hors du périmètre du chantier, badges inconnus ou révoqués, ouvriers "
+"hors équipe et pointages saisis à la main."
+
+#: templates/dashboard/reports_checks.html:100
+msgid "Outside the area"
+msgstr "Hors périmètre"
+
+#: templates/dashboard/reports_checks.html:103
+msgid "Not on the crew"
+msgstr "Hors équipe"
+
+#: templates/dashboard/reports_checks.html:104
+msgid "Typed in"
+msgstr "Saisis à la main"
+
+#: templates/dashboard/reports_checks.html:129
+msgid "Payout accounts shared by several workers"
+msgstr "Comptes de paiement partagés par plusieurs ouvriers"
+
+#: templates/dashboard/reports_checks.html:130
+msgid ""
+"Active workers paid to the same mobile money number or bank account, "
+"whatever the period. Only admins see this."
+msgstr ""
+"Ouvriers actifs payés sur le même numéro Mobile Money ou le même compte "
+"bancaire, quelle que soit la période. Seuls les administrateurs voient ceci."
+
+#: templates/dashboard/reports_checks.html:142
+msgid "No payout account is shared."
+msgstr "Aucun compte de paiement n’est partagé."
 
 #: templates/layouts/app.html:29 templates/portal/layout.html:16
 msgid "Skip to content"
@@ -7699,7 +8458,7 @@ msgstr ""
 "Rien n’est mis en file d’attente ni envoyé tant qu’un administrateur ne les "
 "active pas dans Paramètres."
 
-#: templates/messaging/messages.html:45
+#: templates/messaging/messages.html:45 templates/presence/notice.html:36
 msgid "When"
 msgstr "Quand"
 
@@ -7809,10 +8568,6 @@ msgid ""
 msgstr ""
 "Les ouvriers reçoivent le résumé de leur bulletin de paie après chaque "
 "paiement, dans la langue de l’entreprise."
-
-#: templates/messaging/worker.html:18 templates/payroll/rule_form.html:23
-msgid "Save"
-msgstr "Enregistrer"
 
 #: templates/messaging/worker.html:24
 msgid "Recent texts"
@@ -8248,11 +9003,6 @@ msgstr[0] "%(n)s virement prêt · %(total)s"
 msgstr[1] "%(n)s virements prêts · %(total)s"
 msgstr[2] "%(n)s virements prêts · %(total)s"
 
-#: templates/payouts/prepare.html:27 templates/payroll/_reconciliation.html:22
-#: templates/payroll/cash_sheets.html:29
-msgid "Left to pay"
-msgstr "Reste à payer"
-
 #: templates/payouts/prepare.html:52
 msgid "Create the batch"
 msgstr "Créer le lot"
@@ -8551,7 +9301,7 @@ msgstr "Ajouter une remise de fonds"
 msgid "Deductions"
 msgstr "Retenues"
 
-#: templates/payroll/cash_sheet.html:53 templates/workers/detail.html:143
+#: templates/payroll/cash_sheet.html:53 templates/workers/detail.html:144
 msgid "Advance"
 msgstr "Avance"
 
@@ -8667,10 +9417,6 @@ msgstr "Pas de travail à la tâche ce jour."
 #: templates/payroll/day_extras.html:81
 msgid "Add piece work"
 msgstr "Ajouter du travail à la tâche"
-
-#: templates/payroll/day_extras.html:88
-msgid "Bonuses"
-msgstr "Primes"
 
 #: templates/payroll/day_extras.html:89
 msgid "A one-off amount, added to the worker's next pay at this site."
@@ -9034,7 +9780,7 @@ msgstr "En attente de paiement"
 msgid "See advances"
 msgstr "Voir les avances"
 
-#: templates/portal/layout.html:32 templates/workers/detail.html:141
+#: templates/portal/layout.html:32 templates/workers/detail.html:142
 msgid "Days"
 msgstr "Jours"
 
@@ -9076,6 +9822,7 @@ msgid "Manage"
 msgstr "Gérer"
 
 #: templates/portal/office/access_list.html:57
+#: templates/presence/badges.html:56
 msgid "No workers"
 msgstr "Aucun ouvrier"
 
@@ -9244,6 +9991,995 @@ msgstr ""
 "Pas de code PIN, ou code oublié ? Demandez-en un nouveau à votre conducteur "
 "de travaux ou au bureau."
 
+#: templates/presence/_reconciliation.html:6
+msgid "Not run yet"
+msgstr "Pas encore fait"
+
+#: templates/presence/_reconciliation.html:7
+msgid ""
+"Each night, yesterday’s visits are checked against the tracker’s full record."
+msgstr ""
+"Chaque nuit, les passages de la veille sont comparés à l’enregistrement "
+"complet du service de suivi."
+
+#: templates/presence/_reconciliation.html:9
+msgid "Last check failed"
+msgstr "Dernier contrôle échoué"
+
+#: templates/presence/_reconciliation.html:10
+#, python-format
+msgid "Day %(day)s · tried %(when)s (%(n)s attempt)"
+msgid_plural "Day %(day)s · tried %(when)s (%(n)s attempts)"
+msgstr[0] "Jour %(day)s · essayé le %(when)s (%(n)s tentative)"
+msgstr[1] "Jour %(day)s · essayé le %(when)s (%(n)s tentatives)"
+msgstr[2] "Jour %(day)s · essayé le %(when)s (%(n)s tentatives)"
+
+#: templates/presence/_reconciliation.html:11
+#, python-format
+msgid "Checked before at %(when)s; those corrections stay."
+msgstr "Contrôlé auparavant le %(when)s ; ces corrections restent."
+
+#: templates/presence/_reconciliation.html:13
+msgid "Checked"
+msgstr "Contrôlé"
+
+#: templates/presence/_reconciliation.html:14
+#, python-format
+msgid "Day %(day)s, at %(when)s"
+msgstr "Jour %(day)s, le %(when)s"
+
+#: templates/presence/_reconciliation.html:15
+#, python-format
+msgid ""
+"%(added)s added · %(changed)s changed · %(removed)s removed · %(unchanged)s "
+"unchanged"
+msgstr ""
+"%(added)s ajoutés · %(changed)s modifiés · %(removed)s supprimés · "
+"%(unchanged)s inchangés"
+
+#: templates/presence/_reconciliation.html:15
+#, python-format
+msgid "%(ignored)s ignored"
+msgstr "%(ignored)s ignorés"
+
+#: templates/presence/_site_card.html:5 templates/presence/_worker_card.html:5
+#: templates/presence/home.html:25 templates/presence/site_setup.html:19
+msgid "Tracking"
+msgstr "Suivi"
+
+#: templates/presence/_site_card.html:7 templates/presence/home.html:27
+#: templates/presence/site_setup.html:78
+msgid "Gateways"
+msgstr "Passerelles"
+
+#: templates/presence/_site_card.html:7 templates/presence/home.html:37
+#, python-format
+msgid "%(active)s active of %(total)s"
+msgstr "%(active)s actives sur %(total)s"
+
+#: templates/presence/_site_card.html:8 templates/presence/home.html:39
+#: templates/presence/live.html:11 templates/presence/site_setup.html:9
+msgid "Live map"
+msgstr "Carte en direct"
+
+#: templates/presence/_site_card.html:8 templates/presence/home.html:39
+#: templates/presence/live.html:15
+msgid "Set up"
+msgstr "Configurer"
+
+#: templates/presence/_sync.html:6
+msgid "Last push failed"
+msgstr "Dernier envoi échoué"
+
+#: templates/presence/_sync.html:7
+msgid "Not sent yet"
+msgstr "Pas encore envoyé"
+
+#: templates/presence/_sync.html:8
+msgid "No tracker"
+msgstr "Pas de service de suivi"
+
+#: templates/presence/_sync.html:10
+#, python-format
+msgid "Tried %(when)s"
+msgstr "Essayé le %(when)s"
+
+#: templates/presence/_sync.html:11
+#, python-format
+msgid "Last sent %(when)s"
+msgstr "Dernier envoi le %(when)s"
+
+#: templates/presence/_sync.html:12
+msgid ""
+"This server has no tracker address (TRACKER_URL): changes are saved here "
+"only."
+msgstr ""
+"Ce serveur n’a pas d’adresse de service de suivi (TRACKER_URL) : les "
+"modifications sont seulement enregistrées ici."
+
+#: templates/presence/_tabs.html:6 templates/presence/badges.html:4
+#: templates/presence/badges.html:5 templates/presence/badges.html:20
+#: templates/presence/site_setup.html:126
+#: templates/presence/worker_badge.html:5
+msgctxt "screen"
+msgid "BLE badges"
+msgstr "Badges BLE"
+
+#: templates/presence/_tabs.html:7 templates/presence/notice.html:9
+msgid "Notice for badge holders"
+msgstr "Avis aux porteurs de badge"
+
+#: templates/presence/_worker_card.html:6
+#: templates/presence/worker_badge.html:4
+msgctxt "screen"
+msgid "BLE badge"
+msgstr "Badge BLE"
+
+#: templates/presence/_worker_card.html:8
+msgid "Presence today"
+msgstr "Présence du jour"
+
+#: templates/presence/_worker_card.html:9
+msgid "Change badge"
+msgstr "Changer de badge"
+
+#: templates/presence/_worker_card.html:9 templates/presence/badges.html:39
+#: templates/presence/worker_badge.html:18
+msgid "Give a badge"
+msgstr "Donner un badge"
+
+#: templates/presence/_worker_card.html:10
+msgid "Export presence history (CSV)"
+msgstr "Exporter l’historique de présence (CSV)"
+
+#: templates/presence/badges.html:6
+msgid ""
+"Radio badges (lanyard or helmet tags) that gateways and the foremen’s phones "
+"pick up. One badge per worker; a badge is recognised on every site of the "
+"company."
+msgstr ""
+"Badges radio (sur cordon ou sur le casque) que captent les passerelles et "
+"les téléphones des chefs d’équipe. Un badge par ouvrier ; un badge est "
+"reconnu sur tous les chantiers de l’entreprise."
+
+#: templates/presence/badges.html:8
+msgid "Print the notice"
+msgstr "Imprimer l’avis"
+
+#: templates/presence/badges.html:21
+#, python-format
+msgid "With a badge: %(with_badge)s of %(n)s worker."
+msgid_plural "With a badge: %(with_badge)s of %(n)s workers."
+msgstr[0] "Avec un badge : %(with_badge)s sur %(n)s ouvrier."
+msgstr[1] "Avec un badge : %(with_badge)s sur %(n)s ouvriers."
+msgstr[2] "Avec un badge : %(with_badge)s sur %(n)s ouvriers."
+
+#: templates/presence/badges.html:21
+#, python-format
+msgid "Only the first %(limit)s are shown: search to narrow the list."
+msgstr ""
+"Seuls les %(limit)s premiers sont affichés : faites une recherche pour "
+"réduire la liste."
+
+#: templates/presence/badges.html:28 templates/presence/live.html:76
+msgid "Since"
+msgstr "Depuis"
+
+#: templates/presence/badges.html:39
+msgid "Change"
+msgstr "Changer"
+
+#: templates/presence/badges.html:44 templates/presence/worker_badge.html:35
+#, python-format
+msgid "Take back the badge of %(name)s? It is no longer recognised."
+msgstr "Reprendre le badge de %(name)s ? Il ne sera plus reconnu."
+
+#: templates/presence/badges.html:45 templates/presence/worker_badge.html:36
+msgid "End"
+msgstr "Reprendre"
+
+#: templates/presence/badges.html:56
+msgid "No active worker matches."
+msgstr "Aucun ouvrier actif ne correspond."
+
+#: templates/presence/gateway_form.html:4
+msgid "Edit gateway"
+msgstr "Modifier la passerelle"
+
+#: templates/presence/gateway_form.html:4
+#: templates/presence/gateway_form.html:6
+msgid "New gateway"
+msgstr "Nouvelle passerelle"
+
+#: templates/presence/gateway_form.html:7
+msgid ""
+"A fixed receiver on the site that picks up the workers’ badges. After "
+"saving, issue its token and enter it in the gateway."
+msgstr ""
+"Un récepteur fixe sur le chantier qui capte les badges des ouvriers. Après "
+"l’enregistrement, émettez son jeton et saisissez-le dans la passerelle."
+
+#: templates/presence/gateway_form.html:16
+msgid "Save gateway"
+msgstr "Enregistrer la passerelle"
+
+#: templates/presence/gateway_token.html:7
+#: templates/presence/gateway_token.html:16
+#: templates/presence/gateway_token.html:17
+msgid "Gateway token"
+msgstr "Jeton de la passerelle"
+
+#: templates/presence/gateway_token.html:9
+#, python-format
+msgid "Token of %(label)s"
+msgstr "Jeton de %(label)s"
+
+#: templates/presence/gateway_token.html:13
+msgid "Copy it now."
+msgstr "Copiez-le maintenant."
+
+#: templates/presence/gateway_token.html:13
+msgid ""
+"This token is shown only once. If it is lost, issue a new one: the old one "
+"then stops working."
+msgstr ""
+"Ce jeton n’est affiché qu’une fois. S’il est perdu, émettez-en un nouveau : "
+"l’ancien cesse alors de fonctionner."
+
+#: templates/presence/gateway_token.html:21
+msgid "Copy token"
+msgstr "Copier le jeton"
+
+#: templates/presence/gateway_token.html:22
+msgid "Copied."
+msgstr "Copié."
+
+#: templates/presence/gateway_token.html:25
+msgid "Gateway ID"
+msgstr "Identifiant de la passerelle"
+
+#: templates/presence/gateway_token.html:26
+msgid "Valid until"
+msgstr "Valable jusqu’au"
+
+#: templates/presence/gateway_token.html:27
+msgid "Send sightings to"
+msgstr "Envoyer les détections à"
+
+#: templates/presence/gateway_token.html:29
+msgid ""
+"Enter the token in the gateway’s settings as a bearer token (Authorization: "
+"Bearer …). The tracker accepts it once the site’s settings have reached it, "
+"usually within seconds."
+msgstr ""
+"Saisissez le jeton dans les réglages de la passerelle comme jeton porteur "
+"(Authorization: Bearer …). Le service de suivi l’accepte dès qu’il a reçu "
+"les réglages du chantier, en général en quelques secondes."
+
+#: templates/presence/gateway_token.html:31
+msgid "Back to the site"
+msgstr "Retour au chantier"
+
+#: templates/presence/gateway_token.html:36
+#, python-format
+msgid ""
+"This gateway has a token since %(when)s. A new token replaces it: the "
+"gateway stops sending until you enter the new one."
+msgstr ""
+"Cette passerelle a un jeton depuis le %(when)s. Un nouveau jeton le "
+"remplace : la passerelle n’envoie plus rien tant que vous n’avez pas saisi "
+"le nouveau."
+
+#: templates/presence/gateway_token.html:38
+msgid "This gateway was revoked. A new token turns it on again."
+msgstr "Cette passerelle a été révoquée. Un nouveau jeton la réactive."
+
+#: templates/presence/gateway_token.html:40
+msgid ""
+"The gateway needs a token to send sightings to the tracker. It is valid for "
+"one year and shown once."
+msgstr ""
+"La passerelle a besoin d’un jeton pour envoyer ses détections au service de "
+"suivi. Il est valable un an et affiché une seule fois."
+
+#: templates/presence/gateway_token.html:43
+msgid "Issue a new token"
+msgstr "Émettre un nouveau jeton"
+
+#: templates/presence/gateway_token.html:43
+#: templates/presence/site_setup.html:103
+msgid "Issue token"
+msgstr "Émettre un jeton"
+
+#: templates/presence/home.html:6
+msgid ""
+"Who is on site, from BLE badges and the foremen’s phones. Presence only "
+"suggests attendance: the roll call is still confirmed by the foreman."
+msgstr ""
+"Qui est sur le chantier, d’après les badges BLE et les téléphones des chefs "
+"d’équipe. La présence ne fait que suggérer le pointage : l’appel est "
+"toujours confirmé par le chef d’équipe."
+
+#: templates/presence/home.html:12
+msgid "No tracker on this server."
+msgstr "Pas de service de suivi sur ce serveur."
+
+#: templates/presence/home.html:12
+msgid ""
+"Zones, gateways and badges are saved, but nothing is sent to the tracker "
+"until TRACKER_URL is set."
+msgstr ""
+"Les zones, passerelles et badges sont enregistrés, mais rien n’est envoyé au "
+"service de suivi tant que TRACKER_URL n’est pas défini."
+
+#: templates/presence/home.html:15 templates/presence/live.html:22
+msgid "The live map is off."
+msgstr "La carte en direct est désactivée."
+
+#: templates/presence/home.html:15 templates/presence/live.html:22
+msgid "Set TRACKER_PUBLIC_URL so that browsers can reach the tracker."
+msgstr ""
+"Définissez TRACKER_PUBLIC_URL pour que les navigateurs puissent joindre le "
+"service de suivi."
+
+#: templates/presence/home.html:28 templates/presence/site_setup.html:29
+msgid "Tracker"
+msgstr "Service de suivi"
+
+#: templates/presence/live.html:13
+#, python-format
+msgid "On site now · %(site)s"
+msgstr "Sur le chantier en ce moment · %(site)s"
+
+#: templates/presence/live.html:14
+msgid ""
+"From BLE badges and the foremen’s phones. Presence only suggests attendance."
+msgstr ""
+"D’après les badges BLE et les téléphones des chefs d’équipe. La présence ne "
+"fait que suggérer le pointage."
+
+#: templates/presence/live.html:19
+msgid "Tracking is off for this site."
+msgstr "Le suivi est désactivé pour ce chantier."
+
+#: templates/presence/live.html:19
+msgid ""
+"Turn it on in the site’s settings (Presence tracking) to see who is on site."
+msgstr ""
+"Activez-le dans les réglages du chantier (Suivi de présence) pour voir qui "
+"est sur le chantier."
+
+#: templates/presence/live.html:29
+msgid "Live updates need JavaScript."
+msgstr "Les mises à jour en direct demandent JavaScript."
+
+#: templates/presence/live.html:29
+msgid "Today’s visits below come from the office records."
+msgstr ""
+"Les passages du jour ci-dessous viennent des enregistrements du bureau."
+
+#: templates/presence/live.html:30
+msgid "Connecting to the tracker…"
+msgstr "Connexion au service de suivi…"
+
+#: templates/presence/live.html:31
+msgid "Live."
+msgstr "En direct."
+
+#: templates/presence/live.html:31
+msgid "Updates arrive as they happen."
+msgstr "Les changements arrivent au fur et à mesure."
+
+#: templates/presence/live.html:32
+msgid "Connection lost."
+msgstr "Connexion perdue."
+
+#: templates/presence/live.html:32
+msgid "Reconnecting…"
+msgstr "Reconnexion…"
+
+#: templates/presence/live.html:33 templates/presence/person_day.html:83
+msgid "The tracker cannot be reached."
+msgstr "Le service de suivi est injoignable."
+
+#: templates/presence/live.html:33
+msgid ""
+"Trying again shortly. The visits below come from the office records and may "
+"be a few minutes behind."
+msgstr ""
+"Nouvel essai dans un instant. Les passages ci-dessous viennent des "
+"enregistrements du bureau et peuvent avoir quelques minutes de retard."
+
+#: templates/presence/live.html:34
+msgid "The tracker has not received this site’s settings yet."
+msgstr "Le service de suivi n’a pas encore reçu les réglages de ce chantier."
+
+#: templates/presence/live.html:34
+msgid "Send them again from the setup page; this page retries every minute."
+msgstr ""
+"Renvoyez-les depuis la page de configuration ; cette page réessaie chaque "
+"minute."
+
+#: templates/presence/live.html:35
+msgid "The tracker does not show you this site."
+msgstr "Le service de suivi ne vous montre pas ce chantier."
+
+#: templates/presence/live.html:35
+msgid "Tracking may have been turned off meanwhile. Reload the page."
+msgstr "Le suivi a peut-être été désactivé entre-temps. Rechargez la page."
+
+#: templates/presence/live.html:36
+msgid "Your session has ended."
+msgstr "Votre session a pris fin."
+
+#: templates/presence/live.html:36
+msgid "Reload the page to sign in again."
+msgstr "Rechargez la page pour vous reconnecter."
+
+#: templates/presence/live.html:37
+msgid "The tracker refused the dashboard token."
+msgstr "Le service de suivi a refusé le jeton du tableau de bord."
+
+#: templates/presence/live.html:37
+msgid "Django and the tracker must share the same TRACKER_SHARED_SECRET."
+msgstr ""
+"Django et le service de suivi doivent partager le même TRACKER_SHARED_SECRET."
+
+#: templates/presence/live.html:41
+msgid "Map"
+msgstr "Carte"
+
+#: templates/presence/live.html:43
+#, python-format
+msgid "Map of %(site)s"
+msgstr "Carte de %(site)s"
+
+#: templates/presence/live.html:44
+msgid "The map could not load. The list still updates."
+msgstr "La carte n’a pas pu se charger. La liste se met quand même à jour."
+
+#: templates/presence/live.html:45
+#, python-format
+msgid ""
+"The circle is the site’s geofence (%(radius)s m). Dots are foremen’s phones; "
+"badges are placed by zone in the list."
+msgstr ""
+"Le cercle est le périmètre du chantier (%(radius)s m). Les points sont les "
+"téléphones des chefs d’équipe ; les badges sont classés par zone dans la "
+"liste."
+
+#: templates/presence/live.html:48
+msgid ""
+"This site has no geofence, so there is nothing to draw: the list still shows "
+"who the gateways see."
+msgstr ""
+"Ce chantier n’a pas de périmètre, il n’y a donc rien à dessiner : la liste "
+"montre quand même qui les passerelles détectent."
+
+#: templates/presence/live.html:49 templates/presence/site_setup.html:26
+#: templates/worksites/detail.html:83
+msgid "Set geofence"
+msgstr "Définir le périmètre"
+
+#: templates/presence/live.html:54 templates/presence/live.html:70
+msgid "On site now"
+msgstr "Sur le chantier en ce moment"
+
+#: templates/presence/live.html:57 templates/presence/live.html:89
+msgid "On site"
+msgstr "Sur le chantier"
+
+#: templates/presence/live.html:61 templates/presence/live.html:89
+msgid "Arriving"
+msgstr "En arrivée"
+
+#: templates/presence/live.html:65
+msgid "List updated at"
+msgstr "Liste mise à jour à"
+
+#: templates/presence/live.html:74 templates/presence/live.html:104
+msgid "Person"
+msgstr "Personne"
+
+#: templates/presence/live.html:75 templates/presence/site_setup.html:86
+msgid "Zone"
+msgstr "Zone"
+
+#: templates/presence/live.html:78
+msgid "State"
+msgstr "État"
+
+#: templates/presence/live.html:82
+msgid "No one on site right now."
+msgstr "Personne sur le chantier en ce moment."
+
+#: templates/presence/live.html:97
+#, python-format
+msgid "Seen today · %(date)s"
+msgstr "Vus aujourd’hui · %(date)s"
+
+#: templates/presence/live.html:98
+msgid ""
+"Visits recorded by the office from the tracker’s events. They are kept like "
+"attendance."
+msgstr ""
+"Passages enregistrés par le bureau à partir des événements du service de "
+"suivi. Ils sont conservés comme les présences."
+
+#: templates/presence/live.html:105
+msgid "First seen"
+msgstr "Première détection"
+
+#: templates/presence/live.html:108 templates/presence/person_day.html:27
+msgid "Visits"
+msgstr "Passages"
+
+#: templates/presence/live.html:113
+#, python-format
+msgid "Foreman no. %(id)s"
+msgstr "Chef d’équipe n° %(id)s"
+
+#: templates/presence/live.html:113
+#, python-format
+msgid "Worker no. %(id)s"
+msgstr "Ouvrier n° %(id)s"
+
+#: templates/presence/live.html:115 templates/presence/person_day.html:53
+msgid "Still on site"
+msgstr "Encore sur le chantier"
+
+#: templates/presence/live.html:124
+msgid "No one recorded on this site today yet."
+msgstr "Personne n’a encore été enregistré sur ce chantier aujourd’hui."
+
+#: templates/presence/notice.html:19
+msgid "Apply"
+msgstr "Appliquer"
+
+#: templates/presence/notice.html:31
+msgid "Presence tracking on our sites"
+msgstr "Le suivi de présence sur nos chantiers"
+
+#: templates/presence/notice.html:32
+#, python-format
+msgid ""
+"%(company)s uses Polaris to know who is on its sites. Your badge helps with "
+"that. Here is how it works, what is recorded and what you can ask."
+msgstr ""
+"%(company)s utilise Polaris pour savoir qui est sur ses chantiers. Votre "
+"badge y contribue. Voici comment cela fonctionne, ce qui est enregistré et "
+"ce que vous pouvez demander."
+
+#: templates/presence/notice.html:37
+#, python-format
+msgid ""
+"Only during tracking hours, %(start)s–%(end)s (site time), and only on the "
+"company’s sites. Outside those hours nothing is recorded."
+msgstr ""
+"Seulement pendant les heures de suivi, %(start)s–%(end)s (heure du "
+"chantier), et seulement sur les chantiers de l’entreprise. En dehors de ces "
+"heures, rien n’est enregistré."
+
+#: templates/presence/notice.html:37
+#, python-format
+msgid "These are the hours of %(site)s."
+msgstr "Ce sont les heures de %(site)s."
+
+#: templates/presence/notice.html:41
+msgid "What is recorded"
+msgstr "Ce qui est enregistré"
+
+#: templates/presence/notice.html:42
+msgid ""
+"Your badge sends a short radio signal (Bluetooth Low Energy). Receivers "
+"fixed on the site and the foremen’s phones note when they pick it up, and in "
+"which part of the site. That gives your arrival and departure times."
+msgstr ""
+"Votre badge émet un court signal radio (Bluetooth basse consommation). Les "
+"récepteurs fixés sur le chantier et les téléphones des chefs d’équipe notent "
+"quand ils le captent, et dans quelle partie du chantier. Cela donne vos "
+"heures d’arrivée et de départ."
+
+#: templates/presence/notice.html:43
+msgid ""
+"The badge has no GPS, no microphone and no camera. It is not followed "
+"outside the sites."
+msgstr ""
+"Le badge n’a ni GPS, ni micro, ni caméra. Il n’est pas suivi en dehors des "
+"chantiers."
+
+#: templates/presence/notice.html:47
+msgid "How long it is kept"
+msgstr "Durée de conservation"
+
+#: templates/presence/notice.html:48
+#, python-format
+msgid ""
+"The raw sightings are deleted after %(days)s day. Arrival and departure "
+"times are kept like attendance."
+msgid_plural ""
+"The raw sightings are deleted after %(days)s days. Arrival and departure "
+"times are kept like attendance."
+msgstr[0] ""
+"Les détections brutes sont effacées après %(days)s jour. Les heures "
+"d’arrivée et de départ sont conservées comme les présences."
+msgstr[1] ""
+"Les détections brutes sont effacées après %(days)s jours. Les heures "
+"d’arrivée et de départ sont conservées comme les présences."
+msgstr[2] ""
+"Les détections brutes sont effacées après %(days)s jours. Les heures "
+"d’arrivée et de départ sont conservées comme les présences."
+
+#: templates/presence/notice.html:52
+msgid "Who sees it"
+msgstr "Qui y a accès"
+
+#: templates/presence/notice.html:53
+msgid ""
+"Site managers see who is on their own sites. Company administrators see all "
+"the sites. Nobody else."
+msgstr ""
+"Les conducteurs de travaux voient qui est sur leurs propres chantiers. Les "
+"administrateurs de l’entreprise voient tous les chantiers. Personne d’autre."
+
+#: templates/presence/notice.html:57
+msgid "What it is used for"
+msgstr "À quoi cela sert"
+
+#: templates/presence/notice.html:58
+msgid ""
+"Presence only suggests attendance: the roll call is still confirmed by your "
+"foreman. It is never used to discipline anyone automatically."
+msgstr ""
+"La présence ne fait que suggérer le pointage : l’appel est toujours confirmé "
+"par votre chef d’équipe. Elle ne sert jamais à sanctionner automatiquement."
+
+#: templates/presence/notice.html:62
+msgid "What you can ask"
+msgstr "Ce que vous pouvez demander"
+
+#: templates/presence/notice.html:64
+msgid ""
+"Your own presence history: the office exports it from your worker profile."
+msgstr ""
+"Votre propre historique de présence : le bureau l’exporte depuis votre fiche "
+"ouvrier."
+
+#: templates/presence/notice.html:65
+msgid ""
+"Not to be tracked: tell the office. Tracking is then turned off for you and "
+"your badge is no longer read. Your attendance is taken by the foreman as "
+"before."
+msgstr ""
+"Ne pas être suivi : dites-le au bureau. Le suivi est alors désactivé pour "
+"vous et votre badge n’est plus lu. Votre présence est relevée par le chef "
+"d’équipe comme avant."
+
+#: templates/presence/notice.html:66
+msgid "If you lose your badge, tell the office at once: it is turned off."
+msgstr ""
+"Si vous perdez votre badge, prévenez tout de suite le bureau : il sera "
+"désactivé."
+
+#: templates/presence/notice.html:70
+msgid "Acknowledgement"
+msgstr "Accusé de réception"
+
+#: templates/presence/notice.html:71
+msgid "I have received and read this notice."
+msgstr "J’ai reçu et lu cet avis."
+
+#: templates/presence/notice.html:79
+#, python-format
+msgid "Notice version %(version)s"
+msgstr "Version de l’avis %(version)s"
+
+#: templates/presence/person_day.html:11
+#, python-format
+msgid "Presence of %(name)s"
+msgstr "Présence de %(name)s"
+
+#: templates/presence/person_day.html:16
+msgid "Export history (CSV)"
+msgstr "Exporter l’historique (CSV)"
+
+#: templates/presence/person_day.html:28
+#, python-format
+msgid "%(minutes)s min on site in all"
+msgstr "%(minutes)s min sur le chantier au total"
+
+#: templates/presence/person_day.html:45
+msgid "Minutes"
+msgstr "Minutes"
+
+#: templates/presence/person_day.html:51
+msgid "Corrected by the nightly check"
+msgstr "Corrigé par le contrôle de nuit"
+
+#: templates/presence/person_day.html:62
+msgid "No visit recorded on this day."
+msgstr "Aucun passage enregistré ce jour-là."
+
+#: templates/presence/person_day.html:68
+msgid "Raw track"
+msgstr "Trace brute"
+
+#: templates/presence/person_day.html:69
+msgid ""
+"Every sighting and GPS position the tracker kept, trips between sites "
+"included (you are a company administrator)."
+msgstr ""
+"Toutes les détections et positions GPS conservées par le service de suivi, "
+"trajets entre chantiers compris (vous êtes administrateur de l’entreprise)."
+
+#: templates/presence/person_day.html:69
+msgid ""
+"Sightings and GPS positions on your sites. Trips between sites are shown to "
+"company administrators only."
+msgstr ""
+"Détections et positions GPS sur vos chantiers. Les trajets entre chantiers "
+"ne sont montrés qu’aux administrateurs de l’entreprise."
+
+#: templates/presence/person_day.html:72
+#, python-format
+msgid ""
+"Raw positions are deleted after %(days)s day; the visits above are kept."
+msgid_plural ""
+"Raw positions are deleted after %(days)s days; the visits above are kept."
+msgstr[0] ""
+"Les positions brutes sont effacées après %(days)s jour ; les passages ci-"
+"dessus sont conservés."
+msgstr[1] ""
+"Les positions brutes sont effacées après %(days)s jours ; les passages ci-"
+"dessus sont conservés."
+msgstr[2] ""
+"Les positions brutes sont effacées après %(days)s jours ; les passages ci-"
+"dessus sont conservés."
+
+#: templates/presence/person_day.html:74
+msgid ""
+"The tracker is not reachable from browsers on this server "
+"(TRACKER_PUBLIC_URL is not set)."
+msgstr ""
+"Le service de suivi n’est pas joignable depuis les navigateurs sur ce "
+"serveur (TRACKER_PUBLIC_URL n’est pas défini)."
+
+#: templates/presence/person_day.html:80
+msgid "The raw track needs JavaScript."
+msgstr "La trace brute demande JavaScript."
+
+#: templates/presence/person_day.html:81
+msgid "Asking the tracker…"
+msgstr "Interrogation du service de suivi…"
+
+#: templates/presence/person_day.html:82
+msgid "The tracker has nothing for this day."
+msgstr "Le service de suivi n’a rien pour ce jour."
+
+#: templates/presence/person_day.html:83
+msgid "The visits above come from the office records."
+msgstr "Les passages ci-dessus viennent des enregistrements du bureau."
+
+#: templates/presence/person_day.html:84
+msgid "The tracker did not give the track."
+msgstr "Le service de suivi n’a pas fourni la trace."
+
+#: templates/presence/person_day.html:84
+msgid "Reload the page to try again."
+msgstr "Rechargez la page pour réessayer."
+
+#: templates/presence/person_day.html:85
+msgid "Points"
+msgstr "Points"
+
+#: templates/presence/person_day.html:87
+msgid "GPS positions"
+msgstr "Positions GPS"
+
+#: templates/presence/person_day.html:88
+msgid "The map could not load."
+msgstr "La carte n’a pas pu se charger."
+
+#: templates/presence/person_day.html:93
+msgid "GPS, off site"
+msgstr "GPS, hors chantier"
+
+#: templates/presence/person_day.html:97
+msgid "Tracking is off on your sites, so the tracker has no track to show you."
+msgstr ""
+"Le suivi est désactivé sur vos chantiers : le service de suivi n’a donc "
+"aucune trace à vous montrer."
+
+#: templates/presence/site_setup.html:4
+msgid "Presence setup"
+msgstr "Configuration de la présence"
+
+#: templates/presence/site_setup.html:6
+#, python-format
+msgid "Presence setup of %(site)s"
+msgstr "Configuration de la présence de %(site)s"
+
+#: templates/presence/site_setup.html:7
+msgid ""
+"Zones tell parts of the site apart; gateways are the fixed receivers that "
+"pick up the badges. Every change is recorded in the audit log and sent to "
+"the tracker."
+msgstr ""
+"Les zones distinguent les parties du chantier ; les passerelles sont les "
+"récepteurs fixes qui captent les badges. Chaque modification est inscrite au "
+"journal d’audit et envoyée au service de suivi."
+
+#: templates/presence/site_setup.html:12
+msgid "Send to the tracker again"
+msgstr "Renvoyer au service de suivi"
+
+#: templates/presence/site_setup.html:21
+msgid "Change it in the site’s settings"
+msgstr "À modifier dans les réglages du chantier"
+
+#: templates/presence/site_setup.html:25 templates/worksites/detail.html:81
+#, python-format
+msgid "%(radius)s m around the site"
+msgstr "%(radius)s m autour du chantier"
+
+#: templates/presence/site_setup.html:25
+msgid "Not set: phones cannot tell when they are on site"
+msgstr ""
+"Non défini : les téléphones ne savent pas quand ils sont sur le chantier"
+
+#: templates/presence/site_setup.html:26 templates/worksites/detail.html:83
+msgid "Edit geofence"
+msgstr "Modifier le périmètre"
+
+#: templates/presence/site_setup.html:33
+msgid "Nightly check"
+msgstr "Contrôle de nuit"
+
+#: templates/presence/site_setup.html:41
+msgid "Add zone"
+msgstr "Ajouter une zone"
+
+#: templates/presence/site_setup.html:47
+msgid "Code"
+msgstr "Code"
+
+#: templates/presence/site_setup.html:61
+#, python-format
+msgid "Delete zone %(code)s? Its gateways stay, for the whole site."
+msgstr ""
+"Supprimer la zone %(code)s ? Ses passerelles restent, pour tout le chantier."
+
+#: templates/presence/site_setup.html:62 templates/workers/detail.html:213
+msgid "Delete"
+msgstr "Supprimer"
+
+#: templates/presence/site_setup.html:72
+msgid "No zones yet. Without zones, every sighting counts for the whole site."
+msgstr ""
+"Pas encore de zone. Sans zone, chaque détection compte pour tout le chantier."
+
+#: templates/presence/site_setup.html:79
+msgid "Add gateway"
+msgstr "Ajouter une passerelle"
+
+#: templates/presence/site_setup.html:87
+msgid "Token"
+msgstr "Jeton"
+
+#: templates/presence/site_setup.html:96
+#, python-format
+msgid "Issued %(when)s"
+msgstr "Émis le %(when)s"
+
+#: templates/presence/site_setup.html:98
+msgid "No token yet"
+msgstr "Pas encore de jeton"
+
+#: templates/presence/site_setup.html:108
+msgid "Reason (optional)"
+msgstr "Motif (facultatif)"
+
+#: templates/presence/site_setup.html:109
+#, python-format
+msgid "Revoke the token of %(label)s? The gateway stops sending at once."
+msgstr ""
+"Révoquer le jeton de %(label)s ? La passerelle cesse aussitôt d’envoyer."
+
+#: templates/presence/site_setup.html:121
+msgid ""
+"No gateways yet. Without gateways, only the foremen’s phones see badges on "
+"this site."
+msgstr ""
+"Pas encore de passerelle. Sans passerelle, seuls les téléphones des chefs "
+"d’équipe voient les badges sur ce chantier."
+
+#: templates/presence/site_setup.html:127
+msgid ""
+"Badges belong to workers, not to a site: a badge is recognised on every site "
+"of the company."
+msgstr ""
+"Les badges appartiennent aux ouvriers, pas à un chantier : un badge est "
+"reconnu sur tous les chantiers de l’entreprise."
+
+#: templates/presence/site_setup.html:128
+msgid "Badges of this site’s crew"
+msgstr "Badges de l’équipe de ce chantier"
+
+#: templates/presence/site_setup.html:128
+msgid "Print the notice for badge holders"
+msgstr "Imprimer l’avis pour les porteurs de badge"
+
+#: templates/presence/worker_badge.html:6
+#, python-format
+msgid "BLE badge of %(name)s"
+msgstr "Badge BLE de %(name)s"
+
+#: templates/presence/worker_badge.html:11
+msgid "Tracking is off for this worker."
+msgstr "Le suivi est désactivé pour cet ouvrier."
+
+#: templates/presence/worker_badge.html:11
+msgid ""
+"The badge is saved, but the tracker ignores it until tracking is turned on "
+"for the worker (worker form) or the company."
+msgstr ""
+"Le badge est enregistré, mais le service de suivi l’ignore tant que le suivi "
+"n’est pas activé pour l’ouvrier (fiche ouvrier) ou pour l’entreprise."
+
+#: templates/presence/worker_badge.html:18
+msgid "Give another badge"
+msgstr "Donner un autre badge"
+
+#: templates/presence/worker_badge.html:19
+msgid "The current badge ends when the new one is saved."
+msgstr "Le badge actuel prend fin quand le nouveau est enregistré."
+
+#: templates/presence/worker_badge.html:22
+msgid "Save badge"
+msgstr "Enregistrer le badge"
+
+#: templates/presence/worker_badge.html:26
+msgid "Badges of this worker"
+msgstr "Badges de cet ouvrier"
+
+#: templates/presence/worker_badge.html:29 templates/workers/detail.html:40
+#, python-format
+msgid "Since %(date)s"
+msgstr "Depuis le %(date)s"
+
+#: templates/presence/worker_badge.html:30
+msgid "Ended"
+msgstr "Repris"
+
+#: templates/presence/worker_badge.html:42
+msgid "No badge yet."
+msgstr "Pas encore de badge."
+
+#: templates/presence/zone_form.html:4
+msgid "Edit zone"
+msgstr "Modifier la zone"
+
+#: templates/presence/zone_form.html:4 templates/presence/zone_form.html:6
+msgid "New zone"
+msgstr "Nouvelle zone"
+
+#: templates/presence/zone_form.html:6
+#, python-format
+msgid "Zone %(code)s"
+msgstr "Zone %(code)s"
+
+#: templates/presence/zone_form.html:7
+msgid ""
+"A part of the site that gateways tell apart, e.g. the gate or block B. The "
+"code is what the tracker reports."
+msgstr ""
+"Une partie du chantier que les passerelles distinguent, par exemple l’entrée "
+"ou le bâtiment B. Le code est ce que renvoie le service de suivi."
+
+#: templates/presence/zone_form.html:16
+msgid "Save zone"
+msgstr "Enregistrer la zone"
+
 #: templates/registration/login.html:22
 msgid "For admins, site managers and accountants."
 msgstr ""
@@ -9313,11 +11049,6 @@ msgstr "Résumé"
 #, python-format
 msgid "Since %(date)s (was %(was)s)"
 msgstr "Depuis le %(date)s (était %(was)s)"
-
-#: templates/workers/detail.html:40
-#, python-format
-msgid "Since %(date)s"
-msgstr "Depuis le %(date)s"
 
 #: templates/workers/detail.html:40
 msgid "No rate set"
@@ -9397,81 +11128,77 @@ msgstr "Messages, espace ouvrier et virements"
 msgid "Print badge"
 msgstr "Imprimer le badge"
 
-#: templates/workers/detail.html:117
+#: templates/workers/detail.html:118
 msgid "No emergency contact yet."
 msgstr "Pas encore de contact d’urgence."
 
-#: templates/workers/detail.html:117
+#: templates/workers/detail.html:118
 msgid "Add one"
 msgstr "En ajouter un"
 
-#: templates/workers/detail.html:121
+#: templates/workers/detail.html:122
 msgid "Rate history"
 msgstr "Historique des tarifs"
 
-#: templates/workers/detail.html:123
+#: templates/workers/detail.html:124
 #, python-format
 msgid "From %(date)s"
 msgstr "À partir du %(date)s"
 
-#: templates/workers/detail.html:125
+#: templates/workers/detail.html:126
 msgid "No rate yet."
 msgstr "Pas encore de tarif."
 
-#: templates/workers/detail.html:133
+#: templates/workers/detail.html:134
 msgid "Recent payments"
 msgstr "Paiements récents"
 
-#: templates/workers/detail.html:134
+#: templates/workers/detail.html:135
 msgid "All payments"
 msgstr "Tous les paiements"
 
-#: templates/workers/detail.html:144
+#: templates/workers/detail.html:145
 msgid "Net paid"
 msgstr "Net payé"
 
-#: templates/workers/detail.html:145
+#: templates/workers/detail.html:146
 msgid "Proof"
 msgstr "Preuve"
 
-#: templates/workers/detail.html:150
+#: templates/workers/detail.html:151
 msgid "payslip (PDF)"
 msgstr "bulletin de paie (PDF)"
 
-#: templates/workers/detail.html:162
+#: templates/workers/detail.html:163
 msgid "No payments yet."
 msgstr "Pas encore de paiement."
 
-#: templates/workers/detail.html:170
+#: templates/workers/detail.html:171
 msgid "Add document"
 msgstr "Ajouter un document"
 
-#: templates/workers/detail.html:186
+#: templates/workers/detail.html:187
 msgid "Upload document"
 msgstr "Envoyer le document"
 
-#: templates/workers/detail.html:193
+#: templates/workers/detail.html:194
 msgid "Document"
 msgstr "Document"
 
-#: templates/workers/detail.html:196
+#: templates/workers/detail.html:197
 msgid "Expires"
 msgstr "Expire"
 
-#: templates/workers/detail.html:197
+#: templates/workers/detail.html:198
 msgid "Uploaded"
 msgstr "Ajouté"
 
-#: templates/workers/detail.html:212
-msgid "Delete"
-msgstr "Supprimer"
-
-#: templates/workers/detail.html:212
+#: templates/workers/detail.html:213
 #, python-format
 msgid "Delete “%(title)s”? The file is removed."
 msgstr "Supprimer « %(title)s » ? Le fichier est effacé."
 
-#: templates/workers/detail.html:222
+#: templates/workers/detail.html:223
 msgid "No documents yet. Keep the contract, ID scans and certificates here."
 msgstr ""
 "Pas encore de document. Conservez ici le contrat, les copies de pièces "
@@ -9844,10 +11571,6 @@ msgstr "Appel en cours"
 msgid "No roll call yet today"
 msgstr "Pas encore d’appel aujourd’hui"
 
-#: templates/worksites/detail.html:33
-msgid "Arrived"
-msgstr "Arrivé"
-
 #: templates/worksites/detail.html:51
 #, python-format
 msgid "Show all %(n)s worker"
@@ -9880,11 +11603,6 @@ msgstr "Personnalisé pour ce chantier"
 msgid "See site settings"
 msgstr "Voir les paramètres du chantier"
 
-#: templates/worksites/detail.html:81
-#, python-format
-msgid "%(radius)s m around the site"
-msgstr "%(radius)s m autour du chantier"
-
 #: templates/worksites/detail.html:82
 #, python-format
 msgid "%(n)s worker without a badge"
@@ -9897,38 +11615,45 @@ msgstr[2] "%(n)s ouvriers sans badge"
 msgid "Every worker has one"
 msgstr "Tous les ouvriers en ont un"
 
-#: templates/worksites/detail.html:83
-msgid "Edit geofence"
-msgstr "Modifier le périmètre"
-
-#: templates/worksites/detail.html:83
-msgid "Set geofence"
-msgstr "Définir le périmètre"
-
-#: templates/worksites/detail.html:88
+#: templates/worksites/detail.html:89
 msgid "Transfer batches"
 msgstr "Lots de virements"
 
-#: templates/worksites/detail.html:92
+#: templates/worksites/detail.html:93
 msgid "No transfer batch for this site yet."
 msgstr "Pas encore de lot de virements pour ce chantier."
 
-#: templates/worksites/detail.html:94
+#: templates/worksites/detail.html:95
 msgid "All transfer batches"
 msgstr "Tous les lots de virements"
 
-#: templates/worksites/detail.html:98
-msgid "Labour cost this month"
-msgstr "Coût de main-d’œuvre ce mois-ci"
+#: templates/worksites/detail.html:99
+msgid "Labour cost to date"
+msgstr "Coût main-d’œuvre à ce jour"
 
-#: templates/worksites/detail.html:100
+#: templates/worksites/detail.html:103
 #, python-format
-msgid "Budget %(budget)s"
-msgstr "Budget %(budget)s"
+msgid "%(percent)s%% of the budget of %(budget)s"
+msgstr "%(percent)s %% du budget de %(budget)s"
 
-#: templates/worksites/detail.html:100
+#: templates/worksites/detail.html:104
+#, python-format
+msgid "At this pace, runs out on %(date)s"
+msgstr "À ce rythme, épuisé le %(date)s"
+
+#: templates/worksites/detail.html:104
+#, python-format
+msgid "planned end %(date)s"
+msgstr "fin prévue le %(date)s"
+
+#: templates/worksites/detail.html:107
 msgid "Budget not set"
 msgstr "Budget non défini"
+
+#: templates/worksites/detail.html:109
+#, python-format
+msgid "This month: %(cost)s %(currency)s"
+msgstr "Ce mois-ci : %(cost)s %(currency)s"
 
 #: templates/worksites/form.html:4 templates/worksites/form.html:5
 #: templates/worksites/list.html:8
@@ -9939,12 +11664,12 @@ msgstr "Nouveau chantier"
 msgid "Add a site"
 msgstr "Ajouter un chantier"
 
-#: templates/worksites/form.html:32
+#: templates/worksites/form.html:33
 msgid "No foreman accounts yet. Add them on the Users screen."
 msgstr ""
 "Pas encore de compte chef d’équipe. Ajoutez-les dans l’écran Utilisateurs."
 
-#: templates/worksites/form.html:39
+#: templates/worksites/form.html:40
 msgid ""
 "Pay frequency, payment method and hours come from the company settings. "
 "Override them on the site’s Settings tab."
@@ -9953,7 +11678,7 @@ msgstr ""
 "paramètres de l’entreprise. Personnalisez-les dans l’onglet Paramètres du "
 "chantier."
 
-#: templates/worksites/form.html:42
+#: templates/worksites/form.html:43
 msgid "Save site"
 msgstr "Enregistrer le chantier"
 
@@ -10051,1129 +11776,3 @@ msgstr "Enregistrer les paramètres du chantier"
 #: templates/worksites/settings.html:59
 msgid "In effect now"
 msgstr "En vigueur actuellement"
-
-#: apps/presence/forms.py
-msgid "Sightings of this gateway are placed in this zone."
-msgstr "Les détections de cette passerelle sont placées dans cette zone."
-
-#: apps/presence/forms.py
-msgid ""
-"As the badge broadcasts it. For an iBeacon: ib:<uuid>:<major>:<minor>. Case "
-"does not matter: it is saved in lower case."
-msgstr ""
-"Tel que le badge le diffuse. Pour un iBeacon : ib:<uuid>:<major>:<minor>. "
-"Majuscules ou minuscules : il est enregistré en minuscules."
-
-#: apps/presence/forms.py
-msgid "e.g. Gateway stolen"
-msgstr "ex. Passerelle volée"
-
-#: apps/presence/forms.py
-msgid "US Letter"
-msgstr "Lettre US"
-
-#: apps/presence/forms.py
-msgid "Paper"
-msgstr "Papier"
-
-#: apps/presence/services.py
-msgid "Ended because"
-msgstr "Motif de fin"
-
-#: apps/presence/views.py
-#, python-format
-msgid "The settings of %(site)s were sent to the tracker."
-msgstr "Les réglages de %(site)s ont été envoyés au service de suivi."
-
-#: apps/presence/views.py
-#, python-format
-msgid "Gateway %(label)s added. Issue its token to connect it."
-msgstr "Passerelle %(label)s ajoutée. Émettez son jeton pour la connecter."
-
-#: apps/presence/views.py
-#, python-format
-msgid "Gateway %(label)s has no token to revoke."
-msgstr "La passerelle %(label)s n’a pas de jeton à révoquer."
-
-#: apps/presence/views.py
-#, python-format
-msgid "Gateway %(label)s revoked: the tracker refuses its token."
-msgstr "Passerelle %(label)s révoquée : le service de suivi refuse son jeton."
-
-#: apps/presence/views.py
-#, python-brace-format
-msgid "{count} on site"
-msgstr "{count} sur le chantier"
-
-#: templates/presence/_reconciliation.html
-msgid ""
-"Each night, yesterday’s visits are checked against the tracker’s full record."
-msgstr ""
-"Chaque nuit, les passages de la veille sont comparés à l’enregistrement "
-"complet du service de suivi."
-
-#: templates/presence/_reconciliation.html
-#, python-format
-msgid "Day %(day)s · tried %(when)s (%(n)s attempt)"
-msgid_plural "Day %(day)s · tried %(when)s (%(n)s attempts)"
-msgstr[0] "Jour %(day)s · essayé le %(when)s (%(n)s tentative)"
-msgstr[1] "Jour %(day)s · essayé le %(when)s (%(n)s tentatives)"
-msgstr[2] "Jour %(day)s · essayé le %(when)s (%(n)s tentatives)"
-
-#: templates/presence/_reconciliation.html
-#, python-format
-msgid "Checked before at %(when)s; those corrections stay."
-msgstr "Contrôlé auparavant le %(when)s ; ces corrections restent."
-
-#: templates/presence/_reconciliation.html
-#, python-format
-msgid "Day %(day)s, at %(when)s"
-msgstr "Jour %(day)s, le %(when)s"
-
-#: templates/presence/_reconciliation.html
-#, python-format
-msgid ""
-"%(added)s added · %(changed)s changed · %(removed)s removed · %(unchanged)s "
-"unchanged"
-msgstr ""
-"%(added)s ajoutés · %(changed)s modifiés · %(removed)s supprimés · "
-"%(unchanged)s inchangés"
-
-#: templates/presence/_site_card.html templates/presence/home.html
-#: templates/presence/live.html templates/presence/site_setup.html
-msgid "Live map"
-msgstr "Carte en direct"
-
-#: templates/presence/_sync.html
-msgid ""
-"This server has no tracker address (TRACKER_URL): changes are saved here "
-"only."
-msgstr ""
-"Ce serveur n’a pas d’adresse de service de suivi (TRACKER_URL) : les "
-"modifications sont seulement enregistrées ici."
-
-#: templates/presence/_worker_card.html
-msgid "Export presence history (CSV)"
-msgstr "Exporter l’historique de présence (CSV)"
-
-#: templates/presence/badges.html
-msgid ""
-"Radio badges (lanyard or helmet tags) that gateways and the foremen’s phones "
-"pick up. One badge per worker; a badge is recognised on every site of the "
-"company."
-msgstr ""
-"Badges radio (sur cordon ou sur le casque) que captent les passerelles et "
-"les téléphones des chefs d’équipe. Un badge par ouvrier ; un badge est "
-"reconnu sur tous les chantiers de l’entreprise."
-
-#: templates/presence/badges.html
-msgid "Print the notice"
-msgstr "Imprimer l’avis"
-
-#: templates/presence/badges.html
-#, python-format
-msgid "With a badge: %(with_badge)s of %(n)s worker."
-msgid_plural "With a badge: %(with_badge)s of %(n)s workers."
-msgstr[0] "Avec un badge : %(with_badge)s sur %(n)s ouvrier."
-msgstr[1] "Avec un badge : %(with_badge)s sur %(n)s ouvriers."
-msgstr[2] "Avec un badge : %(with_badge)s sur %(n)s ouvriers."
-
-#: templates/presence/badges.html
-#, python-format
-msgid "Only the first %(limit)s are shown: search to narrow the list."
-msgstr ""
-"Seuls les %(limit)s premiers sont affichés : faites une recherche pour "
-"réduire la liste."
-
-#: templates/presence/badges.html templates/presence/live.html
-msgid "Since"
-msgstr "Depuis"
-
-#: templates/presence/gateway_form.html
-msgid ""
-"A fixed receiver on the site that picks up the workers’ badges. After "
-"saving, issue its token and enter it in the gateway."
-msgstr ""
-"Un récepteur fixe sur le chantier qui capte les badges des ouvriers. Après "
-"l’enregistrement, émettez son jeton et saisissez-le dans la passerelle."
-
-#: templates/presence/gateway_token.html
-msgid ""
-"This token is shown only once. If it is lost, issue a new one: the old one "
-"then stops working."
-msgstr ""
-"Ce jeton n’est affiché qu’une fois. S’il est perdu, émettez-en un nouveau : "
-"l’ancien cesse alors de fonctionner."
-
-#: templates/presence/gateway_token.html
-msgid "Copied."
-msgstr "Copié."
-
-#: templates/presence/gateway_token.html
-msgid ""
-"Enter the token in the gateway’s settings as a bearer token (Authorization: "
-"Bearer …). The tracker accepts it once the site’s settings have reached it, "
-"usually within seconds."
-msgstr ""
-"Saisissez le jeton dans les réglages de la passerelle comme jeton porteur "
-"(Authorization: Bearer …). Le service de suivi l’accepte dès qu’il a reçu "
-"les réglages du chantier, en général en quelques secondes."
-
-#: templates/presence/gateway_token.html
-#, python-format
-msgid ""
-"This gateway has a token since %(when)s. A new token replaces it: the "
-"gateway stops sending until you enter the new one."
-msgstr ""
-"Cette passerelle a un jeton depuis le %(when)s. Un nouveau jeton le "
-"remplace : la passerelle n’envoie plus rien tant que vous n’avez pas saisi "
-"le nouveau."
-
-#: templates/presence/gateway_token.html
-msgid "This gateway was revoked. A new token turns it on again."
-msgstr "Cette passerelle a été révoquée. Un nouveau jeton la réactive."
-
-#: templates/presence/gateway_token.html
-msgid ""
-"The gateway needs a token to send sightings to the tracker. It is valid for "
-"one year and shown once."
-msgstr ""
-"La passerelle a besoin d’un jeton pour envoyer ses détections au service de "
-"suivi. Il est valable un an et affiché une seule fois."
-
-#: templates/presence/home.html
-msgid ""
-"Zones, gateways and badges are saved, but nothing is sent to the tracker "
-"until TRACKER_URL is set."
-msgstr ""
-"Les zones, passerelles et badges sont enregistrés, mais rien n’est envoyé au "
-"service de suivi tant que TRACKER_URL n’est pas défini."
-
-#: templates/presence/home.html templates/presence/live.html
-msgid "The live map is off."
-msgstr "La carte en direct est désactivée."
-
-#: templates/presence/home.html templates/presence/live.html
-msgid "Set TRACKER_PUBLIC_URL so that browsers can reach the tracker."
-msgstr ""
-"Définissez TRACKER_PUBLIC_URL pour que les navigateurs puissent joindre le "
-"service de suivi."
-
-#: templates/presence/live.html
-msgid ""
-"From BLE badges and the foremen’s phones. Presence only suggests attendance."
-msgstr ""
-"D’après les badges BLE et les téléphones des chefs d’équipe. La présence ne "
-"fait que suggérer le pointage."
-
-#: templates/presence/live.html
-msgid ""
-"Turn it on in the site’s settings (Presence tracking) to see who is on site."
-msgstr ""
-"Activez-le dans les réglages du chantier (Suivi de présence) pour voir qui "
-"est sur le chantier."
-
-#: templates/presence/live.html
-msgid "Live updates need JavaScript."
-msgstr "Les mises à jour en direct demandent JavaScript."
-
-#: templates/presence/live.html
-msgid "Today’s visits below come from the office records."
-msgstr ""
-"Les passages du jour ci-dessous viennent des enregistrements du bureau."
-
-#: templates/presence/live.html
-msgid "Connecting to the tracker…"
-msgstr "Connexion au service de suivi…"
-
-#: templates/presence/live.html
-msgid "Live."
-msgstr "En direct."
-
-#: templates/presence/live.html
-msgid "Updates arrive as they happen."
-msgstr "Les changements arrivent au fur et à mesure."
-
-#: templates/presence/live.html
-msgid "Reconnecting…"
-msgstr "Reconnexion…"
-
-#: templates/presence/live.html
-msgid ""
-"Trying again shortly. The visits below come from the office records and may "
-"be a few minutes behind."
-msgstr ""
-"Nouvel essai dans un instant. Les passages ci-dessous viennent des "
-"enregistrements du bureau et peuvent avoir quelques minutes de retard."
-
-#: templates/presence/live.html
-msgid "Send them again from the setup page; this page retries every minute."
-msgstr ""
-"Renvoyez-les depuis la page de configuration ; cette page réessaie chaque "
-"minute."
-
-#: templates/presence/live.html
-msgid "Tracking may have been turned off meanwhile. Reload the page."
-msgstr "Le suivi a peut-être été désactivé entre-temps. Rechargez la page."
-
-#: templates/presence/live.html
-msgid "Your session has ended."
-msgstr "Votre session a pris fin."
-
-#: templates/presence/live.html
-msgid "Reload the page to sign in again."
-msgstr "Rechargez la page pour vous reconnecter."
-
-#: templates/presence/live.html
-msgid "Django and the tracker must share the same TRACKER_SHARED_SECRET."
-msgstr ""
-"Django et le service de suivi doivent partager le même TRACKER_SHARED_SECRET."
-
-#: templates/presence/live.html
-msgid "Map"
-msgstr "Carte"
-
-#: templates/presence/live.html
-msgid "The map could not load. The list still updates."
-msgstr "La carte n’a pas pu se charger. La liste se met quand même à jour."
-
-#: templates/presence/live.html
-#, python-format
-msgid ""
-"The circle is the site’s geofence (%(radius)s m). Dots are foremen’s phones; "
-"badges are placed by zone in the list."
-msgstr ""
-"Le cercle est le périmètre du chantier (%(radius)s m). Les points sont les "
-"téléphones des chefs d’équipe ; les badges sont classés par zone dans la "
-"liste."
-
-#: templates/presence/live.html
-msgid ""
-"This site has no geofence, so there is nothing to draw: the list still shows "
-"who the gateways see."
-msgstr ""
-"Ce chantier n’a pas de périmètre, il n’y a donc rien à dessiner : la liste "
-"montre quand même qui les passerelles détectent."
-
-#: templates/presence/live.html
-msgid "Person"
-msgstr "Personne"
-
-#: templates/presence/live.html templates/presence/site_setup.html
-msgid "Zone"
-msgstr "Zone"
-
-#: templates/presence/live.html
-msgid ""
-"Visits recorded by the office from the tracker’s events. They are kept like "
-"attendance."
-msgstr ""
-"Passages enregistrés par le bureau à partir des événements du service de "
-"suivi. Ils sont conservés comme les présences."
-
-#: templates/presence/live.html templates/presence/person_day.html
-msgid "Visits"
-msgstr "Passages"
-
-#: templates/presence/notice.html
-msgid "Apply"
-msgstr "Appliquer"
-
-#: templates/presence/notice.html
-#, python-format
-msgid ""
-"%(company)s uses Polaris to know who is on its sites. Your badge helps with "
-"that. Here is how it works, what is recorded and what you can ask."
-msgstr ""
-"%(company)s utilise Polaris pour savoir qui est sur ses chantiers. Votre "
-"badge y contribue. Voici comment cela fonctionne, ce qui est enregistré et "
-"ce que vous pouvez demander."
-
-#: templates/presence/notice.html
-#, python-format
-msgid ""
-"Only during tracking hours, %(start)s–%(end)s (site time), and only on the "
-"company’s sites. Outside those hours nothing is recorded."
-msgstr ""
-"Seulement pendant les heures de suivi, %(start)s–%(end)s (heure du "
-"chantier), et seulement sur les chantiers de l’entreprise. En dehors de ces "
-"heures, rien n’est enregistré."
-
-#: templates/presence/notice.html
-msgid ""
-"Your badge sends a short radio signal (Bluetooth Low Energy). Receivers "
-"fixed on the site and the foremen’s phones note when they pick it up, and in "
-"which part of the site. That gives your arrival and departure times."
-msgstr ""
-"Votre badge émet un court signal radio (Bluetooth basse consommation). Les "
-"récepteurs fixés sur le chantier et les téléphones des chefs d’équipe notent "
-"quand ils le captent, et dans quelle partie du chantier. Cela donne vos "
-"heures d’arrivée et de départ."
-
-#: templates/presence/notice.html
-msgid ""
-"The badge has no GPS, no microphone and no camera. It is not followed "
-"outside the sites."
-msgstr ""
-"Le badge n’a ni GPS, ni micro, ni caméra. Il n’est pas suivi en dehors des "
-"chantiers."
-
-#: templates/presence/notice.html
-msgid "How long it is kept"
-msgstr "Durée de conservation"
-
-#: templates/presence/notice.html
-#, python-format
-msgid ""
-"The raw sightings are deleted after %(days)s day. Arrival and departure "
-"times are kept like attendance."
-msgid_plural ""
-"The raw sightings are deleted after %(days)s days. Arrival and departure "
-"times are kept like attendance."
-msgstr[0] ""
-"Les détections brutes sont effacées après %(days)s jour. Les heures "
-"d’arrivée et de départ sont conservées comme les présences."
-msgstr[1] ""
-"Les détections brutes sont effacées après %(days)s jours. Les heures "
-"d’arrivée et de départ sont conservées comme les présences."
-msgstr[2] ""
-"Les détections brutes sont effacées après %(days)s jours. Les heures "
-"d’arrivée et de départ sont conservées comme les présences."
-
-#: templates/presence/notice.html
-msgid "Who sees it"
-msgstr "Qui y a accès"
-
-#: templates/presence/notice.html
-msgid ""
-"Site managers see who is on their own sites. Company administrators see all "
-"the sites. Nobody else."
-msgstr ""
-"Les conducteurs de travaux voient qui est sur leurs propres chantiers. Les "
-"administrateurs de l’entreprise voient tous les chantiers. Personne d’autre."
-
-#: templates/presence/notice.html
-msgid "What it is used for"
-msgstr "À quoi cela sert"
-
-#: templates/presence/notice.html
-msgid ""
-"Presence only suggests attendance: the roll call is still confirmed by your "
-"foreman. It is never used to discipline anyone automatically."
-msgstr ""
-"La présence ne fait que suggérer le pointage : l’appel est toujours confirmé "
-"par votre chef d’équipe. Elle ne sert jamais à sanctionner automatiquement."
-
-#: templates/presence/notice.html
-msgid "What you can ask"
-msgstr "Ce que vous pouvez demander"
-
-#: templates/presence/notice.html
-msgid ""
-"Your own presence history: the office exports it from your worker profile."
-msgstr ""
-"Votre propre historique de présence : le bureau l’exporte depuis votre fiche "
-"ouvrier."
-
-#: templates/presence/notice.html
-msgid ""
-"Not to be tracked: tell the office. Tracking is then turned off for you and "
-"your badge is no longer read. Your attendance is taken by the foreman as "
-"before."
-msgstr ""
-"Ne pas être suivi : dites-le au bureau. Le suivi est alors désactivé pour "
-"vous et votre badge n’est plus lu. Votre présence est relevée par le chef "
-"d’équipe comme avant."
-
-#: templates/presence/notice.html
-msgid "If you lose your badge, tell the office at once: it is turned off."
-msgstr ""
-"Si vous perdez votre badge, prévenez tout de suite le bureau : il sera "
-"désactivé."
-
-#: templates/presence/notice.html
-msgid "Acknowledgement"
-msgstr "Accusé de réception"
-
-#: templates/presence/notice.html
-msgid "I have received and read this notice."
-msgstr "J’ai reçu et lu cet avis."
-
-#: templates/presence/person_day.html
-msgid "Export history (CSV)"
-msgstr "Exporter l’historique (CSV)"
-
-#: templates/presence/person_day.html
-msgid "Minutes"
-msgstr "Minutes"
-
-#: templates/presence/person_day.html
-msgid "Raw track"
-msgstr "Trace brute"
-
-#: templates/presence/person_day.html
-msgid ""
-"Every sighting and GPS position the tracker kept, trips between sites "
-"included (you are a company administrator)."
-msgstr ""
-"Toutes les détections et positions GPS conservées par le service de suivi, "
-"trajets entre chantiers compris (vous êtes administrateur de l’entreprise)."
-
-#: templates/presence/person_day.html
-msgid ""
-"Sightings and GPS positions on your sites. Trips between sites are shown to "
-"company administrators only."
-msgstr ""
-"Détections et positions GPS sur vos chantiers. Les trajets entre chantiers "
-"ne sont montrés qu’aux administrateurs de l’entreprise."
-
-#: templates/presence/person_day.html
-msgid ""
-"The tracker is not reachable from browsers on this server "
-"(TRACKER_PUBLIC_URL is not set)."
-msgstr ""
-"Le service de suivi n’est pas joignable depuis les navigateurs sur ce "
-"serveur (TRACKER_PUBLIC_URL n’est pas défini)."
-
-#: templates/presence/person_day.html
-msgid "The raw track needs JavaScript."
-msgstr "La trace brute demande JavaScript."
-
-#: templates/presence/person_day.html
-msgid "Asking the tracker…"
-msgstr "Interrogation du service de suivi…"
-
-#: templates/presence/person_day.html
-msgid "The visits above come from the office records."
-msgstr "Les passages ci-dessus viennent des enregistrements du bureau."
-
-#: templates/presence/person_day.html
-msgid "The tracker did not give the track."
-msgstr "Le service de suivi n’a pas fourni la trace."
-
-#: templates/presence/person_day.html
-msgid "Reload the page to try again."
-msgstr "Rechargez la page pour réessayer."
-
-#: templates/presence/person_day.html
-msgid "Points"
-msgstr "Points"
-
-#: templates/presence/person_day.html
-msgid "GPS, off site"
-msgstr "GPS, hors chantier"
-
-#: templates/presence/person_day.html
-msgid "Tracking is off on your sites, so the tracker has no track to show you."
-msgstr ""
-"Le suivi est désactivé sur vos chantiers : le service de suivi n’a donc "
-"aucune trace à vous montrer."
-
-#: templates/presence/site_setup.html
-msgid ""
-"Zones tell parts of the site apart; gateways are the fixed receivers that "
-"pick up the badges. Every change is recorded in the audit log and sent to "
-"the tracker."
-msgstr ""
-"Les zones distinguent les parties du chantier ; les passerelles sont les "
-"récepteurs fixes qui captent les badges. Chaque modification est inscrite au "
-"journal d’audit et envoyée au service de suivi."
-
-#: templates/presence/site_setup.html
-msgid "Send to the tracker again"
-msgstr "Renvoyer au service de suivi"
-
-#: templates/presence/site_setup.html
-msgid "Not set: phones cannot tell when they are on site"
-msgstr ""
-"Non défini : les téléphones ne savent pas quand ils sont sur le chantier"
-
-#: templates/presence/site_setup.html
-msgid "Code"
-msgstr "Code"
-
-#: templates/presence/site_setup.html
-#, python-format
-msgid "Delete zone %(code)s? Its gateways stay, for the whole site."
-msgstr ""
-"Supprimer la zone %(code)s ? Ses passerelles restent, pour tout le chantier."
-
-#: templates/presence/site_setup.html
-msgid "No zones yet. Without zones, every sighting counts for the whole site."
-msgstr ""
-"Pas encore de zone. Sans zone, chaque détection compte pour tout le chantier."
-
-#: templates/presence/site_setup.html
-#, python-format
-msgid "Revoke the token of %(label)s? The gateway stops sending at once."
-msgstr ""
-"Révoquer le jeton de %(label)s ? La passerelle cesse aussitôt d’envoyer."
-
-#: templates/presence/site_setup.html
-msgid ""
-"No gateways yet. Without gateways, only the foremen’s phones see badges on "
-"this site."
-msgstr ""
-"Pas encore de passerelle. Sans passerelle, seuls les téléphones des chefs "
-"d’équipe voient les badges sur ce chantier."
-
-#: templates/presence/site_setup.html
-msgid ""
-"Badges belong to workers, not to a site: a badge is recognised on every site "
-"of the company."
-msgstr ""
-"Les badges appartiennent aux ouvriers, pas à un chantier : un badge est "
-"reconnu sur tous les chantiers de l’entreprise."
-
-#: templates/presence/site_setup.html
-msgid "Badges of this site’s crew"
-msgstr "Badges de l’équipe de ce chantier"
-
-#: templates/presence/site_setup.html
-msgid "Print the notice for badge holders"
-msgstr "Imprimer l’avis pour les porteurs de badge"
-
-#: templates/presence/worker_badge.html
-msgid ""
-"The badge is saved, but the tracker ignores it until tracking is turned on "
-"for the worker (worker form) or the company."
-msgstr ""
-"Le badge est enregistré, mais le service de suivi l’ignore tant que le suivi "
-"n’est pas activé pour l’ouvrier (fiche ouvrier) ou pour l’entreprise."
-
-#: templates/presence/worker_badge.html
-msgid "The current badge ends when the new one is saved."
-msgstr "Le badge actuel prend fin quand le nouveau est enregistré."
-
-#: templates/presence/zone_form.html
-msgid ""
-"A part of the site that gateways tell apart, e.g. the gate or block B. The "
-"code is what the tracker reports."
-msgstr ""
-"Une partie du chantier que les passerelles distinguent, par exemple l’entrée "
-"ou le bâtiment B. Le code est ce que renvoie le service de suivi."
-
-#: apps/presence/forms.py
-msgid "e.g. GATE"
-msgstr "ex. ENTREE"
-
-#: apps/presence/forms.py
-msgid "e.g. Main gate"
-msgstr "ex. Entrée principale"
-
-#: apps/presence/forms.py
-msgid "This site already has a zone with this code."
-msgstr "Ce chantier a déjà une zone avec ce code."
-
-#: apps/presence/forms.py
-msgid "No zone (the whole site)"
-msgstr "Aucune zone (tout le chantier)"
-
-#: apps/presence/forms.py templates/presence/badges.html
-msgid "Badge ID"
-msgstr "Identifiant du badge"
-
-#: apps/presence/forms.py
-msgid "Enter the badge ID."
-msgstr "Saisissez l’identifiant du badge."
-
-#: apps/presence/forms.py
-msgid "Name, number or badge ID"
-msgstr "Nom, matricule ou identifiant de badge"
-
-#: apps/presence/forms.py
-msgid "Tracking hours of"
-msgstr "Heures de suivi de"
-
-#: apps/presence/forms.py
-msgid "The company"
-msgstr "L’entreprise"
-
-#: apps/presence/services.py
-msgid "Minutes on site"
-msgstr "Minutes sur le chantier"
-
-#: apps/presence/services.py templates/presence/_site_card.html
-#: templates/presence/home.html templates/presence/live.html
-#: templates/presence/person_day.html templates/presence/site_setup.html
-msgid "Zones"
-msgstr "Zones"
-
-#: apps/presence/views.py
-msgid "The tracker is not configured on this server."
-msgstr "Le service de suivi n’est pas configuré sur ce serveur."
-
-#: apps/presence/views.py
-#, python-format
-msgid "Zone %(code)s saved."
-msgstr "Zone %(code)s enregistrée."
-
-#: apps/presence/views.py
-#, python-format
-msgid "Zone %(code)s deleted."
-msgstr "Zone %(code)s supprimée."
-
-#: apps/presence/views.py
-#, python-format
-msgid "Gateway %(label)s saved."
-msgstr "Passerelle %(label)s enregistrée."
-
-#: apps/presence/views.py
-#, python-format
-msgid "Badge %(badge)s given to %(name)s."
-msgstr "Badge %(badge)s remis à %(name)s."
-
-#: apps/presence/views.py
-#, python-format
-msgid "Badge %(badge)s of %(name)s ended."
-msgstr "Badge %(badge)s de %(name)s repris."
-
-#: apps/presence/views.py
-msgid "Sign in again."
-msgstr "Reconnectez-vous."
-
-#: apps/presence/views.py
-msgid "Not allowed."
-msgstr "Non autorisé."
-
-#: apps/presence/views.py
-#, python-brace-format
-msgid "Worker no. {id}"
-msgstr "Ouvrier n° {id}"
-
-#: apps/presence/views.py
-#, python-brace-format
-msgid "Foreman no. {id}"
-msgstr "Chef d’équipe n° {id}"
-
-#: apps/presence/views.py templates/presence/site_setup.html
-msgid "Whole site"
-msgstr "Tout le chantier"
-
-#: apps/presence/views.py templates/presence/person_day.html
-msgid "Off site"
-msgstr "Hors chantier"
-
-#: apps/presence/views.py
-msgid "Foreman’s phone"
-msgstr "Téléphone du chef d’équipe"
-
-#: apps/presence/views.py templates/presence/site_setup.html
-msgid "Gateway"
-msgstr "Passerelle"
-
-#: apps/presence/views.py
-#, python-brace-format
-msgid "Site no. {id}"
-msgstr "Chantier n° {id}"
-
-#: templates/presence/_reconciliation.html
-msgid "Not run yet"
-msgstr "Pas encore fait"
-
-#: templates/presence/_reconciliation.html
-msgid "Last check failed"
-msgstr "Dernier contrôle échoué"
-
-#: templates/presence/_reconciliation.html
-msgid "Checked"
-msgstr "Contrôlé"
-
-#: templates/presence/_reconciliation.html
-#, python-format
-msgid "%(ignored)s ignored"
-msgstr "%(ignored)s ignorés"
-
-#: templates/presence/_site_card.html templates/presence/_worker_card.html
-#: templates/presence/home.html templates/presence/site_setup.html
-msgid "Tracking"
-msgstr "Suivi"
-
-#: templates/presence/_site_card.html templates/presence/home.html
-#: templates/presence/site_setup.html
-msgid "Gateways"
-msgstr "Passerelles"
-
-#: templates/presence/_site_card.html templates/presence/home.html
-#, python-format
-msgid "%(active)s active of %(total)s"
-msgstr "%(active)s actives sur %(total)s"
-
-#: templates/presence/_site_card.html templates/presence/home.html
-#: templates/presence/live.html
-msgid "Set up"
-msgstr "Configurer"
-
-#: templates/presence/_sync.html
-msgid "Last push failed"
-msgstr "Dernier envoi échoué"
-
-#: templates/presence/_sync.html
-msgid "Not sent yet"
-msgstr "Pas encore envoyé"
-
-#: templates/presence/_sync.html
-msgid "No tracker"
-msgstr "Pas de service de suivi"
-
-#: templates/presence/_sync.html
-#, python-format
-msgid "Tried %(when)s"
-msgstr "Essayé le %(when)s"
-
-#: templates/presence/_sync.html
-#, python-format
-msgid "Last sent %(when)s"
-msgstr "Dernier envoi le %(when)s"
-
-#: templates/presence/_tabs.html templates/presence/notice.html
-msgid "Notice for badge holders"
-msgstr "Avis aux porteurs de badge"
-
-#: templates/presence/_worker_card.html
-msgid "Presence today"
-msgstr "Présence du jour"
-
-#: templates/presence/_worker_card.html
-msgid "Change badge"
-msgstr "Changer de badge"
-
-#: templates/presence/_worker_card.html templates/presence/badges.html
-#: templates/presence/worker_badge.html
-msgid "Give a badge"
-msgstr "Donner un badge"
-
-#: templates/presence/badges.html
-msgid "Change"
-msgstr "Changer"
-
-#: templates/presence/badges.html templates/presence/worker_badge.html
-#, python-format
-msgid "Take back the badge of %(name)s? It is no longer recognised."
-msgstr "Reprendre le badge de %(name)s ? Il ne sera plus reconnu."
-
-#: templates/presence/badges.html templates/presence/worker_badge.html
-msgid "End"
-msgstr "Reprendre"
-
-#: templates/presence/badges.html
-msgid "No active worker matches."
-msgstr "Aucun ouvrier actif ne correspond."
-
-#: templates/presence/gateway_form.html
-msgid "Edit gateway"
-msgstr "Modifier la passerelle"
-
-#: templates/presence/gateway_form.html
-msgid "New gateway"
-msgstr "Nouvelle passerelle"
-
-#: templates/presence/gateway_form.html
-msgid "Save gateway"
-msgstr "Enregistrer la passerelle"
-
-#: templates/presence/gateway_token.html
-msgid "Gateway token"
-msgstr "Jeton de la passerelle"
-
-#: templates/presence/gateway_token.html
-#, python-format
-msgid "Token of %(label)s"
-msgstr "Jeton de %(label)s"
-
-#: templates/presence/gateway_token.html
-msgid "Copy it now."
-msgstr "Copiez-le maintenant."
-
-#: templates/presence/gateway_token.html
-msgid "Copy token"
-msgstr "Copier le jeton"
-
-#: templates/presence/gateway_token.html
-msgid "Gateway ID"
-msgstr "Identifiant de la passerelle"
-
-#: templates/presence/gateway_token.html
-msgid "Valid until"
-msgstr "Valable jusqu’au"
-
-#: templates/presence/gateway_token.html
-msgid "Send sightings to"
-msgstr "Envoyer les détections à"
-
-#: templates/presence/gateway_token.html
-msgid "Back to the site"
-msgstr "Retour au chantier"
-
-#: templates/presence/gateway_token.html
-msgid "Issue a new token"
-msgstr "Émettre un nouveau jeton"
-
-#: templates/presence/gateway_token.html templates/presence/site_setup.html
-msgid "Issue token"
-msgstr "Émettre un jeton"
-
-#: templates/presence/home.html
-msgid ""
-"Who is on site, from BLE badges and the foremen’s phones. Presence only "
-"suggests attendance: the roll call is still confirmed by the foreman."
-msgstr ""
-"Qui est sur le chantier, d’après les badges BLE et les téléphones des chefs "
-"d’équipe. La présence ne fait que suggérer le pointage : l’appel est "
-"toujours confirmé par le chef d’équipe."
-
-#: templates/presence/home.html
-msgid "No tracker on this server."
-msgstr "Pas de service de suivi sur ce serveur."
-
-#: templates/presence/home.html templates/presence/site_setup.html
-msgid "Tracker"
-msgstr "Service de suivi"
-
-#: templates/presence/live.html
-#, python-format
-msgid "On site now · %(site)s"
-msgstr "Sur le chantier en ce moment · %(site)s"
-
-#: templates/presence/live.html
-msgid "Tracking is off for this site."
-msgstr "Le suivi est désactivé pour ce chantier."
-
-#: templates/presence/live.html
-msgid "Connection lost."
-msgstr "Connexion perdue."
-
-#: templates/presence/live.html templates/presence/person_day.html
-msgid "The tracker cannot be reached."
-msgstr "Le service de suivi est injoignable."
-
-#: templates/presence/live.html
-msgid "The tracker has not received this site’s settings yet."
-msgstr "Le service de suivi n’a pas encore reçu les réglages de ce chantier."
-
-#: templates/presence/live.html
-msgid "The tracker does not show you this site."
-msgstr "Le service de suivi ne vous montre pas ce chantier."
-
-#: templates/presence/live.html
-msgid "The tracker refused the dashboard token."
-msgstr "Le service de suivi a refusé le jeton du tableau de bord."
-
-#: templates/presence/live.html
-#, python-format
-msgid "Map of %(site)s"
-msgstr "Carte de %(site)s"
-
-#: templates/presence/live.html
-msgid "On site now"
-msgstr "Sur le chantier en ce moment"
-
-#: templates/presence/live.html
-msgid "On site"
-msgstr "Sur le chantier"
-
-#: templates/presence/live.html
-msgid "Arriving"
-msgstr "En arrivée"
-
-#: templates/presence/live.html
-msgid "List updated at"
-msgstr "Liste mise à jour à"
-
-#: templates/presence/live.html
-msgid "State"
-msgstr "État"
-
-#: templates/presence/live.html
-msgid "No one on site right now."
-msgstr "Personne sur le chantier en ce moment."
-
-#: templates/presence/live.html
-#, python-format
-msgid "Seen today · %(date)s"
-msgstr "Vus aujourd’hui · %(date)s"
-
-#: templates/presence/live.html
-msgid "First seen"
-msgstr "Première détection"
-
-#: templates/presence/live.html
-#, python-format
-msgid "Foreman no. %(id)s"
-msgstr "Chef d’équipe n° %(id)s"
-
-#: templates/presence/live.html
-#, python-format
-msgid "Worker no. %(id)s"
-msgstr "Ouvrier n° %(id)s"
-
-#: templates/presence/live.html templates/presence/person_day.html
-msgid "Still on site"
-msgstr "Encore sur le chantier"
-
-#: templates/presence/live.html
-msgid "No one recorded on this site today yet."
-msgstr "Personne n’a encore été enregistré sur ce chantier aujourd’hui."
-
-#: templates/presence/notice.html
-msgid "Presence tracking on our sites"
-msgstr "Le suivi de présence sur nos chantiers"
-
-#: templates/presence/notice.html
-#, python-format
-msgid "These are the hours of %(site)s."
-msgstr "Ce sont les heures de %(site)s."
-
-#: templates/presence/notice.html
-msgid "What is recorded"
-msgstr "Ce qui est enregistré"
-
-#: templates/presence/notice.html
-#, python-format
-msgid "Notice version %(version)s"
-msgstr "Version de l’avis %(version)s"
-
-#: templates/presence/person_day.html
-#, python-format
-msgid "Presence of %(name)s"
-msgstr "Présence de %(name)s"
-
-#: templates/presence/person_day.html
-#, python-format
-msgid "%(minutes)s min on site in all"
-msgstr "%(minutes)s min sur le chantier au total"
-
-#: templates/presence/person_day.html
-msgid "Corrected by the nightly check"
-msgstr "Corrigé par le contrôle de nuit"
-
-#: templates/presence/person_day.html
-msgid "No visit recorded on this day."
-msgstr "Aucun passage enregistré ce jour-là."
-
-#: templates/presence/person_day.html
-#, python-format
-msgid ""
-"Raw positions are deleted after %(days)s day; the visits above are kept."
-msgid_plural ""
-"Raw positions are deleted after %(days)s days; the visits above are kept."
-msgstr[0] ""
-"Les positions brutes sont effacées après %(days)s jour ; les passages ci-"
-"dessus sont conservés."
-msgstr[1] ""
-"Les positions brutes sont effacées après %(days)s jours ; les passages ci-"
-"dessus sont conservés."
-msgstr[2] ""
-"Les positions brutes sont effacées après %(days)s jours ; les passages ci-"
-"dessus sont conservés."
-
-#: templates/presence/person_day.html
-msgid "The tracker has nothing for this day."
-msgstr "Le service de suivi n’a rien pour ce jour."
-
-#: templates/presence/person_day.html
-msgid "GPS positions"
-msgstr "Positions GPS"
-
-#: templates/presence/person_day.html
-msgid "The map could not load."
-msgstr "La carte n’a pas pu se charger."
-
-#: templates/presence/site_setup.html
-msgid "Presence setup"
-msgstr "Configuration de la présence"
-
-#: templates/presence/site_setup.html
-#, python-format
-msgid "Presence setup of %(site)s"
-msgstr "Configuration de la présence de %(site)s"
-
-#: templates/presence/site_setup.html
-msgid "Change it in the site’s settings"
-msgstr "À modifier dans les réglages du chantier"
-
-#: templates/presence/site_setup.html
-msgid "Nightly check"
-msgstr "Contrôle de nuit"
-
-#: templates/presence/site_setup.html
-msgid "Add zone"
-msgstr "Ajouter une zone"
-
-#: templates/presence/site_setup.html
-msgid "Add gateway"
-msgstr "Ajouter une passerelle"
-
-#: templates/presence/site_setup.html
-msgid "Token"
-msgstr "Jeton"
-
-#: templates/presence/site_setup.html
-#, python-format
-msgid "Issued %(when)s"
-msgstr "Émis le %(when)s"
-
-#: templates/presence/site_setup.html
-msgid "No token yet"
-msgstr "Pas encore de jeton"
-
-#: templates/presence/site_setup.html
-msgid "Reason (optional)"
-msgstr "Motif (facultatif)"
-
-#: templates/presence/worker_badge.html
-#, python-format
-msgid "BLE badge of %(name)s"
-msgstr "Badge BLE de %(name)s"
-
-#: templates/presence/worker_badge.html
-msgid "Tracking is off for this worker."
-msgstr "Le suivi est désactivé pour cet ouvrier."
-
-#: templates/presence/worker_badge.html
-msgid "Give another badge"
-msgstr "Donner un autre badge"
-
-#: templates/presence/worker_badge.html
-msgid "Save badge"
-msgstr "Enregistrer le badge"
-
-#: templates/presence/worker_badge.html
-msgid "Badges of this worker"
-msgstr "Badges de cet ouvrier"
-
-#: templates/presence/worker_badge.html
-msgid "Ended"
-msgstr "Repris"
-
-#: templates/presence/worker_badge.html
-msgid "No badge yet."
-msgstr "Pas encore de badge."
-
-#: templates/presence/zone_form.html
-msgid "Edit zone"
-msgstr "Modifier la zone"
-
-#: templates/presence/zone_form.html
-msgid "New zone"
-msgstr "Nouvelle zone"
-
-#: templates/presence/zone_form.html
-#, python-format
-msgid "Zone %(code)s"
-msgstr "Zone %(code)s"
-
-#: templates/presence/zone_form.html
-msgid "Save zone"
-msgstr "Enregistrer la zone"
-
-#: templates/presence/_tabs.html templates/presence/badges.html
-#: templates/presence/site_setup.html templates/presence/worker_badge.html
-msgctxt "screen"
-msgid "BLE badges"
-msgstr "Badges BLE"
-
-#: templates/presence/_worker_card.html templates/presence/worker_badge.html
-msgctxt "screen"
-msgid "BLE badge"
-msgstr "Badge BLE"

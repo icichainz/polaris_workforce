@@ -5,11 +5,24 @@ import datetime
 from django import forms
 from django.utils.translation import gettext_lazy as _
 
+from apps.analytics.models import AnalyticsSettings
 from apps.core.tenancy import current_company
 from apps.workers.models import Trade
 from apps.worksites.models import Site
 
 MAX_RANGE_DAYS = 366
+# The report filters, carried from one reports tab to the next.
+FILTER_FIELDS = ("period", "start", "end", "site", "trade")
+
+
+class BudgetWarningForm(forms.ModelForm):
+    """The company's budget warning (admins, on the Reports page)."""
+
+    class Meta:
+        model = AnalyticsSettings
+        fields = ["budget_warn_percent"]
+        labels = {"budget_warn_percent": _("Warn at (% of the budget used)")}
+        help_texts = {"budget_warn_percent": ""}  # the section text says it
 
 
 class ReportFilterForm(forms.Form):

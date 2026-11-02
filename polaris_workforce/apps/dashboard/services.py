@@ -11,7 +11,8 @@ from decimal import Decimal
 
 from django.db.models import Count, Q
 
-from apps.accounts.permissions import scoped_sites
+from apps.accounts.permissions import can_view_reports, scoped_sites
+from apps.analytics.services import site_budgets
 from apps.attendance.models import AttendanceCorrection, AttendanceDay, AttendanceRecord
 from apps.core.dates import company_now
 from apps.core.models import CompanySettings
@@ -64,7 +65,7 @@ class SiteToday:
 class Alert:
     """One "Needs attention" item; the template writes the sentence for ``kind``."""
 
-    kind: str  # missing_roll_call | corrections | absent_streak | unclosed_period
+    kind: str  # missing_roll_call | corrections | absent_streak | unclosed_period | budget
     severity: str  # danger | warning
     site_name: str = ""
     date: datetime.date | None = None
@@ -189,6 +190,8 @@ def today_overview(
     alerts += _correction_alerts(scope_ids)
     alerts += _absence_alerts(scope_ids, today)
     alerts += _unclosed_period_alerts(scope_ids, today)
+    if can_view_reports(user):  # the alert links to Reports
+        alerts += _budget_alerts(active, today)
 
     totals = {
         key: sum(getattr(row, key) for row in rows)
@@ -326,6 +329,23 @@ def _unclosed_period_alerts(site_ids, today) -> list[Alert]:
             site_id=period.site_id,
         )
         for period in periods
+    ]
+
+
+def _budget_alerts(sites, today) -> list[Alert]:
+    """Active sites over their labour budget (danger) or at risk of it (warning)."""
+    return [
+        Alert(
+            kind="budget",
+            severity="danger" if item.status == "over" else "warning",
+            site_name=item.name,
+            site_id=item.site_id,
+            count=item.used_percent or 0,
+            date=item.runs_out_on,
+            detail=item.status,
+        )
+        for item in site_budgets(sites, today=today)
+        if item.needs_attention
     ]
 
 

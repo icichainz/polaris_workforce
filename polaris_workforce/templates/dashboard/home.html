@@ -136,6 +136,10 @@
           <span class="font-semibold">{% translate "Cash sheet not closed" %}</span>
           <span class="text-ink-700">{% blocktranslate with site=alert.site_name date=alert.date|date:_("D j M") count counter=alert.count %}{{ site }}, {{ date }} — {{ counter }} worker unpaid.{% plural %}{{ site }}, {{ date }} — {{ counter }} workers unpaid.{% endblocktranslate %}</span>
           <a href="{% url 'payroll:cash_sheet' alert.site_id alert.date %}" class="text-[13px] font-semibold">{% translate "Open cash sheet" %}</a>
+        {% elif alert.kind == "budget" %}
+          <span class="font-semibold">{% if alert.detail == "over" %}{% blocktranslate with site=alert.site_name %}{{ site }} — over its labour budget{% endblocktranslate %}{% else %}{% blocktranslate with site=alert.site_name %}{{ site }} — labour budget at risk{% endblocktranslate %}{% endif %}</span>
+          <span class="text-ink-700">{% if alert.date %}{% blocktranslate with percent=alert.count date=alert.date|date:_("j M Y") %}{{ percent }}% used; at this pace it runs out on {{ date }}.{% endblocktranslate %}{% else %}{% blocktranslate with percent=alert.count %}{{ percent }}% of the budget used.{% endblocktranslate %}{% endif %}</span>
+          <a href="{% url 'dashboard:reports' %}#budgets" class="text-[13px] font-semibold">{% translate "Open site budgets" %}</a>
         {% endif %}
       </span>
     </div>

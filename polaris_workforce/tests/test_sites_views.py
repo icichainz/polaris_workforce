@@ -118,7 +118,7 @@ def test_overview_shows_week_crew_people_and_pay_sources(admin_client, busy_site
     assert "P 1 · ½ 0 · L 0 · A 1" in html
     assert "6 000 XOF" in html
     assert "Company default" in html
-    assert "Labour cost this month" in html
+    assert "Labour cost to date" in html and "This month:" in html
 
 
 # --- scoping ----------------------------------------------------------------------------
