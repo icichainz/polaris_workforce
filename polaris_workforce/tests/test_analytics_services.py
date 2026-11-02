@@ -58,7 +58,7 @@ def test_budget_on_track_projects_when_it_runs_out():
 
     item = budget_of(site)
 
-    assert (item.spent, item.recent, item.used_percent) == (280_000, 280_000, 28)
+    assert (item.spent, item.daily_rate, item.used_percent) == (280_000, 10_000, 28)
     assert item.weekly_spend == 70_000
     # 720 000 left at 10 000 a day: 72 days.
     assert item.runs_out_on == TODAY + datetime.timedelta(days=72)
@@ -140,12 +140,69 @@ def test_budgets_take_ids_and_a_fixed_number_of_queries(django_assert_num_querie
         daily_pay(site, TODAY, 3, 1_000)
     settings = AnalyticsSettings.load()
 
-    with django_assert_num_queries(2):
+    with django_assert_num_queries(3):
         items = analytics.site_budgets([s.pk for s in sites], today=TODAY, settings=settings)
-    with django_assert_num_queries(1):
+    with django_assert_num_queries(2):
         analytics.site_budgets(sites, today=TODAY, settings=settings)
 
     assert {item.spent for item in items} == {3_000}
+
+
+def monthly(site, start: datetime.date, end: datetime.date, gross: int):
+    period = f.PayPeriodFactory(site=site, start_date=start, end_date=end, frequency="monthly")
+    return f.PayLineFactory(period=period, worker=f.WorkerFactory(), gross=gross)
+
+
+def test_a_first_weekly_period_is_spread_over_its_days():
+    site = f.SiteFactory(labour_budget=10_000_000)
+    worker = f.WorkerFactory()
+    for end in (datetime.date(2026, 6, 16), datetime.date(2026, 6, 23), TODAY):
+        period = f.PayPeriodFactory(
+            site=site, start_date=end - datetime.timedelta(days=6), end_date=end, frequency="weekly"
+        )
+        f.PayLineFactory(period=period, worker=worker, gross=7_000)
+
+    item = budget_of(site)
+
+    # Three weeks of 7 000 over the 21 days they cover, not over the 15 days since the
+    # first pay day.
+    assert (item.daily_rate, item.weekly_spend) == (1_000, 7_000)
+
+
+def test_a_monthly_site_keeps_its_projection_at_the_end_of_the_month():
+    site = f.SiteFactory(labour_budget=1_000_000, planned_end_date=datetime.date(2026, 12, 31))
+    monthly(site, datetime.date(2026, 4, 1), datetime.date(2026, 4, 30), 300_000)
+    monthly(site, datetime.date(2026, 5, 1), datetime.date(2026, 5, 31), 310_000)
+
+    # 29 June: no month end in the last 28 days; May is still the latest month.
+    item = budget_of(site, today=datetime.date(2026, 6, 29))
+
+    assert item.daily_rate == 10_000
+    assert item.runs_out_on == datetime.date(2026, 6, 29) + datetime.timedelta(days=39)
+    assert item.status == BudgetStatus.AT_RISK
+
+
+def test_the_warning_compares_the_exact_share_not_a_rounded_one():
+    site = f.SiteFactory(labour_budget=1_000)
+    pay(site, TODAY, 895)  # 89.5 %
+    nearly = f.SiteFactory(labour_budget=10_000)
+    pay(nearly, TODAY, 9_996)  # 99.96 %
+
+    assert budget_of(site).status == BudgetStatus.NOT_ENOUGH_DATA  # under 90 %
+    item = budget_of(nearly)
+    assert (item.used_percent, item.status) == (99, BudgetStatus.AT_RISK)
+
+
+def test_an_active_site_past_its_planned_end_is_at_risk():
+    site = f.SiteFactory(
+        labour_budget=10_000_000, planned_end_date=TODAY - datetime.timedelta(days=1)
+    )
+    daily_pay(site, TODAY, 28, 1_000)
+
+    assert budget_of(site).status == BudgetStatus.AT_RISK
+    site.status = Site.Status.COMPLETED
+    site.save()
+    assert budget_of(site).status == BudgetStatus.NOT_ENOUGH_DATA
 
 
 def test_settings_load_never_writes():
@@ -215,12 +272,60 @@ def test_cost_breakdown_by_trade():
     assert costs.total.labour_cost == 10_000
 
 
-def test_previous_range_is_the_same_length_just_before():
-    assert analytics.previous_range(datetime.date(2026, 6, 1), datetime.date(2026, 6, 30)) == (
+def test_previous_range_of_a_custom_range_is_the_same_length_just_before():
+    june = (datetime.date(2026, 6, 1), datetime.date(2026, 6, 30))
+    assert analytics.previous_range(*june) == (
         datetime.date(2026, 5, 2),
         datetime.date(2026, 5, 31),
     )
     assert analytics.previous_range(TODAY, TODAY) == (TODAY - datetime.timedelta(days=1),) * 2
+
+
+def test_previous_range_of_a_month_is_the_calendar_month_before():
+    july = (datetime.date(2026, 7, 1), datetime.date(2026, 7, 31))
+    march = (datetime.date(2026, 3, 1), datetime.date(2026, 3, 31))
+
+    # Not 31 May – 30 June, which would hold two monthly pay days.
+    assert analytics.previous_range(*july, period="last_month") == (
+        datetime.date(2026, 6, 1),
+        datetime.date(2026, 6, 30),
+    )
+    assert analytics.previous_range(*march, period="month") == (
+        datetime.date(2026, 2, 1),
+        datetime.date(2026, 2, 28),
+    )
+
+
+def test_previous_range_of_a_running_period_covers_the_same_days_so_far():
+    november = (datetime.date(2026, 11, 1), datetime.date(2026, 11, 30))
+    week = (datetime.date(2026, 10, 26), datetime.date(2026, 11, 1))
+
+    on_the_1st = analytics.previous_range(*november, period="month", today=november[0])
+    on_the_10th = analytics.previous_range(
+        *november, period="month", today=datetime.date(2026, 11, 10)
+    )
+    on_wednesday = analytics.previous_range(*week, period="week", today=datetime.date(2026, 10, 28))
+
+    assert on_the_1st == (datetime.date(2026, 10, 1), datetime.date(2026, 10, 1))
+    assert on_the_10th == (datetime.date(2026, 10, 1), datetime.date(2026, 10, 10))
+    assert on_wednesday == (datetime.date(2026, 10, 19), datetime.date(2026, 10, 21))
+
+
+def test_a_monthly_pay_is_compared_with_the_month_before_not_doubled():
+    site = f.SiteFactory()
+    worker = f.WorkerFactory()
+    for start, end in (
+        (datetime.date(2026, 5, 1), datetime.date(2026, 5, 31)),
+        (datetime.date(2026, 6, 1), datetime.date(2026, 6, 30)),
+        (datetime.date(2026, 7, 1), datetime.date(2026, 7, 31)),
+    ):
+        period = f.PayPeriodFactory(site=site, start_date=start, end_date=end, frequency="monthly")
+        f.PayLineFactory(period=period, worker=worker, gross=300_000)
+    july = (datetime.date(2026, 7, 1), datetime.date(2026, 7, 31))
+
+    previous = build_report([site], *analytics.previous_range(*july, period="last_month"))
+
+    assert previous.labour_cost == 300_000
 
 
 def test_changes_and_captions():
@@ -298,7 +403,8 @@ def test_advances_by_age_per_current_site():
     f.AdvanceFactory(worker=nowhere, balance=1_000, given_on=TODAY)
     f.AdvanceFactory(worker=on_other, balance=0, given_on=TODAY)  # repaid
 
-    rows, total = analytics.advances_by_age(Worker.objects.all(), today=TODAY)
+    every = [site, other]
+    rows, total = analytics.advances_by_age(Worker.objects.all(), sites=every, today=TODAY)
 
     assert [(row.name, row.ages.total) for row in rows] == [
         ("Market Hall", 10_000),
@@ -308,9 +414,36 @@ def test_advances_by_age_per_current_site():
     assert rows[-1].site_id is None
     assert total.cells() == [("0-30", 5_000, 2), ("31-90", 2_000, 1), ("91+", 6_000, 1)]
 
-    only, only_total = analytics.advances_by_age(Worker.objects.all(), today=TODAY, site=other)
+    only, only_total = analytics.advances_by_age(
+        Worker.objects.all(), sites=every, today=TODAY, site=other
+    )
     assert [(row.name, row.ages.total) for row in only] == [("Bridge", 2_000)]
     assert only_total.total == 2_000
+
+
+def test_advances_never_name_a_site_the_viewer_does_not_see():
+    mine, theirs = f.SiteFactory(name="Mine"), f.SiteFactory(name="Secret Bridge")
+    worker = f.WorkerFactory()
+    f.SiteAssignmentFactory(worker=worker, site=theirs, start_date=datetime.date(2026, 1, 1))
+    f.SiteAssignmentFactory(worker=worker, site=mine, start_date=TODAY + datetime.timedelta(days=7))
+    f.AdvanceFactory(worker=worker, balance=5_000, given_on=TODAY)
+
+    rows, total = analytics.advances_by_age(Worker.objects.all(), sites=[mine], today=TODAY)
+
+    assert [(row.site_id, row.name) for row in rows] == [(None, "")]
+    assert total.total == 5_000
+
+
+def test_the_cash_left_to_pay_adds_up_sheet_by_sheet():
+    site = f.SiteFactory()
+    over = pay(site, datetime.date(2026, 6, 10), 1_000)
+    f.PaymentFactory(pay_line=over, amount=1_010)
+    pay(site, datetime.date(2026, 6, 11), 10)
+
+    summary = analytics.cash_by_day([site], datetime.date(2026, 6, 1), TODAY)
+
+    assert [day.left_to_pay for day in summary.days] == [10, 0]
+    assert summary.left_to_pay == 10
 
 
 # --- checks -------------------------------------------------------------------------------

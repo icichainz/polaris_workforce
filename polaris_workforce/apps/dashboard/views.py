@@ -27,6 +27,7 @@ from apps.analytics import services as analytics
 from apps.analytics.models import AnalyticsSettings
 from apps.core.dates import company_now, company_tz
 from apps.core.models import CompanySettings
+from apps.core.tenancy import current_company
 from apps.workers.services import scoped_workers
 
 from .forms import FILTER_FIELDS, BudgetWarningForm, ReportFilterForm
@@ -93,9 +94,11 @@ def reports(request):
     start, end = form.date_range()
     trade = form.selected("trade")
     report = build_report(sites, start, end, trade=trade, company=company)
-    previous_start, previous_end = analytics.previous_range(start, end)
-    previous = build_report(sites, previous_start, previous_end, trade=trade, company=company)
     today = company_now(company).date()
+    previous_start, previous_end = analytics.previous_range(
+        start, end, period=form.selected("period") or "month", today=today
+    )
+    previous = build_report(sites, previous_start, previous_end, trade=trade, company=company)
     warning = AnalyticsSettings.load()
     context = _page_context(request, company, form, "cost")
     context.update(
@@ -119,7 +122,9 @@ def reports(request):
 @require_POST
 def budget_warning(request):
     """Set the company's budget warning (admins; the form sits on the Reports page)."""
-    form = BudgetWarningForm(request.POST, instance=AnalyticsSettings.load())
+    # Created here, not in the form's save: two first saves at once must not collide.
+    warning, _created = AnalyticsSettings.objects.get_or_create(company=current_company())
+    form = BudgetWarningForm(request.POST, instance=warning)
     if form.is_valid():
         analytics.save_settings(form.instance, actor=request.user)
         messages.success(request, _("Budget warning saved."))
@@ -139,7 +144,9 @@ def reports_cash(request):
     site = form.selected("site")
     unpaid_sites, unpaid_total = analytics.unpaid_by_age(sites, today=today)
     workers = scoped_workers(request.user, today)
-    advance_sites, advance_total = analytics.advances_by_age(workers, today=today, site=site)
+    advance_sites, advance_total = analytics.advances_by_age(
+        workers, sites=scoped_sites(request.user), today=today, site=site
+    )
     context = _page_context(request, company, form, "cash")
     context.update(
         {

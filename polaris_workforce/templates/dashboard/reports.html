@@ -32,14 +32,14 @@
     {% money report.cost_per_worker_day as avg_value %}
     {% include "components/stat_tile.html" with label=avg_label value=avg_value caption=changes.cost_per_worker_day.caption only %}
   </div>
-  <p class="text-xs text-steel">{% blocktranslate with start=previous_start|date:_("j M Y") end=previous_end|date:_("j M Y") %}Previous period: {{ start }} – {{ end }} (the same number of days just before).{% endblocktranslate %}</p>
+  <p class="text-xs text-steel">{% blocktranslate with start=previous_start|date:_("j M Y") end=previous_end|date:_("j M Y") %}Compared with {{ start }} – {{ end }}.{% endblocktranslate %}</p>
 </section>
 
 <section id="budgets" aria-labelledby="budgets-title" class="rounded-card border border-line bg-surface">
   <div class="flex flex-col gap-3 border-b border-line px-5 py-4">
     <div class="flex flex-col gap-0.5">
       <h2 id="budgets-title" class="font-display text-lg font-bold">{% translate "Site budgets" %}</h2>
-      <span class="text-[13px] text-steel">{% blocktranslate with percent=warning.budget_warn_percent %}Labour cost to date against each site's budget. At risk: {{ percent }}% used, or the budget runs out before the planned end. Spending is projected from the last 4 weeks.{% endblocktranslate %}</span>
+      <span class="text-[13px] text-steel">{% blocktranslate with percent=warning.budget_warn_percent %}Labour cost to date against each site's budget. At risk: {{ percent }}% used, the budget runs out before the planned end, or the site is still running after it. Spending is projected from the pay periods of the last 4 weeks.{% endblocktranslate %}</span>
     </div>
     {% if warning_form %}
     <form method="post" action="{% url 'dashboard:budget_warning' %}" class="flex flex-wrap items-end gap-2">

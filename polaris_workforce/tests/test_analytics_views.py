@@ -136,6 +136,23 @@ def test_the_cash_tab(client, world):
     assert 'id="cash-sheets"' in response.content.decode()
 
 
+def test_the_cash_tab_hides_other_sites_from_site_managers(client, world):
+    worker = f.WorkerFactory(first_name="Kofi")
+    today = world["today"]
+    f.SiteAssignmentFactory(worker=worker, site=world["theirs"], start_date=today)
+    f.SiteAssignmentFactory(
+        worker=worker, site=world["mine"], start_date=today + datetime.timedelta(days=7)
+    )
+    f.AdvanceFactory(worker=worker, balance=5_000, given_on=today)
+    client.force_login(world["manager"])
+
+    response = client.get(reverse("dashboard:reports_cash"))
+
+    html = response.content.decode()
+    assert "Bridge Works" not in html
+    assert "Not on these sites today" in html
+
+
 def test_shared_payout_accounts_are_for_admins_only(client, world):
     client.force_login(world["admin"])
     admin_page = client.get(reverse("dashboard:reports_checks"))
@@ -161,16 +178,17 @@ def test_tabs_carry_the_filters_and_only_them(client, world):
 @pytest.mark.parametrize("page", PAGES)
 def test_query_count_does_not_grow_with_sites(client, world, page, django_assert_max_num_queries):
     client.force_login(world["admin"])
-    client.get(reverse(page))  # warm the per-process caches (content types)
+    span = last_30_days(world)  # with pay before and after the new sites
+    client.get(reverse(page), span)  # warm the per-process caches (content types)
     with CaptureQueriesContext(connection) as before:
-        client.get(reverse(page))
+        client.get(reverse(page), span)
     for index in range(5):
         site = f.SiteFactory(name=f"Extra {index}", labour_budget=50_000)
         pay(site, world["today"] - datetime.timedelta(days=1), 1_000)
         f.CashIssueFactory(site=site, date=world["today"] - datetime.timedelta(days=1))
 
     with django_assert_max_num_queries(len(before)):
-        assert client.get(reverse(page)).status_code == 200
+        assert client.get(reverse(page), span).status_code == 200
 
 
 def test_admins_set_the_budget_warning(client, world):
@@ -195,7 +213,7 @@ def test_admins_set_the_budget_warning(client, world):
 def test_budget_warning_is_validated_and_admin_only(client, world):
     client.force_login(world["admin"])
     client.post(reverse("dashboard:budget_warning"), {"budget_warn_percent": "150"})
-    assert AnalyticsSettings.load().pk is None
+    assert AnalyticsSettings.load().budget_warn_percent == 90
 
     client.force_login(world["manager"])
     response = client.post(reverse("dashboard:budget_warning"), {"budget_warn_percent": "50"})

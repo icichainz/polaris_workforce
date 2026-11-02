@@ -21,7 +21,7 @@
   {% translate "Cash, bank transfer and mobile money" as paid_caption %}
   {% include "components/stat_tile.html" with label=paid_label value=paid_value caption=paid_caption only %}
   {% translate "Left to pay" as left_label %}
-  {% money total.left_to_pay as left_value %}
+  {% money cash.left_to_pay as left_value %}
   {% blocktranslate count counter=total.unpaid_workers asvar left_caption %}{{ counter }} pay line without a payment{% plural %}{{ counter }} pay lines without a payment{% endblocktranslate %}
   {% include "components/stat_tile.html" with label=left_label value=left_value caption=left_caption only %}
   {% translate "Cash not paid out" as hand_label %}
@@ -65,7 +65,7 @@
         <th scope="row" colspan="2" class="px-5 py-3 text-left font-semibold">{% translate "Total" %}</th>
         <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.to_pay %}</td>
         <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.paid %}</td>
-        <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.left_to_pay %}</td>
+        <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money cash.left_to_pay %}</td>
         <td class="px-4 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.cash_issued %}</td>
         <td class="px-5 py-3 text-right font-semibold whitespace-nowrap tabular-nums">{% money total.cash_in_hand %}</td>
       </tr></tfoot>
@@ -97,7 +97,7 @@
       <span class="text-[13px] text-steel">{% blocktranslate with date=today|date:_("j M Y") %}On {{ date }}, by the worker's site today and days since the advance was given.{% endblocktranslate %} <a href="{% url 'payroll:advances' %}" class="font-semibold">{% translate "Open advances" %}</a></span>
     </div>
     {% if advance_sites %}
-    {% translate "On no site today" as none_label %}
+    {% translate "Not on these sites today" as none_label %}
     {% include "dashboard/_age_table.html" with rows=advance_sites total=advance_total none_label=none_label kind="advance" only %}
     {% else %}
     <p class="px-5 py-8 text-center text-sm text-steel">{% translate "No advance is owed." %}</p>

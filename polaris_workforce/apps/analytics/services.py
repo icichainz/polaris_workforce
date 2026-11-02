@@ -19,8 +19,8 @@ from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from django.db.models import Count, Exists, F, Min, OuterRef, Q, Sum
-from django.db.models.functions import Coalesce
+from django.db.models import CharField, Count, Exists, F, Min, OuterRef, Q, Sum
+from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext, ngettext
 
 from apps.attendance.models import AttendanceDay, AttendanceRecord
@@ -80,10 +80,13 @@ def save_settings(settings: AnalyticsSettings, *, actor) -> AnalyticsSettings:
 
 # --- site budgets -------------------------------------------------------------------------
 
-# Spending is projected from this many days before today (four weeks: a crew that grew
-# or shrank shows within a month, one quiet week does not swing it).
+# Spending is projected from the pay periods that ended in this many days before today
+# (four weeks: a crew that grew or shrank shows within a month, one quiet week does not
+# swing it); for a pay frequency with no period ending in them, from its latest period.
 SPEND_WINDOW_DAYS = 28
-# A site paid for fewer days than this has no projection yet.
+# How far back that latest period is looked for (a monthly period, or every N days).
+SPEND_LOOKBACK_DAYS = 90
+# A site whose first pay period started fewer days ago than this has no projection yet.
 MIN_HISTORY_DAYS = 14
 
 
@@ -112,17 +115,13 @@ class SiteBudget:
     site_status: str
     budget: int | None
     spent: int  # labour cost to date
-    recent: int  # labour cost of the last SPEND_WINDOW_DAYS days
     planned_end: datetime.date | None
-    first_pay: datetime.date | None
+    first_start: datetime.date | None  # first day of the site's first pay period
+    daily_rate: Decimal | None = None  # recent spending per calendar day
     status: str = BudgetStatus.NO_BUDGET
-    used_percent: int | None = None
+    used_percent: int | None = None  # rounded down: 99.9 % used shows as 99 %
     weekly_spend: int | None = None
     runs_out_on: datetime.date | None = None
-
-    @property
-    def remaining(self) -> int | None:
-        return None if not self.budget else self.budget - self.spent
 
     @property
     def bar_percent(self) -> int:
@@ -149,7 +148,7 @@ def site_budgets(
     with_spend_only: bool = False,
 ) -> list[SiteBudget]:
     """Budget burn of each site in ``sites`` (Site objects, ids or a queryset), worst
-    first: one query, plus one to read the sites given as ids and one for the settings
+    first: two queries, plus one to read the sites given as ids and one for the settings
     when ``settings`` is not passed.
 
     ``with_spend_only``: leave out sites with neither a budget nor any labour cost.
@@ -158,67 +157,97 @@ def site_budgets(
     site_list = list(sites)
     if not all(isinstance(site, Site) for site in site_list):
         site_list = list(Site.objects.filter(pk__in=_ids(site_list)))
-    window_start = today - datetime.timedelta(days=SPEND_WINDOW_DAYS)
-    spend = {
+    site_ids = [site.pk for site in site_list]
+    paid = PayLine.objects.filter(period__site__in=site_ids, period__end_date__lte=today)
+    totals = {
         row["period__site_id"]: row
-        for row in PayLine.objects.filter(
-            period__site__in=[site.pk for site in site_list], period__end_date__lte=today
-        )
-        .values("period__site_id")
-        .annotate(
-            spent=LABOUR_COST,
-            recent=Sum(F("gross") + F("adjustment"), filter=Q(period__end_date__gt=window_start)),
-            first_pay=Min("period__end_date"),
-        )
+        for row in paid.values("period__site_id")
+        .annotate(spent=LABOUR_COST, first_start=Min("period__start_date"))
         .order_by()
     }
+    periods: dict[int, list[tuple[str, datetime.date, datetime.date, int]]] = {}
+    for site_id, frequency, start, end, cost in (
+        paid.filter(period__end_date__gt=today - datetime.timedelta(days=SPEND_LOOKBACK_DAYS))
+        .values("period__site_id", "period__frequency", "period__start_date", "period__end_date")
+        .annotate(cost=LABOUR_COST)
+        .order_by()
+        .values_list(
+            "period__site_id",
+            "period__frequency",
+            "period__start_date",
+            "period__end_date",
+            "cost",
+        )
+    ):
+        periods.setdefault(site_id, []).append((frequency, start, end, cost or 0))
     result = []
     for site in site_list:
-        paid = spend.get(site.pk, {})
+        total = totals.get(site.pk, {})
         item = SiteBudget(
             site_id=site.pk,
             name=site.name,
             site_status=site.status,
             budget=site.labour_budget,
-            spent=paid.get("spent") or 0,
-            recent=paid.get("recent") or 0,
+            spent=total.get("spent") or 0,
             planned_end=site.planned_end_date,
-            first_pay=paid.get("first_pay"),
+            first_start=total.get("first_start"),
         )
         if with_spend_only and not item.budget and not item.spent:
             continue
-        _assess(item, today, settings.budget_warn_percent)
+        _assess(item, periods.get(site.pk, []), today, settings.budget_warn_percent)
         result.append(item)
     result.sort(key=lambda item: (STATUS_ORDER.index(item.status), item.name.lower()))
     return result
 
 
-def _assess(item: SiteBudget, today: datetime.date, warn_percent: int) -> None:
+def spending_rate(periods, today: datetime.date) -> Decimal | None:
+    """Labour cost per calendar day, from recent pay periods ``(frequency, start, end,
+    cost)``.
+
+    The periods of one pay frequency are taken together: the ones that ended in the last
+    ``SPEND_WINDOW_DAYS`` days, else the latest one, and their cost is spread over the
+    days they cover (a first weekly period ending today covers 7 days, not 1). The rates
+    of the frequencies on the site (workers can be paid daily and monthly) add up.
+    """
+    window_start = today - datetime.timedelta(days=SPEND_WINDOW_DAYS)
+    by_frequency: dict[str, list] = {}
+    for frequency, start, end, cost in periods:
+        by_frequency.setdefault(frequency, []).append((start, end, cost))
+    rate = Decimal(0)
+    for group in by_frequency.values():
+        chosen = [period for period in group if period[1] > window_start]
+        chosen = chosen or [max(group, key=lambda period: period[1])]
+        days = (max(end for _s, end, _c in chosen) - min(start for start, _e, _c in chosen)).days
+        rate += Decimal(sum(cost for _s, _e, cost in chosen)) / (days + 1)
+    return rate if rate > 0 else None
+
+
+def _assess(item: SiteBudget, periods, today: datetime.date, warn_percent: int) -> None:
     """Fill in the projection and the status of ``item``."""
-    history = (today - item.first_pay).days + 1 if item.first_pay else 0
+    history = (today - item.first_start).days + 1 if item.first_start else 0
     projecting = item.site_status == Site.Status.ACTIVE and history >= MIN_HISTORY_DAYS
-    days = min(history, SPEND_WINDOW_DAYS)
-    if projecting and item.recent > 0:
-        item.weekly_spend = _round(Decimal(item.recent) * 7 / days)
+    if projecting:
+        item.daily_rate = spending_rate(periods, today)
+    if item.daily_rate:
+        item.weekly_spend = _round(item.daily_rate * 7)
     if not item.budget:
         item.status = BudgetStatus.NO_BUDGET
         return
-    item.used_percent = _percent(item.spent, item.budget)
+    item.used_percent = item.spent * 100 // item.budget
     if item.spent >= item.budget:
         item.status = BudgetStatus.OVER
         return
-    if item.weekly_spend:
-        daily = Decimal(item.recent) / days
-        left = Decimal(item.budget - item.spent) / daily
+    if item.daily_rate:
+        left = Decimal(item.budget - item.spent) / item.daily_rate
         item.runs_out_on = today + datetime.timedelta(
             days=int(left.quantize(Decimal(1), rounding=ROUND_CEILING))
         )
-    early = (
-        item.runs_out_on is not None
-        and item.planned_end is not None
-        and item.runs_out_on < item.planned_end
-    )
-    if item.used_percent >= warn_percent or early:
+    planned_end = item.planned_end
+    early = item.runs_out_on is not None and planned_end is not None
+    early = early and item.runs_out_on < planned_end
+    overdue = item.site_status == Site.Status.ACTIVE and planned_end is not None
+    overdue = overdue and planned_end < today
+    if item.spent * 100 >= warn_percent * item.budget or early or overdue:
         item.status = BudgetStatus.AT_RISK
     elif not projecting:
         item.status = BudgetStatus.NOT_ENOUGH_DATA
@@ -310,10 +339,34 @@ def cost_breakdown(sites, start: datetime.date, end: datetime.date, *, trade=Non
 # --- comparison with the previous period --------------------------------------------------
 
 
-def previous_range(start: datetime.date, end: datetime.date) -> tuple[datetime.date, datetime.date]:
-    """The same number of days just before ``start``."""
-    days = (end - start).days + 1
-    return start - datetime.timedelta(days=days), start - datetime.timedelta(days=1)
+def previous_range(
+    start: datetime.date,
+    end: datetime.date,
+    *,
+    period: str = "custom",
+    today: datetime.date | None = None,
+) -> tuple[datetime.date, datetime.date]:
+    """The period to compare ``start``–``end`` with.
+
+    A month (``period`` "month" or "last_month") is compared with the calendar month
+    before, a week with the week before, a custom range with the same number of days
+    just before: a 31-day month never takes in two monthly pay days. A period still
+    running on ``today`` is compared over the same number of days from the start, so the
+    first days of a month are not set against a whole month.
+    """
+    if period in ("month", "last_month"):
+        previous_end = start - datetime.timedelta(days=1)
+        previous_start = previous_end.replace(day=1)
+    elif period == "week":
+        previous_start = start - datetime.timedelta(days=7)
+        previous_end = end - datetime.timedelta(days=7)
+    else:
+        days = (end - start).days + 1
+        previous_start = start - datetime.timedelta(days=days)
+        previous_end = start - datetime.timedelta(days=1)
+    if today is not None and start <= today < end:
+        previous_end = min(previous_end, previous_start + (today - start))
+    return previous_start, previous_end
 
 
 @dataclass
@@ -414,6 +467,12 @@ class CashDay:
 class CashSummary:
     days: list[CashDay]
     total: CashDay
+
+    @property
+    def left_to_pay(self) -> int:
+        """What is left to pay, sheet by sheet (one overpaid sheet does not hide another's
+        shortfall, as ``total.left_to_pay`` would)."""
+        return sum(day.left_to_pay for day in self.days)
 
 
 def cash_by_day(sites, start: datetime.date, end: datetime.date) -> CashSummary:
@@ -557,22 +616,27 @@ def unpaid_by_age(sites, *, today: datetime.date) -> tuple[list[SiteAges], AgeBu
 
 
 def advances_by_age(
-    workers, *, today: datetime.date, site=None
+    workers, *, sites, today: datetime.date, site=None
 ) -> tuple[list[SiteAges], AgeBuckets]:
     """Advances still owed by ``workers``, per current site and by days since given (two
-    queries). Workers on no site today are grouped under ``site_id`` ``None``.
-    ``site``: only the workers on that site today."""
+    queries). A worker's site today is named only when it is one of ``sites`` (the
+    viewer's): workers on no site today, or on a site the viewer may not see (the
+    workers of a manager's site can be on another site today, or from next week), are
+    grouped under ``site_id`` ``None``. ``site``: only the workers on that site today."""
     total = AgeBuckets(ADVANCE_AGES)
+    visible = set(_ids(sites))
     owed = list(
         Advance.objects.filter(worker__in=workers, balance__gt=0).values_list(
             "worker_id", "given_on", "balance"
         )
     )
-    sites = current_sites({worker_id for worker_id, _given, _balance in owed}, today)
+    today_sites = current_sites({worker_id for worker_id, _given, _balance in owed}, today)
     only = getattr(site, "pk", site)
     by_site: dict[int | None, SiteAges] = {}
     for worker_id, given_on, balance in owed:
-        current = sites.get(worker_id)
+        current = today_sites.get(worker_id)
+        if current is not None and current.pk not in visible:
+            current = None
         key = current.pk if current else None
         if only is not None and key != only:
             continue
@@ -685,62 +749,62 @@ class MismatchSummary:
 
 def check_in_mismatches(sites, start: datetime.date, end: datetime.date) -> MismatchSummary:
     """The roll call against the check-ins, on the days a site used check-in (someone
-    checked in): marked worked without checking in, or absent although checked in (two
-    queries). Days without any check-in are not compared."""
-    checked_in: set[tuple[int, datetime.date, int]] = set()
-    site_days: set[tuple[int, datetime.date]] = set()
-    for site_id, date, worker_id in CheckIn.objects.filter(
+    checked in): marked worked without checking in, or absent although checked in.
+    Compared in the database (three queries); the first ``LIST_LIMIT`` are listed, most
+    recent first. Days without any check-in are not compared."""
+    check_ins = CheckIn.objects.filter(
         site__in=_ids(sites), date__gte=start, date__lte=end, direction=CheckIn.Direction.IN
-    ).values_list("site_id", "date", "worker_id"):
-        site_days.add((site_id, date))
-        if worker_id is not None:
-            checked_in.add((site_id, date, worker_id))
-    summary = MismatchSummary(items=[], days_checked=len(site_days))
-    if not site_days:
+    )
+    summary = MismatchSummary(
+        items=[], days_checked=check_ins.values("site_id", "date").distinct().count()
+    )
+    if not summary.days_checked:
         return summary
-    used = sorted({site_id for site_id, _date in site_days})
+    same_day = check_ins.filter(site=OuterRef("day__site"), date=OuterRef("day__date"))
+    worked_without = Q(status__in=WORKED, here=False)
+    absent_with = Q(status=Status.ABSENT, here=True)
     records = (
         AttendanceRecord.objects.filter(
-            day__site__in=used,
+            day__site__in=_ids(sites),
             day__date__gte=start,
             day__date__lte=end,
             day__status__in=REPORTED_DAY_STATUSES,
         )
-        .values_list(
-            "day__site_id",
-            "day__site__name",
-            "day__date",
-            "worker_id",
-            "worker__first_name",
-            "worker__last_name",
-            "status",
+        .annotate(
+            site_used=Exists(same_day),
+            here=Exists(same_day.filter(worker=OuterRef("worker"))),
         )
-        .order_by("-day__date", "day__site__name", "worker__last_name", "worker__first_name")
+        .filter(site_used=True)
+        .filter(worked_without | absent_with)
     )
-    for site_id, site_name, date, worker_id, first, last, status in records:
-        if (site_id, date) not in site_days:
-            continue
-        here = (site_id, date, worker_id) in checked_in
-        if status in WORKED and not here:
-            kind = Mismatch.WORKED_WITHOUT_CHECK_IN
-            summary.worked_without_check_in += 1
-        elif status == Status.ABSENT and here:
-            kind = Mismatch.ABSENT_WITH_CHECK_IN
-            summary.absent_with_check_in += 1
-        else:
-            continue
-        if len(summary.items) < LIST_LIMIT:
-            summary.items.append(
-                CheckInMismatch(
-                    kind=kind,
-                    site_id=site_id,
-                    site_name=site_name,
-                    date=date,
-                    worker_id=worker_id,
-                    name=f"{first} {last}".strip(),
-                    status=status,
-                )
+    counts = records.aggregate(
+        worked=Count("id", filter=worked_without), absent=Count("id", filter=absent_with)
+    )
+    summary.worked_without_check_in = counts["worked"]
+    summary.absent_with_check_in = counts["absent"]
+    for site_id, site_name, date, worker_id, first, last, status, here in records.order_by(
+        "-day__date", "day__site__name", "worker__last_name", "worker__first_name"
+    ).values_list(
+        "day__site_id",
+        "day__site__name",
+        "day__date",
+        "worker_id",
+        "worker__first_name",
+        "worker__last_name",
+        "status",
+        "here",
+    )[:LIST_LIMIT]:
+        summary.items.append(
+            CheckInMismatch(
+                kind=Mismatch.ABSENT_WITH_CHECK_IN if here else Mismatch.WORKED_WITHOUT_CHECK_IN,
+                site_id=site_id,
+                site_name=site_name,
+                date=date,
+                worker_id=worker_id,
+                name=f"{first} {last}".strip(),
+                status=status,
             )
+        )
     return summary
 
 
@@ -811,15 +875,21 @@ def corrections_by_foreman(
     for values in corrected.values():
         row(*(values[name] for name in foreman)).corrections += values["n"]
     if corrected:
-        record_type = ContentType.objects.get_for_model(AttendanceRecord)
-        for object_id, before in AuditLog.objects.filter(
+        # The record ids as a subquery (audit entries keep them as text), not a list:
+        # a long range can hold more corrected records than SQLite takes parameters.
+        record_ids = (
+            AttendanceRecord.objects.filter(**in_range, corrections__isnull=False)
+            .annotate(text_id=Cast("id", CharField()))
+            .values("text_id")
+        )
+        for object_id in AuditLog.objects.filter(
             action=CORRECT_ACTION,
-            content_type=record_type,
-            object_id__in=[str(pk) for pk in corrected],
-        ).values_list("object_id", "before"):
-            if (before or {}).get("day_status") == AttendanceDay.Status.APPROVED:
-                values = corrected[int(object_id)]
-                row(*(values[name] for name in foreman)).after_approval += 1
+            content_type=ContentType.objects.get_for_model(AttendanceRecord),
+            object_id__in=record_ids,
+            before__day_status=AttendanceDay.Status.APPROVED,
+        ).values_list("object_id", flat=True):
+            values = corrected[int(object_id)]
+            row(*(values[name] for name in foreman)).after_approval += 1
     result = [item for item in rows.values() if item.corrections]
     result.sort(key=lambda item: (-item.corrections, -item.after_approval, item.name.lower()))
     return result
