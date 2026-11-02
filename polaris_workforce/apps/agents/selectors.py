@@ -306,7 +306,11 @@ def find_workers(user, query: str = "", site=None) -> list[dict]:
             current_site_id=site.pk
         )
     workers = list(workers.order_by("last_name", "first_name", "pk")[:MAX_WORKERS])
-    sites = payroll.current_sites([worker.pk for worker in workers], today)
+    current = payroll.current_sites([worker.pk for worker in workers], today)
+    # A worker of the user's site can be on another site today (or join next week):
+    # that site is named only if the user may see it, as in ``worker_data``.
+    visible = set(scoped_sites(user).values_list("pk", flat=True))
+    sites = {pk: site for pk, site in current.items() if site.pk in visible}
     return [
         {**_worker(worker), "site": _site(sites[worker.pk]) if worker.pk in sites else None}
         for worker in workers

@@ -420,9 +420,12 @@ def advances(request):
         rows = owed
     page = Paginator(rows, PAGE_SIZE).get_page(request.GET.get("page"))
     sites = services.current_sites([advance.worker_id for advance in page], today)
+    # The worker's site today is named only if the user may see it: a worker of a
+    # manager's site can be on another site today, or join the manager's next week.
+    visible = set(scoped_sites(request.user).values_list("pk", flat=True))
     for advance in page:
         site = sites.get(advance.worker_id)
-        advance.site_name = site.name if site else ""
+        advance.site_name = site.name if site and site.pk in visible else ""
         advance.repaid_percent = round(100 * (advance.amount - advance.balance) / advance.amount)
     context = {
         "company": company,

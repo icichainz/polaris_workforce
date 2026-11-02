@@ -8,9 +8,16 @@ import zlib
 import pytest
 from django.urls import reverse
 
+from apps.core import dates
 from apps.payroll import labels, pdf, services
 from apps.payroll.models import Advance, PayLine, Payment, PayPeriod
-from tests.factories import AdvanceFactory, CompanySettingsFactory, UserFactory, WorkerFactory
+from tests.factories import (
+    AdvanceFactory,
+    CompanySettingsFactory,
+    SiteAssignmentFactory,
+    UserFactory,
+    WorkerFactory,
+)
 from tests.test_payroll_services import (
     MON,
     SAT,
@@ -357,6 +364,23 @@ def test_advance_form_only_offers_scoped_workers(client, paid_day):
     assert "Stranger" not in html
     assert response.status_code == 200
     assert not Advance.objects.filter(worker=stranger).exists()
+
+
+def test_advances_never_name_a_site_the_manager_does_not_see(client, paid_day):
+    """A worker joining the manager's site next week is on another site today: their
+    advance is listed (they are on the manager's crew) without naming that site."""
+    site, manager, *_ = paid_day
+    other, _manager, _foreman = setup_site(name="Bravo Tower")
+    kofi = hire(other, 5000, first_name="Kofi", last_name="Agbo")
+    next_week = dates.company_today() + datetime.timedelta(days=7)
+    SiteAssignmentFactory(worker=kofi, site=site, start_date=next_week)
+    AdvanceFactory(worker=kofi, amount=3000, balance=3000, deduction_per_pay=1000)
+    client.force_login(manager)
+
+    html = client.get(reverse("payroll:advances")).content.decode()
+
+    assert "Kofi Agbo" in html
+    assert "Bravo Tower" not in html
 
 
 def test_advance_preview_explains_the_limit(client, paid_day):
