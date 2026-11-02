@@ -37,6 +37,7 @@ from apps.payroll.models import (
     TaskType,
 )
 from apps.portal.models import WorkerAccess
+from apps.presence.models import BleBadge, Gateway, PresenceSession, Zone
 from apps.workers.models import WorkerDocument
 from apps.worksites.models import SiteAssignment
 from tests.e2e import Office, Phone, admin_office, hire, lines_by_worker, make_site, new_uuid
@@ -183,6 +184,27 @@ OFFICE = {
     "agents:access": "own",
     "agents:create": "own",
     "agents:revoke": "own",
+    # Presence tracking office screens (brief P4)
+    "presence:home": "list",
+    "presence:badges": "list",
+    "presence:notice": "list",
+    # The user's own tracker token (their tracked sites): test_presence_views.py
+    "presence:dashboard_token": "own",
+    "presence:site_setup": "b_get",
+    "presence:live": "b_get",
+    "presence:site_push": "b_post",
+    "presence:zone_create": "b_get",  # and its POST, below
+    "presence:zone_edit": "b_get",  # and its POST, below
+    "presence:zone_delete": "b_post",
+    "presence:gateway_create": "b_get",  # and its POST, below
+    "presence:gateway_edit": "b_get",  # and its POST, below
+    "presence:gateway_token": "b_get",  # and its POST, below
+    "presence:gateway_revoke": "b_post",
+    "presence:badge_end": "b_post",
+    "presence:worker_badge": "b_get",  # and its POST, below
+    "presence:worker_export": "b_get",
+    "presence:person": "b_get",
+    "presence:person_day": "b_get",
 }
 API = {
     "api:health": "public",
@@ -330,7 +352,33 @@ def world(db):
         "device_b": ForemanDevice.objects.get(user=b.foreman).pk,
     }
     ids.update(seed_checkin(b, zeb))
+    ids.update(seed_presence(b, zeb))
     return a, b, ids
+
+
+def seed_presence(crew, worker) -> dict:
+    """Site B's presence setup: a zone, a gateway with a token, a BLE badge, a visit."""
+    from django.utils import timezone
+
+    from apps.presence import services as presence
+
+    zone = presence.save_zone(Zone(site=crew.site, code="B1", name="Block"), actor=crew.manager)
+    gateway = presence.save_gateway(
+        Gateway(site=crew.site, zone=zone, label="Gate"), actor=crew.manager
+    )
+    presence.issue_gateway_token(gateway, actor=crew.manager)
+    badge = presence.assign_ble_badge(worker, "ib:bravo:1:1", actor=crew.manager)
+    now = timezone.now()
+    PresenceSession.objects.create(
+        company_id=crew.site.company_id,
+        site=crew.site,
+        subject_kind="worker",
+        subject_id=worker.pk,
+        local_date=payroll_services.company_today(),
+        started_at=now - datetime.timedelta(hours=1),
+        last_event_at=now,
+    )
+    return {"zone": zone.pk, "gateway": gateway.pk, "ble_badge": badge.pk}
 
 
 def add_pay_extras(crew, worker, day, label=SECRET, company_label="") -> dict:
@@ -376,6 +424,15 @@ def _b_state(b):
             SiteGeofence.objects.values_list("site_id", "latitude", "longitude", "radius_m")
         ),
         "checkins": CheckIn.objects.count(),
+        "presence": (
+            sorted(Zone.objects.values_list("pk", "code", "name")),
+            sorted(
+                Gateway.objects.values_list(
+                    "pk", "label", "zone_id", "token_generation", "revoked_at"
+                )
+            ),
+            sorted(BleBadge.objects.values_list("pk", "worker_id", "badge_id", "active_to")),
+        ),
         "documents": sorted(WorkerDocument.objects.values_list("pk", "worker_id", "title")),
         "pay_extras": (
             sorted(PieceWorkEntry.objects.filter(site=b.site).values_list("pk", "quantity")),
@@ -410,6 +467,19 @@ def _office_b_get_urls(ids):
         "checkin:geofence": reverse("checkin:geofence", args=[site]),
         "workers:document_file": reverse("workers:document_file", args=[ids["document"]]),
         "payroll:day_extras": reverse("payroll:day_extras", args=[site, ids["today"].isoformat()]),
+        "presence:site_setup": reverse("presence:site_setup", args=[site]),
+        "presence:live": reverse("presence:live", args=[site]),
+        "presence:zone_create": reverse("presence:zone_create", args=[site]),
+        "presence:zone_edit": reverse("presence:zone_edit", args=[ids["zone"]]),
+        "presence:gateway_create": reverse("presence:gateway_create", args=[site]),
+        "presence:gateway_edit": reverse("presence:gateway_edit", args=[ids["gateway"]]),
+        "presence:gateway_token": reverse("presence:gateway_token", args=[ids["gateway"]]),
+        "presence:worker_badge": reverse("presence:worker_badge", args=[ids["worker"]]),
+        "presence:worker_export": reverse("presence:worker_export", args=[ids["worker"]]),
+        "presence:person": reverse("presence:person", args=["worker", ids["worker"]]),
+        "presence:person_day": reverse(
+            "presence:person_day", args=["worker", ids["worker"], ids["today"]]
+        ),
     }
 
 
@@ -497,6 +567,34 @@ def _office_b_posts(ids):
             {"reason": "x"},
         ),
         "payroll:bonus_delete": (reverse("payroll:bonus_delete", args=[ids["bonus"]]), {}),
+        "presence:site_push": (reverse("presence:site_push", args=[site]), {}),
+        "presence:zone_create": (
+            reverse("presence:zone_create", args=[site]),
+            {"code": "X", "name": "Hacked"},
+        ),
+        "presence:zone_edit": (
+            reverse("presence:zone_edit", args=[ids["zone"]]),
+            {"code": "X", "name": "Hacked"},
+        ),
+        "presence:zone_delete": (reverse("presence:zone_delete", args=[ids["zone"]]), {}),
+        "presence:gateway_create": (
+            reverse("presence:gateway_create", args=[site]),
+            {"label": "Hacked"},
+        ),
+        "presence:gateway_edit": (
+            reverse("presence:gateway_edit", args=[ids["gateway"]]),
+            {"label": "Hacked"},
+        ),
+        "presence:gateway_token": (reverse("presence:gateway_token", args=[ids["gateway"]]), {}),
+        "presence:gateway_revoke": (
+            reverse("presence:gateway_revoke", args=[ids["gateway"]]),
+            {"reason": "x"},
+        ),
+        "presence:worker_badge": (
+            reverse("presence:worker_badge", args=[ids["worker"]]),
+            {"badge_id": "hacked"},
+        ),
+        "presence:badge_end": (reverse("presence:badge_end", args=[ids["ble_badge"]]), {}),
     }
 
 
@@ -530,6 +628,9 @@ def _list_pages(ids):
         "checkin:badge_sheet": (reverse("checkin:badge_sheet"), {"site": ids["site"]}),
         "checkin:kiosks": (reverse("checkin:kiosks"), {}),
         "checkin:geofences": (reverse("checkin:geofences"), {}),
+        "presence:home": (reverse("presence:home"), {}),
+        "presence:badges": (reverse("presence:badges"), {"site": ids["site"]}),
+        "presence:notice": (reverse("presence:notice"), {"site": ids["site"]}),
     }
 
 

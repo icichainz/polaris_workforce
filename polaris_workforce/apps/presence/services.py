@@ -460,6 +460,70 @@ def _end_badge(badge: BleBadge, when, actor) -> None:
     )
 
 
+# --- a worker's presence history (office export, design §10) ----------------------------
+
+# Typed text that a spreadsheet would run as a formula (as in apps.dashboard.reports).
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _text_cell(value: str) -> str:
+    return f"'{value}" if value.startswith(_FORMULA_PREFIXES) else value
+
+
+def write_worker_presence_csv(user, worker: Worker, out) -> int:
+    """The presence sessions of ``worker`` that ``user`` may see, as CSV, oldest first;
+    returns the number of sessions written.
+
+    One row per visit: the work day, the site, arrival and departure in the company time
+    zone, the minutes on site, the zones in order and why the visit ended (empty while
+    the worker is still on site). ``out`` is a text stream; the caller writes the UTF-8
+    byte-order mark. Raw track points are not in it: they stay in the tracker and are
+    deleted after ``track_retention_days``.
+    """
+    import csv
+
+    tz = company_tz(CompanySettings.load(worker.company_id))
+    reasons = dict(PresenceEvent.Reason.choices)
+    writer = csv.writer(out)
+    writer.writerow(
+        [
+            _("Worker number"),
+            _("Worker"),
+            _("Date"),
+            _("Site"),
+            _("Arrived"),
+            _("Left"),
+            _("Minutes on site"),
+            _("Zones"),
+            _("Ended because"),
+            _("Source"),
+        ]
+    )
+    count = 0
+    for session in selectors.worker_sessions(user, worker):
+        started = session.started_at.astimezone(tz)
+        ended = session.ended_at.astimezone(tz) if session.ended_at else None
+        minutes = ""
+        if ended is not None:
+            minutes = int((session.ended_at - session.started_at).total_seconds() // 60)
+        writer.writerow(
+            [
+                _text_cell(worker.number),
+                _text_cell(worker.full_name),
+                session.local_date.isoformat(),
+                _text_cell(session.site.name),
+                started.strftime("%Y-%m-%d %H:%M"),
+                ended.strftime("%Y-%m-%d %H:%M") if ended else "",
+                minutes,
+                _text_cell(" > ".join(session.zones)),
+                str(reasons.get(session.end_reason, session.end_reason)) if ended else "",
+                str(session.get_source_display()),
+            ]
+        )
+        count += 1
+    return count
+
+
 # --- events from the tracker -------------------------------------------------------------
 
 MAX_EVENTS = 500

@@ -1,0 +1,50 @@
+{% extends "layouts/app.html" %}
+{% load i18n tz %}
+
+{% block title %}{% translate "Presence" %} · Polaris Workforce{% endblock %}
+{% block page_title %}{% translate "Presence" %}{% endblock %}
+{% block page_meta %}{% translate "Who is on site, from BLE badges and the foremen’s phones. Presence only suggests attendance: the roll call is still confirmed by the foreman." %}{% endblock %}
+
+{% block content %}{% timezone time_zone %}
+{% include "presence/_tabs.html" with active="home" only %}
+
+{% if not tracker_push %}
+  {% translate "No tracker on this server." as push_title %}{% translate "Zones, gateways and badges are saved, but nothing is sent to the tracker until TRACKER_URL is set." as push_message %}
+  {% include "components/alert.html" with variant="warning" title=push_title message=push_message only %}
+{% elif not tracker_public %}
+  {% translate "The live map is off." as public_title %}{% translate "Set TRACKER_PUBLIC_URL so that browsers can reach the tracker." as public_message %}
+  {% include "components/alert.html" with variant="info" title=public_title message=public_message only %}
+{% endif %}
+
+<section aria-label="{% translate 'Sites' %}" class="flex flex-col">
+  {% if rows %}
+  <div class="overflow-x-auto rounded-control border border-line bg-surface">
+    <table class="w-full min-w-[760px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Tracking" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Zones" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Gateways" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Tracker" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel"><span class="sr-only">{% translate "Actions" %}</span></th>
+      </tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3 font-semibold">{{ row.site.name }}</td>
+          <td class="px-4 py-3">{% if row.tracked %}{% translate "On" as on_label %}{% include "components/status_badge.html" with status="active" label=on_label only %}{% else %}{% translate "Off" as off_label %}{% include "components/status_badge.html" with status="inactive" label=off_label only %}{% endif %}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.zones }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{% blocktranslate with active=row.active_gateways total=row.gateways %}{{ active }} active of {{ total }}{% endblocktranslate %}</td>
+          <td class="px-4 py-3">{% include "presence/_sync.html" with sync=row.sync detail=False only %}</td>
+          <td class="px-4 py-3 text-right"><span class="flex flex-wrap justify-end gap-3 font-semibold"><a href="{% url 'presence:live' row.site.pk %}">{% translate "Live map" %}</a><a href="{% url 'presence:site_setup' row.site.pk %}">{% translate "Set up" %}</a></span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    {% translate "No sites" as empty_title %}{% translate "You have no sites to show." as empty_message %}
+    {% include "components/empty_state.html" with icon="sites" title=empty_title message=empty_message only %}
+  {% endif %}
+</section>
+{% endtimezone %}{% endblock %}

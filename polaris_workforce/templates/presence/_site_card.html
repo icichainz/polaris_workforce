@@ -1,0 +1,9 @@
+{% load i18n %}{% comment %}
+Presence card of the site detail page ({% presence_site_card site %}, apps/presence/templatetags/presence_tags.py).
+{% endcomment %}{% if show %}<section id="site-presence" aria-labelledby="presence-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
+  <h2 id="presence-title" class="font-display text-base font-bold">{% translate "Presence tracking" %}</h2>
+  <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Tracking" %}</span><span class="text-right font-semibold">{% if setup.tracked %}{% translate "On" %}{% else %}{% translate "Off" %}{% endif %}</span></div>
+  <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Zones" %}</span><span class="text-right font-semibold tabular-nums">{{ setup.zones }}</span></div>
+  <div class="flex justify-between gap-3 text-sm"><span class="text-steel">{% translate "Gateways" %}</span><span class="text-right font-semibold tabular-nums">{% blocktranslate with active=setup.active_gateways total=setup.gateways %}{{ active }} active of {{ total }}{% endblocktranslate %}</span></div>
+  <div class="flex flex-wrap gap-3 text-sm font-semibold"><a href="{% url 'presence:live' site.pk %}">{% translate "Live map" %}</a><a href="{% url 'presence:site_setup' site.pk %}">{% translate "Set up" %}</a></div>
+</section>{% endif %}

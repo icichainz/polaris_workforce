@@ -22,6 +22,7 @@ urlpatterns = [
     path("", include("apps.messaging.urls")),
     path("", include("apps.checkin.urls")),
     path("", include("apps.agents.urls")),
+    path("", include("apps.presence.urls")),
     path("portal/", include("apps.portal.urls")),
     # Before django.contrib.auth.urls, so this sign-in view (with the lockout) wins.
     path(

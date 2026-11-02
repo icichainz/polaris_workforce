@@ -1,5 +1,5 @@
 {% extends "layouts/app.html" %}
-{% load i18n polaris %}
+{% load i18n polaris presence_tags %}
 
 {% block title %}{{ worker.full_name }} · Polaris Workforce{% endblock %}
 
@@ -108,6 +108,7 @@
       {% endfor %}
     </section>
     {% endif %}
+    {% presence_worker_card worker %}
     <section aria-labelledby="emergency-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
       <h2 id="emergency-title" class="font-display text-base font-bold">{% translate "Emergency contact" %}</h2>
       {% if worker.emergency_contact_name or worker.emergency_contact_phone %}

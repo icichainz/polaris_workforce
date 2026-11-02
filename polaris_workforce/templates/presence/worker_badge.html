@@ -1,0 +1,46 @@
+{% extends "layouts/app.html" %}
+{% load i18n tz %}
+
+{% block title %}{% translate "BLE badge" context "screen" %} · {{ worker.full_name }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'presence:badges' %}">{% translate "BLE badges" context "screen" %}</a> / <a href="{% url 'workers:detail' worker.pk %}">{{ worker.full_name }}</a></p>{% endblock %}
+{% block page_title %}{% blocktranslate with name=worker.full_name %}BLE badge of {{ name }}{% endblocktranslate %}{% endblock %}
+{% block page_meta %}{{ worker.number }}{% if worker.trade %} · {{ worker.trade.name }}{% endif %}{% endblock %}
+
+{% block content %}{% timezone time_zone %}
+{% if not tracking_on %}
+  {% translate "Tracking is off for this worker." as off_title %}{% translate "The badge is saved, but the tracker ignores it until tracking is turned on for the worker (worker form) or the company." as off_message %}
+  {% include "components/alert.html" with variant="info" title=off_title message=off_message only %}
+{% endif %}
+
+<div class="flex flex-wrap items-start gap-4">
+  <form method="post" class="flex min-w-0 flex-[1_1_360px] flex-col gap-4 rounded-card border border-line bg-surface p-5" novalidate>
+    {% csrf_token %}
+    <h2 class="font-display text-base font-bold">{% if current %}{% translate "Give another badge" %}{% else %}{% translate "Give a badge" %}{% endif %}</h2>
+    {% if current %}<p class="text-sm text-ink-700">{% translate "The current badge ends when the new one is saved." %}</p>{% endif %}
+    {% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}
+    {% include "components/field.html" with field=form.badge_id %}
+    <div>{% translate "Save badge" as save_label %}{% include "components/button.html" with label=save_label type="submit" variant="primary" only %}</div>
+  </form>
+
+  <section aria-labelledby="history-title" class="flex min-w-0 flex-[1_1_320px] flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4">
+    <h2 id="history-title" class="font-display text-base font-bold">{% translate "Badges of this worker" %}</h2>
+    {% for badge in history %}
+    <div class="flex flex-wrap items-center justify-between gap-2 border-t border-line-soft pt-3 text-sm first:border-t-0 first:pt-0">
+      <span class="flex min-w-0 flex-col"><span class="break-all font-mono text-[13px] font-semibold">{{ badge.badge_id }}</span><span class="text-xs text-steel">{% if badge.active_to %}{{ badge.active_from|date:"j M Y" }} – {{ badge.active_to|date:"j M Y" }}{% else %}{% blocktranslate with date=badge.active_from|date:"j M Y" %}Since {{ date }}{% endblocktranslate %}{% endif %}</span></span>
+      {% if badge.active_to %}{% translate "Ended" as ended_label %}{% include "components/status_badge.html" with status="inactive" label=ended_label only %}{% else %}
+      <span class="flex items-center gap-3">
+        {% include "components/status_badge.html" with status="active" only %}
+        <form method="post" action="{% url 'presence:badge_end' badge.pk %}">
+          {% csrf_token %}
+          {% blocktranslate with name=worker.full_name asvar end_confirm %}Take back the badge of {{ name }}? It is no longer recognised.{% endblocktranslate %}
+          <button type="submit" onclick="return confirm(this.dataset.confirm)" data-confirm="{{ end_confirm }}" class="text-sm font-semibold text-absent-fg hover:underline">{% translate "End" %}</button>
+        </form>
+      </span>
+      {% endif %}
+    </div>
+    {% empty %}
+    <p class="text-sm text-steel">{% translate "No badge yet." %}</p>
+    {% endfor %}
+  </section>
+</div>
+{% endtimezone %}{% endblock %}

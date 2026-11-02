@@ -1,0 +1,46 @@
+/*
+ * Shapes drawn by Leaflet on the presence maps (static/presence/presence.js). Leaflet
+ * writes its own colours as SVG attributes; these rules (CSS wins over attributes) give
+ * every shape a colour token of the design (static/src/app.css), in both themes.
+ * Loaded with Leaflet's stylesheet, only on the pages with a map.
+ */
+
+.leaflet-container {
+  font: inherit;
+}
+
+.presence-geofence {
+  stroke: var(--color-amber-500);
+  stroke-width: 2;
+  fill: var(--color-amber-500);
+  fill-opacity: 0.12;
+}
+
+.presence-centre {
+  stroke: var(--color-surface);
+  stroke-width: 2;
+  fill: var(--color-amber-500);
+  fill-opacity: 1;
+}
+
+.presence-foreman,
+.presence-point {
+  stroke: var(--color-surface);
+  stroke-width: 2;
+  fill: var(--color-blue-700);
+  fill-opacity: 1;
+}
+
+.presence-point-off {
+  stroke: var(--color-surface);
+  stroke-width: 2;
+  fill: var(--color-amber-text);
+  fill-opacity: 1;
+}
+
+.presence-track {
+  stroke: var(--color-blue-700);
+  stroke-width: 3;
+  stroke-opacity: 0.7;
+  fill: none;
+}

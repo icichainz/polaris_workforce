@@ -1,0 +1,17 @@
+{% load i18n %}{% comment %}
+The latest nightly check of a site's day against the tracker's replay of its stored track
+(apps.presence.reconcile). Parameter: rec (PresenceReconciliation or None).
+{% endcomment %}<span class="flex flex-col items-start gap-1">
+  {% if not rec %}
+    {% translate "Not run yet" as rec_label %}{% include "components/status_badge.html" with status="draft" label=rec_label only %}
+    <span class="text-xs text-steel">{% translate "Each night, yesterday’s visits are checked against the tracker’s full record." %}</span>
+  {% elif rec.last_error %}
+    {% translate "Last check failed" as rec_label %}{% include "components/status_badge.html" with status="rejected" label=rec_label only %}
+    <span class="text-xs text-steel">{% blocktranslate count n=rec.attempts with day=rec.local_date|date:"j M" when=rec.last_attempt_at|date:"j M H:i" %}Day {{ day }} · tried {{ when }} ({{ n }} attempt){% plural %}Day {{ day }} · tried {{ when }} ({{ n }} attempts){% endblocktranslate %} · <span class="font-mono">{{ rec.last_error }}</span></span>
+    {% if rec.reconciled_at %}<span class="text-xs text-steel">{% blocktranslate with when=rec.reconciled_at|date:"j M H:i" %}Checked before at {{ when }}; those corrections stay.{% endblocktranslate %}</span>{% endif %}
+  {% else %}
+    {% translate "Checked" as rec_label %}{% include "components/status_badge.html" with status="approved" label=rec_label only %}
+    <span class="text-xs text-steel">{% blocktranslate with day=rec.local_date|date:"j M" when=rec.reconciled_at|date:"j M H:i" %}Day {{ day }}, at {{ when }}{% endblocktranslate %}</span>
+    <span class="text-xs text-steel tabular-nums">{% blocktranslate with added=rec.added changed=rec.changed removed=rec.removed unchanged=rec.unchanged %}{{ added }} added · {{ changed }} changed · {{ removed }} removed · {{ unchanged }} unchanged{% endblocktranslate %}{% if rec.ignored %} · {% blocktranslate with ignored=rec.ignored %}{{ ignored }} ignored{% endblocktranslate %}{% endif %}</span>
+  {% endif %}
+</span>

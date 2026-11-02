@@ -1,0 +1,127 @@
+{% extends "layouts/app.html" %}
+{% load i18n static tz %}{% comment %}
+Live map of a site. The browser reads the tracker itself (static/presence/presence.js,
+loaded by the pageModule component of static/js/app.js): who is on site now, then live
+updates. This page renders what it shows: a message per connection state (data-status,
+one shown at a time), the row template, and the config (data-config: tracker URL, a short
+dashboard token, names by id from Django). Without the tracker (off, unreachable, no
+JavaScript) the visits recorded today by Django are still listed below.
+{% endcomment %}
+
+{% block title %}{% translate "Live map" %} · {{ site.name }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'presence:home' %}">{% translate "Presence" %}</a> / {{ site.name }}</p>{% endblock %}
+{% block page_title %}{% blocktranslate with site=site.name %}On site now · {{ site }}{% endblocktranslate %}{% endblock %}
+{% block page_meta %}{% translate "From BLE badges and the foremen’s phones. Presence only suggests attendance." %}{% endblock %}
+{% block page_actions %}{% if can_manage %}{% translate "Set up" as setup_label %}{% url "presence:site_setup" site.pk as setup_url %}{% include "components/button.html" with label=setup_label href=setup_url only %}{% endif %}{% endblock %}
+
+{% block content %}{% timezone time_zone %}
+{% if not tracked %}
+  {% translate "Tracking is off for this site." as off_title %}{% translate "Turn it on in the site’s settings (Presence tracking) to see who is on site." as off_message %}
+  {% include "components/alert.html" with variant="info" title=off_title message=off_message only %}
+{% elif not tracker_public %}
+  {% translate "The live map is off." as public_title %}{% translate "Set TRACKER_PUBLIC_URL so that browsers can reach the tracker." as public_message %}
+  {% include "components/alert.html" with variant="warning" title=public_title message=public_message only %}
+{% elif config_json %}
+<div x-data="pageModule" data-module="{% static 'presence/presence.js' %}" data-view="live" data-config="{{ config_json }}"
+  data-leaflet-js="{% static 'vendor/leaflet/leaflet.js' %}" data-leaflet-css="{% static 'vendor/leaflet/leaflet.css' %}" data-presence-css="{% static 'presence/presence.css' %}"
+  class="flex flex-col gap-4">
+  <div aria-live="polite" class="flex flex-col">
+    <noscript>{% translate "Live updates need JavaScript." as noscript_title %}{% translate "Today’s visits below come from the office records." as noscript_message %}{% include "components/alert.html" with variant="info" title=noscript_title message=noscript_message only %}</noscript>
+    <div data-status="connecting" x-cloak>{% translate "Connecting to the tracker…" as s_message %}{% include "components/alert.html" with variant="info" message=s_message only %}</div>
+    <div data-status="live" hidden>{% translate "Live." as s_title %}{% translate "Updates arrive as they happen." as s_message %}{% include "components/alert.html" with variant="success" title=s_title message=s_message only %}</div>
+    <div data-status="reconnecting" hidden>{% translate "Connection lost." as s_title %}{% translate "Reconnecting…" as s_message %}{% include "components/alert.html" with variant="warning" title=s_title message=s_message only %}</div>
+    <div data-status="unreachable" hidden>{% translate "The tracker cannot be reached." as s_title %}{% translate "Trying again shortly. The visits below come from the office records and may be a few minutes behind." as s_message %}{% include "components/alert.html" with variant="offline" title=s_title message=s_message only %}</div>
+    <div data-status="not_configured" hidden>{% translate "The tracker has not received this site’s settings yet." as s_title %}{% translate "Send them again from the setup page; this page retries every minute." as s_message %}{% include "components/alert.html" with variant="warning" title=s_title message=s_message only %}</div>
+    <div data-status="forbidden" hidden>{% translate "The tracker does not show you this site." as s_title %}{% translate "Tracking may have been turned off meanwhile. Reload the page." as s_message %}{% include "components/alert.html" with variant="warning" title=s_title message=s_message only %}</div>
+    <div data-status="expired" hidden>{% translate "Your session has ended." as s_title %}{% translate "Reload the page to sign in again." as s_message %}{% include "components/alert.html" with variant="warning" title=s_title message=s_message only %}</div>
+    <div data-status="rejected" hidden>{% translate "The tracker refused the dashboard token." as s_title %}{% translate "Django and the tracker must share the same TRACKER_SHARED_SECRET." as s_message %}{% include "components/alert.html" with variant="danger" title=s_title message=s_message only %}</div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
+    <section aria-label="{% translate 'Map' %}" class="flex min-w-0 flex-col gap-2">
+      {% if geofence %}
+      <div data-map class="relative isolate z-0 h-80 w-full overflow-hidden rounded-card border border-line bg-subtle sm:h-110" role="region" aria-label="{% blocktranslate with site=site.name %}Map of {{ site }}{% endblocktranslate %}"></div>
+      <p data-map-failed hidden class="text-sm text-steel">{% translate "The map could not load. The list still updates." %}</p>
+      <p class="text-[13px] text-steel">{% blocktranslate with radius=geofence.radius_m %}The circle is the site’s geofence ({{ radius }} m). Dots are foremen’s phones; badges are placed by zone in the list.{% endblocktranslate %}</p>
+      {% else %}
+      <div class="flex flex-col gap-2 rounded-card border border-line bg-surface px-5 py-4 text-sm text-ink-700">
+        <p>{% translate "This site has no geofence, so there is nothing to draw: the list still shows who the gateways see." %}</p>
+        {% if can_manage %}<a href="{% url 'checkin:geofence' site.pk %}" class="font-semibold">{% translate "Set geofence" %}</a>{% endif %}
+      </div>
+      {% endif %}
+    </section>
+
+    <section aria-label="{% translate 'On site now' %}" class="flex min-w-0 flex-col gap-3">
+      <div class="grid grid-cols-2 gap-3 lg:grid-cols-1">
+        <div class="flex min-w-0 flex-col gap-1.5 rounded-card border border-line bg-surface p-4 text-ink">
+          <span class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "On site" %}</span>
+          <span class="font-display text-[28px] font-bold leading-tight tabular-nums" data-count="on_site">—</span>
+        </div>
+        <div class="flex min-w-0 flex-col gap-1.5 rounded-card border border-line bg-surface p-4 text-ink">
+          <span class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Arriving" %}</span>
+          <span class="font-display text-[28px] font-bold leading-tight tabular-nums" data-count="arriving">—</span>
+        </div>
+      </div>
+      <p class="text-[13px] text-steel">{% translate "List updated at" %} <span data-updated class="tabular-nums">—</span></p>
+    </section>
+  </div>
+
+  <section aria-labelledby="now-title" class="flex min-w-0 flex-col gap-3">
+    <h2 id="now-title" class="font-display text-lg font-bold">{% translate "On site now" %}</h2>
+    <div class="overflow-x-auto rounded-control border border-line bg-surface">
+      <table class="w-full min-w-[520px] border-collapse text-sm">
+        <thead><tr class="bg-subtle text-left">
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Person" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Zone" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Since" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Last seen" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "State" %}</th>
+        </tr></thead>
+        <tbody data-people></tbody>
+      </table>
+      <p data-empty hidden class="border-t border-line-soft px-4 py-3 text-sm text-steel">{% translate "No one on site right now." %}</p>
+    </div>
+    <template data-person-row><tr class="border-t border-line-soft">
+      <td class="px-4 py-3"><a data-field="link" class="font-semibold"></a><span data-field="plain" class="font-semibold"></span><br><span data-field="detail" class="text-xs text-steel"></span></td>
+      <td class="px-4 py-3" data-field="zone"></td>
+      <td class="px-4 py-3 tabular-nums" data-field="since"></td>
+      <td class="px-4 py-3 tabular-nums" data-field="last-seen"></td>
+      <td class="px-4 py-3"><span data-state="on_site">{% translate "On site" as on_label %}{% include "components/status_badge.html" with status="active" label=on_label only %}</span><span data-state="arriving" hidden>{% translate "Arriving" as arriving_label %}{% include "components/status_badge.html" with status="to_pay" label=arriving_label only %}</span></td>
+    </tr></template>
+  </section>
+</div>
+{% endif %}
+
+<section aria-labelledby="seen-title" class="flex flex-col gap-3">
+  <div class="flex flex-col gap-1">
+    <h2 id="seen-title" class="font-display text-lg font-bold">{% blocktranslate with date=today|date:"l j F" %}Seen today · {{ date }}{% endblocktranslate %}</h2>
+    <p class="text-sm text-ink-700">{% translate "Visits recorded by the office from the tracker’s events. They are kept like attendance." %}</p>
+  </div>
+  {% if seen %}
+  <div class="overflow-x-auto rounded-control border border-line bg-surface">
+    <table class="w-full min-w-[620px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Person" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "First seen" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Last seen" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Zones" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Visits" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for row in seen %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3">{% if row.person %}{% if row.person.url %}<a href="{{ row.person.url }}" class="font-semibold">{{ row.person.name }}</a>{% else %}<span class="font-semibold">{{ row.person.name }}</span>{% endif %}<br><span class="text-xs text-steel">{{ row.person.detail }}</span>{% elif row.day.subject_kind == "foreman" %}<span class="text-steel">{% blocktranslate with id=row.day.subject_id %}Foreman no. {{ id }}{% endblocktranslate %}</span>{% else %}<span class="text-steel">{% blocktranslate with id=row.day.subject_id %}Worker no. {{ id }}{% endblocktranslate %}</span>{% endif %}</td>
+          <td class="px-4 py-3 tabular-nums">{{ row.day.first_seen_at|date:"H:i" }}</td>
+          <td class="px-4 py-3 tabular-nums">{% if row.day.open %}{% translate "Still on site" as open_label %}{% include "components/status_badge.html" with status="active" label=open_label only %}{% else %}{{ row.day.last_seen_at|date:"H:i" }}{% endif %}</td>
+          <td class="px-4 py-3 font-mono text-[13px]">{{ row.day.zones|join:" › "|default:"—" }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.day.visits }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="rounded-card border border-line bg-surface px-5 py-4 text-sm text-steel">{% translate "No one recorded on this site today yet." %}</p>
+  {% endif %}
+</section>
+{% endtimezone %}{% endblock %}

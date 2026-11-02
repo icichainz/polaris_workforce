@@ -1,0 +1,20 @@
+{% extends "layouts/app.html" %}
+{% load i18n %}
+
+{% block title %}{% if gateway %}{% translate "Edit gateway" %}{% else %}{% translate "New gateway" %}{% endif %} · {{ site.name }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'presence:home' %}">{% translate "Presence" %}</a> / <a href="{% url 'presence:site_setup' site.pk %}">{{ site.name }}</a></p>{% endblock %}
+{% block page_title %}{% if gateway %}{{ gateway.label }}{% else %}{% translate "New gateway" %}{% endif %}{% endblock %}
+{% block page_meta %}{% translate "A fixed receiver on the site that picks up the workers’ badges. After saving, issue its token and enter it in the gateway." %}{% endblock %}
+
+{% block content %}
+<form method="post" class="flex max-w-xl flex-col gap-4 rounded-card border border-line bg-surface p-5" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}{% for error in form.non_field_errors %}{% include "components/alert.html" with variant="danger" message=error only %}{% endfor %}{% endif %}
+  {% include "components/field.html" with field=form.label %}
+  {% include "components/field.html" with field=form.zone %}
+  <div class="flex flex-wrap gap-2.5">
+    {% translate "Save gateway" as save_label %}{% include "components/button.html" with label=save_label type="submit" variant="primary" only %}
+    {% translate "Cancel" as cancel_label %}{% url "presence:site_setup" site.pk as cancel_url %}{% include "components/button.html" with label=cancel_label href=cancel_url variant="ghost" only %}
+  </div>
+</form>
+{% endblock %}

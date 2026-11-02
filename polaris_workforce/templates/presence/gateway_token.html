@@ -1,0 +1,49 @@
+{% extends "layouts/app.html" %}
+{% load i18n tz %}{% comment %}
+GET: confirm issuing a token. POST: the new token, shown once. It is not stored anywhere
+(the page is not cached), so it cannot be shown again: issue a new one if it is lost.
+{% endcomment %}
+
+{% block title %}{% translate "Gateway token" %} · {{ gateway.label }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'presence:home' %}">{% translate "Presence" %}</a> / <a href="{% url 'presence:site_setup' site.pk %}">{{ site.name }}</a> / {{ gateway.label }}</p>{% endblock %}
+{% block page_title %}{% blocktranslate with label=gateway.label %}Token of {{ label }}{% endblocktranslate %}{% endblock %}
+
+{% block content %}{% timezone time_zone %}
+{% if token %}
+  {% translate "Copy it now." as once_title %}{% translate "This token is shown only once. If it is lost, issue a new one: the old one then stops working." as once_message %}
+  {% include "components/alert.html" with variant="warning" title=once_title message=once_message only %}
+  <section aria-labelledby="token-title" class="flex max-w-3xl flex-col gap-4 rounded-card border border-line bg-surface p-5" x-data="{ copied: false }">
+    <h2 id="token-title" class="font-display text-base font-bold">{% translate "Gateway token" %}</h2>
+    <label for="gateway-token" class="sr-only">{% translate "Gateway token" %}</label>
+    <textarea id="gateway-token" x-ref="token" readonly rows="5" spellcheck="false" class="w-full resize-none break-all rounded-control border border-line-strong bg-subtle p-3 font-mono text-xs text-ink">{{ token }}</textarea>
+    <div class="flex flex-wrap items-center gap-3">
+      <button type="button" class="inline-flex h-10 items-center justify-center rounded-control bg-amber-500 px-4 text-sm font-semibold text-on-primary hover:brightness-95"
+        @click="$refs.token.select(); if (navigator.clipboard) { navigator.clipboard.writeText($refs.token.value) } else { document.execCommand('copy') }; copied = true">{% translate "Copy token" %}</button>
+      <span x-show="copied" x-cloak role="status" class="text-sm font-semibold text-present-fg">{% translate "Copied." %}</span>
+    </div>
+    <dl class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-[max-content_1fr]">
+      <dt class="text-steel">{% translate "Gateway ID" %}</dt><dd class="font-mono">{{ gateway.tracker_id }}</dd>
+      <dt class="text-steel">{% translate "Valid until" %}</dt><dd>{{ expires_at|date:"j F Y H:i" }}</dd>
+      {% if sightings_url %}<dt class="text-steel">{% translate "Send sightings to" %}</dt><dd class="break-all font-mono">POST {{ sightings_url }}</dd>{% endif %}
+    </dl>
+    <p class="text-sm text-ink-700">{% translate "Enter the token in the gateway’s settings as a bearer token (Authorization: Bearer …). The tracker accepts it once the site’s settings have reached it, usually within seconds." %}</p>
+  </section>
+  <div>{% translate "Back to the site" as back_label %}{% url "presence:site_setup" site.pk as back_url %}{% include "components/button.html" with label=back_label href=back_url only %}</div>
+{% else %}
+  <form method="post" class="flex max-w-xl flex-col gap-4 rounded-card border border-line bg-surface p-5">
+    {% csrf_token %}
+    {% if gateway.is_active %}
+      <p class="text-sm text-ink-700">{% blocktranslate with when=gateway.token_issued_at|date:"j F Y" %}This gateway has a token since {{ when }}. A new token replaces it: the gateway stops sending until you enter the new one.{% endblocktranslate %}</p>
+    {% elif gateway.revoked_at %}
+      <p class="text-sm text-ink-700">{% translate "This gateway was revoked. A new token turns it on again." %}</p>
+    {% else %}
+      <p class="text-sm text-ink-700">{% translate "The gateway needs a token to send sightings to the tracker. It is valid for one year and shown once." %}</p>
+    {% endif %}
+    <div class="flex flex-wrap gap-2.5">
+      {% if gateway.token_issued_at %}{% translate "Issue a new token" as issue_label %}{% else %}{% translate "Issue token" as issue_label %}{% endif %}
+      {% include "components/button.html" with label=issue_label type="submit" variant="primary" only %}
+      {% translate "Cancel" as cancel_label %}{% url "presence:site_setup" site.pk as cancel_url %}{% include "components/button.html" with label=cancel_label href=cancel_url variant="ghost" only %}
+    </div>
+  </form>
+{% endif %}
+{% endtimezone %}{% endblock %}

@@ -1,0 +1,130 @@
+{% extends "layouts/app.html" %}
+{% load i18n tz %}
+
+{% block title %}{% translate "Presence setup" %} · {{ site.name }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel"><a href="{% url 'presence:home' %}">{% translate "Presence" %}</a> / {{ site.name }}</p>{% endblock %}
+{% block page_title %}{% blocktranslate with site=site.name %}Presence setup of {{ site }}{% endblocktranslate %}{% endblock %}
+{% block page_meta %}{% translate "Zones tell parts of the site apart; gateways are the fixed receivers that pick up the badges. Every change is recorded in the audit log and sent to the tracker." %}{% endblock %}
+{% block page_actions %}
+  {% translate "Live map" as live_label %}{% url "presence:live" site.pk as live_url %}{% include "components/button.html" with label=live_label href=live_url only %}
+  <form method="post" action="{% url 'presence:site_push' site.pk %}">
+    {% csrf_token %}
+    {% translate "Send to the tracker again" as push_label %}{% include "components/button.html" with label=push_label type="submit" only %}
+  </form>
+{% endblock %}
+
+{% block content %}{% timezone time_zone %}
+<section aria-label="{% translate 'Status' %}" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+  <div class="flex flex-col gap-2 rounded-card border border-line bg-surface px-5 py-4">
+    <span class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Tracking" %}</span>
+    <span>{% if tracked %}{% translate "On" as on_label %}{% include "components/status_badge.html" with status="active" label=on_label only %}{% else %}{% translate "Off" as off_label %}{% include "components/status_badge.html" with status="inactive" label=off_label only %}{% endif %}</span>
+    <a href="{% url 'worksites:settings' site.pk %}" class="text-[13px] font-semibold">{% translate "Change it in the site’s settings" %}</a>
+  </div>
+  <div class="flex flex-col gap-2 rounded-card border border-line bg-surface px-5 py-4">
+    <span class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Geofence" %}</span>
+    <span class="text-sm font-semibold">{% if geofence %}{% blocktranslate with radius=geofence.radius_m %}{{ radius }} m around the site{% endblocktranslate %}{% else %}{% translate "Not set: phones cannot tell when they are on site" %}{% endif %}</span>
+    <a href="{% url 'checkin:geofence' site.pk %}" class="text-[13px] font-semibold">{% if geofence %}{% translate "Edit geofence" %}{% else %}{% translate "Set geofence" %}{% endif %}</a>
+  </div>
+  <div class="flex flex-col gap-2 rounded-card border border-line bg-surface px-5 py-4">
+    <span class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Tracker" %}</span>
+    {% include "presence/_sync.html" with sync=sync detail=True only %}
+  </div>
+  <div id="reconciliation" class="flex flex-col gap-2 rounded-card border border-line bg-surface px-5 py-4">
+    <span class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Nightly check" %}</span>
+    {% include "presence/_reconciliation.html" with rec=reconciliation only %}
+  </div>
+</section>
+
+<section aria-labelledby="zones-title" class="flex flex-col gap-3">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 id="zones-title" class="font-display text-lg font-bold">{% translate "Zones" %}</h2>
+    {% translate "Add zone" as add_zone_label %}{% url "presence:zone_create" site.pk as add_zone_url %}{% include "components/button.html" with label=add_zone_label href=add_zone_url icon="plus" only %}
+  </div>
+  {% if zones %}
+  <div class="overflow-x-auto rounded-control border border-line bg-surface">
+    <table class="w-full min-w-[520px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Code" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Name" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel"><span class="sr-only">{% translate "Actions" %}</span></th>
+      </tr></thead>
+      <tbody>
+        {% for zone in zones %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3 font-mono font-semibold">{{ zone.code }}</td>
+          <td class="px-4 py-3">{{ zone.name }}</td>
+          <td class="px-4 py-3 text-right">
+            <span class="flex flex-wrap items-center justify-end gap-3">
+              <a href="{% url 'presence:zone_edit' zone.pk %}" class="font-semibold">{% translate "Edit" %}<span class="sr-only"> · {{ zone.code }}</span></a>
+              <form method="post" action="{% url 'presence:zone_delete' zone.pk %}">
+                {% csrf_token %}
+                {% blocktranslate with code=zone.code asvar delete_confirm %}Delete zone {{ code }}? Its gateways stay, for the whole site.{% endblocktranslate %}
+                <button type="submit" onclick="return confirm(this.dataset.confirm)" data-confirm="{{ delete_confirm }}" class="text-sm font-semibold text-absent-fg hover:underline">{% translate "Delete" %}<span class="sr-only"> · {{ zone.code }}</span></button>
+              </form>
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="rounded-card border border-line bg-surface px-5 py-4 text-sm text-ink-700">{% translate "No zones yet. Without zones, every sighting counts for the whole site." %}</p>
+  {% endif %}
+</section>
+
+<section aria-labelledby="gateways-title" class="flex flex-col gap-3">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 id="gateways-title" class="font-display text-lg font-bold">{% translate "Gateways" %}</h2>
+    {% translate "Add gateway" as add_gateway_label %}{% url "presence:gateway_create" site.pk as add_gateway_url %}{% include "components/button.html" with label=add_gateway_label href=add_gateway_url icon="plus" only %}
+  </div>
+  {% if gateways %}
+  <div class="overflow-x-auto rounded-control border border-line bg-surface">
+    <table class="w-full min-w-[760px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Gateway" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Zone" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Token" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel"><span class="sr-only">{% translate "Actions" %}</span></th>
+      </tr></thead>
+      <tbody>
+        {% for gateway in gateways %}
+        <tr id="gateway-{{ gateway.pk }}" class="border-t border-line-soft align-top">
+          <td class="px-4 py-3"><span class="font-semibold">{{ gateway.label }}</span>{% if gateway.is_active %}<br><span class="font-mono text-xs text-steel">{{ gateway.tracker_id }}</span>{% endif %}</td>
+          <td class="px-4 py-3">{% if gateway.zone %}<span class="font-mono font-semibold">{{ gateway.zone.code }}</span> · {{ gateway.zone.name }}{% else %}<span class="text-steel">{% translate "Whole site" %}</span>{% endif %}</td>
+          <td class="px-4 py-3">
+            {% if gateway.is_active %}{% translate "Active" as active_label %}{% include "components/status_badge.html" with status="active" label=active_label only %}<br><span class="text-xs text-steel">{% blocktranslate with when=gateway.token_issued_at|date:"j M Y H:i" %}Issued {{ when }}{% endblocktranslate %}{% if gateway.token_issued_by %} · {{ gateway.token_issued_by.get_full_name|default:gateway.token_issued_by.username }}{% endif %}</span>
+            {% elif gateway.revoked_at %}{% translate "Revoked" as revoked_label %}{% include "components/status_badge.html" with status="rejected" label=revoked_label only %}<br><span class="text-xs text-steel">{{ gateway.revoked_at|date:"j M Y H:i" }}{% if gateway.revoked_by %} · {{ gateway.revoked_by.get_full_name|default:gateway.revoked_by.username }}{% endif %}</span>
+            {% else %}{% translate "No token yet" as none_label %}{% include "components/status_badge.html" with status="draft" label=none_label only %}{% endif %}
+          </td>
+          <td class="px-4 py-3">
+            <span class="flex flex-wrap items-center justify-end gap-3">
+              <a href="{% url 'presence:gateway_edit' gateway.pk %}" class="font-semibold">{% translate "Edit" %}<span class="sr-only"> · {{ gateway.label }}</span></a>
+              <a href="{% url 'presence:gateway_token' gateway.pk %}" class="font-semibold">{% if gateway.token_issued_at %}{% translate "New token" %}{% else %}{% translate "Issue token" %}{% endif %}<span class="sr-only"> · {{ gateway.label }}</span></a>
+              {% if gateway.is_active %}
+              <form method="post" action="{% url 'presence:gateway_revoke' gateway.pk %}" class="flex flex-wrap items-center gap-2">
+                {% csrf_token %}
+                <label for="revoke-reason-{{ gateway.pk }}" class="sr-only">{% translate "Reason" %}</label>
+                <input id="revoke-reason-{{ gateway.pk }}" type="text" name="reason" maxlength="200" placeholder="{% translate 'Reason (optional)' %}" class="h-10 w-40 rounded-control border border-line-strong bg-surface px-2.5 text-sm text-ink">
+                {% blocktranslate with label=gateway.label asvar revoke_confirm %}Revoke the token of {{ label }}? The gateway stops sending at once.{% endblocktranslate %}
+                <button type="submit" onclick="return confirm(this.dataset.confirm)" data-confirm="{{ revoke_confirm }}" class="inline-flex h-10 items-center rounded-control border border-danger-line bg-surface px-3 text-[13px] font-semibold text-absent-fg hover:bg-absent-bg">{% translate "Revoke" %}<span class="sr-only"> · {{ gateway.label }}</span></button>
+              </form>
+              {% endif %}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="rounded-card border border-line bg-surface px-5 py-4 text-sm text-ink-700">{% translate "No gateways yet. Without gateways, only the foremen’s phones see badges on this site." %}</p>
+  {% endif %}
+</section>
+
+<section aria-labelledby="badges-title" class="flex flex-col gap-2 rounded-card border border-line bg-surface px-5 py-4">
+  <h2 id="badges-title" class="font-display text-base font-bold">{% translate "BLE badges" context "screen" %}</h2>
+  <p class="text-sm text-ink-700">{% translate "Badges belong to workers, not to a site: a badge is recognised on every site of the company." %}</p>
+  <span class="flex flex-wrap gap-3 text-sm font-semibold"><a href="{% url 'presence:badges' %}?site={{ site.pk }}">{% translate "Badges of this site’s crew" %}</a><a href="{% url 'presence:notice' %}?site={{ site.pk }}" hx-boost="false">{% translate "Print the notice for badge holders" %}</a></span>
+</section>
+{% endtimezone %}{% endblock %}

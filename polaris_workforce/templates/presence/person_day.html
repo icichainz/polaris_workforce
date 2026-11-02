@@ -1,0 +1,100 @@
+{% extends "layouts/app.html" %}
+{% load i18n static tz %}{% comment %}
+A person's day: the visits recorded by Django (PresenceSession) on a time axis, then the
+raw track from the tracker when it can be reached (static/presence/presence.js). The
+tracker filters the track by the token: only the user's sites, and trips between sites
+(off-site GPS points) for company admins only.
+{% endcomment %}
+
+{% block title %}{% translate "Presence" %} · {{ name }} · {{ date|date:"j M Y" }} · Polaris Workforce{% endblock %}
+{% block page_breadcrumb %}<p class="text-[13px] text-steel">{% if kind == "worker" %}<a href="{% url 'workers:list' %}">{% translate "Workers" %}</a> / <a href="{% url 'workers:detail' subject.pk %}">{{ name }}</a>{% else %}<a href="{% url 'presence:home' %}">{% translate "Presence" %}</a> / {{ name }}{% endif %}</p>{% endblock %}
+{% block page_title %}{% blocktranslate with name=name %}Presence of {{ name }}{% endblocktranslate %}{% endblock %}
+{% block page_meta %}{{ detail }} · {{ date|date:"l j F Y" }}{% endblock %}
+{% block page_actions %}
+  {% translate "Previous day" as prev_label %}{% url "presence:person_day" kind subject.pk previous as prev_url %}{% include "components/button.html" with label=prev_label href=prev_url only %}
+  {% if next %}{% translate "Next day" as next_label %}{% url "presence:person_day" kind subject.pk next as next_url %}{% include "components/button.html" with label=next_label href=next_url only %}{% endif %}
+  {% if kind == "worker" %}{% translate "Export history (CSV)" as export_label %}{% url "presence:worker_export" subject.pk as export_url %}{% include "components/button.html" with label=export_label href=export_url download=True only %}{% endif %}
+{% endblock %}
+
+{% block content %}{% timezone time_zone %}
+<form method="get" action="{% url 'presence:person' kind subject.pk %}" class="flex flex-wrap items-end gap-3">
+  <div class="w-full sm:w-56">{% include "components/field.html" with field=pick.date %}</div>
+  {% translate "Show" as show_label %}{% include "components/button.html" with label=show_label type="submit" only %}
+</form>
+
+<section aria-labelledby="visits-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
+  <div class="flex flex-wrap items-baseline justify-between gap-2">
+    <h2 id="visits-title" class="font-display text-lg font-bold">{% translate "Visits" %}</h2>
+    {% if timeline.rows %}<p class="text-sm text-ink-700 tabular-nums">{% blocktranslate with minutes=timeline.total_minutes %}{{ minutes }} min on site in all{% endblocktranslate %}</p>{% endif %}
+  </div>
+  {% if timeline.rows %}
+  <div class="flex flex-col gap-2" aria-hidden="true">
+    <div class="relative h-9 overflow-hidden rounded-control bg-ground">
+      {% for row in timeline.rows %}<span class="absolute inset-y-1 rounded {% if row.ended %}bg-present-fg{% else %}bg-amber-500{% endif %}" style="left: {{ row.left|stringformat:'s' }}%; width: {{ row.width|stringformat:'s' }}%" title="{{ row.session.site.name }} {{ row.started|date:'H:i' }}–{% if row.ended %}{{ row.ended|date:'H:i' }}{% endif %}"></span>{% endfor %}
+    </div>
+    <div class="relative h-4 text-[11px] text-steel tabular-nums">
+      {% for tick in timeline.ticks %}<span class="absolute -translate-x-1/2 first:translate-x-0 last:-translate-x-full" style="left: {{ tick.1|stringformat:'s' }}%">{{ tick.0 }}</span>{% endfor %}
+    </div>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-[620px] border-collapse text-sm">
+      <thead><tr class="bg-subtle text-left">
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Site" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Arrived" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Left" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Minutes" %}</th>
+        <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Zones" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for row in timeline.rows %}
+        <tr class="border-t border-line-soft">
+          <td class="px-4 py-3"><span class="font-semibold">{{ row.session.site.name }}</span>{% if row.session.source == "replay" %}<br><span class="text-xs text-steel">{% translate "Corrected by the nightly check" %}</span>{% endif %}</td>
+          <td class="px-4 py-3 tabular-nums">{{ row.started|date:"H:i" }}</td>
+          <td class="px-4 py-3 tabular-nums">{% if row.ended %}{{ row.ended|date:"H:i" }}{% for code, label in reasons.items %}{% if code == row.session.end_reason %}<br><span class="text-xs text-steel">{{ label }}</span>{% endif %}{% endfor %}{% else %}{% translate "Still on site" as open_label %}{% include "components/status_badge.html" with status="active" label=open_label only %}{% endif %}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ row.minutes }}</td>
+          <td class="px-4 py-3 font-mono text-[13px]">{{ row.session.zones|join:" › "|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-sm text-steel">{% translate "No visit recorded on this day." %}</p>
+  {% endif %}
+</section>
+
+<section aria-labelledby="track-title" class="flex flex-col gap-3 rounded-card border border-line bg-surface px-5 py-4.5">
+  <div class="flex flex-col gap-1">
+    <h2 id="track-title" class="font-display text-lg font-bold">{% translate "Raw track" %}</h2>
+    <p class="text-sm text-ink-700">{% if travel %}{% translate "Every sighting and GPS position the tracker kept, trips between sites included (you are a company administrator)." %}{% else %}{% translate "Sightings and GPS positions on your sites. Trips between sites are shown to company administrators only." %}{% endif %}</p>
+  </div>
+  {% if not in_retention %}
+    <p class="text-sm text-steel">{% blocktranslate count days=retention_days %}Raw positions are deleted after {{ days }} day; the visits above are kept.{% plural %}Raw positions are deleted after {{ days }} days; the visits above are kept.{% endblocktranslate %}</p>
+  {% elif not tracker_public %}
+    <p class="text-sm text-steel">{% translate "The tracker is not reachable from browsers on this server (TRACKER_PUBLIC_URL is not set)." %}</p>
+  {% elif config_json %}
+  <div x-data="pageModule" data-module="{% static 'presence/presence.js' %}" data-view="track" data-config="{{ config_json }}"
+    data-leaflet-js="{% static 'vendor/leaflet/leaflet.js' %}" data-leaflet-css="{% static 'vendor/leaflet/leaflet.css' %}" data-presence-css="{% static 'presence/presence.css' %}"
+    class="flex flex-col gap-3">
+    <div aria-live="polite">
+      <noscript><p class="text-sm text-steel">{% translate "The raw track needs JavaScript." %}</p></noscript>
+      <p data-status="loading" x-cloak class="text-sm text-steel">{% translate "Asking the tracker…" %}</p>
+      <p data-status="empty" hidden class="text-sm text-steel">{% translate "The tracker has nothing for this day." %}</p>
+      <div data-status="unreachable" hidden>{% translate "The tracker cannot be reached." as s_title %}{% translate "The visits above come from the office records." as s_message %}{% include "components/alert.html" with variant="offline" title=s_title message=s_message only %}</div>
+      <div data-status="failed" hidden>{% translate "The tracker did not give the track." as s_title %}{% translate "Reload the page to try again." as s_message %}{% include "components/alert.html" with variant="warning" title=s_title message=s_message only %}</div>
+      <p data-status="ok" hidden class="text-sm text-ink-700 tabular-nums">{% translate "Points" %}: <span data-count="points">0</span> · {% translate "GPS" %}: <span data-count="gps">0</span>{% if travel %} · {% translate "Off site" %}: <span data-count="travel">0</span>{% endif %}</p>
+    </div>
+    <div data-map hidden class="relative isolate z-0 h-72 w-full overflow-hidden rounded-card border border-line bg-subtle sm:h-96" role="region" aria-label="{% translate 'GPS positions' %}"></div>
+    <p data-map-failed hidden class="text-sm text-steel">{% translate "The map could not load." %}</p>
+    <ol data-stretches class="flex flex-col"></ol>
+    <template data-stretch-row><li class="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-line-soft py-2 text-sm first:border-t-0">
+      <span data-field="time" class="w-28 shrink-0 font-semibold tabular-nums"></span>
+      <span class="flex min-w-0 grow flex-wrap items-baseline gap-x-2"><span data-field="site"></span><span data-field="zone" class="font-mono text-[13px] text-ink-700"></span></span>
+      <span class="text-xs text-steel"><span data-kind="ble">{% translate "Badge" %}</span><span data-kind="gps" hidden>{% translate "GPS" %}</span><span data-kind="travel" hidden>{% translate "GPS, off site" %}</span> · <span data-field="count" class="tabular-nums"></span></span>
+    </li></template>
+  </div>
+  {% else %}
+    <p class="text-sm text-steel">{% translate "Tracking is off on your sites, so the tracker has no track to show you." %}</p>
+  {% endif %}
+</section>
+{% endtimezone %}{% endblock %}
