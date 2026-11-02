@@ -552,6 +552,42 @@ pre-fill: for each suggestion, set the worker's mark to `status`, `arrival` and
 unmarked. Then `PUT .../records/` and `submit` as usual. `day_status` other than
 `not_started`/`draft`/`rejected` means the roll call can no longer be edited.
 
+#### Presence in the suggestions (1.5)
+
+Contract 1.5 adds two fields to every suggestion; nothing else changes, so a 1.4 client
+keeps working (a presence-only suggestion has no check-in times, so the 1.4 rules give
+it no status and it is not pre-filled).
+
+- `sources`: `["checkin"]`, `["presence"]` or `["checkin", "presence"]`.
+- `presence`: `null`, or `{first_seen_at, last_seen_at (null while still on site), open,
+  seen_from, seen_until (HH:MM, company time zone; null while open), zones: [codes],
+  visits, status}` — what presence tracking saw of the worker on the site that day
+  (every visit folded). Only where `tracking_enabled` resolves on for the site **and**
+  the worker (company → site → worker); only crew workers; only workers (not foremen).
+
+Presence status (the presence's `status`, and the suggestion's for a presence-only one),
+from the settings of the site (`resolve_setting`):
+
+1. Time on site inside working hours (`work_start`–`work_end`; first sighting to last,
+   an open session counts until `work_end`) less than `half_day_units` of those hours →
+   `half_day` (defaults: 07:00–17:00 and 0.5, so less than 5 h).
+2. Else first sighting after `late_after` → `late`.
+3. Else `present`.
+
+With both, **check-ins win**: `status`, `arrival`, `departure`, `first_in_at`,
+`last_out_at` and `checkin_count` are the check-in values above, and `presence` is shown
+next to them (its `status` may differ). Presence only: `status` from the rules above,
+`arrival` = `seen_from`, `departure` = `seen_until`, `first_in_at`/`last_out_at` `null`,
+`checkin_count` `0`.
+
+**Presence never marks attendance.** The phone pre-fills check-in suggestions as before,
+but only shows presence ("Seen 07:12–16:48 · zone B") with an **Accept** button. Accepting
+is the normal `PUT .../records/` item (the record's own `client_uuid`) with the new
+optional `from_suggestion: ["presence"]` (the suggestion's `sources`); pre-filled
+check-in marks send `["checkin"]`. Leave it out (or `[]`) for a mark made by hand. The
+server writes it in the batch's audit entry (`after.from_suggestion = {worker_id:
+sources}`, for the records the batch changed) and nowhere else.
+
 ### Kiosk phones
 
 An admin or the site manager switches a foreman's phone to kiosk mode for one site on
