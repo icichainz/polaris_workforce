@@ -311,8 +311,8 @@ void main() {
       );
     });
 
-    test('the contract is version 1.4', () {
-      expect(OpenApi.load().version, startsWith('1.4.'));
+    test('the contract is version 1.5', () {
+      expect(OpenApi.load().version, startsWith('1.5.'));
     });
   });
 

@@ -94,6 +94,10 @@ class SyncService {
   /// New suggestions for a site's day are on the phone (pre-fill them).
   Future<void> Function(int siteId, String date)? onSuggestions;
 
+  /// Presence tracking is on for the site (it is in the tracker token's
+  /// `sites`): its suggestions are fetched even without a scan (1.5).
+  bool Function(int siteId)? isTracked;
+
   /// Sends a queued tracking consent answer (`POST /tracking/consent/`;
   /// `lib/tracking/`). Unset: the entry waits, as for a server without the
   /// endpoint.
@@ -578,8 +582,9 @@ class SyncService {
       if (device?.isKiosk ?? false) return;
       final mode = device?.attendanceMode;
       final scanned = (await store.loadCheckIns(siteId, today)).isNotEmpty;
+      final tracked = isTracked?.call(siteId) ?? false;
       if (mode == null ||
-          (mode == AttendanceMode.foremanRollCall && !scanned)) {
+          (mode == AttendanceMode.foremanRollCall && !scanned && !tracked)) {
         return;
       }
       final suggestions = await repos.checkin.suggestions(siteId, today);

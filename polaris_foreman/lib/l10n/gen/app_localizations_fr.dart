@@ -885,4 +885,48 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get trackingBackgroundText =>
       'Votre position est enregistrée pendant les heures de suivi.';
+
+  @override
+  String presenceSeen(String start, String end) {
+    return 'Vu $start–$end';
+  }
+
+  @override
+  String presenceSeenOpen(String start) {
+    return 'Vu depuis $start, toujours sur le chantier';
+  }
+
+  @override
+  String presenceZones(int count, String zones) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'zones $zones',
+      one: 'zone $zones',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String acceptSuggestion(String status) {
+    return 'Accepter : $status';
+  }
+
+  @override
+  String acceptSuggestionHint(String name) {
+    return 'Marquer $name comme le suivi de présence le propose';
+  }
+
+  @override
+  String presenceSuggestedNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count ouvriers ont été vus sur le chantier mais ne sont pas marqués. Vérifiez et acceptez.',
+      one:
+          '1 ouvrier a été vu sur le chantier mais n’est pas marqué. Vérifiez et acceptez.',
+    );
+    return '$_temp0';
+  }
 }

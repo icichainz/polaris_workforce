@@ -329,6 +329,131 @@ void main() {
     );
   });
 
+  group('presence suggestions (1.5)', () {
+    const seen = SuggestionPresence(
+      firstSeenAt: '2026-10-31T07:31:10Z',
+      lastSeenAt: null,
+      open: true,
+      seenFrom: '07:31',
+      seenUntil: null,
+      zones: ['A'],
+      visits: 1,
+      status: AttendanceStatus.late,
+    );
+    const both = CheckInDevice(
+      attendanceMode: AttendanceMode.both,
+      kiosk: null,
+    );
+
+    Future<Map<String, dynamic>?> queued(int workerId) async {
+      final e = (await h.store.loadOutbox())
+          .where((e) => e.kind == OutboxKind.records)
+          .firstOrNull;
+      return (e?.payload['records'] as Map?)?['$workerId']
+          as Map<String, dynamic>?;
+    }
+
+    Future<void> fetch() async {
+      await h.store.setValue(
+        StoreKeys.checkinDevice,
+        jsonEncode(both.toJson()),
+      );
+      await phone.sync.refreshCheckIns(site, both);
+    }
+
+    test('shown, never pre-filled; accepting writes the mark', () async {
+      await phone.prime();
+      h.backend.seePresence(site, today, 58, seen);
+      await fetch();
+      expect(await phone.checkins.applySuggestions(site, today), 0);
+      expect(await phone.record(58), isNull, reason: 'presence never marks');
+
+      final s = (await phone.checkins.suggestions(
+        site,
+        today,
+      )).singleWhere((s) => s.workerId == 58);
+      expect((s.presenceOnly, s.status), (true, AttendanceStatus.late));
+
+      final r = (await phone.rollCall.acceptSuggestion(
+        siteId: site,
+        date: today,
+        suggestion: s,
+      ))!;
+      expect(
+        (r.status, r.arrival, r.departure),
+        (AttendanceStatus.late, '07:31', null),
+      );
+      expect((await queued(58))!['from_suggestion'], ['presence']);
+      // The normal upsert: the record's own client_uuid, audited on the
+      // server with its source.
+      expect((await queued(58))!['client_uuid'], r.clientUuid);
+      await phone.sync.drain();
+      expect(h.backend.suggestionAudit['$site|$today'], {
+        58: [SuggestionSource.presence],
+      });
+      // Accepted marks are not pre-fills: newer check-ins leave them alone.
+      expect(await phone.checkins.applySuggestions(site, today), 0);
+    });
+
+    test('a hand change after accepting is a hand mark again', () async {
+      await phone.prime();
+      h.backend.seePresence(site, today, 58, seen);
+      await fetch();
+      final s = (await phone.checkins.suggestions(
+        site,
+        today,
+      )).singleWhere((s) => s.workerId == 58);
+      await phone.rollCall.acceptSuggestion(
+        siteId: site,
+        date: today,
+        suggestion: s,
+      );
+      await phone.rollCall.mark(
+        siteId: site,
+        date: today,
+        workerId: 58,
+        status: AttendanceStatus.present,
+      );
+      expect((await queued(58))!.containsKey('from_suggestion'), isFalse);
+    });
+
+    test('check-in pre-fills are sent as check-in suggestions', () async {
+      await phone.prime();
+      await phone.scan(63);
+      expect((await queued(63))!['from_suggestion'], ['checkin']);
+    });
+
+    test('check-ins win; the server presence stays next to them', () async {
+      await phone.prime();
+      h.backend.seePresence(site, today, 63, seen);
+      await fetch();
+      await phone.scan(63); // 07:30 on the phone: late, from the scan.
+      final s = (await phone.checkins.suggestions(
+        site,
+        today,
+      )).singleWhere((s) => s.workerId == 63);
+      expect(s.sources, [SuggestionSource.checkin, SuggestionSource.presence]);
+      expect(s.presence!.seenFrom, '07:31');
+      expect((s.status, s.arrival), (AttendanceStatus.late, '07:30'));
+      final r = (await phone.record(63))!;
+      expect((r.status, r.arrival), (AttendanceStatus.late, '07:30'));
+    });
+
+    test(
+      'foreman_roll_call on a tracked site: fetched without scans',
+      () async {
+        await phone.prime(mode: AttendanceMode.foremanRollCall);
+        await h.store.setValue(
+          StoreKeys.me,
+          jsonEncode(MockSeed.me().toJson()),
+        );
+        phone.sync.isTracked = (id) => id == site;
+        await phone.sync.pull();
+        expect(h.recording.log, contains('suggestions'));
+      },
+    );
+  });
+
   group('GPS', () {
     test('permission denied: no position, scans still go', () async {
       final platform = FakeLocationPlatform(

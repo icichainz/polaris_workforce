@@ -423,7 +423,80 @@ class CheckInList {
   };
 }
 
-/// One crew worker's suggested mark, from their counted check-ins.
+/// Where a roll-call suggestion comes from (contract 1.5, `sources`); also
+/// what a record write says it was taken from (`from_suggestion`).
+enum SuggestionSource {
+  /// Counted check-ins of the worker.
+  checkin('checkin'),
+
+  /// Presence tracking (badge or phone seen on site).
+  presence('presence');
+
+  const SuggestionSource(this.wire);
+  final String wire;
+
+  static SuggestionSource fromWire(String v) =>
+      _parse(values, v, (e) => e.wire);
+}
+
+/// What presence tracking saw of a worker on the site that day (1.5,
+/// `suggestions[].presence`). Presence never marks attendance: the foreman
+/// accepts it.
+class SuggestionPresence {
+  const SuggestionPresence({
+    required this.firstSeenAt,
+    required this.lastSeenAt,
+    required this.open,
+    required this.seenFrom,
+    required this.seenUntil,
+    required this.zones,
+    required this.visits,
+    required this.status,
+  });
+
+  factory SuggestionPresence.fromJson(Map<String, dynamic> json) =>
+      SuggestionPresence(
+        firstSeenAt: json['first_seen_at'] as String,
+        lastSeenAt: json['last_seen_at'] as String?,
+        open: json['open'] as bool,
+        seenFrom: json['seen_from'] as String,
+        seenUntil: json['seen_until'] as String?,
+        zones: [for (final z in json['zones'] as List<dynamic>) z as String],
+        visits: json['visits'] as int,
+        status: AttendanceStatus.fromWire(json['status'] as String),
+      );
+
+  final String firstSeenAt;
+
+  /// Null while the worker is still on site ([open]).
+  final String? lastSeenAt;
+  final bool open;
+
+  /// `HH:MM`, company time zone.
+  final String seenFrom;
+  final String? seenUntil;
+
+  /// Zone codes visited, in order (may be empty).
+  final List<String> zones;
+  final int visits;
+
+  /// What the presence alone suggests.
+  final AttendanceStatus status;
+
+  Map<String, dynamic> toJson() => {
+    'first_seen_at': firstSeenAt,
+    'last_seen_at': lastSeenAt,
+    'open': open,
+    'seen_from': seenFrom,
+    'seen_until': seenUntil,
+    'zones': zones,
+    'visits': visits,
+    'status': status.wire,
+  };
+}
+
+/// One crew worker's suggested mark, from their counted check-ins, their
+/// presence on site, or both (the check-ins win; the presence is shown).
 class RollCallSuggestion {
   const RollCallSuggestion({
     required this.workerId,
@@ -433,6 +506,8 @@ class RollCallSuggestion {
     required this.firstInAt,
     required this.lastOutAt,
     required this.checkinCount,
+    this.sources = const [SuggestionSource.checkin],
+    this.presence,
   });
 
   factory RollCallSuggestion.fromJson(Map<String, dynamic> json) =>
@@ -446,6 +521,18 @@ class RollCallSuggestion {
         firstInAt: json['first_in_at'] as String?,
         lastOutAt: json['last_out_at'] as String?,
         checkinCount: json['checkin_count'] as int,
+        // A 1.4 server (or a cached answer of one) only had check-ins.
+        sources: json['sources'] == null
+            ? const [SuggestionSource.checkin]
+            : [
+                for (final s in json['sources'] as List<dynamic>)
+                  SuggestionSource.fromWire(s as String),
+              ],
+        presence: json['presence'] == null
+            ? null
+            : SuggestionPresence.fromJson(
+                json['presence'] as Map<String, dynamic>,
+              ),
       );
 
   final int workerId;
@@ -460,6 +547,30 @@ class RollCallSuggestion {
   final String? firstInAt;
   final String? lastOutAt;
   final int checkinCount;
+  final List<SuggestionSource> sources;
+  final SuggestionPresence? presence;
+
+  /// From check-ins: the phone pre-fills it (modes `both` and
+  /// `foreman_roll_call`).
+  bool get fromCheckIns => sources.contains(SuggestionSource.checkin);
+
+  /// Presence only: shown, and written only when the foreman accepts it.
+  bool get presenceOnly => !fromCheckIns && presence != null;
+
+  RollCallSuggestion withPresence(
+    List<SuggestionSource> sources,
+    SuggestionPresence? presence,
+  ) => RollCallSuggestion(
+    workerId: workerId,
+    status: status,
+    arrival: arrival,
+    departure: departure,
+    firstInAt: firstInAt,
+    lastOutAt: lastOutAt,
+    checkinCount: checkinCount,
+    sources: sources,
+    presence: presence,
+  );
 
   Map<String, dynamic> toJson() => {
     'worker_id': workerId,
@@ -469,6 +580,8 @@ class RollCallSuggestion {
     'first_in_at': firstInAt,
     'last_out_at': lastOutAt,
     'checkin_count': checkinCount,
+    'sources': sources.map((s) => s.wire).toList(),
+    'presence': presence?.toJson(),
   };
 }
 

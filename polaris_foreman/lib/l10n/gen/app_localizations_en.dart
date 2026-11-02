@@ -879,4 +879,47 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get trackingBackgroundText =>
       'Your position is recorded during tracking hours.';
+
+  @override
+  String presenceSeen(String start, String end) {
+    return 'Seen $start–$end';
+  }
+
+  @override
+  String presenceSeenOpen(String start) {
+    return 'Seen since $start, still on site';
+  }
+
+  @override
+  String presenceZones(int count, String zones) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'zones $zones',
+      one: 'zone $zones',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String acceptSuggestion(String status) {
+    return 'Accept: $status';
+  }
+
+  @override
+  String acceptSuggestionHint(String name) {
+    return 'Mark $name as presence tracking suggests';
+  }
+
+  @override
+  String presenceSuggestedNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count workers were seen on site but not marked. Check and accept.',
+      one: '1 worker was seen on site but not marked. Check and accept.',
+    );
+    return '$_temp0';
+  }
 }

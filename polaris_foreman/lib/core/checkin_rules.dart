@@ -177,6 +177,11 @@ RollCallSuggestion suggestionFor(
 /// Joins the server's suggestions with the phone's own scans (not sent yet,
 /// or sent after the suggestions were fetched): per worker, the earliest
 /// `in` and the latest `out` of both, then the same rules.
+///
+/// Presence (1.5) comes only from the server: a worker with check-ins keeps
+/// the server's `presence` next to them (`sources` both); a worker seen by
+/// presence tracking without any check-in keeps the server's presence-only
+/// suggestion as it is.
 List<RollCallSuggestion> mergeSuggestions(
   Iterable<RollCallSuggestion> server,
   Iterable<CheckInEvent> local, {
@@ -204,17 +209,31 @@ List<RollCallSuggestion> mergeSuggestions(
       if (cur == null || e.at.isAfter(cur)) lastOut[e.workerId] = e.at;
     }
   }
-  final ids = {...count.keys, ...localCount.keys}.toList()..sort();
+  final presence = {
+    for (final s in server)
+      if (s.presence != null) s.workerId: s,
+  };
+  final withCheckIns = {
+    for (final id in {...count.keys, ...localCount.keys})
+      if ((count[id] ?? 0) > 0 || (localCount[id] ?? 0) > 0) id,
+  };
+  final ids = {...withCheckIns, ...presence.keys}.toList()..sort();
   return [
     for (final id in ids)
-      suggestionFor(
-        id,
-        firstIn: firstIn[id],
-        lastOut: lastOut[id],
-        // Sent scans are in both: the larger count is the closer one.
-        count: math.max(count[id] ?? 0, localCount[id] ?? 0),
-        lateAfter: lateAfter,
-        localOf: localOf,
-      ),
+      if (!withCheckIns.contains(id))
+        presence[id]!
+      else
+        suggestionFor(
+          id,
+          firstIn: firstIn[id],
+          lastOut: lastOut[id],
+          // Sent scans are in both: the larger count is the closer one.
+          count: math.max(count[id] ?? 0, localCount[id] ?? 0),
+          lateAfter: lateAfter,
+          localOf: localOf,
+        ).withPresence([
+          SuggestionSource.checkin,
+          if (presence[id] != null) SuggestionSource.presence,
+        ], presence[id]?.presence),
   ];
 }

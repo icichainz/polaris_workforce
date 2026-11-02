@@ -254,7 +254,8 @@ class CheckInService {
     };
   }
 
-  /// Pre-fills the roll call from the suggestions: a worker's mark takes the
+  /// Pre-fills the roll call from the check-in suggestions (presence ones are
+  /// only shown, see [suggestions]): a worker's mark takes the
   /// suggested status, arrival and departure unless the foreman already
   /// marked them (a mark still holding what was pre-filled earlier follows
   /// newer check-ins; one changed by hand is left alone). Workers without a
@@ -275,6 +276,9 @@ class CheckInService {
     final after = {...before};
     final marks = <int, SuggestedMark>{};
     for (final s in await suggestions(siteId, date)) {
+      // Presence never marks attendance: the foreman accepts it on the roll
+      // call (RollCallService.acceptSuggestion).
+      if (!s.fromCheckIns) continue;
       final existing = await store.loadRecord(siteId, date, s.workerId);
       final previous = before[s.workerId];
       final untouched =
@@ -292,7 +296,14 @@ class CheckInService {
       marks[s.workerId] = mark;
     }
     if (marks.isNotEmpty) {
-      await rollCall.prefill(siteId: siteId, date: date, marks: marks);
+      await rollCall.prefill(
+        siteId: siteId,
+        date: date,
+        marks: marks,
+        sources: {
+          for (final id in marks.keys) id: const [SuggestionSource.checkin],
+        },
+      );
     }
     if (after.length != before.length || marks.isNotEmpty) {
       await store.setValue(
