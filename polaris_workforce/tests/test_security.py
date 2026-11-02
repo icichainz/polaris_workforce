@@ -131,6 +131,15 @@ GET_ONLY = {
     "portal:office_access",
     "portal:office_worker",
     "agents:access",
+    "presence:home",
+    "presence:badges",
+    "presence:notice",
+    "presence:dashboard_token",
+    "presence:site_setup",
+    "presence:live",
+    "presence:worker_export",
+    "presence:person",
+    "presence:person_day",
 }
 
 
@@ -164,6 +173,7 @@ def _state_changing_urls(crew):
     )
     return {
         **_payout_state_changing_urls(crew),
+        **_presence_state_changing_urls(crew),
         "payroll:pay_rules": reverse("payroll:pay_rules"),
         "payroll:deduction_rule_create": reverse("payroll:deduction_rule_create"),
         "payroll:deduction_rule_edit": reverse("payroll:deduction_rule_edit", args=[rule.pk]),
@@ -255,6 +265,30 @@ def _payout_state_changing_urls(crew):
         "payouts:layout_create": reverse("payouts:layout_create"),
         "payouts:layout_edit": reverse("payouts:layout_edit", args=[layout.pk]),
         "payouts:account_edit": reverse("payouts:account_edit", args=[crew.open_line.worker_id]),
+    }
+
+
+def _presence_state_changing_urls(crew):
+    from apps.presence.models import BleBadge, Gateway, Zone
+
+    site = crew.site
+    worker = crew.paid_line.worker_id
+    zone = Zone.objects.create(site=site, code="CSRF", name="CSRF zone")
+    gateway = Gateway.objects.create(site=site, zone=zone, label="CSRF gateway")
+    badge = BleBadge.objects.create(
+        company_id=site.company_id, worker_id=worker, badge_id="csrf-badge"
+    )
+    return {
+        "presence:site_push": reverse("presence:site_push", args=[site.pk]),
+        "presence:zone_create": reverse("presence:zone_create", args=[site.pk]),
+        "presence:zone_edit": reverse("presence:zone_edit", args=[zone.pk]),
+        "presence:zone_delete": reverse("presence:zone_delete", args=[zone.pk]),
+        "presence:gateway_create": reverse("presence:gateway_create", args=[site.pk]),
+        "presence:gateway_edit": reverse("presence:gateway_edit", args=[gateway.pk]),
+        "presence:gateway_token": reverse("presence:gateway_token", args=[gateway.pk]),
+        "presence:gateway_revoke": reverse("presence:gateway_revoke", args=[gateway.pk]),
+        "presence:worker_badge": reverse("presence:worker_badge", args=[worker]),
+        "presence:badge_end": reverse("presence:badge_end", args=[badge.pk]),
     }
 
 

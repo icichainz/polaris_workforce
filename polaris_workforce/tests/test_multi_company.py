@@ -67,6 +67,7 @@ from tests.test_e2e_isolation import (
     add_document,
     add_pay_extras,
     page_text,
+    seed_presence,
 )
 
 pytestmark = pytest.mark.django_db
@@ -155,6 +156,7 @@ def build_company(label: str, phone: str) -> World:
     }
     with use_company(company):
         ids.update(seed_checkin(crew, worker))
+        ids.update(seed_presence(crew, worker))
     return World(company, crew, admin, accountant, worker, ids)
 
 
