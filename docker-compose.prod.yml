@@ -1,0 +1,180 @@
+# Polaris Workforce — production, at https://polaris.atlashr.cloud behind Caddy.
+#
+#   cp .env.example .env            # then set DJANGO_SECRET_KEY and TRACKER_SHARED_SECRET
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml run --rm web manage createsuperuser
+#
+# Caddy (caddy-docker-proxy, on the external `caddy` network) terminates HTTPS and builds
+# the site from the labels below, one route per service:
+#   /static/*                   nginx (collected static files, nothing else)
+#   /tracker/*                  the Gleam presence tracker, prefix stripped (SSE: no buffering)
+#   /api/v1/presence/events*    404: the tracker posts there inside the network only
+#   everything else             Django (office, worker portal, phone API, uploads)
+# Caddy is the only proxy in front of Django: DJANGO_NUM_PROXIES is 1. The foreman app
+# connects to https://polaris.atlashr.cloud/api/v1/.
+#
+# Services talk to each other through `polaris-*` aliases on the private network: plain
+# names like `web` or `redis` can also belong to another project on the shared `caddy`
+# network.
+#
+# Before the first start: the DNS A record of polaris.atlashr.cloud points at this server
+# (Caddy needs it for the certificate) and the `caddy` network exists.
+
+x-django-env: &django-env
+  DJANGO_DEBUG: "false"
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY in .env}
+  # polaris-web: the tracker posting presence events; localhost: the image's healthcheck.
+  DJANGO_ALLOWED_HOSTS: polaris.atlashr.cloud,polaris-web,localhost
+  DJANGO_CSRF_TRUSTED_ORIGINS: https://polaris.atlashr.cloud
+  DJANGO_TIME_ZONE: ${DJANGO_TIME_ZONE:-UTC}
+  # Caddy sets X-Forwarded-For: the PIN and sign-in limits key on the address it saw.
+  DJANGO_NUM_PROXIES: "1"
+  DJANGO_SECURE_SSL_REDIRECT: "true"
+  DJANGO_SECURE_COOKIES: "true"
+  # Raise (e.g. 31536000) once HTTPS has run cleanly for a while.
+  DJANGO_HSTS_SECONDS: ${DJANGO_HSTS_SECONDS:-3600}
+  SQLITE_PATH: /data/db.sqlite3
+  MEDIA_ROOT: /data/media
+  DJANGO_CACHE_DIR: /data/cache
+  # Django checks access and sends the file itself; Caddy buffers the response so a slow
+  # phone does not hold a gunicorn thread (response_buffers below).
+  PROTECTED_MEDIA_MODE: django
+  DEVICE_TOKEN_IDLE_DAYS: ${DEVICE_TOKEN_IDLE_DAYS:-30}
+  MESSAGING_PROVIDER: ${MESSAGING_PROVIDER:-log}
+  CELERY_BROKER_URL: redis://polaris-redis:6379/0
+  # Presence tracking: Django pushes site configs to the tracker inside the network;
+  # browsers and phones reach it through Caddy at /tracker/.
+  TRACKER_URL: http://polaris-tracker:4100
+  TRACKER_PUBLIC_URL: https://polaris.atlashr.cloud/tracker
+  TRACKER_SHARED_SECRET: ${TRACKER_SHARED_SECRET:?set TRACKER_SHARED_SECRET in .env}
+
+services:
+  web:
+    build: ./polaris_workforce
+    image: polaris-workforce:latest
+    command: ["web"]
+    environment: *django-env
+    volumes:
+      - data:/data
+      - static:/app/staticfiles
+    expose:
+      - "8000"
+    labels:
+      caddy: polaris.atlashr.cloud
+      caddy.handle_0: /api/v1/presence/events*
+      caddy.handle_0.respond: "404"
+      caddy.handle_1.encode: zstd gzip
+      # Proof photos and documents are at most 5 MB; leave room for the form fields.
+      caddy.handle_1.request_body.max_size: 8MB
+      caddy.handle_1.reverse_proxy: "{{upstreams 8000}}"
+      caddy.handle_1.reverse_proxy.response_buffers: 8MB
+    networks:
+      default:
+        aliases: [polaris-web]
+      caddy: {}
+    restart: unless-stopped
+
+  # The queue only: a lost task costs a rebuild a few minutes later (beat's periodic
+  # run, or the next screen that reads the site), so nothing is persisted.
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    expose:
+      - "6379"
+    networks:
+      default:
+        aliases: [polaris-redis]
+    restart: unless-stopped
+
+  worker:
+    build: ./polaris_workforce
+    image: polaris-workforce:latest
+    command: ["worker"]
+    environment:
+      <<: *django-env
+      CELERY_CONCURRENCY: ${CELERY_CONCURRENCY:-2}
+    volumes:
+      - data:/data
+    healthcheck:
+      test: ["CMD", "celery", "-A", "config", "inspect", "ping", "--timeout", "5"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+    depends_on:
+      redis:
+        condition: service_started
+      web:
+        condition: service_healthy  # migrations ran
+    restart: unless-stopped
+
+  beat:
+    build: ./polaris_workforce
+    image: polaris-workforce:latest
+    command: ["beat"]
+    environment: *django-env
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_started
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+
+  tracker:
+    build: ./polaris_tracker
+    image: polaris-tracker:latest
+    environment:
+      TRACKER_SHARED_SECRET: ${TRACKER_SHARED_SECRET:?set TRACKER_SHARED_SECRET in .env}
+      TRACKER_BIND: 0.0.0.0
+      TRACKER_PORT: "4100"
+      # Must match the companies' "track retention days" setting.
+      TRACK_RETENTION_DAYS: ${TRACK_RETENTION_DAYS:-30}
+      DJANGO_EVENTS_URL: http://polaris-web:8000/api/v1/presence/events/
+      TRACKER_DB_PATH: /data/tracker.sqlite3
+    volumes:
+      # Tracks and the outbox (its own SQLite file, never Django's).
+      - tracker_data:/data
+    expose:
+      - "4100"
+    labels:
+      caddy: polaris.atlashr.cloud
+      caddy.handle_2: /tracker/*
+      caddy.handle_2.uri: strip_prefix /tracker
+      caddy.handle_2.reverse_proxy: "{{upstreams 4100}}"
+      # The live event stream (SSE) goes out as it is written.
+      caddy.handle_2.reverse_proxy.flush_interval: "-1"
+    networks:
+      default:
+        aliases: [polaris-tracker]
+      caddy: {}
+    restart: unless-stopped
+
+  # Static files only (docker/nginx/static.conf).
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./docker/nginx/static.conf:/etc/nginx/conf.d/default.conf:ro
+      - static:/srv/static:ro
+    expose:
+      - "80"
+    labels:
+      caddy: polaris.atlashr.cloud
+      caddy.handle_3: /static/*
+      caddy.handle_3.reverse_proxy: "{{upstreams 80}}"
+    networks:
+      - default
+      - caddy
+    depends_on:
+      web:
+        condition: service_healthy  # static files collected
+    restart: unless-stopped
+
+networks:
+  caddy:
+    external: true
+
+volumes:
+  data:
+  static:
+  tracker_data:
