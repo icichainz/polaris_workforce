@@ -11,6 +11,7 @@ import datetime
 import pytest
 from django.core.exceptions import ValidationError
 from django.urls import reverse
+from django.utils import translation
 
 from apps.core.models import AuditLog, CompanySettings
 from apps.core.settings import (
@@ -19,6 +20,7 @@ from apps.core.settings import (
     WORKER_OVERRIDABLE,
     resolve_setting,
 )
+from apps.worksites import services as site_services
 from apps.worksites.forms import SiteSettingsForm
 from tests.factories import AdminUserFactory, SiteFactory, WorkerFactory
 from tests.test_settings_view import form_data
@@ -190,6 +192,52 @@ def test_site_settings_form_shows_the_saved_switch_and_checks_the_hours():
     bad = SiteSettingsForm({"tracking_start": "20:00"}, instance=site, company=company)
     assert not bad.is_valid()
     assert "tracking_end" in bad.errors
+
+
+def test_site_settings_service_checks_the_hours_with_the_company_ones(admin_client):
+    site = SiteFactory()  # company hours: 06:00-19:00
+    with pytest.raises(ValidationError) as raised:
+        site_services.update_site_settings(site, {"tracking_end": datetime.time(5, 0)})
+    assert "tracking_end" in raised.value.message_dict
+    site.refresh_from_db()
+    assert site.tracking_end is None
+
+    site_services.update_site_settings(site, {"tracking_end": datetime.time(18, 0)})
+    site.refresh_from_db()
+    assert site.tracking_end == datetime.time(18, 0)
+
+
+@pytest.mark.parametrize(
+    ("site_hours", "company_change", "field"),
+    [
+        ({"tracking_end": datetime.time(9, 0)}, {"tracking_start": "10:00"}, "tracking_start"),
+        ({"tracking_start": datetime.time(17, 0)}, {"tracking_end": "16:00"}, "tracking_end"),
+    ],
+)
+def test_company_hours_that_would_invert_a_site_s_are_refused_naming_it(
+    admin_client, site_hours, company_change, field
+):
+    SiteFactory(name="Port", **site_hours)
+    SiteFactory(name="Market")  # inherits both: fine
+    SiteFactory(name="Own hours", tracking_start=datetime.time(5), tracking_end=datetime.time(8))
+
+    response = admin_client.post(reverse("core:settings"), form_data(**company_change))
+
+    assert response.status_code == 200
+    errors = response.context["form"].errors[field]
+    assert len(errors) == 1 and "Port" in errors[0]
+    assert "Market" not in errors[0] and "Own hours" not in errors[0]
+    assert not AuditLog.objects.filter(action="settings.update").exists()
+
+
+def test_the_site_hours_error_is_in_french():
+    SiteFactory(name="Port", tracking_end=datetime.time(9, 0))
+    company = CompanySettings.load()
+    company.tracking_start = datetime.time(10, 0)
+    with translation.override("fr"), pytest.raises(ValidationError) as raised:
+        company.full_clean()
+    message = raised.value.message_dict["tracking_start"][0]
+    assert message.startswith("Le suivi finirait avant de commencer") and "Port" in message
 
 
 # --- the worker form ----------------------------------------------------------------------------

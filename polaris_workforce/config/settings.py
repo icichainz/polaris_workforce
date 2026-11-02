@@ -302,10 +302,24 @@ PRECOMPUTE_REQUEUE_AFTER_MINUTES = int(env_str("PRECOMPUTE_REQUEUE_AFTER_MINUTES
 TRACKER_URL = env_str("TRACKER_URL", "").rstrip("/")
 TRACKER_PUBLIC_URL = env_str("TRACKER_PUBLIC_URL", TRACKER_URL).rstrip("/")
 TRACKER_SHARED_SECRET = env_str("TRACKER_SHARED_SECRET", "")
+# Django opens TRACKER_URL with urllib, which would also read file:// and ftp:// URLs.
+if TRACKER_URL and not TRACKER_URL.lower().startswith(("http://", "https://")):
+    raise RuntimeError(f"TRACKER_URL must start with http:// or https:// (got {TRACKER_URL!r}).")
 if TRACKER_URL and not TRACKER_SHARED_SECRET and not DEBUG:
     raise RuntimeError(
         "TRACKER_SHARED_SECRET must be set when TRACKER_URL is set and DJANGO_DEBUG is off "
         "(the same value as the tracker's; see .env.example)."
+    )
+# HS256 with a short secret can be brute-forced from one token.
+TRACKER_SECRET_MIN_BYTES = 32
+if (
+    TRACKER_SHARED_SECRET
+    and len(TRACKER_SHARED_SECRET.encode("utf-8")) < TRACKER_SECRET_MIN_BYTES
+    and not DEBUG
+):
+    raise RuntimeError(
+        f"TRACKER_SHARED_SECRET must be at least {TRACKER_SECRET_MIN_BYTES} bytes when "
+        "DJANGO_DEBUG is off (e.g. python -c 'import secrets; print(secrets.token_urlsafe(48))')."
     )
 # Seconds to wait for the tracker when pushing a site config.
 TRACKER_TIMEOUT_SECONDS = float(env_str("TRACKER_TIMEOUT_SECONDS", "5"))

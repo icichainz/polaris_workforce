@@ -36,7 +36,7 @@ from apps.attendance.models import AttendanceRecord
 from apps.core.models import AuditLog, CompanySettings
 from apps.core.tenancy import use_company
 from apps.presence import reconcile, services, tasks, tracker_client
-from apps.presence.models import PresenceReconciliation, PresenceSession
+from apps.presence.models import PresenceReconciliation, PresenceSession, TrackingConsent
 from tests.factories import (
     AttendanceDayFactory,
     AttendanceRecordFactory,
@@ -135,12 +135,22 @@ def lome(default_company):
     company.time_zone = "Africa/Lome"
     company.save()
     site = SiteFactory(name="North")
+    kodjo = ForemanFactory(first_name="Kodjo")
+    # His live events count: he accepted the tracking notice before the day.
+    TrackingConsent.objects.create(
+        company=default_company,
+        user=kodjo,
+        accepted=True,
+        text_version=django_settings.TRACKING_CONSENT_TEXT_VERSION,
+        at=at(0, day=DAY - datetime.timedelta(days=1)),
+        client_uuid=uuid.uuid4(),
+    )
     return {
         "company": default_company,
         "site": site,
         "yao": WorkerFactory(first_name="Yao"),
         "ama": WorkerFactory(first_name="Ama"),
-        "kodjo": ForemanFactory(first_name="Kodjo"),
+        "kodjo": kodjo,
     }
 
 
@@ -425,6 +435,8 @@ def test_attendance_is_never_changed(lome, fake_tracker):
 
 def test_sites_with_tracking_off_are_skipped(lome, fake_tracker):
     off = SiteFactory(name="Off", tracking_enabled=False)
+    lome["yao"].tracking_enabled = True  # his own switch: his live events count there
+    lome["yao"].save()
     visit(off, lome["yao"], at(7), at(12))
 
     summary = reconcile.run(now=NOW)

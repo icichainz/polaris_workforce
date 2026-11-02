@@ -7,6 +7,7 @@ Views stay thin: the scope check (``get_site_or_403``), the body, then
 
 import logging
 
+from django.db import DatabaseError
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema
 from rest_framework import status
@@ -215,7 +216,9 @@ class PresenceEventsView(APIView):
             "`left` closes it), so late, out-of-order or repeated events give the same "
             "sessions, and replaying a batch changes nothing.\n\n"
             "Every item is counted once: `stored` (new, applied), `duplicates`, `ignored` "
-            "(new and stored, but an unknown site or subject, or one of another company) "
+            "(new and stored, but not applied: an unknown site or subject, or one of another "
+            "company; a site of an inactive company; a worker who is inactive or has "
+            "tracking off; a foreman who had not accepted the notice at the event's time) "
             "and `rejected` (an item that does not match the schema: not stored, logged). "
             "Any `200` means the batch is delivered. `400` only for a body that is not "
             f"`{{events: [...]}}` or has more than {services.MAX_EVENTS} events.\n\n"
@@ -256,12 +259,11 @@ class PresenceEventsView(APIView):
         body.is_valid(raise_exception=True)
         events, rejected = [], 0
         for index, item in enumerate(body.validated_data["events"]):
-            event = s.PresenceEventSerializer(data=item)
-            if event.is_valid():
-                events.append(event.to_event())
-            else:
+            event = _parse_event(index, item)
+            if event is None:
                 rejected += 1
-                logger.warning("Presence: event %s of a batch rejected: %s", index, event.errors)
+            else:
+                events.append(event)
         result = services.ingest_events(events, rejected=rejected)
         return Response(
             s.PresenceIngestResultSerializer(
@@ -273,6 +275,22 @@ class PresenceEventsView(APIView):
                 }
             ).data
         )
+
+
+def _parse_event(index: int, item: dict) -> services.EventIn | None:
+    """One item of a batch, or ``None`` (logged) when it must be rejected. An unexpected
+    error while checking one item rejects that item only; database errors still fail the
+    batch (the tracker sends it again)."""
+    try:
+        event = s.PresenceEventSerializer(data=item)
+        if event.is_valid():
+            return event.to_event()
+        logger.warning("Presence: event %s of a batch rejected: %s", index, event.errors)
+    except DatabaseError:
+        raise
+    except Exception:  # any other error is about this item alone
+        logger.warning("Presence: event %s of a batch rejected", index, exc_info=True)
+    return None
 
 
 DATE_QUERY = OpenApiParameter(

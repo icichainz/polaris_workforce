@@ -365,8 +365,32 @@ class CompanySettings(TimeStampedModel):
             and self.tracking_end <= self.tracking_start
         ):
             errors["tracking_end"] = _("Tracking must end after it starts.")
+        else:
+            errors.update(self._site_tracking_hours_errors())
         if errors:
             raise ValidationError(errors)
+
+    def _site_tracking_hours_errors(self) -> dict:
+        """Sites that override only one end of the tracking hours take the other from
+        here: with these values, their hours must still end after they start."""
+        from apps.worksites.models import Site  # worksites depends on core
+
+        if self.tracking_start is None or self.tracking_end is None:
+            return {}
+        sites = Site.objects.filter(company_id=self.company_id).order_by("name", "pk")
+        only_end = sites.filter(tracking_start__isnull=True, tracking_end__isnull=False)
+        only_start = sites.filter(tracking_start__isnull=False, tracking_end__isnull=True)
+        errors = {}
+        for field, bad in (
+            ("tracking_start", [s.name for s in only_end if s.tracking_end <= self.tracking_start]),
+            ("tracking_end", [s.name for s in only_start if self.tracking_end <= s.tracking_start]),
+        ):
+            if bad:
+                errors[field] = _(
+                    "Tracking would end before it starts on these sites, which set their own "
+                    "tracking hours: %(sites)s. Change their hours first."
+                ) % {"sites": ", ".join(bad)}
+        return errors
 
     @classmethod
     def load(cls, company=None, *, fresh: bool = False) -> "CompanySettings":

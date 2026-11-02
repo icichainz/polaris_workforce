@@ -230,8 +230,11 @@ paths:
 
         Every item is counted once: `stored` (new and applied), `duplicates` (stored
         before, or twice in the batch), `ignored` (new and stored but not applied: an
-        unknown site or subject, or a subject of another company than the site's) and
-        `rejected` (an item that does not match the schema: not stored, logged). Any `200`
+        unknown site or subject, or a subject of another company than the site's; a site
+        of an inactive company; a worker who is inactive or whose `tracking_enabled` is
+        off; a foreman whose latest answer to the notice at the event's time is not an
+        acceptance) and `rejected` (an item that does not match the schema, ids above
+        2^63 - 1 included: not stored, logged). Any `200`
         tells the tracker the batch is delivered; one bad item never blocks its queue.
         `400` only when the body is not `{events: [...]}` or has more than 500 events.
 
@@ -449,6 +452,8 @@ components:
           enum: [worker, foreman]
         id:
           type: integer
+          minimum: 1
+          maximum: 9223372036854775807
           description: "`Worker` id, or the foreman's user id."
 
     PresenceEvent:
@@ -461,6 +466,8 @@ components:
           format: uuid
         site_id:
           type: integer
+          minimum: 1
+          maximum: 9223372036854775807
         subject:
           $ref: "#/components/schemas/Subject"
         type:

@@ -1870,6 +1870,15 @@ msgstr "« Retard après » ne peut pas être avant le début du travail."
 msgid "Tracking must end after it starts."
 msgstr "La fin du suivi doit être après le début."
 
+#: apps/core/models.py:389
+#, python-format
+msgid ""
+"Tracking would end before it starts on these sites, which set their own "
+"tracking hours: %(sites)s. Change their hours first."
+msgstr ""
+"Le suivi finirait avant de commencer sur ces chantiers, qui ont leurs "
+"propres heures de suivi : %(sites)s. Modifiez d’abord leurs heures."
+
 #: apps/core/forms.py:272
 #, python-format
 msgid "Use at most %(decimals)d decimal places."

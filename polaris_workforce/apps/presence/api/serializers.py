@@ -6,7 +6,7 @@ from rest_framework import serializers
 from apps.api.fields import ClockTimeField
 from apps.api.idempotency import client_uuid_field
 
-from ..services import MAX_EVENTS, EventIn
+from ..services import MAX_EVENTS, MAX_ID, EventIn
 
 SUBJECT_KINDS = [
     ("worker", _("A worker (`Worker` id)")),
@@ -89,14 +89,14 @@ class ConsentSerializer(serializers.Serializer):
 
 class SubjectSerializer(serializers.Serializer):
     kind = serializers.ChoiceField(choices=SUBJECT_KINDS)
-    id = serializers.IntegerField(min_value=1)
+    id = serializers.IntegerField(min_value=1, max_value=MAX_ID)
 
 
 class PresenceEventSerializer(serializers.Serializer):
     """Same shape as ``PresenceEvent`` in ``tracker-openapi.yaml``."""
 
     event_id = serializers.UUIDField(help_text="Unique; stored once.")
-    site_id = serializers.IntegerField(min_value=1)
+    site_id = serializers.IntegerField(min_value=1, max_value=MAX_ID)
     subject = SubjectSerializer()
     type = serializers.ChoiceField(choices=EVENT_TYPES)
     at = serializers.DateTimeField(
@@ -149,7 +149,9 @@ class PresenceIngestResultSerializer(serializers.Serializer):
         help_text="Already stored earlier (same `event_id`), or twice in this batch."
     )
     ignored = serializers.IntegerField(
-        help_text="New, stored, but not applied: unknown site or subject (or another company's)."
+        help_text="New, stored, but not applied: an unknown site or subject (or another "
+        "company's), a site of an inactive company, a worker inactive or with tracking off, "
+        "a foreman who had not accepted the notice at the event's time."
     )
     rejected = serializers.IntegerField(
         help_text="Items that do not match the schema: not stored, listed in the log. "

@@ -11,6 +11,7 @@ import hmac
 import json
 
 import pytest
+from django.conf import settings as django_settings
 from django.core.exceptions import ImproperlyConfigured
 
 from apps.core.models import CompanySettings
@@ -24,6 +25,7 @@ from tests.factories import (
     SiteFactory,
     SiteManagerFactory,
 )
+from tests.test_security import _settings_in_subprocess
 
 pytestmark = pytest.mark.django_db
 
@@ -131,6 +133,35 @@ def test_without_a_secret_and_debug_off_nothing_is_signed(settings):
     settings.DEBUG = False
     with pytest.raises(ImproperlyConfigured):
         tokens.mint_service_token()
+
+
+# --- startup checks (config/settings.py) ---------------------------------------------------------
+
+PRODUCTION = {"DJANGO_SECRET_KEY": "k" * 60, "DJANGO_DEBUG": "false"}
+
+
+def test_the_test_secret_is_long_enough():
+    assert len(SECRET) >= django_settings.TRACKER_SECRET_MIN_BYTES == 32
+
+
+@pytest.mark.parametrize(
+    ("env", "refused"),
+    [
+        ({"TRACKER_SHARED_SECRET": "s" * 31}, True),
+        ({"TRACKER_SHARED_SECRET": "s" * 32}, False),
+        ({"TRACKER_SHARED_SECRET": "s" * 31, "DJANGO_DEBUG": "true"}, False),  # development
+        ({"TRACKER_URL": "file:///etc/passwd", "TRACKER_SHARED_SECRET": "s" * 32}, True),
+        ({"TRACKER_URL": "tracker:4100", "TRACKER_SHARED_SECRET": "s" * 32}, True),
+        ({"TRACKER_URL": "https://tracker.example.com", "TRACKER_SHARED_SECRET": "s" * 32}, False),
+    ],
+)
+def test_startup_refuses_a_weak_secret_or_a_tracker_url_that_is_not_http(env, refused):
+    result = _settings_in_subprocess({**PRODUCTION, **env}, "import config.settings")
+
+    assert (result.returncode != 0) is refused, result.stderr
+    if refused:
+        name = "TRACKER_URL" if "TRACKER_URL" in env else "TRACKER_SHARED_SECRET"
+        assert f"{name} must" in result.stderr
 
 
 def test_without_a_secret_in_debug_a_dev_secret_is_used(settings):

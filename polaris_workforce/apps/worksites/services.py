@@ -255,6 +255,11 @@ def update_site_settings(site: Site, changes: dict, *, actor=None) -> Site:
         for name, value in changes.items():
             setattr(site, name, None if value == "" else value)
         site.full_clean()
+        company = CompanySettings.load(site.company_id)
+        track_start = resolve_setting("tracking_start", site=site, company=company)
+        track_end = resolve_setting("tracking_end", site=site, company=company)
+        if track_end <= track_start:  # one of them may be the company's
+            raise ValidationError({"tracking_end": _("Tracking must end after it starts.")})
         site.save()
         after = settings_snapshot(site)
         if after != before:
