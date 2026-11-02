@@ -1,4 +1,5 @@
 import 'auth.dart';
+import 'checkin.dart';
 import 'enums.dart';
 
 class DayCounts {
@@ -298,6 +299,7 @@ class RecordUpsert {
     this.arrival,
     this.departure,
     this.note = '',
+    this.fromSuggestion = const [],
   });
 
   factory RecordUpsert.fromJson(Map<String, dynamic> json) => RecordUpsert(
@@ -307,6 +309,10 @@ class RecordUpsert {
     arrival: json['arrival'] as String?,
     departure: json['departure'] as String?,
     note: (json['note'] as String?) ?? '',
+    fromSuggestion: [
+      for (final s in (json['from_suggestion'] as List<dynamic>?) ?? const [])
+        SuggestionSource.fromWire(s as String),
+    ],
   );
 
   final String clientUuid;
@@ -316,6 +322,11 @@ class RecordUpsert {
   final String? departure;
   final String note;
 
+  /// 1.5: the mark was taken from a roll-call suggestion with these
+  /// `sources` (pre-filled from check-ins, or a presence suggestion the
+  /// foreman accepted). Empty: marked by hand. Audited on the server.
+  final List<SuggestionSource> fromSuggestion;
+
   Map<String, dynamic> toJson() => {
     'client_uuid': clientUuid,
     'worker_id': workerId,
@@ -323,6 +334,8 @@ class RecordUpsert {
     'arrival': arrival,
     'departure': departure,
     'note': note,
+    if (fromSuggestion.isNotEmpty)
+      'from_suggestion': fromSuggestion.map((s) => s.wire).toList(),
   };
 }
 

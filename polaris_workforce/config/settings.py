@@ -383,7 +383,7 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Polaris Workforce API",
-    "VERSION": "1.4.0",
+    "VERSION": "1.5.0",
     "DESCRIPTION": (
         "Foreman phone API: PIN sign-in, crew lists, roll call, corrections, sync and "
         "cash payouts. Authenticate with `Authorization: Device <token>` from "
@@ -412,6 +412,8 @@ SPECTACULAR_SETTINGS = {
         "PresenceSubjectKindEnum": "apps.presence.api.serializers.SUBJECT_KINDS",
         "PresenceEventTypeEnum": "apps.presence.api.serializers.EVENT_TYPES",
         "PresenceLeaveReasonEnum": "apps.presence.api.serializers.LEAVE_REASONS",
+        # Roll-call suggestions (1.5): `sources` and the records' `from_suggestion`.
+        "SuggestionSourceEnum": "apps.checkin.api.serializers.SUGGESTION_SOURCES",
     },
     "TAGS": [
         {"name": "system", "description": "Reachability."},

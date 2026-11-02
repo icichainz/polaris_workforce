@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Polaris Workforce API
-  version: 1.4.0
+  version: 1.5.0
   description: |-
     Foreman phone API: PIN sign-in, crew lists, roll call, corrections, sync and cash payouts. Authenticate with `Authorization: Device <token>` from `POST /api/v1/auth/pin/`. Errors are `{code, message, details}`. Every phone write carries a `client_uuid` and is idempotent. Money is an integer in the currency's smallest unit, next to a `currency {code, decimals}` object. Dates are ISO 8601, times `HH:MM`. Conventions: docs/api/README.md.
 
@@ -2581,6 +2581,8 @@ paths:
         **Idempotent per record.** The server finds each record by `client_uuid`, then by `worker_id` (one record per worker per day), and writes only fields that changed; replaying a batch changes nothing. The response carries the server's `client_uuid` per worker: adopt it.
 
         Changes are allowed while the day is `not_started`, `draft` or `rejected` (a rejected day goes back to `draft`). Once `submitted`, `approved` or `locked`, a batch that would change a record gets `423 locked` — use corrections; a batch that changes nothing (the server already has those values) answers `200` with the day, whatever its status. A worker not on the crew that day: `400 validation_error`, with one entry per batch item in `details.records` (`{}` for items without errors, also after the last error). A `client_uuid` already used for another worker or day: `409 conflict`.
+
+        **From a suggestion (1.5).** A mark taken from `GET .../suggestions/` — pre-filled from check-ins, or a presence suggestion the foreman accepted — carries `from_suggestion` with that suggestion's `sources`. It is the same upsert (the record's own `client_uuid`, same idempotency); the audit entry of the batch records it per worker. Presence never marks attendance by itself: only this write, made by the foreman, does.
       summary: Save roll-call marks (batch upsert)
       parameters:
       - in: path
@@ -2631,6 +2633,18 @@ paths:
                     arrival: null
                     departure: null
                     note: ''
+              AcceptedPresenceSuggestion:
+                value:
+                  records:
+                  - client_uuid: d7b3e2a1-9c8f-4b5d-a6e0-1f2c3b4a5d43
+                    worker_id: 58
+                    status: late
+                    arrival: '07:31'
+                    departure: null
+                    note: ''
+                    from_suggestion:
+                    - presence
+                summary: Accepted presence suggestion
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/RecordBatchRequest'
@@ -3030,10 +3044,16 @@ paths:
     get:
       operationId: site_day_suggestions
       description: |-
-        One suggestion per crew worker with counted check-ins (workers without any are not listed: no suggestion). Rules, in the company time zone: `arrival` = first `in`, `departure` = last `out`; an `in` and an `out` before 12:00, or an `in` at or after 12:00 → `half_day`; first `in` after `late_after` → `late`; else `present`. Only an `out` → `status: null`.
+        One suggestion per crew worker with counted check-ins or a presence (workers with neither are not listed: no suggestion), by worker id. `sources` says which (1.5).
 
-        The phone pre-fills the roll call with them (modes `both` and `self_check_in`); the foreman confirms and submits as usual with `PUT .../records/`. `day_status` says whether the day can still change.
-      summary: Roll-call suggestions from check-ins
+        **Check-ins** (company time zone): `arrival` = first `in`, `departure` = last `out`; an `in` and an `out` before 12:00, or an `in` at or after 12:00 → `half_day`; first `in` after `late_after` → `late`; else `present`. Only an `out` → `status: null`.
+
+        **Presence** (1.5), only where `tracking_enabled` resolves on for the site and the worker: `presence` = `{first_seen_at, last_seen_at (null while still on site), open, seen_from, seen_until, zones, visits, status}`. Its `status`: time on site inside working hours (`work_start`–`work_end`; an open session counts until `work_end`) less than `half_day_units` of those hours → `half_day`; else first sighting after `late_after` → `late`; else `present`.
+
+        **Both:** the check-ins win — `status`, `arrival`, `departure`, `first_in_at`, `last_out_at` and `checkin_count` mean what they meant in 1.4 — and `presence` is shown next to them. **Presence only:** `status`, `arrival` (`seen_from`) and `departure` (`seen_until`) come from the presence, the check-in fields are `null`/`0`.
+
+        The phone pre-fills the roll call with check-in suggestions (modes `both` and `self_check_in`). Presence never marks attendance: the phone shows "seen 07:12–16:48, zone B" and the foreman accepts it, which goes through `PUT .../records/` with `from_suggestion: [presence]` (audited). `day_status` says whether the day can still change.
+      summary: Roll-call suggestions from check-ins and presence
       parameters:
       - in: path
         name: date
@@ -3075,6 +3095,9 @@ paths:
                       first_in_at: '2026-10-31T07:05:02Z'
                       last_out_at: '2026-10-31T11:30:00Z'
                       checkin_count: 2
+                      sources:
+                      - checkin
+                      presence: null
                     - worker_id: 51
                       status: present
                       arrival: '07:02'
@@ -3082,6 +3105,28 @@ paths:
                       first_in_at: '2026-10-31T07:02:40Z'
                       last_out_at: null
                       checkin_count: 1
+                      sources:
+                      - checkin
+                      presence: null
+                    - worker_id: 58
+                      status: late
+                      arrival: '07:31'
+                      departure: null
+                      first_in_at: null
+                      last_out_at: null
+                      checkin_count: 0
+                      sources:
+                      - presence
+                      presence:
+                        first_seen_at: '2026-10-31T07:31:10Z'
+                        last_seen_at: null
+                        open: true
+                        seen_from: '07:31'
+                        seen_until: null
+                        zones:
+                        - A
+                        visits: 2
+                        status: late
                     - worker_id: 63
                       status: late
                       arrival: '07:35'
@@ -3089,6 +3134,20 @@ paths:
                       first_in_at: '2026-10-31T07:35:10Z'
                       last_out_at: null
                       checkin_count: 1
+                      sources:
+                      - checkin
+                      - presence
+                      presence:
+                        first_seen_at: '2026-10-31T07:02:40Z'
+                        last_seen_at: '2026-10-31T16:48:21Z'
+                        open: false
+                        seen_from: '07:02'
+                        seen_until: '16:48'
+                        zones:
+                        - A
+                        - B
+                        visits: 1
+                        status: present
           description: ''
         '401':
           content:
@@ -5602,6 +5661,16 @@ components:
           type: string
           default: ''
           maxLength: 500
+        from_suggestion:
+          type: array
+          items:
+            $ref: '#/components/schemas/SuggestionSourceEnum'
+          description: '1.5: the mark is a roll-call suggestion the foreman accepted
+            (or the phone pre-filled), with its `sources` from `GET .../suggestions/`:
+            `[checkin]`, `[presence]` or `[checkin, presence]`. Empty or left out:
+            marked by hand. Recorded in the audit entry of the batch; it changes nothing
+            else.'
+          maxItems: 2
       required:
       - client_uuid
       - status
@@ -5644,12 +5713,28 @@ components:
           nullable: true
         checkin_count:
           type: integer
+          description: '`0` for a presence-only suggestion.'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SuggestionSourceEnum'
+          description: 'Where the suggestion comes from (1.5): `[checkin]`, `[presence]`
+            or `[checkin, presence]`. With check-ins, `status`, `arrival` and `departure`
+            come from the check-ins.'
+        presence:
+          allOf:
+          - $ref: '#/components/schemas/SuggestionPresence'
+          nullable: true
+          description: What presence tracking saw (1.5); `null` without a presence
+            (tracking off for the site or the worker, or not seen).
       required:
       - arrival
       - checkin_count
       - departure
       - first_in_at
       - last_out_at
+      - presence
+      - sources
       - status
       - worker_id
     RollCallSuggestions:
@@ -5774,6 +5859,67 @@ components:
             time.
       required:
       - client_uuid
+    SuggestionPresence:
+      type: object
+      properties:
+        first_seen_at:
+          type: string
+          format: date-time
+          description: First sighting on the site that day.
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last sighting; `null` while the worker is still on site.
+        open:
+          type: boolean
+          description: Still on site (no `last_seen_at`).
+        seen_from:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: '07:00'
+          description: '`first_seen_at`, company time zone (`HH:MM`).'
+        seen_until:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          example: '07:00'
+          description: '`last_seen_at`, company time zone; `null` while open.'
+          nullable: true
+        zones:
+          type: array
+          items:
+            type: string
+          description: Zone codes visited, in order (may be empty).
+        visits:
+          type: integer
+          description: Visits that day (left and came back).
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AttendanceStatusEnum'
+          description: |-
+            What the presence alone suggests (same rules as a presence-only suggestion), to show when it differs from the check-ins.
+
+            * `present` - Present
+            * `absent` - Absent
+            * `half_day` - Half day
+            * `late` - Late
+      required:
+      - first_seen_at
+      - last_seen_at
+      - open
+      - seen_from
+      - seen_until
+      - status
+      - visits
+      - zones
+    SuggestionSourceEnum:
+      enum:
+      - checkin
+      - presence
+      type: string
+      description: |-
+        * `checkin` - Counted check-ins of the worker
+        * `presence` - Presence tracking (badge or phone seen on site)
     Sync:
       type: object
       properties:

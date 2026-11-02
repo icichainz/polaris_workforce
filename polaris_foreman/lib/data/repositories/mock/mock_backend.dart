@@ -340,6 +340,10 @@ class MockBackend {
     return _day(siteId, date);
   }
 
+  /// Per site and day (`"$siteId|$date"`), the sources a changed record was
+  /// last written from (`from_suggestion`, 1.5), as the server audits them.
+  final Map<String, Map<int, List<SuggestionSource>>> suggestionAudit = {};
+
   Future<AttendanceDay> putRecords(
     String? token,
     int siteId,
@@ -460,6 +464,15 @@ class MockBackend {
           updatedAt: ts,
         );
         changed = true;
+      } else {
+        continue; // Unchanged: no audit entry.
+      }
+      // The server's audit entry (`after.from_suggestion`), per changed record.
+      final audit = suggestionAudit.putIfAbsent(key, () => {});
+      if (r.fromSuggestion.isEmpty) {
+        audit.remove(r.workerId);
+      } else {
+        audit[r.workerId] = r.fromSuggestion;
       }
     }
     if (changed || summary.id == null || summary.status == DayStatus.rejected) {
@@ -1288,19 +1301,61 @@ class MockBackend {
   ) async {
     await _call(token: token);
     _checkCheckInSite(siteId);
+    final fromCheckIns = suggestFromEvents(
+      _events(siteId, date),
+      lateAfter: _lateAfter(siteId),
+      localOf: (t) => t.toUtc(),
+    );
+    // Presence (1.5): what [seePresence] put there, crew only. The server
+    // works the presence status out from the settings; here it is given.
+    final crew = _crews[siteId]!.map((w) => w.id).toSet();
+    final seen = {
+      for (final e in (_presence[_key(siteId, date)] ?? const {}).entries)
+        if (crew.contains(e.key)) e.key: e.value,
+    };
+    final byWorker = {for (final s in fromCheckIns) s.workerId: s};
+    final ids = {...byWorker.keys, ...seen.keys}.toList()..sort();
     return RollCallSuggestions(
       siteId: siteId,
       date: date,
       attendanceMode: attendanceMode,
       lateAfter: _lateAfter(siteId),
       dayStatus: _summary(siteId, date).status,
-      suggestions: suggestFromEvents(
-        _events(siteId, date),
-        lateAfter: _lateAfter(siteId),
-        localOf: (t) => t.toUtc(),
-      ),
+      suggestions: [
+        for (final id in ids)
+          if (byWorker[id] case final s?)
+            seen[id] == null
+                ? s
+                : s.withPresence(const [
+                    SuggestionSource.checkin,
+                    SuggestionSource.presence,
+                  ], seen[id])
+          else
+            RollCallSuggestion(
+              workerId: id,
+              status: seen[id]!.status,
+              arrival: seen[id]!.seenFrom,
+              departure: seen[id]!.seenUntil,
+              firstInAt: null,
+              lastOutAt: null,
+              checkinCount: 0,
+              sources: const [SuggestionSource.presence],
+              presence: seen[id],
+            ),
+      ],
     );
   }
+
+  final Map<String, Map<int, SuggestionPresence>> _presence = {};
+
+  /// Tests and the demo: presence tracking saw [workerId] on the site that
+  /// day (the suggestions show it).
+  void seePresence(
+    int siteId,
+    String date,
+    int workerId,
+    SuggestionPresence presence,
+  ) => _presence.putIfAbsent(_key(siteId, date), () => {})[workerId] = presence;
 
   // ------------------------------------------------------------------ files
 

@@ -11,7 +11,7 @@ from apps.accounts.permissions import scoped_sites
 from apps.core.models import CompanySettings
 from apps.core.settings import resolve_setting
 
-from .models import PresenceSession, TrackerSync, TrackingConsent
+from .models import PresenceSession, SubjectKind, TrackerSync, TrackingConsent
 
 # --- settings ----------------------------------------------------------------------------
 
@@ -114,3 +114,43 @@ def day_sessions(site, date: datetime.date) -> list[DaySession]:
             )
         )
     return sorted(result, key=lambda s: (s.first_seen_at, s.subject_kind, s.subject_id))
+
+
+# --- roll-call suggestions (apps.checkin.selectors) ---------------------------------------
+
+
+def tracked_worker_ids(site, workers, company: CompanySettings | None = None) -> set[int]:
+    """The ids of ``workers`` (of the site's company) whose ``tracking_enabled`` resolves
+    on for ``site`` (company → site → worker)."""
+    company = company or CompanySettings.load(site.company_id)
+    return {
+        worker.pk
+        for worker in workers
+        if worker.company_id == site.company_id
+        and resolve_setting("tracking_enabled", site=site, worker=worker, company=company)
+    }
+
+
+def workers_day_presence(
+    site, date: datetime.date, worker_ids, company: CompanySettings | None = None
+) -> dict[int, DaySession]:
+    """``{worker id: DaySession}`` for the workers among ``worker_ids`` seen on ``site``
+    on ``date`` and tracked there (``tracked_worker_ids``). A worker with tracking off
+    has no presence, whatever sessions are stored."""
+    from apps.workers.models import Worker
+
+    wanted = set(worker_ids)
+    if not wanted:
+        return {}
+    seen = {
+        row.subject_id: row
+        for row in day_sessions(site, date)
+        if row.subject_kind == SubjectKind.WORKER and row.subject_id in wanted
+    }
+    if not seen:
+        return {}
+    workers = Worker.objects.filter(pk__in=list(seen), company_id=site.company_id).only(
+        "pk", "company_id", "tracking_enabled"
+    )
+    tracked = tracked_worker_ids(site, workers, company)
+    return {worker_id: row for worker_id, row in seen.items() if worker_id in tracked}

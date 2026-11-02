@@ -1477,6 +1477,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your position is recorded during tracking hours.'**
   String get trackingBackgroundText;
+
+  /// Presence tracking saw the worker on site from … to … (HH:MM).
+  ///
+  /// In en, this message translates to:
+  /// **'Seen {start}–{end}'**
+  String presenceSeen(String start, String end);
+
+  /// No description provided for @presenceSeenOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Seen since {start}, still on site'**
+  String presenceSeenOpen(String start);
+
+  /// No description provided for @presenceZones.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{zone {zones}} other{zones {zones}}}'**
+  String presenceZones(int count, String zones);
+
+  /// Button: mark the worker as presence tracking suggests.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept: {status}'**
+  String acceptSuggestion(String status);
+
+  /// No description provided for @acceptSuggestionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark {name} as presence tracking suggests'**
+  String acceptSuggestionHint(String name);
+
+  /// No description provided for @presenceSuggestedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 worker was seen on site but not marked. Check and accept.} other{{count} workers were seen on site but not marked. Check and accept.}}'**
+  String presenceSuggestedNote(int count);
 }
 
 class _AppLocalizationsDelegate

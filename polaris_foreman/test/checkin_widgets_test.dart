@@ -7,9 +7,12 @@ import 'package:geolocator/geolocator.dart' show LocationPermission;
 import 'package:polaris_foreman/app.dart';
 import 'package:polaris_foreman/data/local/local_store.dart';
 import 'package:polaris_foreman/data/models/models.dart';
+import 'package:polaris_foreman/l10n/gen/app_localizations.dart';
 import 'package:polaris_foreman/state/providers.dart';
 import 'package:polaris_foreman/state/session.dart';
 import 'package:polaris_foreman/ui/qr_scanner.dart';
+import 'package:polaris_foreman/ui/screens/roll_call_screen.dart';
+import 'package:polaris_foreman/ui/widgets.dart';
 
 import 'support/app_harness.dart';
 import 'support/fakes.dart';
@@ -278,5 +281,164 @@ void main() {
       matching: find.text('YM'),
     );
     expect(initials, findsOneWidget);
+  });
+
+  group('presence suggestions (1.5)', () {
+    const open = SuggestionPresence(
+      firstSeenAt: '2026-10-31T07:31:10Z',
+      lastSeenAt: null,
+      open: true,
+      seenFrom: '07:31',
+      seenUntil: null,
+      zones: ['A'],
+      visits: 1,
+      status: AttendanceStatus.late,
+    );
+    const closed = SuggestionPresence(
+      firstSeenAt: '2026-10-31T07:12:00Z',
+      lastSeenAt: '2026-10-31T16:48:00Z',
+      open: false,
+      seenFrom: '07:12',
+      seenUntil: '16:48',
+      zones: ['A', 'B'],
+      visits: 1,
+      status: AttendanceStatus.present,
+    );
+
+    Future<void> cacheSuggestions(Harness h) async {
+      final s = await h.backend.suggestions(await h.token(), site, today);
+      await h.store.setValue(
+        StoreKeys.suggestions(site, today),
+        jsonEncode(s.toJson()),
+      );
+    }
+
+    Future<Finder> card(WidgetTester tester, int id) async {
+      final f = find.byKey(ValueKey('worker-$id'));
+      await tester.scrollUntilVisible(
+        f,
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      return f;
+    }
+
+    testWidgets('seen on site: shown, accepted with one tap', (tester) async {
+      final h = await Harness.create();
+      await seedCrew(h, site);
+      await saveSetup(h);
+      h.backend.seePresence(site, today, 58, open);
+      await cacheSuggestions(h);
+      await pumpAt(tester, h, location: '/roll-call');
+      await tester.pumpAndSettle();
+
+      // Presence never marks anyone by itself.
+      expect(await h.store.loadRecord(site, today, 58), isNull);
+      expect(find.byKey(const Key('presenceNote')), findsOneWidget);
+      await card(tester, 58);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('presence-58')),
+          matching: find.text('Seen since 07:31, still on site · zone A'),
+        ),
+        findsOneWidget,
+      );
+      final accept = find.byKey(const Key('accept-58'));
+      await tester.ensureVisible(accept);
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(of: accept, matching: find.text('Accept: Late')),
+        findsOneWidget,
+      );
+
+      await tester.tap(accept);
+      await tester.pumpAndSettle();
+
+      final r = (await h.store.loadRecord(site, today, 58))!;
+      expect((r.status, r.arrival), (AttendanceStatus.late, '07:31'));
+      // Sent at once (the sync kicks after a write): audited as accepted
+      // from presence.
+      expect(await h.store.loadOutbox(), isEmpty);
+      expect(h.backend.suggestionAudit['$site|$today'], {
+        58: [SuggestionSource.presence],
+      });
+      expect(find.byKey(const Key('accept-58')), findsNothing);
+      expect(find.byKey(const Key('presence-58')), findsOneWidget);
+      expect(find.byKey(const Key('presenceNote')), findsNothing);
+    });
+
+    testWidgets('check-ins and presence: the scan wins, presence is shown', (
+      tester,
+    ) async {
+      final h = await Harness.create();
+      await seedCrew(h, site);
+      await saveSetup(h);
+      await h.backend.checkIn(
+        await h.token(),
+        const CheckInCreateRequest(
+          clientUuid: '22222222-2222-4222-8222-222222222222',
+          siteId: site,
+          direction: CheckInDirection.checkIn,
+          at: '2026-10-31T07:40:00Z',
+          workerId: 63,
+        ),
+      );
+      h.backend.seePresence(site, today, 63, closed);
+      await cacheSuggestions(h);
+      await pumpAt(tester, h, location: '/roll-call');
+      await tester.pumpAndSettle();
+
+      await card(tester, 63);
+      final r = (await h.store.loadRecord(site, today, 63))!;
+      expect((r.status, r.arrival), (AttendanceStatus.late, '07:40'));
+      expect(find.byKey(const Key('fromCheckIn-63')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('presence-63')),
+          matching: find.text('Seen 07:12–16:48 · zones A, B'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('accept-63')), findsNothing);
+    });
+
+    testWidgets('a submitted day shows presence but offers no accept', (
+      tester,
+    ) async {
+      final h = await Harness.create();
+      await seedCrew(h, site);
+      await saveSetup(h);
+      h.backend.seePresence(site, today, 58, open);
+      await cacheSuggestions(h);
+      await h.store.upsertDays([
+        (await h.backend.day(
+          await h.token(),
+          site,
+          today,
+        )).summary.copyWith(status: DayStatus.submitted),
+      ]);
+      await pumpAt(tester, h, location: '/roll-call');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('tabAll')));
+      await tester.pumpAndSettle();
+
+      await card(tester, 58);
+      expect(find.byKey(const Key('presence-58')), findsOneWidget);
+      expect(find.byKey(const Key('accept-58')), findsNothing);
+    });
+
+    test('the presence line in French', () {
+      final fr = lookupAppLocalizations(const Locale('fr'));
+      expect(
+        presenceLine(fr, open),
+        'Vu depuis 07:31, toujours sur le chantier · zone A',
+      );
+      expect(presenceLine(fr, closed), 'Vu 07:12–16:48 · zones A, B');
+      expect(
+        fr.acceptSuggestion(statusWord(fr, AttendanceStatus.late)),
+        'Accepter : Retard',
+      );
+    });
   });
 }

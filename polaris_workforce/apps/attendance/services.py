@@ -33,6 +33,7 @@ from rest_framework.exceptions import ValidationError
 from apps.accounts.permissions import can_manage_site, can_view_site
 from apps.api.exceptions import Conflict, Locked
 from apps.api.idempotency import IdempotentResult, apply_changes, run_once
+from apps.checkin.selectors import SOURCES as SUGGESTION_SOURCES
 from apps.core.dates import company_today
 from apps.core.models import AuditLog
 
@@ -131,7 +132,11 @@ def upsert_records(day: AttendanceDay, records: list[dict], user) -> list[Attend
     """Create or update the day's records from a phone batch; return the server's records.
 
     ``records`` holds dicts with ``client_uuid``, ``worker_id``, ``status`` (model value),
-    ``arrival``, ``departure`` and ``note``. Idempotent: a record is found by
+    ``arrival``, ``departure``, ``note`` and optionally ``from_suggestion``: the sources
+    (``checkin``, ``presence``) of the roll-call suggestion the mark was taken from, empty
+    for a mark made by hand. It changes nothing on the record; the audit entry lists it
+    per worker (``after["from_suggestion"]``) for the records the batch changed, so
+    an accepted presence suggestion is on the record's history. Idempotent: a record is found by
     ``client_uuid``, then by worker (one record per worker per day; the server's
     ``client_uuid`` wins), and only changed fields are written. A batch that changes
     nothing writes nothing, whatever the day's status. Otherwise the day must be
@@ -226,19 +231,39 @@ def _upsert_records(day, records, user):
             if changed is not None:
                 record.save(update_fields=[*sorted(changed), "updated_at"])
         day.save(update_fields=["status", "updated_at"])  # bumps updated_at for sync
+        after = {
+            "status": day.status,
+            "records": {
+                str(record.worker_id): _record_state(record) for record, _f in to_save.values()
+            },
+        }
+        suggested = _from_suggestion(records, {record.worker_id for record, _f in to_save.values()})
+        if suggested:
+            after["from_suggestion"] = suggested
         AuditLog.record(
             actor=user,
             action="attendance.records.upsert",
             target=day,
             before={"status": old_status, "records": before},
-            after={
-                "status": day.status,
-                "records": {
-                    str(record.worker_id): _record_state(record) for record, _f in to_save.values()
-                },
-            },
+            after=after,
         )
     return result
+
+
+def _from_suggestion(records: list[dict], changed: set[int]) -> dict[str, list[str]]:
+    """``{worker id: sources}`` of the changed records whose mark came from a suggestion
+    (the last item of a worker in the batch decides, as for the values)."""
+    found: dict[str, list[str]] = {}
+    for item in records:
+        if item["worker_id"] not in changed:
+            continue
+        sources = set(item.get("from_suggestion") or ())
+        key = str(item["worker_id"])
+        if sources:
+            found[key] = [source for source in SUGGESTION_SOURCES if source in sources]
+        else:
+            found.pop(key, None)
+    return found
 
 
 def submit_day(

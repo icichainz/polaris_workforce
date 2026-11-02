@@ -3,7 +3,8 @@ Approvals detail panel for one day (included by attendance/approvals.html).
 
 Context
   detail   dict from apps.attendance.selectors.approval_detail (rows carry paid_note when
-           the worker was already paid for this day), plus
+           the worker was already paid for this day, and presence when tracking saw
+           them on the site), plus
            can_decide (bool) and form (DecisionForm)
 {% endcomment %}{% with day=detail.day %}
 <section id="approval-detail" aria-labelledby="approval-detail-title" class="flex min-w-0 flex-[3_1_600px] flex-col rounded-card border border-line bg-surface">
@@ -70,7 +71,7 @@ Context
             <span><span class="font-semibold">{{ row.name }}</span><br><span class="text-xs text-steel">{{ row.meta }}</span></span></span>
           </td>
           <td class="px-4 py-3">{% include "components/status_badge.html" with status=row.record.status only %}</td>
-          <td class="px-4 py-3 tabular-nums">{{ row.times }}</td>
+          <td class="px-4 py-3 tabular-nums">{{ row.times }}{% if row.presence %}<br>{% include "components/presence_seen.html" with presence=row.presence only %}{% endif %}</td>
           <td class="px-5 py-3 text-[13px] text-ink-700">
             {% for change in row.changes %}
               <span class="block">{% if row.record.corrected %}<span class="sr-only">{% translate "Changed after submission:" %} </span>{% endif %}{% blocktranslate with field=change.field old=change.old new=change.new %}{{ field }} was {{ old }} → {{ new }}.{% endblocktranslate %} “{{ change.reason }}” <span class="text-steel">{{ change.at }}</span></span>

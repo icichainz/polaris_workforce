@@ -111,6 +111,29 @@ YAO_OUT = {
 # Oldest first, like the endpoint.
 SITE_CHECKINS = [AFI_IN, UNKNOWN, YAO_IN, CHECKIN, YAO_OUT]
 
+# Presence of the same day (the sessions of ``apps/presence/api/examples.py``), as the
+# suggestions show it (1.5).
+PRESENCE_DELALI = {
+    "first_seen_at": f"{ex.DATE}T07:02:40Z",
+    "last_seen_at": f"{ex.DATE}T16:48:21Z",
+    "open": False,
+    "seen_from": "07:02",
+    "seen_until": "16:48",
+    "zones": ["A", "B"],
+    "visits": 1,
+    "status": "present",
+}
+PRESENCE_KODJO = {
+    "first_seen_at": f"{ex.DATE}T07:31:10Z",
+    "last_seen_at": None,
+    "open": True,
+    "seen_from": "07:31",
+    "seen_until": None,
+    "zones": ["A"],
+    "visits": 2,
+    "status": "late",
+}
+
 SUGGESTIONS = {
     "site_id": ex.SITE_ID,
     "date": ex.DATE,
@@ -126,6 +149,8 @@ SUGGESTIONS = {
             "first_in_at": YAO_IN["at"],
             "last_out_at": YAO_OUT["at"],
             "checkin_count": 2,
+            "sources": ["checkin"],
+            "presence": None,
         },
         {
             "worker_id": ex.AFI["id"],
@@ -135,7 +160,23 @@ SUGGESTIONS = {
             "first_in_at": f"{ex.DATE}T07:02:40Z",
             "last_out_at": None,
             "checkin_count": 1,
+            "sources": ["checkin"],
+            "presence": None,
         },
+        # Presence only (1.5): Kodjo has no check-in; the tracker saw him from 07:31, still
+        # on site → late (after 07:15; an open session counts until work ends, 17:00).
+        {
+            "worker_id": ex.KODJO["id"],
+            "status": "late",
+            "arrival": "07:31",
+            "departure": None,
+            "first_in_at": None,
+            "last_out_at": None,
+            "checkin_count": 0,
+            "sources": ["presence"],
+            "presence": PRESENCE_KODJO,
+        },
+        # Both: the check-in (07:35, late) wins; the presence (seen from 07:02) is shown.
         {
             "worker_id": ex.DELALI["id"],
             "status": "late",
@@ -144,6 +185,8 @@ SUGGESTIONS = {
             "first_in_at": f"{ex.DATE}T07:35:10Z",
             "last_out_at": None,
             "checkin_count": 1,
+            "sources": ["checkin", "presence"],
+            "presence": PRESENCE_DELALI,
         },
     ],
 }

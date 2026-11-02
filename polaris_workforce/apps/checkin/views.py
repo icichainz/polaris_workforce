@@ -151,6 +151,7 @@ def site_day(request, pk, date):
             "rows": rows,
             "flagged": sum(1 for row in rows if row["flags"]),
             "suggestions": suggestions,
+            "presence_shown": any(s.presence for s in result.suggestions),
             "result": result,
             "form": form,
             "nav_active": "checkin:home",

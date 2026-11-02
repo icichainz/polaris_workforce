@@ -172,6 +172,8 @@ final Provider<SyncService> syncServiceProvider = Provider<SyncService>((ref) {
   service.onSuggestions = (siteId, date) async {
     await ref.read(checkInServiceProvider).applySuggestions(siteId, date);
   };
+  service.isTracked = (siteId) =>
+      ref.read(trackingProvider).token?.sites.contains(siteId) ?? false;
   service.sendConsent = (e) =>
       ref.read(trackingProvider.notifier).sendConsent(e);
   ref.listen(siteClockProvider, (_, c) => service.clock = c);
@@ -257,6 +259,7 @@ class RollCallView {
     this.mode,
     this.prefilled = const {},
     this.checkIns = const [],
+    this.suggestions = const {},
   });
 
   final AssignedSite site;
@@ -279,6 +282,35 @@ class RollCallView {
 
   /// Today's check-ins made on this phone.
   final List<LocalCheckIn> checkIns;
+
+  /// Suggestions per worker (check-ins, presence or both), crew only.
+  final Map<int, RollCallSuggestion> suggestions;
+
+  /// What presence tracking saw of the worker today, if anything.
+  SuggestionPresence? presenceOf(int workerId) =>
+      suggestions[workerId]?.presence;
+
+  /// A presence-only suggestion the foreman can accept: the day can change,
+  /// it has a status, and the worker's mark is not already the same.
+  RollCallSuggestion? acceptable(int workerId) {
+    final s = suggestions[workerId];
+    if (!editable || s == null || !s.presenceOnly || s.status == null) {
+      return null;
+    }
+    final r = records[workerId];
+    if (r != null &&
+        r.status == s.status &&
+        r.arrival == s.arrival &&
+        r.departure == s.departure) {
+      return null;
+    }
+    return s;
+  }
+
+  /// Crew workers seen on site by presence tracking and not marked yet.
+  int get presenceToAccept => crew
+      .where((w) => !records.containsKey(w.id) && acceptable(w.id) != null)
+      .length;
 
   /// The worker's mark came from check-ins and was not changed by hand.
   bool fromCheckIn(int workerId) {
@@ -319,6 +351,9 @@ final rollCallViewProvider = FutureProvider<RollCallView?>((ref) async {
   return RollCallView(
     mode: await checkins.mode(site.id),
     prefilled: await checkins.prefilled(site.id, date),
+    suggestions: {
+      for (final s in await checkins.suggestions(site.id, date)) s.workerId: s,
+    },
     checkIns: await store.loadCheckIns(site.id, date),
     site: site,
     date: date,

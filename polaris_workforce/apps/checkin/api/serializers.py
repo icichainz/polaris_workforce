@@ -141,6 +141,33 @@ class CheckInListSerializer(serializers.Serializer):
     checkins = CheckInSerializer(many=True)
 
 
+SUGGESTION_SOURCES = [
+    (selectors.SOURCE_CHECKIN, _("Counted check-ins of the worker")),
+    (selectors.SOURCE_PRESENCE, _("Presence tracking (badge or phone seen on site)")),
+]
+
+
+class SuggestionPresenceSerializer(serializers.Serializer):
+    first_seen_at = serializers.DateTimeField(help_text="First sighting on the site that day.")
+    last_seen_at = serializers.DateTimeField(
+        allow_null=True, help_text="Last sighting; `null` while the worker is still on site."
+    )
+    open = serializers.BooleanField(help_text="Still on site (no `last_seen_at`).")
+    seen_from = ClockTimeField(help_text="`first_seen_at`, company time zone (`HH:MM`).")
+    seen_until = ClockTimeField(
+        allow_null=True, help_text="`last_seen_at`, company time zone; `null` while open."
+    )
+    zones = serializers.ListField(
+        child=serializers.CharField(), help_text="Zone codes visited, in order (may be empty)."
+    )
+    visits = serializers.IntegerField(help_text="Visits that day (left and came back).")
+    status = serializers.ChoiceField(
+        choices=ATTENDANCE_STATUSES,
+        help_text="What the presence alone suggests (same rules as a presence-only "
+        "suggestion), to show when it differs from the check-ins.",
+    )
+
+
 class RollCallSuggestionSerializer(serializers.Serializer):
     worker_id = serializers.IntegerField()
     status = serializers.ChoiceField(
@@ -152,7 +179,18 @@ class RollCallSuggestionSerializer(serializers.Serializer):
     departure = ClockTimeField(allow_null=True)
     first_in_at = serializers.DateTimeField(allow_null=True)
     last_out_at = serializers.DateTimeField(allow_null=True)
-    checkin_count = serializers.IntegerField()
+    checkin_count = serializers.IntegerField(help_text="`0` for a presence-only suggestion.")
+    sources = serializers.ListField(
+        child=serializers.ChoiceField(choices=SUGGESTION_SOURCES),
+        help_text="Where the suggestion comes from (1.5): `[checkin]`, `[presence]` or "
+        "`[checkin, presence]`. With check-ins, `status`, `arrival` and `departure` come "
+        "from the check-ins.",
+    )
+    presence = SuggestionPresenceSerializer(
+        allow_null=True,
+        help_text="What presence tracking saw (1.5); `null` without a presence (tracking "
+        "off for the site or the worker, or not seen).",
+    )
 
 
 class RollCallSuggestionsSerializer(serializers.Serializer):
@@ -162,6 +200,33 @@ class RollCallSuggestionsSerializer(serializers.Serializer):
     late_after = ClockTimeField()
     day_status = serializers.ChoiceField(choices=DAY_STATUSES)
     suggestions = RollCallSuggestionSerializer(many=True)
+
+
+def suggestion_payload(s: selectors.Suggestion) -> dict:
+    """``RollCallSuggestion`` data of a ``selectors.Suggestion``."""
+    p = s.presence
+    return {
+        "worker_id": s.worker_id,
+        "status": s.status,
+        "arrival": s.arrival,
+        "departure": s.departure,
+        "first_in_at": s.first_in_at,
+        "last_out_at": s.last_out_at,
+        "checkin_count": s.checkin_count,
+        "sources": list(s.sources),
+        "presence": None
+        if p is None
+        else {
+            "first_seen_at": p.first_seen_at,
+            "last_seen_at": p.last_seen_at,
+            "open": p.open,
+            "seen_from": p.seen_from,
+            "seen_until": p.seen_until,
+            "zones": p.zones,
+            "visits": p.visits,
+            "status": p.status,
+        },
+    }
 
 
 class GeofenceSerializer(serializers.Serializer):

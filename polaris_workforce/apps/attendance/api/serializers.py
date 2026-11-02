@@ -13,6 +13,7 @@ from apps.api.idempotency import client_uuid_field
 from apps.api.serializers import PersonRefSerializer
 from apps.attendance import selectors
 from apps.attendance.models import AttendanceRecord
+from apps.checkin.api.serializers import SUGGESTION_SOURCES
 
 MAX_RECORDS_PER_BATCH = 200
 
@@ -127,6 +128,16 @@ class RecordUpsertSerializer(serializers.Serializer):
     arrival = ClockTimeField(allow_null=True, required=False, default=None)
     departure = ClockTimeField(allow_null=True, required=False, default=None)
     note = serializers.CharField(max_length=500, allow_blank=True, required=False, default="")
+    from_suggestion = serializers.ListField(
+        child=serializers.ChoiceField(choices=SUGGESTION_SOURCES),
+        required=False,
+        default=list,
+        max_length=len(SUGGESTION_SOURCES),
+        help_text="1.5: the mark is a roll-call suggestion the foreman accepted (or the "
+        "phone pre-filled), with its `sources` from `GET .../suggestions/`: "
+        "`[checkin]`, `[presence]` or `[checkin, presence]`. Empty or left out: marked "
+        "by hand. Recorded in the audit entry of the batch; it changes nothing else.",
+    )
 
 
 class RecordBatchSerializer(serializers.Serializer):

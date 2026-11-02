@@ -229,5 +229,11 @@
   "trackingMocked": "{count, plural, =1{1 position venant d’une application de fausse localisation a été ignorée.} other{{count} positions venant d’une application de fausse localisation ont été ignorées.}}",
   "trackingReadNotice": "Lire la notice",
   "trackingBackgroundTitle": "Polaris : position activée",
-  "trackingBackgroundText": "Votre position est enregistrée pendant les heures de suivi."
+  "trackingBackgroundText": "Votre position est enregistrée pendant les heures de suivi.",
+  "presenceSeen": "Vu {start}–{end}",
+  "presenceSeenOpen": "Vu depuis {start}, toujours sur le chantier",
+  "presenceZones": "{count, plural, =1{zone {zones}} other{zones {zones}}}",
+  "acceptSuggestion": "Accepter : {status}",
+  "acceptSuggestionHint": "Marquer {name} comme le suivi de présence le propose",
+  "presenceSuggestedNote": "{count, plural, =1{1 ouvrier a été vu sur le chantier mais n’est pas marqué. Vérifiez et acceptez.} other{{count} ouvriers ont été vus sur le chantier mais ne sont pas marqués. Vérifiez et acceptez.}}"
 }

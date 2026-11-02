@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/local/local_store.dart';
 import '../../data/models/models.dart';
+import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 import '../../theme/tokens.dart';
 import '../widgets.dart';
@@ -148,6 +149,14 @@ class _RollCallScreenState extends ConsumerState<RollCallScreen> {
     }
   }
 
+  /// The foreman accepts what presence tracking suggests for one worker:
+  /// the normal records upsert, with `from_suggestion` (audited).
+  Future<void> _accept(RollCallView v, RollCallSuggestion s) async {
+    await ref
+        .read(rollCallServiceProvider)
+        .acceptSuggestion(siteId: v.site.id, date: v.date, suggestion: s);
+  }
+
   Future<void> _allPresent(RollCallView v) async {
     final ids = v.unmarked;
     if (ids.isEmpty) return;
@@ -277,6 +286,12 @@ class _RollCallScreenState extends ConsumerState<RollCallScreen> {
             _Note(
               l.prefilledNote(v.crew.where((w) => v.fromCheckIn(w.id)).length),
             ),
+          if (v.editable && v.presenceToAccept > 0)
+            _Note(
+              l.presenceSuggestedNote(v.presenceToAccept),
+              icon: Icons.sensors,
+              key: const Key('presenceNote'),
+            ),
           if (!v.editable)
             Container(
               color: v.status == DayStatus.locked
@@ -317,6 +332,12 @@ class _RollCallScreenState extends ConsumerState<RollCallScreen> {
                         worker: w,
                         record: r,
                         fromCheckIn: v.fromCheckIn(w.id),
+                        presence: v.presenceOf(w.id),
+                        onAccept: switch (v.acceptable(w.id)) {
+                          final s? => () => _accept(v, s),
+                          null => null,
+                        },
+                        acceptStatus: v.acceptable(w.id)?.status,
                         enabled: v.editable || v.correctable,
                         onPick: (s) => _pick(v, w, s),
                         onTimeTap: r == null || !(v.editable || v.correctable)
@@ -350,17 +371,18 @@ class _RollCallScreenState extends ConsumerState<RollCallScreen> {
 }
 
 class _Note extends StatelessWidget {
-  const _Note(this.text);
+  const _Note(this.text, {this.icon = Icons.qr_code_2, Key? key})
+    : super(key: key ?? const Key('rollCallNote'));
   final String text;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) => Container(
-    key: const Key('rollCallNote'),
     color: PColors.amberTint,
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
     child: Row(
       children: [
-        const Icon(Icons.qr_code_2, size: 18, color: PColors.amberText),
+        Icon(icon, size: 18, color: PColors.amberText),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -451,6 +473,9 @@ class WorkerCard extends StatelessWidget {
     required this.onPick,
     this.onTimeTap,
     this.fromCheckIn = false,
+    this.presence,
+    this.onAccept,
+    this.acceptStatus,
   });
 
   final CrewWorker worker;
@@ -459,6 +484,14 @@ class WorkerCard extends StatelessWidget {
 
   /// The mark was pre-filled from check-ins (not changed by hand).
   final bool fromCheckIn;
+
+  /// What presence tracking saw today ("Seen 07:12–16:48 · zone B").
+  final SuggestionPresence? presence;
+
+  /// Accept the presence suggestion ([acceptStatus] and its times); null
+  /// when there is nothing to accept.
+  final VoidCallback? onAccept;
+  final AttendanceStatus? acceptStatus;
   final ValueChanged<AttendanceStatus> onPick;
 
   /// Called with `true` for the arrival, `false` for the departure.
@@ -530,6 +563,31 @@ class WorkerCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                    if (presence != null)
+                      Row(
+                        key: Key('presence-${worker.id}'),
+                        children: [
+                          const Icon(
+                            Icons.sensors,
+                            size: 14,
+                            color: PColors.steel,
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              presenceLine(l, presence!),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: PColors.steel,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -583,8 +641,37 @@ class WorkerCard extends StatelessWidget {
               ],
             ),
           ),
+          if (onAccept != null && acceptStatus != null) ...[
+            const SizedBox(height: 8),
+            Semantics(
+              button: true,
+              label: l.acceptSuggestionHint(worker.name),
+              excludeSemantics: true,
+              child: OutlinedButton.icon(
+                key: Key('accept-${worker.id}'),
+                onPressed: onAccept,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                  foregroundColor: PColors.ink,
+                  side: const BorderSide(color: PColors.border),
+                ),
+                icon: const Icon(Icons.sensors, size: 18),
+                label: Text(l.acceptSuggestion(statusWord(l, acceptStatus!))),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
+}
+
+/// "Seen 07:12–16:48 · zone B", or "Seen since 07:31, still on site ·
+/// zones A, B".
+String presenceLine(AppLocalizations l, SuggestionPresence p) {
+  final seen = p.seenUntil == null
+      ? l.presenceSeenOpen(p.seenFrom)
+      : l.presenceSeen(p.seenFrom, p.seenUntil!);
+  if (p.zones.isEmpty) return seen;
+  return '$seen · ${l.presenceZones(p.zones.length, p.zones.join(', '))}';
 }

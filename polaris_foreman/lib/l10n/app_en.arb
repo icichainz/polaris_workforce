@@ -835,5 +835,61 @@
   "trackingBackgroundTitle": "Polaris: location on",
   "@trackingBackgroundTitle": {},
   "trackingBackgroundText": "Your position is recorded during tracking hours.",
-  "@trackingBackgroundText": {}
+  "@trackingBackgroundText": {},
+  "presenceSeen": "Seen {start}–{end}",
+  "@presenceSeen": {
+    "description": "Presence tracking saw the worker on site from … to … (HH:MM).",
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "presenceSeenOpen": "Seen since {start}, still on site",
+  "@presenceSeenOpen": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      }
+    }
+  },
+  "presenceZones": "{count, plural, =1{zone {zones}} other{zones {zones}}}",
+  "@presenceZones": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "zones": {
+        "type": "String"
+      }
+    }
+  },
+  "acceptSuggestion": "Accept: {status}",
+  "@acceptSuggestion": {
+    "description": "Button: mark the worker as presence tracking suggests.",
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "acceptSuggestionHint": "Mark {name} as presence tracking suggests",
+  "@acceptSuggestionHint": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "presenceSuggestedNote": "{count, plural, =1{1 worker was seen on site but not marked. Check and accept.} other{{count} workers were seen on site but not marked. Check and accept.}}",
+  "@presenceSuggestedNote": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

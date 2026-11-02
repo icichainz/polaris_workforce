@@ -165,12 +165,15 @@ class RollCallService {
     return records;
   }
 
-  /// Writes marks with their own times (check-in suggestions): like
-  /// [markMany], but [marks] carry the arrival and departure to keep.
+  /// Writes marks with their own times (suggestions): like [markMany], but
+  /// [marks] carry the arrival and departure to keep. [sources] says, per
+  /// worker, which suggestion a mark was taken from (`from_suggestion` of
+  /// the records write, 1.5: the server audits it).
   Future<List<LocalRecord>> prefill({
     required int siteId,
     required String date,
     required Map<int, SuggestedMark> marks,
+    Map<int, List<SuggestionSource>> sources = const {},
   }) async {
     if (marks.isEmpty) return const [];
     final status = await _status(siteId, date);
@@ -196,9 +199,36 @@ class RollCallService {
       );
     }
     await store.upsertRecords(records);
-    await _queueRecords(siteId, date, records);
+    await _queueRecords(siteId, date, records, sources: sources);
     onWrite?.call();
     return records;
+  }
+
+  /// The foreman accepts a suggestion (a presence one, usually): the
+  /// worker's mark takes its status and times, through the normal records
+  /// upsert (the record's own `client_uuid`) with `from_suggestion` set to
+  /// its sources. Presence never marks anyone without this tap. Returns
+  /// null when the suggestion has no status (only a check-out).
+  Future<LocalRecord?> acceptSuggestion({
+    required int siteId,
+    required String date,
+    required RollCallSuggestion suggestion,
+  }) async {
+    final st = suggestion.status;
+    if (st == null) return null;
+    final written = await prefill(
+      siteId: siteId,
+      date: date,
+      marks: {
+        suggestion.workerId: SuggestedMark(
+          st,
+          suggestion.arrival,
+          suggestion.departure,
+        ),
+      },
+      sources: {suggestion.workerId: suggestion.sources},
+    );
+    return written.single;
   }
 
   /// Changes the arrival or departure time of a marked worker.
@@ -220,11 +250,15 @@ class RollCallService {
   }
 
   /// One records entry per site and day; later edits merge into it.
+  ///
+  /// A record changed again by hand loses its [sources]: the latest write
+  /// says where the mark comes from.
   Future<void> _queueRecords(
     int siteId,
     String date,
-    List<LocalRecord> records,
-  ) async {
+    List<LocalRecord> records, {
+    Map<int, List<SuggestionSource>> sources = const {},
+  }) async {
     final outbox = await store.loadOutbox();
     final existing = outbox
         .where(
@@ -236,7 +270,16 @@ class RollCallService {
         .firstOrNull;
     final merged = <String, dynamic>{
       ...?(existing?.payload['records'] as Map<String, dynamic>?),
-      for (final r in records) '${r.workerId}': r.toUpsert().toJson(),
+      for (final r in records)
+        '${r.workerId}': RecordUpsert(
+          clientUuid: r.clientUuid,
+          workerId: r.workerId,
+          status: r.status,
+          arrival: r.arrival,
+          departure: r.departure,
+          note: r.note,
+          fromSuggestion: sources[r.workerId] ?? const [],
+        ).toJson(),
     };
     if (existing == null) {
       await store.insertOutbox(

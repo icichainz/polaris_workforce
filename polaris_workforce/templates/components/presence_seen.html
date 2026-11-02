@@ -1,0 +1,11 @@
+{% load i18n %}{% comment %}
+What presence tracking saw of a worker that day: "Seen 07:12–16:48 · zone B", or
+"Seen since 07:31, still on site · zones A, B". Presence never marks attendance; this
+is shown next to the mark (approvals, check-in site day).
+
+  {% include "components/presence_seen.html" with presence=row.presence only %}
+
+Parameters
+  presence  apps.checkin.selectors.PresenceSeen (seen_from, seen_until, open, zones);
+            nothing is shown when it is empty
+{% endcomment %}{% if presence %}<span class="inline-flex items-center gap-1 text-xs text-steel" data-presence-seen>{% include "components/icon.html" with name="sites" class="size-3.5" only %}<span>{% if presence.seen_until %}{% blocktranslate with start=presence.seen_from|time:"H:i" end=presence.seen_until|time:"H:i" %}Seen {{ start }}–{{ end }}{% endblocktranslate %}{% else %}{% blocktranslate with start=presence.seen_from|time:"H:i" %}Seen since {{ start }}, still on site{% endblocktranslate %}{% endif %}{% if presence.zones %} · {% blocktranslate with zones=presence.zones|join:", " count n=presence.zones|length %}zone {{ zones }}{% plural %}zones {{ zones }}{% endblocktranslate %}{% endif %}</span></span>{% endif %}

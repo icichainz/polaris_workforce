@@ -348,7 +348,85 @@ void main() {
         lateAfter: expected['late_after'] as String,
         localOf: (t) => t.toUtc(),
       );
-      expect(got.map((s) => s.toJson()).toList(), expected['suggestions']);
+      // 1.5: the check-in fields of every suggestion with check-ins; the
+      // presence comes from the server only.
+      Map<String, dynamic> checkInPart(Map<String, dynamic> s) =>
+          {...s}..removeWhere((k, _) => k == 'sources' || k == 'presence');
+      final withCheckIns = [
+        for (final s in expected['suggestions'] as List<dynamic>)
+          if ((s['sources'] as List).contains('checkin'))
+            checkInPart(s as Map<String, dynamic>),
+      ];
+      expect(got.map((s) => checkInPart(s.toJson())).toList(), withCheckIns);
+    });
+
+    test('presence in the suggestions example (1.5)', () {
+      final s = RollCallSuggestions.fromJson(
+        api.response(
+          '/sites/{site_id}/days/{date}/suggestions/',
+          'get',
+          '200',
+          'Suggestions',
+        ),
+      ).suggestions;
+      final presenceOnly = s.where((x) => x.presenceOnly).single;
+      expect(presenceOnly.sources, [SuggestionSource.presence]);
+      expect(presenceOnly.fromCheckIns, isFalse);
+      expect(
+        (
+          presenceOnly.status,
+          presenceOnly.arrival,
+          presenceOnly.departure,
+          presenceOnly.checkinCount,
+        ),
+        (
+          presenceOnly.presence!.status,
+          presenceOnly.presence!.seenFrom,
+          presenceOnly.presence!.seenUntil,
+          0,
+        ),
+      );
+      expect(presenceOnly.presence!.open, isTrue);
+      final both = s.where((x) => x.sources.length == 2).single;
+      expect(both.fromCheckIns, isTrue);
+      expect(both.presence!.zones, ['A', 'B']);
+      // Check-ins win: the check-in arrival, not the first sighting.
+      expect(both.arrival, isNot(both.presence!.seenFrom));
+    });
+
+    test('RecordUpsert with from_suggestion (1.5)', () {
+      final json = api.request(
+        '/sites/{site_id}/days/{date}/records/',
+        'put',
+        'AcceptedPresenceSuggestion',
+      );
+      final items = (json['records'] as List).cast<Map<String, dynamic>>();
+      roundTrip(items.single, RecordUpsert.fromJson, (v) => v.toJson());
+      final item = RecordUpsert.fromJson(items.single);
+      expect(item.fromSuggestion, [SuggestionSource.presence]);
+      expect(api.checkSchema(item.toJson(), 'RecordUpsertRequest'), isEmpty);
+      // A mark by hand sends no from_suggestion at all (a 1.4 body).
+      const byHand = RecordUpsert(
+        clientUuid: '3f2a7c1e-5b8d-4e0a-9c61-0d4b8e2f7a10',
+        workerId: 44,
+        status: AttendanceStatus.present,
+      );
+      expect(byHand.toJson().containsKey('from_suggestion'), isFalse);
+    });
+
+    test('a 1.4 suggestion (cached) reads as check-ins only', () {
+      final old = RollCallSuggestion.fromJson({
+        'worker_id': 44,
+        'status': 'present',
+        'arrival': '07:05',
+        'departure': null,
+        'first_in_at': '2026-10-31T07:05:00Z',
+        'last_out_at': null,
+        'checkin_count': 1,
+      });
+      expect(old.sources, [SuggestionSource.checkin]);
+      expect(old.presence, isNull);
+      expect(old.fromCheckIns, isTrue);
     });
   });
 
@@ -577,6 +655,55 @@ void main() {
         final list = await c.checkins(site, today);
         expect(list.checkins.length, 7);
         expect(list.checkins.first.workerId, 51); // Oldest first.
+      });
+
+      test('presence in the suggestions; accepting one (1.5)', () async {
+        await f.signIn();
+        const seen = SuggestionPresence(
+          firstSeenAt: '2026-10-31T07:31:10Z',
+          lastSeenAt: null,
+          open: true,
+          seenFrom: '07:31',
+          seenUntil: null,
+          zones: ['A'],
+          visits: 1,
+          status: AttendanceStatus.late,
+        );
+        f.backend.seePresence(site, today, 58, seen);
+        f.backend.seePresence(site, today, 63, seen);
+        f.backend.seePresence(site, today, 120, seen); // Not on the crew.
+        await f.repos.checkin.checkIn(
+          req(1, at: '2026-10-31T07:05:00Z', workerId: 63),
+        );
+        final s = await f.repos.checkin.suggestions(site, today);
+        final by = {for (final x in s.suggestions) x.workerId: x};
+        expect(by.keys.toList(), [58, 63]);
+        expect(by[58]!.sources, [SuggestionSource.presence]);
+        expect(
+          (by[58]!.status, by[58]!.arrival, by[58]!.checkinCount),
+          (AttendanceStatus.late, '07:31', 0),
+        );
+        expect(by[63]!.sources, [
+          SuggestionSource.checkin,
+          SuggestionSource.presence,
+        ]);
+        expect(
+          (by[63]!.status, by[63]!.arrival),
+          (AttendanceStatus.present, '07:05'),
+        );
+        // The foreman accepts 58's presence: the normal upsert, audited.
+        await f.repos.attendance.putRecords(site, today, [
+          RecordUpsert(
+            clientUuid: uuid(90),
+            workerId: 58,
+            status: AttendanceStatus.late,
+            arrival: '07:31',
+            fromSuggestion: by[58]!.sources,
+          ),
+        ]);
+        expect(f.backend.suggestionAudit['$site|$today'], {
+          58: [SuggestionSource.presence],
+        });
       });
 
       test(
