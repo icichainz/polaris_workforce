@@ -37,7 +37,7 @@ JavaScript) the visits recorded today by Django are still listed below.
     <div data-status="rejected" hidden>{% translate "The tracker refused the dashboard token." as s_title %}{% translate "Django and the tracker must share the same TRACKER_SHARED_SECRET." as s_message %}{% include "components/alert.html" with variant="danger" title=s_title message=s_message only %}</div>
   </div>
 
-  <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
     <section aria-label="{% translate 'Map' %}" class="flex min-w-0 flex-col gap-2">
       {% if geofence %}
       <div data-map class="relative isolate z-0 h-80 w-full overflow-hidden rounded-card border border-line bg-subtle sm:h-110" role="region" aria-label="{% blocktranslate with site=site.name %}Map of {{ site }}{% endblocktranslate %}"></div>
@@ -51,9 +51,8 @@ JavaScript) the visits recorded today by Django are still listed below.
       {% endif %}
     </section>
 
-    <section aria-labelledby="now-title" class="flex min-w-0 flex-col gap-3">
-      <h2 id="now-title" class="sr-only">{% translate "On site now" %}</h2>
-      <div class="grid grid-cols-2 gap-3">
+    <section aria-label="{% translate 'On site now' %}" class="flex min-w-0 flex-col gap-3">
+      <div class="grid grid-cols-2 gap-3 lg:grid-cols-1">
         <div class="flex min-w-0 flex-col gap-1.5 rounded-card border border-line bg-surface p-4 text-ink">
           <span class="text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "On site" %}</span>
           <span class="font-display text-[28px] font-bold leading-tight tabular-nums" data-count="on_site">—</span>
@@ -64,28 +63,32 @@ JavaScript) the visits recorded today by Django are still listed below.
         </div>
       </div>
       <p class="text-[13px] text-steel">{% translate "List updated at" %} <span data-updated class="tabular-nums">—</span></p>
-      <div class="overflow-x-auto rounded-control border border-line bg-surface">
-        <table class="w-full min-w-[520px] border-collapse text-sm">
-          <thead><tr class="bg-subtle text-left">
-            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Person" %}</th>
-            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Zone" %}</th>
-            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Since" %}</th>
-            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Last seen" %}</th>
-            <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "State" %}</th>
-          </tr></thead>
-          <tbody data-people></tbody>
-        </table>
-        <p data-empty hidden class="border-t border-line-soft px-4 py-3 text-sm text-steel">{% translate "No one on site right now." %}</p>
-      </div>
-      <template data-person-row><tr class="border-t border-line-soft">
-        <td class="px-4 py-3"><a data-field="link" class="font-semibold"></a><span data-field="plain" class="font-semibold"></span><br><span data-field="detail" class="text-xs text-steel"></span></td>
-        <td class="px-4 py-3" data-field="zone"></td>
-        <td class="px-4 py-3 tabular-nums" data-field="since"></td>
-        <td class="px-4 py-3 tabular-nums" data-field="last-seen"></td>
-        <td class="px-4 py-3"><span data-state="on_site">{% translate "On site" as on_label %}{% include "components/status_badge.html" with status="active" label=on_label only %}</span><span data-state="arriving" hidden>{% translate "Arriving" as arriving_label %}{% include "components/status_badge.html" with status="to_pay" label=arriving_label only %}</span></td>
-      </tr></template>
     </section>
   </div>
+
+  <section aria-labelledby="now-title" class="flex min-w-0 flex-col gap-3">
+    <h2 id="now-title" class="font-display text-lg font-bold">{% translate "On site now" %}</h2>
+    <div class="overflow-x-auto rounded-control border border-line bg-surface">
+      <table class="w-full min-w-[520px] border-collapse text-sm">
+        <thead><tr class="bg-subtle text-left">
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Person" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Zone" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Since" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "Last seen" %}</th>
+          <th scope="col" class="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-steel">{% translate "State" %}</th>
+        </tr></thead>
+        <tbody data-people></tbody>
+      </table>
+      <p data-empty hidden class="border-t border-line-soft px-4 py-3 text-sm text-steel">{% translate "No one on site right now." %}</p>
+    </div>
+    <template data-person-row><tr class="border-t border-line-soft">
+      <td class="px-4 py-3"><a data-field="link" class="font-semibold"></a><span data-field="plain" class="font-semibold"></span><br><span data-field="detail" class="text-xs text-steel"></span></td>
+      <td class="px-4 py-3" data-field="zone"></td>
+      <td class="px-4 py-3 tabular-nums" data-field="since"></td>
+      <td class="px-4 py-3 tabular-nums" data-field="last-seen"></td>
+      <td class="px-4 py-3"><span data-state="on_site">{% translate "On site" as on_label %}{% include "components/status_badge.html" with status="active" label=on_label only %}</span><span data-state="arriving" hidden>{% translate "Arriving" as arriving_label %}{% include "components/status_badge.html" with status="to_pay" label=arriving_label only %}</span></td>
+    </tr></template>
+  </section>
 </div>
 {% endif %}
 

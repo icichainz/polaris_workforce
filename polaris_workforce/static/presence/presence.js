@@ -80,15 +80,16 @@ function showStatus(root, state) {
   });
 }
 
+// 24-hour times in the company time zone, as the server-rendered pages show them (H:i).
 function timeFormatter(timeZone) {
+  const options = { hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
   try {
     return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
+      ...options,
       timeZone: timeZone,
     });
   } catch (error) {
-    return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+    return new Intl.DateTimeFormat(undefined, options);
   }
 }
 
