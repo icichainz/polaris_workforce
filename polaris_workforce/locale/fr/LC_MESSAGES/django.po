@@ -10051,3 +10051,1129 @@ msgstr "Enregistrer les paramètres du chantier"
 #: templates/worksites/settings.html:59
 msgid "In effect now"
 msgstr "En vigueur actuellement"
+
+#: apps/presence/forms.py
+msgid "Sightings of this gateway are placed in this zone."
+msgstr "Les détections de cette passerelle sont placées dans cette zone."
+
+#: apps/presence/forms.py
+msgid ""
+"As the badge broadcasts it. For an iBeacon: ib:<uuid>:<major>:<minor>. Case "
+"does not matter: it is saved in lower case."
+msgstr ""
+"Tel que le badge le diffuse. Pour un iBeacon : ib:<uuid>:<major>:<minor>. "
+"Majuscules ou minuscules : il est enregistré en minuscules."
+
+#: apps/presence/forms.py
+msgid "e.g. Gateway stolen"
+msgstr "ex. Passerelle volée"
+
+#: apps/presence/forms.py
+msgid "US Letter"
+msgstr "Lettre US"
+
+#: apps/presence/forms.py
+msgid "Paper"
+msgstr "Papier"
+
+#: apps/presence/services.py
+msgid "Ended because"
+msgstr "Motif de fin"
+
+#: apps/presence/views.py
+#, python-format
+msgid "The settings of %(site)s were sent to the tracker."
+msgstr "Les réglages de %(site)s ont été envoyés au service de suivi."
+
+#: apps/presence/views.py
+#, python-format
+msgid "Gateway %(label)s added. Issue its token to connect it."
+msgstr "Passerelle %(label)s ajoutée. Émettez son jeton pour la connecter."
+
+#: apps/presence/views.py
+#, python-format
+msgid "Gateway %(label)s has no token to revoke."
+msgstr "La passerelle %(label)s n’a pas de jeton à révoquer."
+
+#: apps/presence/views.py
+#, python-format
+msgid "Gateway %(label)s revoked: the tracker refuses its token."
+msgstr "Passerelle %(label)s révoquée : le service de suivi refuse son jeton."
+
+#: apps/presence/views.py
+#, python-brace-format
+msgid "{count} on site"
+msgstr "{count} sur le chantier"
+
+#: templates/presence/_reconciliation.html
+msgid ""
+"Each night, yesterday’s visits are checked against the tracker’s full record."
+msgstr ""
+"Chaque nuit, les passages de la veille sont comparés à l’enregistrement "
+"complet du service de suivi."
+
+#: templates/presence/_reconciliation.html
+#, python-format
+msgid "Day %(day)s · tried %(when)s (%(n)s attempt)"
+msgid_plural "Day %(day)s · tried %(when)s (%(n)s attempts)"
+msgstr[0] "Jour %(day)s · essayé le %(when)s (%(n)s tentative)"
+msgstr[1] "Jour %(day)s · essayé le %(when)s (%(n)s tentatives)"
+msgstr[2] "Jour %(day)s · essayé le %(when)s (%(n)s tentatives)"
+
+#: templates/presence/_reconciliation.html
+#, python-format
+msgid "Checked before at %(when)s; those corrections stay."
+msgstr "Contrôlé auparavant le %(when)s ; ces corrections restent."
+
+#: templates/presence/_reconciliation.html
+#, python-format
+msgid "Day %(day)s, at %(when)s"
+msgstr "Jour %(day)s, le %(when)s"
+
+#: templates/presence/_reconciliation.html
+#, python-format
+msgid ""
+"%(added)s added · %(changed)s changed · %(removed)s removed · %(unchanged)s "
+"unchanged"
+msgstr ""
+"%(added)s ajoutés · %(changed)s modifiés · %(removed)s supprimés · "
+"%(unchanged)s inchangés"
+
+#: templates/presence/_site_card.html templates/presence/home.html
+#: templates/presence/live.html templates/presence/site_setup.html
+msgid "Live map"
+msgstr "Carte en direct"
+
+#: templates/presence/_sync.html
+msgid ""
+"This server has no tracker address (TRACKER_URL): changes are saved here "
+"only."
+msgstr ""
+"Ce serveur n’a pas d’adresse de service de suivi (TRACKER_URL) : les "
+"modifications sont seulement enregistrées ici."
+
+#: templates/presence/_worker_card.html
+msgid "Export presence history (CSV)"
+msgstr "Exporter l’historique de présence (CSV)"
+
+#: templates/presence/badges.html
+msgid ""
+"Radio badges (lanyard or helmet tags) that gateways and the foremen’s phones "
+"pick up. One badge per worker; a badge is recognised on every site of the "
+"company."
+msgstr ""
+"Badges radio (sur cordon ou sur le casque) que captent les passerelles et "
+"les téléphones des chefs d’équipe. Un badge par ouvrier ; un badge est "
+"reconnu sur tous les chantiers de l’entreprise."
+
+#: templates/presence/badges.html
+msgid "Print the notice"
+msgstr "Imprimer l’avis"
+
+#: templates/presence/badges.html
+#, python-format
+msgid "With a badge: %(with_badge)s of %(n)s worker."
+msgid_plural "With a badge: %(with_badge)s of %(n)s workers."
+msgstr[0] "Avec un badge : %(with_badge)s sur %(n)s ouvrier."
+msgstr[1] "Avec un badge : %(with_badge)s sur %(n)s ouvriers."
+msgstr[2] "Avec un badge : %(with_badge)s sur %(n)s ouvriers."
+
+#: templates/presence/badges.html
+#, python-format
+msgid "Only the first %(limit)s are shown: search to narrow the list."
+msgstr ""
+"Seuls les %(limit)s premiers sont affichés : faites une recherche pour "
+"réduire la liste."
+
+#: templates/presence/badges.html templates/presence/live.html
+msgid "Since"
+msgstr "Depuis"
+
+#: templates/presence/gateway_form.html
+msgid ""
+"A fixed receiver on the site that picks up the workers’ badges. After "
+"saving, issue its token and enter it in the gateway."
+msgstr ""
+"Un récepteur fixe sur le chantier qui capte les badges des ouvriers. Après "
+"l’enregistrement, émettez son jeton et saisissez-le dans la passerelle."
+
+#: templates/presence/gateway_token.html
+msgid ""
+"This token is shown only once. If it is lost, issue a new one: the old one "
+"then stops working."
+msgstr ""
+"Ce jeton n’est affiché qu’une fois. S’il est perdu, émettez-en un nouveau : "
+"l’ancien cesse alors de fonctionner."
+
+#: templates/presence/gateway_token.html
+msgid "Copied."
+msgstr "Copié."
+
+#: templates/presence/gateway_token.html
+msgid ""
+"Enter the token in the gateway’s settings as a bearer token (Authorization: "
+"Bearer …). The tracker accepts it once the site’s settings have reached it, "
+"usually within seconds."
+msgstr ""
+"Saisissez le jeton dans les réglages de la passerelle comme jeton porteur "
+"(Authorization: Bearer …). Le service de suivi l’accepte dès qu’il a reçu "
+"les réglages du chantier, en général en quelques secondes."
+
+#: templates/presence/gateway_token.html
+#, python-format
+msgid ""
+"This gateway has a token since %(when)s. A new token replaces it: the "
+"gateway stops sending until you enter the new one."
+msgstr ""
+"Cette passerelle a un jeton depuis le %(when)s. Un nouveau jeton le "
+"remplace : la passerelle n’envoie plus rien tant que vous n’avez pas saisi "
+"le nouveau."
+
+#: templates/presence/gateway_token.html
+msgid "This gateway was revoked. A new token turns it on again."
+msgstr "Cette passerelle a été révoquée. Un nouveau jeton la réactive."
+
+#: templates/presence/gateway_token.html
+msgid ""
+"The gateway needs a token to send sightings to the tracker. It is valid for "
+"one year and shown once."
+msgstr ""
+"La passerelle a besoin d’un jeton pour envoyer ses détections au service de "
+"suivi. Il est valable un an et affiché une seule fois."
+
+#: templates/presence/home.html
+msgid ""
+"Zones, gateways and badges are saved, but nothing is sent to the tracker "
+"until TRACKER_URL is set."
+msgstr ""
+"Les zones, passerelles et badges sont enregistrés, mais rien n’est envoyé au "
+"service de suivi tant que TRACKER_URL n’est pas défini."
+
+#: templates/presence/home.html templates/presence/live.html
+msgid "The live map is off."
+msgstr "La carte en direct est désactivée."
+
+#: templates/presence/home.html templates/presence/live.html
+msgid "Set TRACKER_PUBLIC_URL so that browsers can reach the tracker."
+msgstr ""
+"Définissez TRACKER_PUBLIC_URL pour que les navigateurs puissent joindre le "
+"service de suivi."
+
+#: templates/presence/live.html
+msgid ""
+"From BLE badges and the foremen’s phones. Presence only suggests attendance."
+msgstr ""
+"D’après les badges BLE et les téléphones des chefs d’équipe. La présence ne "
+"fait que suggérer le pointage."
+
+#: templates/presence/live.html
+msgid ""
+"Turn it on in the site’s settings (Presence tracking) to see who is on site."
+msgstr ""
+"Activez-le dans les réglages du chantier (Suivi de présence) pour voir qui "
+"est sur le chantier."
+
+#: templates/presence/live.html
+msgid "Live updates need JavaScript."
+msgstr "Les mises à jour en direct demandent JavaScript."
+
+#: templates/presence/live.html
+msgid "Today’s visits below come from the office records."
+msgstr ""
+"Les passages du jour ci-dessous viennent des enregistrements du bureau."
+
+#: templates/presence/live.html
+msgid "Connecting to the tracker…"
+msgstr "Connexion au service de suivi…"
+
+#: templates/presence/live.html
+msgid "Live."
+msgstr "En direct."
+
+#: templates/presence/live.html
+msgid "Updates arrive as they happen."
+msgstr "Les changements arrivent au fur et à mesure."
+
+#: templates/presence/live.html
+msgid "Reconnecting…"
+msgstr "Reconnexion…"
+
+#: templates/presence/live.html
+msgid ""
+"Trying again shortly. The visits below come from the office records and may "
+"be a few minutes behind."
+msgstr ""
+"Nouvel essai dans un instant. Les passages ci-dessous viennent des "
+"enregistrements du bureau et peuvent avoir quelques minutes de retard."
+
+#: templates/presence/live.html
+msgid "Send them again from the setup page; this page retries every minute."
+msgstr ""
+"Renvoyez-les depuis la page de configuration ; cette page réessaie chaque "
+"minute."
+
+#: templates/presence/live.html
+msgid "Tracking may have been turned off meanwhile. Reload the page."
+msgstr "Le suivi a peut-être été désactivé entre-temps. Rechargez la page."
+
+#: templates/presence/live.html
+msgid "Your session has ended."
+msgstr "Votre session a pris fin."
+
+#: templates/presence/live.html
+msgid "Reload the page to sign in again."
+msgstr "Rechargez la page pour vous reconnecter."
+
+#: templates/presence/live.html
+msgid "Django and the tracker must share the same TRACKER_SHARED_SECRET."
+msgstr ""
+"Django et le service de suivi doivent partager le même TRACKER_SHARED_SECRET."
+
+#: templates/presence/live.html
+msgid "Map"
+msgstr "Carte"
+
+#: templates/presence/live.html
+msgid "The map could not load. The list still updates."
+msgstr "La carte n’a pas pu se charger. La liste se met quand même à jour."
+
+#: templates/presence/live.html
+#, python-format
+msgid ""
+"The circle is the site’s geofence (%(radius)s m). Dots are foremen’s phones; "
+"badges are placed by zone in the list."
+msgstr ""
+"Le cercle est le périmètre du chantier (%(radius)s m). Les points sont les "
+"téléphones des chefs d’équipe ; les badges sont classés par zone dans la "
+"liste."
+
+#: templates/presence/live.html
+msgid ""
+"This site has no geofence, so there is nothing to draw: the list still shows "
+"who the gateways see."
+msgstr ""
+"Ce chantier n’a pas de périmètre, il n’y a donc rien à dessiner : la liste "
+"montre quand même qui les passerelles détectent."
+
+#: templates/presence/live.html
+msgid "Person"
+msgstr "Personne"
+
+#: templates/presence/live.html templates/presence/site_setup.html
+msgid "Zone"
+msgstr "Zone"
+
+#: templates/presence/live.html
+msgid ""
+"Visits recorded by the office from the tracker’s events. They are kept like "
+"attendance."
+msgstr ""
+"Passages enregistrés par le bureau à partir des événements du service de "
+"suivi. Ils sont conservés comme les présences."
+
+#: templates/presence/live.html templates/presence/person_day.html
+msgid "Visits"
+msgstr "Passages"
+
+#: templates/presence/notice.html
+msgid "Apply"
+msgstr "Appliquer"
+
+#: templates/presence/notice.html
+#, python-format
+msgid ""
+"%(company)s uses Polaris to know who is on its sites. Your badge helps with "
+"that. Here is how it works, what is recorded and what you can ask."
+msgstr ""
+"%(company)s utilise Polaris pour savoir qui est sur ses chantiers. Votre "
+"badge y contribue. Voici comment cela fonctionne, ce qui est enregistré et "
+"ce que vous pouvez demander."
+
+#: templates/presence/notice.html
+#, python-format
+msgid ""
+"Only during tracking hours, %(start)s–%(end)s (site time), and only on the "
+"company’s sites. Outside those hours nothing is recorded."
+msgstr ""
+"Seulement pendant les heures de suivi, %(start)s–%(end)s (heure du "
+"chantier), et seulement sur les chantiers de l’entreprise. En dehors de ces "
+"heures, rien n’est enregistré."
+
+#: templates/presence/notice.html
+msgid ""
+"Your badge sends a short radio signal (Bluetooth Low Energy). Receivers "
+"fixed on the site and the foremen’s phones note when they pick it up, and in "
+"which part of the site. That gives your arrival and departure times."
+msgstr ""
+"Votre badge émet un court signal radio (Bluetooth basse consommation). Les "
+"récepteurs fixés sur le chantier et les téléphones des chefs d’équipe notent "
+"quand ils le captent, et dans quelle partie du chantier. Cela donne vos "
+"heures d’arrivée et de départ."
+
+#: templates/presence/notice.html
+msgid ""
+"The badge has no GPS, no microphone and no camera. It is not followed "
+"outside the sites."
+msgstr ""
+"Le badge n’a ni GPS, ni micro, ni caméra. Il n’est pas suivi en dehors des "
+"chantiers."
+
+#: templates/presence/notice.html
+msgid "How long it is kept"
+msgstr "Durée de conservation"
+
+#: templates/presence/notice.html
+#, python-format
+msgid ""
+"The raw sightings are deleted after %(days)s day. Arrival and departure "
+"times are kept like attendance."
+msgid_plural ""
+"The raw sightings are deleted after %(days)s days. Arrival and departure "
+"times are kept like attendance."
+msgstr[0] ""
+"Les détections brutes sont effacées après %(days)s jour. Les heures "
+"d’arrivée et de départ sont conservées comme les présences."
+msgstr[1] ""
+"Les détections brutes sont effacées après %(days)s jours. Les heures "
+"d’arrivée et de départ sont conservées comme les présences."
+msgstr[2] ""
+"Les détections brutes sont effacées après %(days)s jours. Les heures "
+"d’arrivée et de départ sont conservées comme les présences."
+
+#: templates/presence/notice.html
+msgid "Who sees it"
+msgstr "Qui y a accès"
+
+#: templates/presence/notice.html
+msgid ""
+"Site managers see who is on their own sites. Company administrators see all "
+"the sites. Nobody else."
+msgstr ""
+"Les conducteurs de travaux voient qui est sur leurs propres chantiers. Les "
+"administrateurs de l’entreprise voient tous les chantiers. Personne d’autre."
+
+#: templates/presence/notice.html
+msgid "What it is used for"
+msgstr "À quoi cela sert"
+
+#: templates/presence/notice.html
+msgid ""
+"Presence only suggests attendance: the roll call is still confirmed by your "
+"foreman. It is never used to discipline anyone automatically."
+msgstr ""
+"La présence ne fait que suggérer le pointage : l’appel est toujours confirmé "
+"par votre chef d’équipe. Elle ne sert jamais à sanctionner automatiquement."
+
+#: templates/presence/notice.html
+msgid "What you can ask"
+msgstr "Ce que vous pouvez demander"
+
+#: templates/presence/notice.html
+msgid ""
+"Your own presence history: the office exports it from your worker profile."
+msgstr ""
+"Votre propre historique de présence : le bureau l’exporte depuis votre fiche "
+"ouvrier."
+
+#: templates/presence/notice.html
+msgid ""
+"Not to be tracked: tell the office. Tracking is then turned off for you and "
+"your badge is no longer read. Your attendance is taken by the foreman as "
+"before."
+msgstr ""
+"Ne pas être suivi : dites-le au bureau. Le suivi est alors désactivé pour "
+"vous et votre badge n’est plus lu. Votre présence est relevée par le chef "
+"d’équipe comme avant."
+
+#: templates/presence/notice.html
+msgid "If you lose your badge, tell the office at once: it is turned off."
+msgstr ""
+"Si vous perdez votre badge, prévenez tout de suite le bureau : il sera "
+"désactivé."
+
+#: templates/presence/notice.html
+msgid "Acknowledgement"
+msgstr "Accusé de réception"
+
+#: templates/presence/notice.html
+msgid "I have received and read this notice."
+msgstr "J’ai reçu et lu cet avis."
+
+#: templates/presence/person_day.html
+msgid "Export history (CSV)"
+msgstr "Exporter l’historique (CSV)"
+
+#: templates/presence/person_day.html
+msgid "Minutes"
+msgstr "Minutes"
+
+#: templates/presence/person_day.html
+msgid "Raw track"
+msgstr "Trace brute"
+
+#: templates/presence/person_day.html
+msgid ""
+"Every sighting and GPS position the tracker kept, trips between sites "
+"included (you are a company administrator)."
+msgstr ""
+"Toutes les détections et positions GPS conservées par le service de suivi, "
+"trajets entre chantiers compris (vous êtes administrateur de l’entreprise)."
+
+#: templates/presence/person_day.html
+msgid ""
+"Sightings and GPS positions on your sites. Trips between sites are shown to "
+"company administrators only."
+msgstr ""
+"Détections et positions GPS sur vos chantiers. Les trajets entre chantiers "
+"ne sont montrés qu’aux administrateurs de l’entreprise."
+
+#: templates/presence/person_day.html
+msgid ""
+"The tracker is not reachable from browsers on this server "
+"(TRACKER_PUBLIC_URL is not set)."
+msgstr ""
+"Le service de suivi n’est pas joignable depuis les navigateurs sur ce "
+"serveur (TRACKER_PUBLIC_URL n’est pas défini)."
+
+#: templates/presence/person_day.html
+msgid "The raw track needs JavaScript."
+msgstr "La trace brute demande JavaScript."
+
+#: templates/presence/person_day.html
+msgid "Asking the tracker…"
+msgstr "Interrogation du service de suivi…"
+
+#: templates/presence/person_day.html
+msgid "The visits above come from the office records."
+msgstr "Les passages ci-dessus viennent des enregistrements du bureau."
+
+#: templates/presence/person_day.html
+msgid "The tracker did not give the track."
+msgstr "Le service de suivi n’a pas fourni la trace."
+
+#: templates/presence/person_day.html
+msgid "Reload the page to try again."
+msgstr "Rechargez la page pour réessayer."
+
+#: templates/presence/person_day.html
+msgid "Points"
+msgstr "Points"
+
+#: templates/presence/person_day.html
+msgid "GPS, off site"
+msgstr "GPS, hors chantier"
+
+#: templates/presence/person_day.html
+msgid "Tracking is off on your sites, so the tracker has no track to show you."
+msgstr ""
+"Le suivi est désactivé sur vos chantiers : le service de suivi n’a donc "
+"aucune trace à vous montrer."
+
+#: templates/presence/site_setup.html
+msgid ""
+"Zones tell parts of the site apart; gateways are the fixed receivers that "
+"pick up the badges. Every change is recorded in the audit log and sent to "
+"the tracker."
+msgstr ""
+"Les zones distinguent les parties du chantier ; les passerelles sont les "
+"récepteurs fixes qui captent les badges. Chaque modification est inscrite au "
+"journal d’audit et envoyée au service de suivi."
+
+#: templates/presence/site_setup.html
+msgid "Send to the tracker again"
+msgstr "Renvoyer au service de suivi"
+
+#: templates/presence/site_setup.html
+msgid "Not set: phones cannot tell when they are on site"
+msgstr ""
+"Non défini : les téléphones ne savent pas quand ils sont sur le chantier"
+
+#: templates/presence/site_setup.html
+msgid "Code"
+msgstr "Code"
+
+#: templates/presence/site_setup.html
+#, python-format
+msgid "Delete zone %(code)s? Its gateways stay, for the whole site."
+msgstr ""
+"Supprimer la zone %(code)s ? Ses passerelles restent, pour tout le chantier."
+
+#: templates/presence/site_setup.html
+msgid "No zones yet. Without zones, every sighting counts for the whole site."
+msgstr ""
+"Pas encore de zone. Sans zone, chaque détection compte pour tout le chantier."
+
+#: templates/presence/site_setup.html
+#, python-format
+msgid "Revoke the token of %(label)s? The gateway stops sending at once."
+msgstr ""
+"Révoquer le jeton de %(label)s ? La passerelle cesse aussitôt d’envoyer."
+
+#: templates/presence/site_setup.html
+msgid ""
+"No gateways yet. Without gateways, only the foremen’s phones see badges on "
+"this site."
+msgstr ""
+"Pas encore de passerelle. Sans passerelle, seuls les téléphones des chefs "
+"d’équipe voient les badges sur ce chantier."
+
+#: templates/presence/site_setup.html
+msgid ""
+"Badges belong to workers, not to a site: a badge is recognised on every site "
+"of the company."
+msgstr ""
+"Les badges appartiennent aux ouvriers, pas à un chantier : un badge est "
+"reconnu sur tous les chantiers de l’entreprise."
+
+#: templates/presence/site_setup.html
+msgid "Badges of this site’s crew"
+msgstr "Badges de l’équipe de ce chantier"
+
+#: templates/presence/site_setup.html
+msgid "Print the notice for badge holders"
+msgstr "Imprimer l’avis pour les porteurs de badge"
+
+#: templates/presence/worker_badge.html
+msgid ""
+"The badge is saved, but the tracker ignores it until tracking is turned on "
+"for the worker (worker form) or the company."
+msgstr ""
+"Le badge est enregistré, mais le service de suivi l’ignore tant que le suivi "
+"n’est pas activé pour l’ouvrier (fiche ouvrier) ou pour l’entreprise."
+
+#: templates/presence/worker_badge.html
+msgid "The current badge ends when the new one is saved."
+msgstr "Le badge actuel prend fin quand le nouveau est enregistré."
+
+#: templates/presence/zone_form.html
+msgid ""
+"A part of the site that gateways tell apart, e.g. the gate or block B. The "
+"code is what the tracker reports."
+msgstr ""
+"Une partie du chantier que les passerelles distinguent, par exemple l’entrée "
+"ou le bâtiment B. Le code est ce que renvoie le service de suivi."
+
+#: apps/presence/forms.py
+msgid "e.g. GATE"
+msgstr "ex. ENTREE"
+
+#: apps/presence/forms.py
+msgid "e.g. Main gate"
+msgstr "ex. Entrée principale"
+
+#: apps/presence/forms.py
+msgid "This site already has a zone with this code."
+msgstr "Ce chantier a déjà une zone avec ce code."
+
+#: apps/presence/forms.py
+msgid "No zone (the whole site)"
+msgstr "Aucune zone (tout le chantier)"
+
+#: apps/presence/forms.py templates/presence/badges.html
+msgid "Badge ID"
+msgstr "Identifiant du badge"
+
+#: apps/presence/forms.py
+msgid "Enter the badge ID."
+msgstr "Saisissez l’identifiant du badge."
+
+#: apps/presence/forms.py
+msgid "Name, number or badge ID"
+msgstr "Nom, matricule ou identifiant de badge"
+
+#: apps/presence/forms.py
+msgid "Tracking hours of"
+msgstr "Heures de suivi de"
+
+#: apps/presence/forms.py
+msgid "The company"
+msgstr "L’entreprise"
+
+#: apps/presence/services.py
+msgid "Minutes on site"
+msgstr "Minutes sur le chantier"
+
+#: apps/presence/services.py templates/presence/_site_card.html
+#: templates/presence/home.html templates/presence/live.html
+#: templates/presence/person_day.html templates/presence/site_setup.html
+msgid "Zones"
+msgstr "Zones"
+
+#: apps/presence/views.py
+msgid "The tracker is not configured on this server."
+msgstr "Le service de suivi n’est pas configuré sur ce serveur."
+
+#: apps/presence/views.py
+#, python-format
+msgid "Zone %(code)s saved."
+msgstr "Zone %(code)s enregistrée."
+
+#: apps/presence/views.py
+#, python-format
+msgid "Zone %(code)s deleted."
+msgstr "Zone %(code)s supprimée."
+
+#: apps/presence/views.py
+#, python-format
+msgid "Gateway %(label)s saved."
+msgstr "Passerelle %(label)s enregistrée."
+
+#: apps/presence/views.py
+#, python-format
+msgid "Badge %(badge)s given to %(name)s."
+msgstr "Badge %(badge)s remis à %(name)s."
+
+#: apps/presence/views.py
+#, python-format
+msgid "Badge %(badge)s of %(name)s ended."
+msgstr "Badge %(badge)s de %(name)s repris."
+
+#: apps/presence/views.py
+msgid "Sign in again."
+msgstr "Reconnectez-vous."
+
+#: apps/presence/views.py
+msgid "Not allowed."
+msgstr "Non autorisé."
+
+#: apps/presence/views.py
+#, python-brace-format
+msgid "Worker no. {id}"
+msgstr "Ouvrier n° {id}"
+
+#: apps/presence/views.py
+#, python-brace-format
+msgid "Foreman no. {id}"
+msgstr "Chef d’équipe n° {id}"
+
+#: apps/presence/views.py templates/presence/site_setup.html
+msgid "Whole site"
+msgstr "Tout le chantier"
+
+#: apps/presence/views.py templates/presence/person_day.html
+msgid "Off site"
+msgstr "Hors chantier"
+
+#: apps/presence/views.py
+msgid "Foreman’s phone"
+msgstr "Téléphone du chef d’équipe"
+
+#: apps/presence/views.py templates/presence/site_setup.html
+msgid "Gateway"
+msgstr "Passerelle"
+
+#: apps/presence/views.py
+#, python-brace-format
+msgid "Site no. {id}"
+msgstr "Chantier n° {id}"
+
+#: templates/presence/_reconciliation.html
+msgid "Not run yet"
+msgstr "Pas encore fait"
+
+#: templates/presence/_reconciliation.html
+msgid "Last check failed"
+msgstr "Dernier contrôle échoué"
+
+#: templates/presence/_reconciliation.html
+msgid "Checked"
+msgstr "Contrôlé"
+
+#: templates/presence/_reconciliation.html
+#, python-format
+msgid "%(ignored)s ignored"
+msgstr "%(ignored)s ignorés"
+
+#: templates/presence/_site_card.html templates/presence/_worker_card.html
+#: templates/presence/home.html templates/presence/site_setup.html
+msgid "Tracking"
+msgstr "Suivi"
+
+#: templates/presence/_site_card.html templates/presence/home.html
+#: templates/presence/site_setup.html
+msgid "Gateways"
+msgstr "Passerelles"
+
+#: templates/presence/_site_card.html templates/presence/home.html
+#, python-format
+msgid "%(active)s active of %(total)s"
+msgstr "%(active)s actives sur %(total)s"
+
+#: templates/presence/_site_card.html templates/presence/home.html
+#: templates/presence/live.html
+msgid "Set up"
+msgstr "Configurer"
+
+#: templates/presence/_sync.html
+msgid "Last push failed"
+msgstr "Dernier envoi échoué"
+
+#: templates/presence/_sync.html
+msgid "Not sent yet"
+msgstr "Pas encore envoyé"
+
+#: templates/presence/_sync.html
+msgid "No tracker"
+msgstr "Pas de service de suivi"
+
+#: templates/presence/_sync.html
+#, python-format
+msgid "Tried %(when)s"
+msgstr "Essayé le %(when)s"
+
+#: templates/presence/_sync.html
+#, python-format
+msgid "Last sent %(when)s"
+msgstr "Dernier envoi le %(when)s"
+
+#: templates/presence/_tabs.html templates/presence/notice.html
+msgid "Notice for badge holders"
+msgstr "Avis aux porteurs de badge"
+
+#: templates/presence/_worker_card.html
+msgid "Presence today"
+msgstr "Présence du jour"
+
+#: templates/presence/_worker_card.html
+msgid "Change badge"
+msgstr "Changer de badge"
+
+#: templates/presence/_worker_card.html templates/presence/badges.html
+#: templates/presence/worker_badge.html
+msgid "Give a badge"
+msgstr "Donner un badge"
+
+#: templates/presence/badges.html
+msgid "Change"
+msgstr "Changer"
+
+#: templates/presence/badges.html templates/presence/worker_badge.html
+#, python-format
+msgid "Take back the badge of %(name)s? It is no longer recognised."
+msgstr "Reprendre le badge de %(name)s ? Il ne sera plus reconnu."
+
+#: templates/presence/badges.html templates/presence/worker_badge.html
+msgid "End"
+msgstr "Reprendre"
+
+#: templates/presence/badges.html
+msgid "No active worker matches."
+msgstr "Aucun ouvrier actif ne correspond."
+
+#: templates/presence/gateway_form.html
+msgid "Edit gateway"
+msgstr "Modifier la passerelle"
+
+#: templates/presence/gateway_form.html
+msgid "New gateway"
+msgstr "Nouvelle passerelle"
+
+#: templates/presence/gateway_form.html
+msgid "Save gateway"
+msgstr "Enregistrer la passerelle"
+
+#: templates/presence/gateway_token.html
+msgid "Gateway token"
+msgstr "Jeton de la passerelle"
+
+#: templates/presence/gateway_token.html
+#, python-format
+msgid "Token of %(label)s"
+msgstr "Jeton de %(label)s"
+
+#: templates/presence/gateway_token.html
+msgid "Copy it now."
+msgstr "Copiez-le maintenant."
+
+#: templates/presence/gateway_token.html
+msgid "Copy token"
+msgstr "Copier le jeton"
+
+#: templates/presence/gateway_token.html
+msgid "Gateway ID"
+msgstr "Identifiant de la passerelle"
+
+#: templates/presence/gateway_token.html
+msgid "Valid until"
+msgstr "Valable jusqu’au"
+
+#: templates/presence/gateway_token.html
+msgid "Send sightings to"
+msgstr "Envoyer les détections à"
+
+#: templates/presence/gateway_token.html
+msgid "Back to the site"
+msgstr "Retour au chantier"
+
+#: templates/presence/gateway_token.html
+msgid "Issue a new token"
+msgstr "Émettre un nouveau jeton"
+
+#: templates/presence/gateway_token.html templates/presence/site_setup.html
+msgid "Issue token"
+msgstr "Émettre un jeton"
+
+#: templates/presence/home.html
+msgid ""
+"Who is on site, from BLE badges and the foremen’s phones. Presence only "
+"suggests attendance: the roll call is still confirmed by the foreman."
+msgstr ""
+"Qui est sur le chantier, d’après les badges BLE et les téléphones des chefs "
+"d’équipe. La présence ne fait que suggérer le pointage : l’appel est "
+"toujours confirmé par le chef d’équipe."
+
+#: templates/presence/home.html
+msgid "No tracker on this server."
+msgstr "Pas de service de suivi sur ce serveur."
+
+#: templates/presence/home.html templates/presence/site_setup.html
+msgid "Tracker"
+msgstr "Service de suivi"
+
+#: templates/presence/live.html
+#, python-format
+msgid "On site now · %(site)s"
+msgstr "Sur le chantier en ce moment · %(site)s"
+
+#: templates/presence/live.html
+msgid "Tracking is off for this site."
+msgstr "Le suivi est désactivé pour ce chantier."
+
+#: templates/presence/live.html
+msgid "Connection lost."
+msgstr "Connexion perdue."
+
+#: templates/presence/live.html templates/presence/person_day.html
+msgid "The tracker cannot be reached."
+msgstr "Le service de suivi est injoignable."
+
+#: templates/presence/live.html
+msgid "The tracker has not received this site’s settings yet."
+msgstr "Le service de suivi n’a pas encore reçu les réglages de ce chantier."
+
+#: templates/presence/live.html
+msgid "The tracker does not show you this site."
+msgstr "Le service de suivi ne vous montre pas ce chantier."
+
+#: templates/presence/live.html
+msgid "The tracker refused the dashboard token."
+msgstr "Le service de suivi a refusé le jeton du tableau de bord."
+
+#: templates/presence/live.html
+#, python-format
+msgid "Map of %(site)s"
+msgstr "Carte de %(site)s"
+
+#: templates/presence/live.html
+msgid "On site now"
+msgstr "Sur le chantier en ce moment"
+
+#: templates/presence/live.html
+msgid "On site"
+msgstr "Sur le chantier"
+
+#: templates/presence/live.html
+msgid "Arriving"
+msgstr "En arrivée"
+
+#: templates/presence/live.html
+msgid "List updated at"
+msgstr "Liste mise à jour à"
+
+#: templates/presence/live.html
+msgid "State"
+msgstr "État"
+
+#: templates/presence/live.html
+msgid "No one on site right now."
+msgstr "Personne sur le chantier en ce moment."
+
+#: templates/presence/live.html
+#, python-format
+msgid "Seen today · %(date)s"
+msgstr "Vus aujourd’hui · %(date)s"
+
+#: templates/presence/live.html
+msgid "First seen"
+msgstr "Première détection"
+
+#: templates/presence/live.html
+#, python-format
+msgid "Foreman no. %(id)s"
+msgstr "Chef d’équipe n° %(id)s"
+
+#: templates/presence/live.html
+#, python-format
+msgid "Worker no. %(id)s"
+msgstr "Ouvrier n° %(id)s"
+
+#: templates/presence/live.html templates/presence/person_day.html
+msgid "Still on site"
+msgstr "Encore sur le chantier"
+
+#: templates/presence/live.html
+msgid "No one recorded on this site today yet."
+msgstr "Personne n’a encore été enregistré sur ce chantier aujourd’hui."
+
+#: templates/presence/notice.html
+msgid "Presence tracking on our sites"
+msgstr "Le suivi de présence sur nos chantiers"
+
+#: templates/presence/notice.html
+#, python-format
+msgid "These are the hours of %(site)s."
+msgstr "Ce sont les heures de %(site)s."
+
+#: templates/presence/notice.html
+msgid "What is recorded"
+msgstr "Ce qui est enregistré"
+
+#: templates/presence/notice.html
+#, python-format
+msgid "Notice version %(version)s"
+msgstr "Version de l’avis %(version)s"
+
+#: templates/presence/person_day.html
+#, python-format
+msgid "Presence of %(name)s"
+msgstr "Présence de %(name)s"
+
+#: templates/presence/person_day.html
+#, python-format
+msgid "%(minutes)s min on site in all"
+msgstr "%(minutes)s min sur le chantier au total"
+
+#: templates/presence/person_day.html
+msgid "Corrected by the nightly check"
+msgstr "Corrigé par le contrôle de nuit"
+
+#: templates/presence/person_day.html
+msgid "No visit recorded on this day."
+msgstr "Aucun passage enregistré ce jour-là."
+
+#: templates/presence/person_day.html
+#, python-format
+msgid ""
+"Raw positions are deleted after %(days)s day; the visits above are kept."
+msgid_plural ""
+"Raw positions are deleted after %(days)s days; the visits above are kept."
+msgstr[0] ""
+"Les positions brutes sont effacées après %(days)s jour ; les passages ci-"
+"dessus sont conservés."
+msgstr[1] ""
+"Les positions brutes sont effacées après %(days)s jours ; les passages ci-"
+"dessus sont conservés."
+msgstr[2] ""
+"Les positions brutes sont effacées après %(days)s jours ; les passages ci-"
+"dessus sont conservés."
+
+#: templates/presence/person_day.html
+msgid "The tracker has nothing for this day."
+msgstr "Le service de suivi n’a rien pour ce jour."
+
+#: templates/presence/person_day.html
+msgid "GPS positions"
+msgstr "Positions GPS"
+
+#: templates/presence/person_day.html
+msgid "The map could not load."
+msgstr "La carte n’a pas pu se charger."
+
+#: templates/presence/site_setup.html
+msgid "Presence setup"
+msgstr "Configuration de la présence"
+
+#: templates/presence/site_setup.html
+#, python-format
+msgid "Presence setup of %(site)s"
+msgstr "Configuration de la présence de %(site)s"
+
+#: templates/presence/site_setup.html
+msgid "Change it in the site’s settings"
+msgstr "À modifier dans les réglages du chantier"
+
+#: templates/presence/site_setup.html
+msgid "Nightly check"
+msgstr "Contrôle de nuit"
+
+#: templates/presence/site_setup.html
+msgid "Add zone"
+msgstr "Ajouter une zone"
+
+#: templates/presence/site_setup.html
+msgid "Add gateway"
+msgstr "Ajouter une passerelle"
+
+#: templates/presence/site_setup.html
+msgid "Token"
+msgstr "Jeton"
+
+#: templates/presence/site_setup.html
+#, python-format
+msgid "Issued %(when)s"
+msgstr "Émis le %(when)s"
+
+#: templates/presence/site_setup.html
+msgid "No token yet"
+msgstr "Pas encore de jeton"
+
+#: templates/presence/site_setup.html
+msgid "Reason (optional)"
+msgstr "Motif (facultatif)"
+
+#: templates/presence/worker_badge.html
+#, python-format
+msgid "BLE badge of %(name)s"
+msgstr "Badge BLE de %(name)s"
+
+#: templates/presence/worker_badge.html
+msgid "Tracking is off for this worker."
+msgstr "Le suivi est désactivé pour cet ouvrier."
+
+#: templates/presence/worker_badge.html
+msgid "Give another badge"
+msgstr "Donner un autre badge"
+
+#: templates/presence/worker_badge.html
+msgid "Save badge"
+msgstr "Enregistrer le badge"
+
+#: templates/presence/worker_badge.html
+msgid "Badges of this worker"
+msgstr "Badges de cet ouvrier"
+
+#: templates/presence/worker_badge.html
+msgid "Ended"
+msgstr "Repris"
+
+#: templates/presence/worker_badge.html
+msgid "No badge yet."
+msgstr "Pas encore de badge."
+
+#: templates/presence/zone_form.html
+msgid "Edit zone"
+msgstr "Modifier la zone"
+
+#: templates/presence/zone_form.html
+msgid "New zone"
+msgstr "Nouvelle zone"
+
+#: templates/presence/zone_form.html
+#, python-format
+msgid "Zone %(code)s"
+msgstr "Zone %(code)s"
+
+#: templates/presence/zone_form.html
+msgid "Save zone"
+msgstr "Enregistrer la zone"
+
+#: templates/presence/_tabs.html templates/presence/badges.html
+#: templates/presence/site_setup.html templates/presence/worker_badge.html
+msgctxt "screen"
+msgid "BLE badges"
+msgstr "Badges BLE"
+
+#: templates/presence/_worker_card.html templates/presence/worker_badge.html
+msgctxt "screen"
+msgid "BLE badge"
+msgstr "Badge BLE"
