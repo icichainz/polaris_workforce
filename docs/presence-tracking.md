@@ -6,14 +6,16 @@ departure and, for foremen, trips between sites. Presence **suggests** attendanc
 roll call; the foreman still confirms it, and attendance and pay keep their existing
 approval and audit flow.
 
-**Status:** design written, Gleam service prototyped in `polaris_tracker/` (see §12).
-This is a new track that starts after Wave 3 of `docs/implementation-plan.md`.
+**Status (2026-11-02):** briefs P1–P6 are built and merged (see §12 and
+`docs/implementation-plan.md` §14); the pilot (P7) waits for the badge and gateway
+hardware choice. Where this design and §14 of the plan differ, §14 and the code win:
+token claims v2 (§3), consent (§7), the `foremen` list (§3, §7), reconciliation (§5).
 
 **Contracts**
 
 - Tracker service API: `docs/api/tracker-openapi.yaml`
 - Django additions for this feature: `docs/api/presence-django-openapi.yaml` (to be
-  merged into `docs/api/openapi.yaml` by the API owner once F3 has landed)
+  merged into `docs/api/openapi.yaml`, contract 1.5.0, which is the reference)
 
 ---
 
@@ -92,12 +94,29 @@ Django and the tracker (`TRACKER_SHARED_SECRET`). The tracker verifies the signa
 | `dashboard` | `user:<user_id>` | Office user, embedded in the page by Django | 1 h, refreshed by the page | Read presence, live stream, tracks |
 | `service` | `service:django` / `service:tracker` | Server to server | 5 min, minted per call | Push site config (Django → tracker); post events (tracker → Django) |
 
-Claims: `aud = "polaris-tracker"` (or `"polaris-django"` for tokens the tracker sends to
-Django), `sub`, `kind`, `sites` (list of site ids), `all_sites` (admins), `exp`.
+Claims (version 2), in this order, compact JSON, header `{"alg":"HS256","typ":"JWT"}`,
+base64url without padding: `sub`, `kind`, `company` (every kind but `service`), `sites`
+(always an explicit, sorted list — an admin gets their company's sites), `travel` (may see
+off-site travel: company admins only), `aud` (`"polaris-tracker"`, or `"polaris-django"`
+for tokens the tracker sends to Django), `exp`. There is no `all_sites` claim: site ids
+are global, so it would cross companies.
 
 **Site scoping (rule 8)** is enforced in the tracker on every endpoint: a token only
-reaches the sites in its `sites` claim. Track points recorded **off site** (travel
-between sites) are returned only to tokens with `all_sites = true`.
+reaches the sites in its `sites` claim (`service` tokens reach every site; `/internal/*`
+accepts only `service`). Track points recorded **off site** (travel between sites) are
+stored with the company of the device token that sent them and returned only to tokens
+with `travel = true` and the same `company`.
+
+**Foremen consent in the tracker.** Each site config lists `foremen`: the foremen
+assigned to the site who accepted the current notice. A GPS fix from a foreman who is not
+listed is dropped (`not_tracked`) and never stored, on site or off; a withdrawal takes
+effect with the next config push, which the consent answer triggers. A missing list
+means nobody is tracked.
+
+**Gateway ids** are opaque strings (`gw-<pk>-<generation>`); issuing a new token raises
+the generation, so the old token stops working once the config is pushed. **Badge ids**
+are opaque strings, trimmed and lower-cased everywhere; the phone reports iBeacon badges
+as `ib:<uuid>:<major>:<minor>`.
 
 ---
 
@@ -146,7 +165,11 @@ with a pure function in `polaris_tracker/src/polaris_tracker/presence.gleam`, on
 - **Late data.** Observations older than `absence_to_leave` are stored in the track but
   not fed to the live state (they would reopen closed sessions). `presence.replay` folds
   the same `step` function over a day's sorted observations to recompute sessions from
-  the track; a nightly reconciliation (phase 3) uses it to correct Django's sessions.
+  the track; the nightly reconciliation uses it to correct Django's sessions: Django's
+`presence.reconcile_sessions` job (03:15 UTC, each company's days in its own time zone,
+catching up to 7 missed days) fetches `GET /internal/sites/{id}/sessions` and makes its
+sessions match. A reconciled day is final: later live events for it are ignored. Manual
+run: `manage.py reconcile_presence [--site ID] [--date YYYY-MM-DD]`.
 
 ### GPS and geofences
 
@@ -172,7 +195,8 @@ Full contract with examples: `docs/api/tracker-openapi.yaml`.
 | `GET /v1/sites/{site_id}/presence` | device, dashboard | Who is on site now |
 | `GET /v1/sites/{site_id}/live` | dashboard (header or `?access_token=`, since `EventSource` cannot set headers) | Server-sent events: a snapshot, then presence events, and a ping every 25 s |
 | `GET /v1/people/{kind}/{id}/track?from=&to=` | dashboard | Raw track points (≤ 7 days) |
-| `PUT /internal/sites/{site_id}/config` | service | Django pushes geofence, zones, gateways, badges, rules |
+| `PUT /internal/sites/{site_id}/config` | service | Django pushes geofence, zones, gateways, badges, `foremen`, rules |
+| `GET /internal/sites/{site_id}/sessions?date=&tz=` | service | A local day's sessions recomputed from the stored track (`presence.replay`), for the nightly reconciliation |
 
 Errors use the same shape as the Django API: `{"code", "message", "details"}`.
 
@@ -182,21 +206,40 @@ Errors use the same shape as the Django API: `{"code", "message", "details"}`.
 
 New app **`presence`** (owns its models, migrations, services, API, templates):
 
-- `Gateway` (site, zone, label, token issued at, revoked at), `Zone` (site, code,
-  name), `Badge` (badge id, worker, active from/to), `PresenceEvent` (event id unique,
-  site, subject kind/id, type, at, zones, reason), `PresenceSession` (site, subject,
-  started at, ended at, zones visited), built from events in `services.py`.
-- **API** (`docs/api/presence-django-openapi.yaml`):
-  `POST /api/v1/tracking/token/` (phone gets a tracker token),
-  `POST /api/v1/presence/events/` (tracker → Django, idempotent by `event_id`),
-  `GET /api/v1/sites/{id}/presence-sessions/?date=` (roll-call suggestions).
-- **Config push:** a service `push_site_config(site)` called when a site, zone, gateway,
-  badge or a tracking setting changes (and on a periodic resync).
-- **Requests for other areas:** `worksites` — geofence fields on `Site` (lat, lng,
-  radius); `workers` — badge on the worker form; `core` — the settings below;
-  `attendance` — show "seen 07:12–16:48, zone B" in the roll call and the approvals
-  screen; `dashboard` — live map (Leaflet + OpenStreetMap, stored in `static/vendor/`)
-  and a per-person timeline.
+- `Gateway` (site, zone, label, token generation, revoked at), `Zone` (site, code,
+  name), `BleBadge` (badge id, worker, active from/to; QR badges stay in `checkin.Badge`),
+  `PresenceEvent` (event id unique, site, subject kind/id, type, at, zones, reason,
+  applied), `PresenceSession` (one row per visit: site, subject, local date, started at,
+  ended at, zones, `source` live or replay), `TrackingConsent`, `TrackerSync` (last push
+  per site), `PresenceReconciliation` (per site and day). Sessions are rebuilt from
+  events in `services.py` (fold in `engine.py`); rows are deleted and recreated, so
+  nothing may hold a foreign key to one.
+- **Geofence:** the existing `checkin.SiteGeofence` (centre and radius); there are no
+  geofence fields on `Site` and no `geofence_radius_m` setting.
+- **API** (contract 1.5.0 in `docs/api/openapi.yaml`):
+  `POST /api/v1/tracking/token/` (phone gets a tracker token; `403 consent_required` or
+  `403 tracking_disabled`), `POST /api/v1/tracking/consent/` (`{client_uuid, accepted,
+  text_version}`, idempotent, audited; withdrawal at any time),
+  `POST /api/v1/presence/events/` (tracker → Django, idempotent by `event_id`; an invalid
+  item is `rejected`, never holds up the batch; events of foremen without consent at that
+  moment, of workers with tracking off and of inactive companies are stored but not
+  applied), `GET /api/v1/sites/{id}/presence-sessions/?date=`.
+- **Foremen:** foremen are users, not workers, so the worker-level `tracking_enabled`
+  does not apply to them; their own switch is the consent answer
+  (`TRACKING_CONSENT_TEXT_VERSION`, an ISO date; a new version asks again).
+- **Config push:** `push_site_config(site)` (Celery, on commit, one push per site at a
+  time) when a site, its crew, geofence, zone, gateway, badge, consent or a tracking
+  setting changes, plus a resync every 10 minutes that also turns tracking off for
+  sites of inactive companies.
+- **Roll-call suggestions** (contract 1.5): presence joins the check-in suggestions
+  (`sources`, `presence {first_seen_at, last_seen_at, zones, status, …}`); check-ins win
+  when both exist. Presence-only status: half day if time on site inside working hours is
+  under `half_day_units` of them, else late if first seen after `late_after`, else
+  present. Accepting one goes through the records upsert with `from_suggestion`, recorded
+  in its `attendance.records.upsert` audit entry.
+- **Office screens:** zones, gateways (token shown once), BLE badges, live map (Leaflet +
+  OpenStreetMap, vendored in `static/vendor/leaflet/`), timeline per person, a worker's
+  presence export and a printable notice for badge holders.
 
 **Settings** (company → site → worker, through `resolve_setting`):
 
@@ -206,9 +249,8 @@ New app **`presence`** (owns its models, migrations, services, API, templates):
 | `presence_sightings_to_enter` | company, site | 2 |
 | `presence_arrival_window_seconds` | company, site | 300 |
 | `presence_absence_to_leave_seconds` | company, site | 900 |
-| `geofence_radius_m` | company, site | 150 |
 | `foreman_gps_interval_seconds` | company, site | 60 |
-| `tracking_hours` (start, end) | company, site | 06:00–19:00 |
+| `tracking_start`, `tracking_end` | company, site | 06:00–19:00 (the resolved pair must end after it starts) |
 | `track_retention_days` | company | 30 |
 
 A worker with `tracking_enabled = off` has no badge mapping pushed to the tracker, so
@@ -224,15 +266,22 @@ change to tracking settings, badges and gateways.
 
 - After PIN sign-in, call `POST /api/v1/tracking/token/` and keep the token in secure
   storage; refresh before `expires_at`.
-- **GPS:** only inside `tracking_hours` and while the foreman is signed in; interval
-  from `foreman_gps_interval_seconds`. Send OS geofence enter/exit as extra fixes.
-  Reject mock locations on Android (`isMock`).
+- **GPS:** only inside `tracking_hours` and while the foreman is signed in (never on a
+  kiosk phone); interval from `foreman_gps_interval_seconds`. Reject mock locations on
+  Android (`isMocked`). Recording starts while the app is in the foreground and continues
+  in the background (Android foreground service, iOS background location); it stops if
+  the app is swiped away. OS geofence enter/exit fixes are **not built** (no geofencing
+  in `geolocator`).
 - **BLE:** scan while the app is open on a site screen; report each badge at most once
-  per 30 s.
-- **Offline:** observations go into the existing drift outbox with a `client_uuid` and
-  their device timestamp, and are replayed in batches. The tracker handles late data
-  (§5).
-- **Consent screen** on first use, with the text from §10.
+  per 30 s. The badge id comes from one replaceable function (`decodeBadgeId`); iPhones
+  cannot see iBeacon frames, so the badge hardware should also advertise another frame
+  if iPhones matter.
+- **Offline:** observations go into their own table of the phone's sqflite database
+  (schema 3), with a `client_uuid` and their device timestamp, and are replayed in
+  batches ≤ 500. The consent answer goes through the existing outbox. The tracker handles
+  late data (§5).
+- **Consent screen** on first use and whenever the server answers `consent_required`,
+  with the text from §10.
 
 ---
 
@@ -260,7 +309,7 @@ requirements:
 - Tracking only during `tracking_hours` and only for people with `tracking_enabled`.
 - Clear notice and consent text (EN/FR), shown in the app and printed for badge holders.
 - Raw tracks deleted after `track_retention_days`; sessions kept like attendance.
-- Off-site travel visible to admins only (`all_sites`).
+- Off-site travel visible to company admins only (the `travel` claim).
 - A worker can ask to see their own presence history (export from the worker profile).
 - Presence is used to suggest attendance, not to discipline automatically.
 
@@ -279,25 +328,23 @@ requirements:
 
 ---
 
-## 12. Prototype status (`polaris_tracker/`)
+## 12. Build status (2026-11-02)
 
-| Area | State |
-| --- | --- |
-| Presence state machine + replay (`presence.gleam`) | Built, unit-tested |
-| Geofence maths (`geo.gleam`) | Built, unit-tested |
-| JWT verification and minting (`token.gleam`) | Built, unit-tested |
-| JSON decoding of all payloads (`wire.gleam`) | Built, unit-tested |
-| Hub, site actors, track store, broadcaster (`hub.gleam`, `site.gleam`, `track_store.gleam`, `broadcaster.gleam`) | Built; covered by end-to-end tests through the API |
-| HTTP endpoints (`api.gleam`) and SSE (`server.gleam`) | Built; smoke-tested over real HTTP with tokens minted by Python's `hmac` (the same scheme Django will use) |
-| Outbox to Django (`outbox.gleam`) | Built: batches and retries; logs only when `DJANGO_EVENTS_URL` is unset |
-| SQLite persistence for tracks and outbox | **Not built** (in memory). `sqlight` needs a C build and a ~9 MB download. |
-| Supervision | Built: a `RestForOne` static supervisor (broadcaster → outbox → track store → hub → site factory → HTTP); site actors run under a factory supervisor and the hub monitors them. |
-| Nightly reconciliation | Not built (`presence.replay` is ready for it) |
-| Gleam version | Dependencies pinned to builds that work on Gleam 1.12 (mist 5, stdlib < 0.68). Upgrading Gleam to ≥ 1.14 and moving to mist 6 is part of P1. |
+| Part | Where | State |
+| --- | --- | --- |
+| Tracker (P1) | `polaris_tracker/` | Built: claims v2, `foremen` consent list, SQLite tracks and outbox (own file, WAL, hourly retention), sessions for reconciliation, ingest off the hub process, supervision. Load test: 500 sightings/s, 0 errors, p99 < 3 ms; headroom to 20,000/s. Gleam ≥ 1.14 (tested on 1.19.2), mist 6. Details: `polaris_tracker/README.md` § Status. |
+| Django presence app and settings (P2, P3) | `apps/presence/`, `apps/core` settings | Built: models, tokens, consent, event ingest, sessions, config push and resync, tracking settings on the company, site and worker screens. |
+| Office screens (P4) | `apps/presence/` views and templates | Built: setup (zones, gateways, BLE badges, sync and nightly-check status), live map, timeline, export, printable notice. |
+| Roll-call suggestions (P5) | `apps/checkin`, `apps/attendance`, foreman app | Built: contract 1.5, office approvals and check-in day, phone roll call, audited acceptance. |
+| Foreman app tracking (P6) | `polaris_foreman/lib/tracking/` | Built: token, consent, GPS in tracking hours, BLE, offline uploads, status pill. |
+| Nightly reconciliation | `apps/presence/reconcile.py` | Built: 03:15 UTC, per company time zone, 7-day catch-up, idempotent; never touches attendance. |
+| Docker Compose | `docker-compose.yml` | Wired: `TRACKER_URL`, `TRACKER_PUBLIC_URL` (nginx `/tracker/`), `DJANGO_EVENTS_URL`, `tracker_data` volume; the events endpoint is internal only. |
+| Not built | — | OS geofence fixes on the phone; persistent dedupe keys in the tracker (a resend after a tracker restart can store a point twice); live presence state across tracker restarts (by design); polygon geofences. |
+| Not verified | — | Docker images built and run; the Android release build (R8 rule, permissions) and the sqflite schema 2 → 3 upgrade on a device; BLE with real badges. |
 
 ---
 
-## 13. Work breakdown (after Wave 3)
+## 13. Work breakdown (after Wave 3) — P1–P6 done, P7 open
 
 | # | Brief | Owns | Done when |
 | --- | --- | --- | --- |
