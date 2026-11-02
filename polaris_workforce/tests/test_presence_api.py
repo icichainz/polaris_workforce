@@ -738,12 +738,45 @@ def test_foreman_events_count_only_while_the_notice_is_accepted(crew):
 def test_a_foreman_event_needs_an_acceptance_before_it(crew, answers, applied):
     for accepted, version in answers:
         on_record(crew["foreman"], accepted=accepted, version=version)
-    on_record(crew["foreman"], at=T0 + datetime.timedelta(minutes=1))  # too late for it
+    late = T0 + services.CONSENT_CLOCK_SKEW + datetime.timedelta(minutes=1)
+    on_record(crew["foreman"], at=late)  # too late for it, even allowing for the clock
     batch = [event("entered", T0, site=crew["north"], subject=("foreman", crew["foreman"].pk))]
 
     tracker().post(EVENTS_URL, {"events": batch}, format="json")
 
     assert PresenceEvent.objects.get().applied is applied
+
+
+@pytest.mark.parametrize(
+    "server_after_phone",
+    [datetime.timedelta(milliseconds=174), datetime.timedelta(minutes=9)],
+)
+def test_an_acceptance_counts_for_fixes_the_phone_dated_just_before_it(crew, server_after_phone):
+    """The phone's first fix after accepting is dated by its own clock, to the second; the
+    acceptance by the server's. A fix from the same second, or from a phone a few minutes
+    slow, still counts (found by the live smoke test: the first visit was lost)."""
+    on_record(crew["foreman"], at=T0 + server_after_phone)
+    batch = [event("entered", T0, site=crew["north"], subject=("foreman", crew["foreman"].pk))]
+
+    tracker().post(EVENTS_URL, {"events": batch}, format="json")
+
+    assert PresenceEvent.objects.get().applied is True
+
+
+def test_a_refusal_counts_from_the_moment_it_is_recorded(crew):
+    hour = datetime.timedelta(hours=1)
+    on_record(crew["foreman"], at=T0 - hour)
+    on_record(crew["foreman"], accepted=False, at=T0 + datetime.timedelta(seconds=1))
+    who = ("foreman", crew["foreman"].pk)
+    batch = [
+        event("entered", T0, site=crew["north"], subject=who),
+        event("entered", T0 + datetime.timedelta(seconds=2), site=crew["south"], subject=who),
+    ]
+
+    tracker().post(EVENTS_URL, {"events": batch}, format="json")
+
+    assert PresenceEvent.objects.get(at=T0).applied is True
+    assert PresenceEvent.objects.exclude(at=T0).get().applied is False
 
 
 def test_worker_events_count_only_while_tracking_is_on_for_them(crew):

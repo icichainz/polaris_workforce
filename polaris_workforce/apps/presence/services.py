@@ -576,6 +576,11 @@ def _well_formed(event: EventIn) -> bool:
     )
 
 
+# How far a phone's clock may run behind the server's when its first fixes after an
+# acceptance are checked against it (see ``_Applicability._consented``).
+CONSENT_CLOCK_SKEW = datetime.timedelta(minutes=10)
+
+
 class _Applicability:
     """Which new events of a batch count for the sessions (``PresenceEvent.applied``).
 
@@ -633,16 +638,21 @@ class _Applicability:
         return self._consented(event.subject_id, event.at)
 
     def _consented(self, user_id: int, at: datetime.datetime) -> bool:
-        """The latest answer at or before ``at`` accepts a notice no newer than the
-        current one (versions are ISO dates: they compare as text)."""
+        """The latest answer in effect at ``at`` accepts a notice no newer than the
+        current one (versions are ISO dates: they compare as text).
+
+        ``at`` is the phone's clock (to the second) and an answer's time the server's, so
+        an acceptance takes effect ``CONSENT_CLOCK_SKEW`` early: the first fixes after
+        accepting must count even from a phone a few minutes slow. A refusal takes effect
+        exactly when it was recorded."""
         latest = None
-        for answer in self.consents.get(user_id, []):
-            if answer[0] > at:
-                break
-            latest = answer
+        for answer_at, accepted, version in self.consents.get(user_id, []):
+            effective = answer_at - CONSENT_CLOCK_SKEW if accepted else answer_at
+            if effective <= at and (latest is None or effective >= latest[0]):
+                latest = (effective, accepted, version)
         if latest is None:
             return False
-        _at, accepted, version = latest
+        _effective, accepted, version = latest
         return bool(accepted) and version <= self.current_version
 
     def _company_settings(self, company_id: int) -> CompanySettings:
