@@ -35,6 +35,7 @@ import contextvars
 import dataclasses
 import datetime
 import operator
+import types
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import reduce
@@ -59,7 +60,7 @@ from apps.accounts.permissions import (
 from apps.api.exceptions import Conflict, Locked
 from apps.attendance.models import AttendanceCorrection, AttendanceDay, AttendanceRecord
 from apps.attendance.services import lock_day
-from apps.core.choices import PayType, ProofType
+from apps.core.choices import PaymentMethod, PayType, ProofType
 from apps.core.dates import company_today
 from apps.core.models import AuditLog, CompanySettings
 from apps.core.settings import resolve_setting
@@ -1286,10 +1287,16 @@ class SheetLine:
     adjustments: list[tuple[PayAdjustment, int]] = field(default_factory=list)
     # Adjustments this (paid) line raised: its day was corrected after the payment.
     raised: list[PayAdjustment] = field(default_factory=list)
+    cash_paid: int = 0  # the payments in cash
+    method: str = PaymentMethod.CASH  # how the worker is paid (worker → site → company)
 
     @property
     def worker(self) -> Worker:
         return self.line.worker
+
+    @property
+    def amounts(self) -> engine.SheetAmounts:
+        return sheet_amounts(self.line.net, self.paid, self.cash_paid, self.method)
 
     @property
     def is_paid(self) -> bool:
@@ -1328,9 +1335,9 @@ class CashSheet:
 
 
 def _sheet_status(
-    periods: list[PayPeriod], amounts: list[tuple[int, int]], ready: dict[int, bool]
+    periods: list[PayPeriod], amounts: list[engine.SheetAmounts], ready: dict[int, bool]
 ) -> str:
-    """The sheet's status from its periods, ``(net, paid)`` per pay line and whether each
+    """The sheet's status from its periods, the amounts of each pay line and whether each
     period is ready (``periods_ready``)."""
     if not periods:
         return SHEET_NOT_OPEN
@@ -1338,7 +1345,7 @@ def _sheet_status(
         return SHEET_CLOSED
     if not all(ready[p.pk] for p in periods if not p.is_locked):
         return SHEET_NOT_OPEN
-    if all(paid >= net for net, paid in amounts):  # SheetLine.is_paid
+    if all(line.paid >= line.net for line in amounts):  # SheetLine.is_paid
         return SHEET_PAID
     return SHEET_OPEN
 
@@ -1359,7 +1366,7 @@ def sheet_statuses(
     company = company or CompanySettings.load()
     today = today or company_today(company)
     periods = _sheet_periods(keys)
-    amounts = _line_amounts(p for group in periods.values() for p in group)
+    amounts = _line_amounts((p for group in periods.values() for p in group), company)
     ready = _unlocked_ready(periods, today, company)
     statuses = {}
     for key in keys:
@@ -1396,17 +1403,50 @@ def _sheet_periods(keys) -> dict[tuple, list[PayPeriod]]:
     return periods
 
 
-def _line_amounts(periods) -> dict[int, list[tuple[int, int]]]:
-    """``(net, paid)`` of every pay line of ``periods``, per period id (one query)."""
-    amounts: dict[int, list[tuple[int, int]]] = defaultdict(list)
+def _line_amounts(
+    periods, company: CompanySettings | None = None
+) -> dict[int, list[engine.SheetAmounts]]:
+    """The amounts of every pay line of ``periods`` (``engine.SheetAmounts``), per period
+    id (one query)."""
+    company = company or CompanySettings.load()
+    amounts: dict[int, list[engine.SheetAmounts]] = defaultdict(list)
     rows = (
         PayLine.objects.filter(period__in=list(periods))
-        .annotate(paid=Sum("payments__amount"))
-        .values_list("period_id", "net", "paid")
+        .annotate(paid=Sum("payments__amount"), cash_paid=CASH_PAID)
+        .values_list(
+            "period_id",
+            "net",
+            "paid",
+            "cash_paid",
+            "worker__payment_method",
+            "period__site__payment_method",
+        )
     )
-    for period_id, net, paid in rows:
-        amounts[period_id].append((net, paid or 0))
+    for period_id, net, paid, cash_paid, worker_method, site_method in rows:
+        method = payment_method_of(worker_method, site_method, company)
+        amounts[period_id].append(sheet_amounts(net, paid or 0, cash_paid or 0, method))
     return amounts
+
+
+CASH_PAID = Sum("payments__amount", filter=Q(payments__method=PaymentMethod.CASH))
+
+
+def payment_method_of(worker_method, site_method, company: CompanySettings) -> str:
+    """``resolve_setting("payment_method", site, worker)`` from the worker's and the site's
+    override values, for lines read as values (no Site or Worker objects)."""
+    return resolve_setting(
+        "payment_method",
+        types.SimpleNamespace(payment_method=site_method),
+        types.SimpleNamespace(payment_method=worker_method),
+        company=company,
+    )
+
+
+def sheet_amounts(net: int, paid: int, cash_paid: int, method: str) -> engine.SheetAmounts:
+    """A pay line for the cash reconciliation. It is paid out of the cash issued when
+    its worker is paid in cash, or when it was paid in cash anyway (a failed transfer)."""
+    in_cash = method == PaymentMethod.CASH or cash_paid > 0
+    return engine.SheetAmounts(net, paid, cash_paid, in_cash)
 
 
 def cash_sheet(
@@ -1479,6 +1519,10 @@ def cash_sheets(
                 paid=sum(p.amount for p in payments),
                 adjustments=[(a.adjustment, a.amount) for a in line.adjustment_applications.all()],
                 raised=list(line.raised_adjustments.all()),
+                cash_paid=sum(p.amount for p in payments if p.method == PaymentMethod.CASH),
+                method=resolve_setting(
+                    "payment_method", line.period.site, line.worker, company=company
+                ),
             )
         )
     issues: dict[tuple, list[CashIssue]] = defaultdict(list)
@@ -1513,13 +1557,11 @@ def cash_sheets(
                 day=attendance_day,
                 reconciliation=engine.reconcile(
                     sum(issue.amount for issue in sheet_issues),
-                    [(sl.line.net, sl.paid) for sl in sheet_lines],
+                    [sl.amounts for sl in sheet_lines],
                 ),
                 currency=first.currency if first else company.currency,
                 currency_decimals=first.currency_decimals if first else company.currency_decimals,
-                status=_sheet_status(
-                    sheet_periods, [(sl.line.net, sl.paid) for sl in sheet_lines], ready
-                ),
+                status=_sheet_status(sheet_periods, [sl.amounts for sl in sheet_lines], ready),
                 absent=[
                     r.worker
                     for r in (absent.get(attendance_day.pk, []) if attendance_day else [])
@@ -1561,7 +1603,7 @@ def cash_sheet_summaries(
     today = today or company_today(company)
     keys = [(site.pk, day) for site, day in sheets]
     periods = _sheet_periods(keys)
-    amounts = _line_amounts(p for group in periods.values() for p in group)
+    amounts = _line_amounts((p for group in periods.values() for p in group), company)
     ready = _unlocked_ready(periods, today, company)
     issued = {
         (row["site_id"], row["date"]): row["total"]
@@ -1590,22 +1632,33 @@ def cash_sheet_summaries(
     return result
 
 
-def reconciliations(site_ids, day: datetime.date) -> dict[int, engine.CashReconciliation]:
+def reconciliations(
+    site_ids, day: datetime.date, *, company: CompanySettings | None = None
+) -> dict[int, engine.CashReconciliation]:
     """``cash_sheet(site, day, refresh=False).reconciliation`` for many sites, in two queries.
 
     For overviews such as the dashboard, which must not run a query per site. Locked
     periods are left out (nothing more is paid on them: workers left unpaid were closed
     with a reason). Sites with neither a pay line nor cash issued that day are absent.
     """
-    lines: dict[int, list[tuple[int, int]]] = defaultdict(list)
+    company = company or CompanySettings.load()
+    lines: dict[int, list[engine.SheetAmounts]] = defaultdict(list)
     rows = (
         PayLine.objects.filter(period__site__in=site_ids, period__end_date=day)
         .exclude(period__status=PayPeriod.Status.LOCKED)
-        .annotate(paid=Sum("payments__amount"))
-        .values_list("period__site", "net", "paid")
+        .annotate(paid=Sum("payments__amount"), cash_paid=CASH_PAID)
+        .values_list(
+            "period__site",
+            "net",
+            "paid",
+            "cash_paid",
+            "worker__payment_method",
+            "period__site__payment_method",
+        )
     )
-    for site_id, net, paid in rows:
-        lines[site_id].append((net, paid or 0))
+    for site_id, net, paid, cash_paid, worker_method, site_method in rows:
+        method = payment_method_of(worker_method, site_method, company)
+        lines[site_id].append(sheet_amounts(net, paid or 0, cash_paid or 0, method))
     issued = dict(
         CashIssue.objects.filter(site__in=site_ids, date=day)
         .values("site")

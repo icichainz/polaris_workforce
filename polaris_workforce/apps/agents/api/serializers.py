@@ -214,7 +214,10 @@ class OfficeCashSheetSerializer(serializers.Serializer):
     total_to_pay = MoneySerializer()
     paid_total = MoneySerializer()
     left_to_pay = MoneySerializer()
-    cash_in_hand = MoneySerializer()
+    cash_to_pay = MoneySerializer(help_text="Net of the lines paid in cash (1.6).")
+    cash_in_hand = MoneySerializer(
+        help_text="Cash issued − payments in cash; transfers take no cash (1.6)."
+    )
     line_count = serializers.IntegerField()
     paid_count = serializers.IntegerField()
     lines = OfficeCashLineSerializer(many=True)

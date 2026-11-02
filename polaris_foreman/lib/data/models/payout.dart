@@ -30,6 +30,11 @@ class PayoutWorker {
   };
 }
 
+/// How a payment was made (contract 1.6). Payments made on the phone are
+/// cash; bank transfers and mobile money are confirmed by the office and take
+/// no cash from the foreman.
+const cashMethod = 'cash';
+
 class PaymentSummary {
   const PaymentSummary({
     required this.id,
@@ -37,12 +42,15 @@ class PaymentSummary {
     required this.amount,
     required this.proofType,
     required this.paidAt,
+    this.method = cashMethod,
   });
 
   factory PaymentSummary.fromJson(Map<String, dynamic> json) => PaymentSummary(
     id: json['id'] as int,
     clientUuid: json['client_uuid'] as String,
     amount: json['amount'] as int,
+    // Sheets stored before 1.6 have no method: they were all cash.
+    method: json['method'] as String? ?? cashMethod,
     proofType: ProofType.fromWire(json['proof_type'] as String),
     paidAt: json['paid_at'] as String,
   );
@@ -50,13 +58,17 @@ class PaymentSummary {
   final int id;
   final String clientUuid;
   final int amount;
+  final String method;
   final ProofType proofType;
   final String paidAt;
+
+  bool get isCash => method == cashMethod;
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'client_uuid': clientUuid,
     'amount': amount,
+    'method': method,
     'proof_type': proofType.wire,
     'paid_at': paidAt,
   };
@@ -136,6 +148,7 @@ class Payout {
     required this.totalToPay,
     required this.paidTotal,
     required this.leftToPay,
+    required this.cashToPay,
     required this.cashInHand,
     required this.lineCount,
     required this.paidCount,
@@ -153,6 +166,8 @@ class Payout {
     totalToPay: json['total_to_pay'] as int,
     paidTotal: json['paid_total'] as int,
     leftToPay: json['left_to_pay'] as int,
+    // Sheets stored before 1.6 have no cash_to_pay: everyone was paid in cash.
+    cashToPay: json['cash_to_pay'] as int? ?? json['total_to_pay'] as int,
     cashInHand: json['cash_in_hand'] as int,
     lineCount: json['line_count'] as int,
     paidCount: json['paid_count'] as int,
@@ -162,6 +177,10 @@ class Payout {
   );
 
   /// Builds a sheet whose totals follow the contract's invariants from [lines].
+  ///
+  /// [cashToPay] comes from the server (only it knows how each worker is paid);
+  /// without it everyone is paid in cash. Cash in hand takes off the cash
+  /// payments only: a transfer takes no cash from the foreman (1.6).
   factory Payout.fromLines({
     required int siteId,
     required String date,
@@ -171,12 +190,15 @@ class Payout {
     required Currency currency,
     required int cashIssued,
     required List<PayoutLine> lines,
+    int? cashToPay,
   }) {
-    var total = 0, paid = 0, count = 0;
+    var total = 0, paid = 0, cashPaid = 0, count = 0;
     for (final l in lines) {
       total += l.net;
-      if (l.payment != null) {
-        paid += l.payment!.amount;
+      final payment = l.payment;
+      if (payment != null) {
+        paid += payment.amount;
+        if (payment.isCash) cashPaid += payment.amount;
         count++;
       }
     }
@@ -191,7 +213,8 @@ class Payout {
       totalToPay: total,
       paidTotal: paid,
       leftToPay: total - paid,
-      cashInHand: cashIssued - paid,
+      cashToPay: cashToPay ?? total,
+      cashInHand: cashIssued - cashPaid,
       lineCount: lines.length,
       paidCount: count,
       lines: lines,
@@ -208,6 +231,9 @@ class Payout {
   final int totalToPay;
   final int paidTotal;
   final int leftToPay;
+
+  /// Net of the lines paid in cash; workers paid by transfer take no cash.
+  final int cashToPay;
   final int cashInHand;
   final int lineCount;
   final int paidCount;
@@ -224,6 +250,7 @@ class Payout {
     'total_to_pay': totalToPay,
     'paid_total': paidTotal,
     'left_to_pay': leftToPay,
+    'cash_to_pay': cashToPay,
     'cash_in_hand': cashInHand,
     'line_count': lineCount,
     'paid_count': paidCount,
@@ -243,6 +270,7 @@ class Payment {
     required this.proofUrl,
     required this.paidAt,
     required this.paidBy,
+    this.method = cashMethod,
     this.replayed = false,
   });
 
@@ -254,6 +282,7 @@ class Payment {
     clientUuid: json['client_uuid'] as String,
     payLineId: json['pay_line_id'] as int,
     amount: json['amount'] as int,
+    method: json['method'] as String? ?? cashMethod,
     currency: Currency.fromJson(json['currency'] as Map<String, dynamic>),
     proofType: ProofType.fromWire(json['proof_type'] as String),
     proofUrl: json['proof_url'] as String?,
@@ -266,6 +295,7 @@ class Payment {
   final String clientUuid;
   final int payLineId;
   final int amount;
+  final String method;
   final Currency currency;
   final ProofType proofType;
   final String? proofUrl;
@@ -282,6 +312,7 @@ class Payment {
     id: id,
     clientUuid: clientUuid,
     amount: amount,
+    method: method,
     proofType: proofType,
     paidAt: paidAt,
   );
@@ -291,6 +322,7 @@ class Payment {
     'client_uuid': clientUuid,
     'pay_line_id': payLineId,
     'amount': amount,
+    'method': method,
     'currency': currency.toJson(),
     'proof_type': proofType.wire,
     'proof_url': proofUrl,

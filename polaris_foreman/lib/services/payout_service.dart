@@ -59,6 +59,7 @@ PayoutView buildPayoutView(Payout server, List<LocalPayment> local) {
     approvedAt: server.approvedAt,
     currency: server.currency,
     cashIssued: server.cashIssued,
+    cashToPay: server.cashToPay,
     lines: lines,
   );
   return PayoutView(sheet: sheet, unsent: unsent);

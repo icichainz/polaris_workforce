@@ -105,6 +105,18 @@ def test_reconciliations_match_the_cash_sheet():
     assert dashboard_services._cash_tonight([site.pk, other.pk], MON) == {site.pk: 3500}
 
 
+def test_cash_tonight_leaves_out_the_workers_paid_by_transfer():
+    f.CompanySettingsFactory()
+    site, *_ = setup_site()
+    yao = hire(site)
+    kofi = hire(site, 4000, payment_method="mobile_money")
+    roll_call(site, MON, {yao: "present", kofi: "present"})
+    payroll_services.cash_sheet(site, MON)
+
+    assert payroll_services.reconciliations([site.pk], MON)[site.pk].left_to_pay == 10000
+    assert dashboard_services._cash_tonight([site.pk], MON) == {site.pk: 6000}
+
+
 def test_reconciliations_leave_out_locked_periods():
     f.CompanySettingsFactory()
     site, *_ = setup_site()

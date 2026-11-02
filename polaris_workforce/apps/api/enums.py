@@ -80,6 +80,14 @@ PAYOUT_STATUSES = [
     ("closed", _("Closed by the office")),
 ]
 
+# How a payment was made (1.6): payments made on the phone are cash; transfers are
+# confirmed by the office (``apps.payouts``).
+PAYMENT_METHODS = [
+    ("cash", _("Cash")),
+    ("bank_transfer", _("Bank transfer")),
+    ("mobile_money", _("Mobile money")),
+]
+
 PROOF_TYPES = [
     ("photo", _("Photo")),
     ("signature", _("Signature")),

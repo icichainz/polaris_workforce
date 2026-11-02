@@ -590,11 +590,18 @@ second regenerates its own (rule 2).
 ~40 ms, pay still owed ~5 ms (it reads only periods not paid out). Add a rollup step
 (`apps.precompute.services.register`) in `apps/analytics/` only if real data gets slower.
 
-**Requests for other areas:** `apps/payroll` — the Advances screen names each worker's
-site today (`current_sites`) for every worker a manager may see, which can be a site the
-manager may not see (a worker assigned to the manager's site from next week); the Cash tab
-here groups those under "not on these sites today". `engine.reconcile`'s cash in hand
-subtracts every payment, transfers included; the Cash tab subtracts cash payments only.
+**Requests for other areas** (done on `feat/payroll-followups`):
+- Site names: the Advances screen and the office API's worker search named a worker's
+  site today even when the user may not see it (a worker joining the manager's site next
+  week); both now leave it out, as the worker detail already did.
+- Cash figures count cash only (owner decision 2026-11-02, API contract **1.6.0**): the
+  cash sheet's cash to pay, cash in hand, return and "short by" take only the workers paid
+  in cash (their payment method, or a line already paid in cash after a failed transfer);
+  totals for every method are unchanged. `cash_in_hand = cash_issued − payments in cash`
+  (it used to take transfers off too), new `cash_to_pay` on the payout sheet and the office
+  cash sheet, `method` on payments; payments made on the phone are cash. The foreman app
+  reads them (sheets stored before 1.6 count as all cash). The Today page's "cash to pay
+  tonight" counts cash only.
 
 Not in this slice: stoppage and Sunday/holiday pay as their own cost lines (pay lines keep
 them inside each day's amount; needs `apps/payroll` to store the split), the office API /

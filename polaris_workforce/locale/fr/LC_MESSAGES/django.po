@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Polaris Workforce\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-02 02:37+0000\n"
+"POT-Creation-Date: 2026-11-02 03:57+0000\n"
 "PO-Revision-Date: 2026-10-31 18:00+0000\n"
 "Last-Translator: Polaris Workforce\n"
 "Language-Team: French\n"
@@ -730,21 +730,38 @@ msgstr "Tous payés"
 msgid "Closed by the office"
 msgstr "Clôturée par le bureau"
 
-#: apps/api/enums.py:84 apps/core/choices.py:53 apps/workers/forms.py:35
+#: apps/api/enums.py:86 apps/core/choices.py:42
+#: templates/payouts/accounts.html:30
+msgid "Cash"
+msgstr "Espèces"
+
+#: apps/api/enums.py:87 apps/core/choices.py:43
+#: templates/dashboard/reports_checks.html:136
+#: templates/payouts/accounts.html:30
+msgid "Bank transfer"
+msgstr "Virement bancaire"
+
+#: apps/api/enums.py:88 apps/core/choices.py:44
+#: templates/dashboard/reports_checks.html:136
+#: templates/payouts/account_form.html:30 templates/payouts/accounts.html:30
+msgid "Mobile money"
+msgstr "Mobile Money"
+
+#: apps/api/enums.py:92 apps/core/choices.py:53 apps/workers/forms.py:35
 #: templates/checkin/badge_sheet.html:27 templates/checkin/site_day.html:64
 msgid "Photo"
 msgstr "Photo"
 
-#: apps/api/enums.py:85 apps/core/choices.py:54
+#: apps/api/enums.py:93 apps/core/choices.py:54
 #: templates/presence/notice.html:75
 msgid "Signature"
 msgstr "Signature"
 
-#: apps/api/enums.py:86 apps/core/choices.py:55
+#: apps/api/enums.py:94 apps/core/choices.py:55
 msgid "Thumb mark"
 msgstr "Empreinte digitale"
 
-#: apps/api/enums.py:87 apps/core/choices.py:56
+#: apps/api/enums.py:95 apps/core/choices.py:56
 msgid "No proof"
 msgstr "Sans preuve"
 
@@ -1649,20 +1666,6 @@ msgstr "Tarif horaire"
 msgid "Piece work"
 msgstr "À la tâche"
 
-#: apps/core/choices.py:42 templates/payouts/accounts.html:30
-msgid "Cash"
-msgstr "Espèces"
-
-#: apps/core/choices.py:43 templates/dashboard/reports_checks.html:136
-#: templates/payouts/accounts.html:30
-msgid "Bank transfer"
-msgstr "Virement bancaire"
-
-#: apps/core/choices.py:44 templates/dashboard/reports_checks.html:136
-#: templates/payouts/account_form.html:30 templates/payouts/accounts.html:30
-msgid "Mobile money"
-msgstr "Mobile Money"
-
 #: apps/core/choices.py:48
 msgid "Full day, flagged as late"
 msgstr "Journée complète, signalée en retard"
@@ -2275,7 +2278,7 @@ msgstr "Indiquez le nombre de jours entre deux jours de paie."
 msgid "Use ISO weekday numbers from 1 (Monday) to 7 (Sunday)."
 msgstr "Utilisez des numéros de jour ISO de 1 (lundi) à 7 (dimanche)."
 
-#: apps/core/models.py:357 apps/payroll/services.py:1681
+#: apps/core/models.py:357 apps/payroll/services.py:1734
 msgid "Unknown proof type."
 msgstr "Type de preuve inconnu."
 
@@ -3566,7 +3569,7 @@ msgstr ""
 "Mo)."
 
 #: apps/payroll/forms.py:84 templates/dashboard/reports_cash.html:48
-#: templates/payroll/_reconciliation.html:7
+#: templates/payroll/_reconciliation.html:8
 #: templates/payroll/cash_sheets.html:26
 msgid "Cash issued"
 msgstr "Fonds remis"
@@ -4261,8 +4264,8 @@ msgstr "jour d’arrêt"
 msgid "stoppage days"
 msgstr "jours d’arrêt"
 
-#: apps/payroll/pay_rules.py:181 apps/payroll/services.py:1754
-#: apps/payroll/services.py:1806
+#: apps/payroll/pay_rules.py:181 apps/payroll/services.py:1807
+#: apps/payroll/services.py:1859
 msgid "This pay period is locked."
 msgstr "Cette période de paie est clôturée."
 
@@ -4282,8 +4285,8 @@ msgstr "Choisissez une des tâches actives de l’entreprise."
 msgid "Enter a quantity greater than zero."
 msgstr "Saisissez une quantité supérieure à zéro."
 
-#: apps/payroll/pay_rules.py:289 apps/payroll/services.py:1632
-#: apps/payroll/services.py:2001
+#: apps/payroll/pay_rules.py:289 apps/payroll/services.py:1685
+#: apps/payroll/services.py:2054
 msgid "Enter an amount greater than zero."
 msgstr "Saisissez un montant supérieur à zéro."
 
@@ -4517,37 +4520,37 @@ msgstr "Travail à la tâche supprimé."
 msgid "Bonus removed."
 msgstr "Prime supprimée."
 
-#: apps/payroll/services.py:1624 apps/payroll/services.py:1933
+#: apps/payroll/services.py:1677 apps/payroll/services.py:1986
 msgid "This cash sheet is closed and locked."
 msgstr "Cette feuille de caisse est clôturée."
 
-#: apps/payroll/services.py:1684
+#: apps/payroll/services.py:1737
 msgid "A proof of receipt is required."
 msgstr "Une preuve de remise est obligatoire."
 
-#: apps/payroll/services.py:1686
+#: apps/payroll/services.py:1739
 msgid "This proof type is not accepted (see Settings)."
 msgstr "Ce type de preuve n’est pas accepté (voir Paramètres)."
 
-#: apps/payroll/services.py:1688
+#: apps/payroll/services.py:1741
 msgid "Attach the photo of the worker receiving the cash."
 msgstr "Joignez la photo de l’ouvrier recevant l’argent."
 
-#: apps/payroll/services.py:1759
+#: apps/payroll/services.py:1812
 msgid "The cash sheet is not open: the roll call is not approved yet."
 msgstr ""
 "La feuille de caisse n’est pas ouverte : l’appel n’est pas encore validé."
 
-#: apps/payroll/services.py:1765
+#: apps/payroll/services.py:1818
 msgid "This worker has already been paid."
 msgstr "Cet ouvrier a déjà été payé."
 
-#: apps/payroll/services.py:1770
+#: apps/payroll/services.py:1823
 #, python-format
 msgid "The amount must be the net left to pay: %(remaining)s."
 msgstr "Le montant doit être le net restant à payer : %(remaining)s."
 
-#: apps/payroll/services.py:1811
+#: apps/payroll/services.py:1864
 msgid ""
 "This pay was corrected after it was paid and the difference is already "
 "settled on a later pay: the payment cannot be undone."
@@ -4555,33 +4558,33 @@ msgstr ""
 "Cette paie a été corrigée après son paiement et la différence est déjà "
 "régularisée sur une paie suivante : le paiement ne peut pas être annulé."
 
-#: apps/payroll/services.py:1847
+#: apps/payroll/services.py:1900
 msgid "This pay period is already locked."
 msgstr "Cette période de paie est déjà clôturée."
 
-#: apps/payroll/services.py:1850
+#: apps/payroll/services.py:1903
 msgid "Approve every day of the period before locking it."
 msgstr "Validez chaque journée de la période avant de la clôturer."
 
-#: apps/payroll/services.py:1856
+#: apps/payroll/services.py:1909
 msgid "Some workers are not paid yet: give a reason to close anyway."
 msgstr ""
 "Certains ouvriers ne sont pas encore payés : indiquez un motif pour clôturer "
 "quand même."
 
-#: apps/payroll/services.py:1929
+#: apps/payroll/services.py:1982
 msgid "There is nothing to pay on this sheet."
 msgstr "Il n’y a rien à payer sur cette feuille."
 
-#: apps/payroll/services.py:2007
+#: apps/payroll/services.py:2060
 msgid "Enter a deduction greater than zero."
 msgstr "Saisissez une retenue supérieure à zéro."
 
-#: apps/payroll/services.py:2009
+#: apps/payroll/services.py:2062
 msgid "The deduction cannot be more than the advance."
 msgstr "La retenue ne peut pas dépasser l’avance."
 
-#: apps/payroll/services.py:2018
+#: apps/payroll/services.py:2071
 #, python-format
 msgid ""
 "Over the limit: %(worker)s may owe at most %(limit)s (%(percent)s%% of a "
@@ -8165,7 +8168,7 @@ msgstr "Espèces, virement bancaire et Mobile Money"
 
 #: templates/dashboard/reports_cash.html:23
 #: templates/dashboard/reports_cash.html:47 templates/payouts/prepare.html:27
-#: templates/payroll/_reconciliation.html:22
+#: templates/payroll/_reconciliation.html:24
 #: templates/payroll/cash_sheets.html:29
 msgid "Left to pay"
 msgstr "Reste à payer"
@@ -8828,7 +8831,7 @@ msgstr "Lots affichés"
 msgid "Batch"
 msgstr "Lot"
 
-#: templates/payouts/batches.html:36 templates/payroll/_reconciliation.html:24
+#: templates/payouts/batches.html:36 templates/payroll/_reconciliation.html:26
 #: templates/payroll/cash_sheets.html:36
 #, python-format
 msgid "%(n)s worker"
@@ -9124,11 +9127,11 @@ msgstr "Bulletin de paie"
 msgid "Page %(number)s of %(count)s"
 msgstr "Page %(number)s sur %(count)s"
 
-#: templates/payroll/_reconciliation.html:5
+#: templates/payroll/_reconciliation.html:6
 msgid "Cash reconciliation"
 msgstr "Rapprochement de caisse"
 
-#: templates/payroll/_reconciliation.html:9
+#: templates/payroll/_reconciliation.html:10
 #, python-format
 msgid "%(n)s hand-over"
 msgid_plural "%(n)s hand-overs"
@@ -9136,16 +9139,16 @@ msgstr[0] "%(n)s remise"
 msgstr[1] "%(n)s remises"
 msgstr[2] "%(n)s remises"
 
-#: templates/payroll/_reconciliation.html:9
+#: templates/payroll/_reconciliation.html:10
 msgid "None recorded yet"
 msgstr "Aucune enregistrée pour l’instant"
 
-#: templates/payroll/_reconciliation.html:12
+#: templates/payroll/_reconciliation.html:13
 #: templates/payroll/cash_sheets.html:27
 msgid "Total to pay"
 msgstr "Total à payer"
 
-#: templates/payroll/_reconciliation.html:14
+#: templates/payroll/_reconciliation.html:15
 #, python-format
 msgid "%(n)s worker · net of advances"
 msgid_plural "%(n)s workers · net of advances"
@@ -9153,26 +9156,31 @@ msgstr[0] "%(n)s ouvrier · net des avances"
 msgstr[1] "%(n)s ouvriers · net des avances"
 msgstr[2] "%(n)s ouvriers · net des avances"
 
-#: templates/payroll/_reconciliation.html:17
+#: templates/payroll/_reconciliation.html:16
+#, python-format
+msgid "%(cash)s in cash · %(transfer)s by transfer"
+msgstr "%(cash)s en espèces · %(transfer)s par virement"
+
+#: templates/payroll/_reconciliation.html:19
 #: templates/payroll/cash_sheets.html:28
 msgid "Paid so far"
 msgstr "Payé jusqu’ici"
 
-#: templates/payroll/_reconciliation.html:19
+#: templates/payroll/_reconciliation.html:21
 #, python-format
 msgid "%(paid)s of %(total)s workers"
 msgstr "%(paid)s sur %(total)s ouvriers"
 
-#: templates/payroll/_reconciliation.html:27
+#: templates/payroll/_reconciliation.html:29
 msgid "Cash should be in hand"
 msgstr "Espèces qui doivent être en caisse"
 
-#: templates/payroll/_reconciliation.html:30
+#: templates/payroll/_reconciliation.html:32
 #, python-format
 msgid "Short by %(amount)s: issue more cash"
 msgstr "Il manque %(amount)s : remettez plus de fonds"
 
-#: templates/payroll/_reconciliation.html:32
+#: templates/payroll/_reconciliation.html:34
 #, python-format
 msgid "Return %(amount)s when done"
 msgstr "Rendez %(amount)s à la fin"

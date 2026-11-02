@@ -31,6 +31,7 @@ from tests.factories import (
     CompanySettingsFactory,
     ForemanDeviceFactory,
     PlatformAdminFactory,
+    SiteAssignmentFactory,
     UserFactory,
     WorkerFactory,
 )
@@ -265,6 +266,20 @@ def test_reads_stay_on_the_users_sites(crew):
     assert "Bravo" not in text
     # An admin sees both.
     assert "Bravo" in str(agent(AdminUserFactory()).get(f"{OFFICE}/approvals/").json())
+
+
+def test_found_workers_never_name_a_site_the_user_does_not_see(crew):
+    """A worker joining the manager's site next week is on another site today: the
+    search lists them (they are on the manager's crew) without naming that site."""
+    other, _manager, _foreman = setup_site(name="Bravo Tower")
+    kofi = hire(other, 5000, first_name="Kofi", last_name="Agbo")
+    SiteAssignmentFactory(worker=kofi, site=crew["site"], start_date=TUE + datetime.timedelta(7))
+
+    found = agent(crew["manager"]).get(f"{OFFICE}/workers/", {"q": "Kofi"}).json()["workers"]
+    admin = agent(AdminUserFactory()).get(f"{OFFICE}/workers/", {"q": "Kofi"}).json()["workers"]
+
+    assert [(w["name"], w["site"]) for w in found] == [("Kofi Agbo", None)]
+    assert admin[0]["site"]["name"] == "Bravo Tower"
 
 
 # --- decisions ---------------------------------------------------------------------------
